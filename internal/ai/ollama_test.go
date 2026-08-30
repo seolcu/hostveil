@@ -50,7 +50,7 @@ func TestExplainAsksForOneResponseRatherThanAStream(t *testing.T) {
 	defer srv.Close()
 
 	o := &Ollama{Host: srv.URL, Model: "llama3.2", http: srv.Client()}
-	out, err := o.Explain(context.Background(), finding())
+	out, err := o.Explain(context.Background(), finding(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestExplainSaysWhichModelWhenTheServerRefuses(t *testing.T) {
 	defer srv.Close()
 
 	o := &Ollama{Host: srv.URL, Model: "a-model-nobody-pulled", http: srv.Client()}
-	_, err := o.Explain(context.Background(), finding())
+	_, err := o.Explain(context.Background(), finding(), "")
 	if err == nil {
 		t.Fatal("Explain returned no error for a 404")
 	}
@@ -91,7 +91,7 @@ func TestExplainSaysWhichModelWhenTheServerRefuses(t *testing.T) {
 func TestExplainReportsAnUnreachableServer(t *testing.T) {
 	// Port 1 refuses immediately on every platform this builds for.
 	o := &Ollama{Host: "http://127.0.0.1:1", Model: "x", http: &http.Client{Timeout: time.Second}}
-	if _, err := o.Explain(context.Background(), finding()); err == nil {
+	if _, err := o.Explain(context.Background(), finding(), ""); err == nil {
 		t.Fatal("Explain returned no error with nothing listening")
 	}
 }
@@ -99,7 +99,7 @@ func TestExplainReportsAnUnreachableServer(t *testing.T) {
 func TestExplainRejectsUnsafeOrAmbiguousHostURLs(t *testing.T) {
 	for _, host := range []string{"file:///tmp/socket", "http://user:pass@localhost:11434", "http://localhost:11434?target=elsewhere"} {
 		o := &Ollama{Host: host, Model: "x", http: http.DefaultClient}
-		if _, err := o.Explain(context.Background(), finding()); err == nil {
+		if _, err := o.Explain(context.Background(), finding(), ""); err == nil {
 			t.Errorf("Explain accepted host %q", host)
 		}
 	}
@@ -112,7 +112,7 @@ func TestExplainBoundsAndCapsTheModelResponse(t *testing.T) {
 	}))
 	defer srv.Close()
 	o := &Ollama{Host: srv.URL, Model: "x", http: srv.Client()}
-	got, err := o.Explain(context.Background(), finding())
+	got, err := o.Explain(context.Background(), finding(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestExplainBoundsAndCapsTheModelResponse(t *testing.T) {
 	}))
 	defer tooLarge.Close()
 	o = &Ollama{Host: tooLarge.URL, Model: "x", http: tooLarge.Client()}
-	if _, err := o.Explain(context.Background(), finding()); err == nil {
+	if _, err := o.Explain(context.Background(), finding(), ""); err == nil {
 		t.Fatal("Explain accepted an oversized response")
 	}
 }
@@ -226,12 +226,48 @@ func TestATrailingSlashOnTheHostIsNotADifferentServer(t *testing.T) {
 	if !o.Available(context.Background()) {
 		t.Fatal("Available failed against a host given with a trailing slash")
 	}
-	if _, err := o.Explain(context.Background(), finding()); err != nil {
+	if _, err := o.Explain(context.Background(), finding(), ""); err != nil {
 		t.Fatal(err)
 	}
 	for _, p := range paths {
 		if strings.HasPrefix(p, "//") {
 			t.Errorf("requested %q — the trailing slash reached the path", p)
 		}
+	}
+}
+
+// Advise shares Explain's request/response mechanics (via complete) but
+// sends a different prompt built from a whole batch of findings — this
+// pins that it reaches the model at all and that the batch content and the
+// site context both land in the outgoing prompt.
+func TestAdviseSendsEveryFindingAndTheSiteContext(t *testing.T) {
+	var got generateRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		if err := json.Unmarshal(b, &got); err != nil {
+			t.Fatalf("request body is not the JSON Ollama expects: %v", err)
+		}
+		_, _ = io.WriteString(w, `{"response":"1. Apply — looks fine here"}`)
+	}))
+	defer srv.Close()
+
+	o := &Ollama{Host: srv.URL, Model: "llama3.2", http: srv.Client()}
+	findings := []model.Finding{
+		finding(),
+		model.NewFinding("cve.outdated-image", "Update the image for cache",
+			model.SeverityHigh, model.SourceCVE, model.RemediationReview, model.WithService("cache")),
+	}
+	out, err := o.Advise(context.Background(), findings, "a personal media server")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out == "" {
+		t.Error("Advise returned nothing")
+	}
+	if !strings.Contains(got.Prompt, "SSH permits root login") || !strings.Contains(got.Prompt, "Update the image for cache") {
+		t.Errorf("prompt does not name every finding: %q", got.Prompt)
+	}
+	if !strings.Contains(got.Prompt, "a personal media server") {
+		t.Errorf("prompt does not carry the site context: %q", got.Prompt)
 	}
 }

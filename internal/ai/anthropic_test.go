@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/seolcu/hostveil/internal/model"
 )
 
 func TestAnthropicExplainSendsTheKeyAndVersionHeader(t *testing.T) {
@@ -35,7 +37,7 @@ func TestAnthropicExplainSendsTheKeyAndVersionHeader(t *testing.T) {
 	defer srv.Close()
 
 	a := &Anthropic{BaseURL: srv.URL, APIKey: "sk-test", Model: "claude-opus-5", http: srv.Client()}
-	out, err := a.Explain(context.Background(), finding())
+	out, err := a.Explain(context.Background(), finding(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +62,7 @@ func TestAnthropicExplainNamesTheModelWhenTheAPIRefuses(t *testing.T) {
 	defer srv.Close()
 
 	a := &Anthropic{BaseURL: srv.URL, APIKey: "sk-test", Model: "a-model-that-does-not-exist", http: srv.Client()}
-	_, err := a.Explain(context.Background(), finding())
+	_, err := a.Explain(context.Background(), finding(), "")
 	if err == nil {
 		t.Fatal("Explain returned no error for a 404")
 	}
@@ -71,7 +73,7 @@ func TestAnthropicExplainNamesTheModelWhenTheAPIRefuses(t *testing.T) {
 
 func TestAnthropicExplainRequiresAnAPIKey(t *testing.T) {
 	a := &Anthropic{Model: "claude-opus-5", http: http.DefaultClient}
-	if _, err := a.Explain(context.Background(), finding()); err == nil {
+	if _, err := a.Explain(context.Background(), finding(), ""); err == nil {
 		t.Fatal("Explain accepted an empty API key")
 	}
 }
@@ -143,5 +145,30 @@ func TestNewAnthropicReadsTheEnvironment(t *testing.T) {
 	a = NewAnthropic()
 	if a.APIKey != "sk-live" || a.Model != "claude-haiku-4-5" {
 		t.Errorf("NewAnthropic = %q/%q, want the environment's values", a.APIKey, a.Model)
+	}
+}
+
+func TestAnthropicAdviseSendsEveryFindingAndTheSiteContext(t *testing.T) {
+	var got anthropicRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		if err := json.Unmarshal(b, &got); err != nil {
+			t.Fatalf("request body is not the JSON the Claude API expects: %v", err)
+		}
+		_, _ = io.WriteString(w, `{"content":[{"type":"text","text":"1. Apply"}]}`)
+	}))
+	defer srv.Close()
+
+	a := &Anthropic{BaseURL: srv.URL, APIKey: "sk-test", Model: "claude-opus-5", http: srv.Client()}
+	findings := []model.Finding{finding()}
+	if _, err := a.Advise(context.Background(), findings, "a personal media server"); err != nil {
+		t.Fatal(err)
+	}
+	prompt := got.Messages[0].Content
+	if !strings.Contains(prompt, "SSH permits root login") {
+		t.Errorf("prompt does not name the finding: %q", prompt)
+	}
+	if !strings.Contains(prompt, "a personal media server") {
+		t.Errorf("prompt does not carry the site context: %q", prompt)
 	}
 }

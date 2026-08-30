@@ -149,6 +149,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/rescan/status", s.handleRescanStatus)
 	mux.HandleFunc("GET /api/explain", s.handleExplain)
 	mux.HandleFunc("GET /api/export", s.handleExport)
+	mux.HandleFunc("GET /api/advise", s.handleAdvise)
+	mux.HandleFunc("GET /api/ai-context", s.handleAIContextGet)
+	mux.HandleFunc("POST /api/ai-context", s.handleAIContextSet)
 	mux.HandleFunc("POST /api/fix", s.handleFix)
 	mux.HandleFunc("POST /api/fix/all", s.handleFixAll)
 	mux.HandleFunc("POST /api/fix/batch", s.handleFixBatch)
@@ -606,6 +609,45 @@ func (s *Server) handleExplain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, s.engine.Explain(r.Context(), f, true))
+}
+
+// handleAdvise judges every fixable finding in the current report against
+// the saved host description — the whole-scan counterpart to handleExplain.
+// It reads whatever the last scan left, the same way handleExport does, so
+// a fresh look at the host is still what /api/rescan is for.
+func (s *Server) handleAdvise(w http.ResponseWriter, r *http.Request) {
+	report, hasRun := s.engine.Current()
+	if !hasRun {
+		http.Error(w, "no scan has run yet", http.StatusConflict)
+		return
+	}
+	useAI := r.URL.Query().Get("ai") != "false"
+	writeJSON(w, s.engine.Advise(r.Context(), report.Findings, useAI))
+}
+
+func (s *Server) handleAIContextGet(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, struct {
+		Text string `json:"text"`
+	}{s.engine.AIContext()})
+}
+
+type aiContextRequest struct {
+	Text string `json:"text"`
+}
+
+func (s *Server) handleAIContextSet(w http.ResponseWriter, r *http.Request) {
+	var req aiContextRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	if err := s.engine.SetAIContext(req.Text); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, struct {
+		Text string `json:"text"`
+	}{req.Text})
 }
 
 func (s *Server) handlePreview(w http.ResponseWriter, r *http.Request) {

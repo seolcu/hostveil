@@ -88,13 +88,25 @@ func (c *OpenAICompat) Available(ctx context.Context) bool {
 
 // Explain asks the configured vendor for an advisory explanation of the
 // finding.
-func (c *OpenAICompat) Explain(ctx context.Context, f model.Finding) (string, error) {
+func (c *OpenAICompat) Explain(ctx context.Context, f model.Finding, siteContext string) (string, error) {
+	return c.complete(ctx, buildPrompt(f, siteContext), 120)
+}
+
+// Advise asks the configured vendor to judge a whole batch of findings
+// against siteContext at once.
+func (c *OpenAICompat) Advise(ctx context.Context, findings []model.Finding, siteContext string) (string, error) {
+	return c.complete(ctx, buildAdvisePrompt(findings, siteContext), 500)
+}
+
+// complete sends prompt to the configured vendor and returns its response,
+// capped to wordCap words. Shared by Explain and Advise.
+func (c *OpenAICompat) complete(ctx context.Context, prompt string, wordCap int) (string, error) {
 	if c.Model == "" {
 		return "", fmt.Errorf("HOSTVEIL_OPENAI_MODEL is not set")
 	}
 	body, err := json.Marshal(openAIRequest{
 		Model:    c.Model,
-		Messages: []openAIMessage{{Role: "user", Content: buildPrompt(f)}},
+		Messages: []openAIMessage{{Role: "user", Content: prompt}},
 		Stream:   false,
 	})
 	if err != nil {
@@ -131,7 +143,7 @@ func (c *OpenAICompat) Explain(ctx context.Context, f model.Finding) (string, er
 	if len(or.Choices) == 0 {
 		return "", fmt.Errorf("%s returned no choices", c.BaseURL)
 	}
-	return limitWords(or.Choices[0].Message.Content, 120), nil
+	return limitWords(or.Choices[0].Message.Content, wordCap), nil
 }
 
 func (c *OpenAICompat) setAuth(req *http.Request) {

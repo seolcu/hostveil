@@ -286,6 +286,35 @@ hostveil history --scans</code></pre></div>
             </div>
             <p>종료 코드는 <code>scan</code>과 같은 게이트를 따릅니다. <a href="#exit-codes">종료 코드</a>를 참고하세요.</p>
 
+            <h2 id="advise">advise</h2>
+            <p>호스트를 스캔하고 등록된 Fix가 있는 모든 발견 항목을, 그 Fix를 적용하면 얻는 것과 치르는 대가와 함께 나열합니다. <code>--ai</code>를 주면 <a href="#ai-context">ai-context</a>로 저장해 둔 호스트 설명(있다면)에 비추어 적용/보류/상황에 따라 다름 중 하나의 판단도 덧붙입니다. <a href="ai">AI 설명</a>을 참고하세요.</p>
+            <div class="code-block"><pre><code>hostveil advise [--ai] [flags]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--ai</code></td><td><code>false</code></td><td>발견 항목마다 AI 판단을 덧붙입니다. 기본은 로컬 Ollama이며, 외부 API를 쓰려면 <code>HOSTVEIL_AI_PROVIDER</code>를 설정하세요.</td></tr>
+                  <tr><td><code>--only LIST</code></td><td>&mdash;</td><td>이 도메인만 스캔합니다(쉼표로 구분).</td></tr>
+                  <tr><td><code>--skip LIST</code></td><td>&mdash;</td><td>나열한 도메인만 제외하고 스캔합니다(쉼표로 구분). <code>--only</code>와 함께 쓸 수 없습니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>결정론적 목록은 AI 없이도 항상 출력됩니다. <code>--ai</code>는 그 아래에 상황별 판단을 덧붙이거나, 덧붙이지 못한 이유를 말합니다.</p>
+
+            <h2 id="ai-context">ai-context</h2>
+            <p>이 호스트를 한 줄로 설명한 문구를 보여주거나, 저장하거나, 지웁니다. "개인 미디어 서버, 안정성보다 최신 보안 패치가 중요함" 같은 문구입니다. <code>explain --ai</code>와 <code>advise --ai</code>는 이 설명을 읽어 Fix를 추상적으로가 아니라 이 호스트에 맞춰 판단합니다. hostveil이 상태를 저장하는 것과 같은 디렉터리에 남아 있으며, 바꾸거나 지우기 전까지 계속 쓰입니다.</p>
+            <div class="code-block"><pre><code>hostveil ai-context               # 현재 설명을 보여줌
+hostveil ai-context "TEXT"        # 설명을 저장함
+hostveil ai-context --clear       # 설명을 지움</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--clear</code></td><td><code>false</code></td><td>저장된 설명을 보여주는 대신 지웁니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
             <h2 id="serve">serve</h2>
             <p>localhost 웹 대시보드를 실행합니다. <code>hostveil web</code>은 별칭입니다.</p>
             <div class="code-block"><pre><code>hostveil serve [--addr ADDR] [--theme NAME] [--layout NAME]</code></pre></div>

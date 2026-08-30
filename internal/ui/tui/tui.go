@@ -43,6 +43,11 @@ const (
 	// free-text destination path typed after a format is chosen.
 	modeExport
 	modeExportPath
+	// modeAdvice is the whole-scan AI advisory screen, and modeAIContext is
+	// the free-text editor for the saved host description it (and every AI
+	// explanation) reads.
+	modeAdvice
+	modeAIContext
 
 	// modeCount bounds the enum so a test can walk every mode instead of
 	// listing them.
@@ -170,6 +175,21 @@ type appModel struct {
 	exportPathCursor int
 	exportPrev       mode // modeList or modeDetail, restored on cancel
 	saveExport       func(format, path string, data []byte) error
+
+	// Whole-scan AI advisory screen and its context editor. advice holds
+	// the last answer; adviceBusy is set while waiting on it, the same
+	// shape aiBusy already uses for the single-finding case. aiContextText
+	// is a rune buffer for the same reason exportPath is — every keystroke
+	// mutates it in place — prefilled from Engine.AIContext() when the
+	// editor opens and written back with Engine.SetAIContext on Enter,
+	// straight through the engine rather than an injected callback: unlike
+	// theme/layout, internal/core is not layering-restricted, so it can
+	// already reach the state directory itself.
+	advice          model.Advice
+	adviceBusy      bool
+	aiContext       string // cached Engine.AIContext(), so View stays a pure render
+	aiContextText   []rune
+	aiContextCursor int
 
 	// gl is which symbol set the screen draws from. The zero value is
 	// glyph.Plain, so a model built as a bare struct literal — which is how
@@ -498,6 +518,17 @@ func explainCmd(ctx context.Context, e *core.Engine, f model.Finding) tea.Cmd {
 	}
 }
 
+type advisedMsg struct{ adv model.Advice }
+
+// adviseCmd asks the engine to judge every fixable finding in findings at
+// once, same "degrades to an AIError rather than failing" contract
+// explainCmd has.
+func adviseCmd(ctx context.Context, e *core.Engine, findings []model.Finding) tea.Cmd {
+	return func() tea.Msg {
+		return advisedMsg{adv: e.Advise(ctx, findings, true)}
+	}
+}
+
 type historyMsg struct {
 	checkpoints []model.Checkpoint
 	// trend is the score of every retained scan, oldest first. It rides on
@@ -608,6 +639,16 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// rather than rendered under whatever is on screen now.
 		if m.mode == modeDetail && len(m.active) > 0 && m.active[m.cursor].Key() == msg.key {
 			m.aiText, m.aiErr = msg.exp.AI, msg.exp.AIError
+		}
+		return m, nil
+
+	case advisedMsg:
+		m.adviceBusy = false
+		// A slow answer landing after the user has already left the
+		// advice screen (esc, or a fresh scan) is dropped rather than
+		// rendered under whatever is on screen now.
+		if m.mode == modeAdvice {
+			m.advice = msg.adv
 		}
 		return m, nil
 
@@ -733,6 +774,10 @@ func (m *appModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.keyExport(key)
 	case modeExportPath:
 		return m.keyExportPath(key)
+	case modeAdvice:
+		return m.keyAdvice(key)
+	case modeAIContext:
+		return m.keyAIContext(key)
 	case modeMessage:
 		m.mode = modeList
 	}
@@ -786,6 +831,8 @@ func (m *appModel) keyList(key string) (tea.Model, tea.Cmd) {
 		m.openLayoutPicker()
 	case "e":
 		m.openExportPicker()
+	case "v":
+		return m, m.openAdvicePicker()
 	}
 	return m, nil
 }
@@ -951,6 +998,84 @@ func (m *appModel) keyExportPath(key string) (tea.Model, tea.Cmd) {
 // sitting, and every character of it stays editable.
 func defaultExportPath(f core.FormatInfo) string {
 	return "hostveil-report-" + time.Now().Format("2006-01-02") + "." + f.Ext
+}
+
+// openAdvicePicker starts the whole-scan advisory: every fixable finding
+// in the current report, judged against the saved host description if one
+// is set. Reachable even on a clean report — Advise's own deterministic
+// Plain listing just comes back saying there is nothing to judge.
+func (m *appModel) openAdvicePicker() tea.Cmd {
+	m.mode = modeAdvice
+	m.adviceBusy = true
+	m.advice = model.Advice{}
+	m.aiContext = m.engine.AIContext()
+	return adviseCmd(m.runCtx(), m.engine, m.report.Findings)
+}
+
+// keyAdvice drives the advisory screen. c opens the context editor rather
+// than editing inline, the same split modeExport/modeExportPath uses for
+// the same reason: a free-text field and a read-only summary are different
+// shapes of screen.
+func (m *appModel) keyAdvice(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "esc", "q":
+		m.mode = modeList
+	case "c":
+		m.openAIContextEditor()
+	}
+	return m, nil
+}
+
+// openAIContextEditor prefills the buffer from whatever is already saved,
+// so editing means changing it rather than retyping it from nothing.
+func (m *appModel) openAIContextEditor() {
+	m.aiContextText = []rune(m.aiContext)
+	m.aiContextCursor = len(m.aiContextText)
+	m.mode = modeAIContext
+}
+
+// keyAIContext is modeExportPath's exact editing shape, applied to a
+// different field — see that function's comment for why this is
+// hand-rolled rather than a general-purpose text-input component. Enter
+// saves and returns to modeAdvice, re-firing adviseCmd so the screen
+// reflects the new context; esc discards and returns unchanged.
+func (m *appModel) keyAIContext(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "esc":
+		m.mode = modeAdvice
+	case "enter":
+		if err := m.engine.SetAIContext(string(m.aiContextText)); err != nil {
+			m.status = "Could not save: " + err.Error()
+			m.mode = modeMessage
+			return m, nil
+		}
+		return m, m.openAdvicePicker()
+	case "backspace":
+		if m.aiContextCursor > 0 {
+			m.aiContextText = append(m.aiContextText[:m.aiContextCursor-1], m.aiContextText[m.aiContextCursor:]...)
+			m.aiContextCursor--
+		}
+	case "delete":
+		if m.aiContextCursor < len(m.aiContextText) {
+			m.aiContextText = append(m.aiContextText[:m.aiContextCursor], m.aiContextText[m.aiContextCursor+1:]...)
+		}
+	case "left":
+		m.aiContextCursor = clamp(m.aiContextCursor-1, 0, len(m.aiContextText))
+	case "right":
+		m.aiContextCursor = clamp(m.aiContextCursor+1, 0, len(m.aiContextText))
+	case "home":
+		m.aiContextCursor = 0
+	case "end":
+		m.aiContextCursor = len(m.aiContextText)
+	default:
+		r := []rune(key)
+		if len(r) == 1 && r[0] >= 0x20 {
+			m.aiContextText = append(m.aiContextText[:m.aiContextCursor],
+				append([]rune{r[0]}, m.aiContextText[m.aiContextCursor:]...)...)
+			m.aiContextCursor++
+		}
+	}
+	return m, nil
 }
 
 // openThemePicker remembers the current theme so cancelling can restore it,

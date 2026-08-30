@@ -39,8 +39,7 @@ func fixtureHost(t *testing.T) string {
 	// One engine for the whole test: the CLI builds a fresh one per command,
 	// but they must share a state directory or a fix applied by `fix` would
 	// be invisible to `history`.
-	orig := newEngine
-	newEngine = func() *core.Engine {
+	build := func() *core.Engine {
 		return core.New(core.Config{
 			Registry: check.NewRegistry(composecheck.New()),
 			Fixes:    fix.Default(),
@@ -48,7 +47,13 @@ func fixtureHost(t *testing.T) string {
 			Runner:   checktest.ComposeProjects(map[string]string{"demo": path}),
 		})
 	}
-	t.Cleanup(func() { newEngine = orig })
+	origEngine, origEngineWithAI := newEngine, newEngineWithAI
+	newEngine = build
+	// explain/advise go through this seam instead, so it needs the same
+	// fixture — otherwise a test builds a fake engine and then reaches past
+	// it into the real host the moment --ai (or its absence) is checked.
+	newEngineWithAI = func(bool) *core.Engine { return build() }
+	t.Cleanup(func() { newEngine, newEngineWithAI = origEngine, origEngineWithAI })
 	return path
 }
 

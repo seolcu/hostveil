@@ -118,6 +118,10 @@ func run(ctx context.Context, args []string) (code int) {
 		return cmdExplain(ctx, args)
 	case "export":
 		return cmdExport(ctx, args)
+	case "advise":
+		return cmdAdvise(ctx, args)
+	case "ai-context":
+		return cmdAIContext(ctx, args)
 	case "rollback":
 		return cmdRollback(ctx, args)
 	case "history":
@@ -184,6 +188,10 @@ Usage:
   hostveil explain <id> [flags]  Explain a finding (optionally via AI)
   hostveil export --format FMT   Export the scan report: json, sarif, markdown,
                                  docx, or pdf (see Export flags below)
+  hostveil advise [--ai]         List every fixable finding's benefit/cost, and
+                                 (with --ai) a verdict for this host specifically
+  hostveil ai-context [TEXT]     Show, set, or clear ("--clear") the saved
+                                 description of this host that --ai uses
   hostveil serve [flags]         Serve the localhost web dashboard (alias: web)
   hostveil rollback <id> [flags] Undo a previously applied fix
   hostveil history [--scans]     List applied fixes and their rollback IDs;
@@ -235,7 +243,19 @@ Explain flags:
   --service NAME  Disambiguate a finding that affects multiple services
   --ai            Add a plain-language AI explanation. Ollama (local) by
                   default; set HOSTVEIL_AI_PROVIDER=anthropic or openai to
-                  use an external API instead. See Environment below.
+                  use an external API instead. See Environment below. Uses
+                  the saved host description (hostveil ai-context) if one
+                  is set, to make the answer situational rather than generic.
+
+Advise flags:
+  --ai            Add an AI verdict per finding: Apply/Skip/Depends, weighed
+                  against the saved host description if one is set. Without
+                  --ai, prints only the deterministic benefit/cost listing.
+  --only LIST     Scan only these domains (comma-separated)
+  --skip LIST     Scan every domain except these (comma-separated)
+
+Ai-context flags:
+  --clear         Remove the saved host description instead of showing it
 
 Rollback flags:
   --force         Restore even if the file changed after the fix was applied.

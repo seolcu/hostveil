@@ -187,6 +187,8 @@ hostveil history --scans # 저장된 모든 스캔의 점수, 오래된 것부�
 hostveil diagnostics     # 버전·배포판·크래시·스캔 정보를 파일 하나로 정리 (전송 기능 없음)
 hostveil explain <id>    # 발견 항목 설명 (--ai로 AI 2차 소견 추가)
 hostveil export --format markdown --output report.md  # json, sarif, docx, pdf도 가능
+hostveil ai-context "개인 미디어 서버, 안정성보다 최신 패치가 중요함"
+hostveil advise --ai     # 어떤 Fix가 이 호스트에 맞고 안 맞는지 판단
 hostveil serve           # 127.0.0.1:8787 웹 대시보드 (출력된 URL을 여세요)
 hostveil update          # 설치된 방식 그대로 이 바이너리를 갱신
 hostveil uninstall       # 체크포인트는 남기고 제거

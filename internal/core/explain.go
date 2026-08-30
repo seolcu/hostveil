@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/seolcu/hostveil/internal/ai"
 	"github.com/seolcu/hostveil/internal/model"
 )
 
@@ -20,7 +21,7 @@ func (e *Engine) Explain(ctx context.Context, f model.Finding, useAI bool) model
 		exp.AIError = "no AI provider is reachable (check HOSTVEIL_AI_PROVIDER and its credentials)"
 		return exp
 	}
-	text, err := e.ai.Explain(ctx, f)
+	text, err := e.ai.Explain(ctx, f, e.AIContext())
 	if err != nil {
 		exp.AIError = err.Error()
 		return exp
@@ -28,6 +29,19 @@ func (e *Engine) Explain(ctx context.Context, f model.Finding, useAI bool) model
 	exp.AI = strings.TrimSpace(text)
 	return exp
 }
+
+// AIContext returns the operator's own saved description of this host —
+// "a personal media server, want fast security patches more than
+// stability" — used to make an AI judgment situational rather than
+// generic. "" means nothing has been set.
+func (e *Engine) AIContext() string { return ai.LoadContext(e.store.Dir()) }
+
+// SetAIContext records or clears the saved host description (text == ""
+// clears it). It lives on Engine, not behind a UI-injected callback like
+// theme/layout's Save, because the state directory is already reachable
+// through e.store.Dir() — internal/core is not layering-restricted the way
+// internal/ui is.
+func (e *Engine) SetAIContext(text string) error { return ai.SaveContext(e.store.Dir(), text) }
 
 // plainExplanation renders the deterministic explanation from the
 // finding's own fields — always available, no AI required.
