@@ -134,6 +134,13 @@
 
             <p>각 버전의 릴리스 아카이브, 체크섬, SBOM, 서명된 빌드 프로버넌스는 <a href="https://github.com/seolcu/hostveil/releases">릴리스 페이지</a>에 있습니다. 업그레이드는 <code>hostveil update</code>로 합니다.</p>
 
+          <h2 id="v3.26.1"><a href="https://github.com/seolcu/hostveil/compare/v3.26.0...v3.26.1">3.26.1</a> <span class="changelog-date">2026-08-31</span></h2>
+          <h3>버그 수정</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>fix:</strong> <code>proxy.no-scan-jail</code>의 Fix가 실제로 nginx 로그를 감시하도록 고쳤습니다. 3.26.0에서는 <code>[nginx-botsearch]\nenabled = true</code>만 쓰고 그 밖에는 아무것도 적지 않았습니다. 실제 fail2ban 프로세스로 확인해 보니, 문서만 보고 짐작했던 것과 달리 이 설정은 아무것도 감시하지 않았습니다. <code>auto</code> 백엔드는 필터에 <code>journalmatch</code>가 정의돼 있으면 jail 자체 <code>logpath</code>보다 systemd 저널을 우선하는데, <code>nginx-botsearch</code>가 바로 그런 필터입니다. nginx는 요청 단위 기록을 저널에 남기지 않으므로 실제로는 아무것도 잡히지 않았습니다. 이제 Fix는 <code>backend = auto</code>를 항상 명시적으로 적습니다. jail을 로그 파일 감시로 전환시키는 것이 바로 이 줄입니다. access 로그와 error 로그도 항상 둘 다 적어 둡니다. 조건부로 생략하는 대신 fail2ban 자체 경로 매크로를 기본값으로 씁니다. 존재하지 않는 경로에 nginx 자체 404로 응답하는 평범한 vhost는 정적 파일 조회 단계까지 가지 않아, access 로그에만 기록이 남기 때문입니다.</p>
+            </li>
+          </ul>
           <h2 id="v3.26.0"><a href="https://github.com/seolcu/hostveil/compare/v3.25.0...v3.26.0">3.26.0</a> <span class="changelog-date">2026-08-31</span></h2>
           <p>지금까지 Fix의 득실은 일반론으로만 적혀 있었습니다. 이제 hostveil은 그 판단을 특정 호스트에 맞춰 내릴 수 있습니다. <code>hostveil ai-context</code>는 이 호스트가 어떤 용도인지 한 줄로 저장해 둡니다. <code>hostveil advise</code>와 <code>explain --ai</code>, TUI의 <code>v</code> 키, 새로 생긴 대시보드 버튼은 이 설명을 읽어, 고칠 수 있는 발견 항목마다 득실을 판단합니다. 원하면 AI 의견도 덧붙습니다. 별도로, 존재하지 않거나 취약한 URL로 반복 접근하는 스캔에 대응하는 기능도 추가됐습니다. fail2ban이 설치돼 있어도 nginx를 감시하도록 켜져 있지 않은 경우를 찾아내, nginx-botsearch 감시 규칙을 켜자고 제안합니다. proxy 영역에 등록된 첫 Fix입니다.</p>
           <h3>새 기능</h3>

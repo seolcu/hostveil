@@ -7,6 +7,25 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.26.1](https://github.com/seolcu/hostveil/compare/v3.26.0...v3.26.1) (2026-08-31)
+
+### 버그 수정
+
+* **fix:** `proxy.no-scan-jail`의 Fix가 실제로 nginx 로그를 감시하도록
+  고쳤습니다. 3.26.0에서는 `[nginx-botsearch]\nenabled = true`만 쓰고
+  그 밖에는 아무것도 적지 않았습니다. 실제 fail2ban 프로세스로 확인해
+  보니, 문서만 보고 짐작했던 것과 달리 이 설정은 아무것도 감시하지
+  않았습니다. `auto` 백엔드는 필터에 `journalmatch`가 정의돼 있으면
+  jail 자체 `logpath`보다 systemd 저널을 우선하는데, `nginx-botsearch`가
+  바로 그런 필터입니다. nginx는 요청 단위 기록을 저널에 남기지 않으므로
+  실제로는 아무것도 잡히지 않았습니다. 이제 Fix는 `backend = auto`를
+  항상 명시적으로 적습니다. jail을 로그 파일 감시로 전환시키는 것이
+  바로 이 줄입니다. access 로그와 error 로그도 항상 둘 다 적어 둡니다.
+  조건부로 생략하는 대신 fail2ban 자체 경로 매크로를 기본값으로
+  씁니다. 존재하지 않는 경로에 nginx 자체 404로 응답하는 평범한 vhost는
+  정적 파일 조회 단계까지 가지 않아, access 로그에만 기록이 남기
+  때문입니다.
+
 ## [3.26.0](https://github.com/seolcu/hostveil/compare/v3.25.0...v3.26.0) (2026-08-31)
 
 지금까지 Fix의 득실은 일반론으로만 적혀 있었습니다. 이제 hostveil은 그 판단을
