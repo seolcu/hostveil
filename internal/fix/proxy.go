@@ -61,33 +61,50 @@ func scanJailAction(label, benefit, warning, logLines, extra string) Action {
 	}
 }
 
-// scanJailLogLines names the jail's logpath explicitly only when the
-// checker found the nginx config pointing somewhere other than the
-// compiled-in default. fail2ban's own packaged paths-*.conf already
-// resolves nginx-botsearch's default logpath to /var/log/nginx/error.log,
-// so writing it out is only necessary on a host that changed that
-// directive, not routine — the same reasoning internal/check/sysctl's
-// origin-following applies to not re-deriving what a config already gets
-// right.
+// scanJailLogLines always states an explicit backend and logpath, never
+// conditionally.
+//
+// Verified against a real fail2ban process, not assumed from its docs:
+// fail2ban's "auto" backend prefers the systemd journal over a jail's own
+// logpath whenever the filter defines a journalmatch, which nginx-botsearch
+// does — and nginx does not write request-level entries to the journal, so
+// a bare `enabled = true` with nothing else silently watches nothing at
+// all. "Currently failed: 0" against real repeated-404 traffic, even with
+// logpath itself restated to the exact value fail2ban's own default already
+// resolves to — only adding an explicit `backend = auto` switched it onto
+// the log files, at which point a scripted probe past maxretry produced a
+// real ban within seconds. logpath names both files, not just one: the
+// filter matches an access-log-style 404 line as well as an error-log-style
+// failed-open line, and which one a given host actually populates depends
+// on whether the request reaches a static-file lookup at all — a bare vhost
+// returning its own 404 never does, so only the access log carries it.
+//
+// The path itself still prefers the checker's own evidence over a literal
+// default, and falls back to fail2ban's %(nginx_access_log)s/
+// %(nginx_error_log)s macros rather than a hardcoded path when there is no
+// evidence — those macros are what stay portable across a distribution
+// hostveil has not specifically checked, the same reasoning
+// internal/check/sysctl's origin-following applies to not re-deriving what
+// a config already gets right.
 func scanJailLogLines(f model.Finding) string {
-	custom := customLogPaths(f.Evidence["error-log"], "/var/log/nginx/error.log")
-	if len(custom) == 0 {
-		return ""
-	}
-	return "logpath = " + strings.Join(custom, "\n           ") + "\n"
+	access := firstLogPath(f.Evidence["access-log"], "%(nginx_access_log)s")
+	errLog := firstLogPath(f.Evidence["error-log"], "%(nginx_error_log)s")
+	return "backend = auto\n" +
+		"logpath = " + access + "\n" +
+		"          " + errLog + "\n"
 }
 
-// customLogPaths splits a comma-joined evidence value and reports it only
-// when it differs from nginx's single compiled-in default — the common
-// case, where nothing needs to be said because fail2ban's own default
-// already points at the same place.
-func customLogPaths(evidence, compiledDefault string) []string {
+// firstLogPath takes the first of a comma-joined evidence value, or a
+// fallback when the checker recorded none. Evidence beyond the first path
+// is informational for a reader of the finding; fail2ban's own logpath
+// override here is a courtesy default, not an attempt to enumerate every
+// log target an unusual config might have.
+func firstLogPath(evidence, fallback string) string {
 	if evidence == "" {
-		return nil
+		return fallback
 	}
-	paths := strings.Split(evidence, ",")
-	if len(paths) == 1 && paths[0] == compiledDefault {
-		return nil
+	if i := strings.IndexByte(evidence, ','); i >= 0 {
+		return evidence[:i]
 	}
-	return paths
+	return evidence
 }
