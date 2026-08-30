@@ -133,6 +133,29 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.25.0"><a href="https://github.com/seolcu/hostveil/compare/v3.24.0...v3.25.0">3.25.0</a> <span class="changelog-date">2026-08-30</span></h2>
+          <p>hostveil can now hand a scan result to someone who is not looking at a terminal: <code>hostveil export</code> (also reachable from the TUI and the web dashboard) renders it as Markdown, Word, or PDF for a colleague, or as JSON or SARIF for another program. Every registered fix now states what applying it actually gets you, next to the risk it already disclosed. <code>bugreport</code>'s network-send path is gone in favor of a local-only <code>hostveil diagnostics</code>, and the installer script gained color output and a startup banner.</p>
+          <h3>Features</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>core:</strong> add <code>hostveil export</code>, rendering a scan report as JSON, SARIF, Markdown, DOCX, or PDF. JSON and SARIF are byte-identical to <code>scan --json</code>/<code>--sarif</code>, for another program to read; Markdown, DOCX, and PDF explain each finding and its fix in plain language, for an operator reading the result or handing it to a colleague. DOCX and PDF are hand-written with no new dependency, the same call this project already made for SARIF. Reachable from the CLI, the TUI's <code>e</code> key (with a new free-text path prompt), and the web dashboard's Export button.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> add a <code>Benefit</code> to every registered fix action, shown next to its existing <code>Warning</code> in every preview screen — what applying it actually gets you, stated beside the risk, the way a medicine label states effect and side effect together. <code>model.Finding</code> carries the recommended fix's trade-off before a preview is even opened, and the export reports above show it too. <code>cve.outdated-image</code>'s warning now says plainly that re-pulling a floating tag is not a guaranteed fix and is not free — a real cost to weigh on a host that is stable today.</p>
+            </li>
+            <li>
+              <p><strong>cmd:</strong> replace <code>bugreport</code> with a local-only <code>hostveil diagnostics</code>, removing the <code>--send</code> network path (a GitHub API token or the <code>gh</code> CLI deciding when a report left the host) entirely. <code>diagnostics</code> collects version, OS, recent crashes, and the last scan's summary into one file; the operator pastes it into an issue by hand.</p>
+            </li>
+            <li>
+              <p><strong>install:</strong> color error/success/warning lines in the install script (gated on a terminal and <code>NO_COLOR</code>, matching the CLI's own palette), and print a short banner naming what is about to be installed.</p>
+            </li>
+          </ul>
+          <h3>Bug Fixes</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>sitegen:</strong> wire up the checks page's Fix-column links on the Korean site — the link-rewriting regex was hardcoded to the English "Auto-fix"/ "Review" labels, so the same click that opened a fix's detail on the English page did nothing on the Korean one.</p>
+            </li>
+          </ul>
           <h2 id="v3.24.0"><a href="https://github.com/seolcu/hostveil/compare/v3.23.0...v3.24.0">3.24.0</a> <span class="changelog-date">2026-08-20</span></h2>
           <p>A panic outside a checker or a fix had nowhere to go but a raw Go stack on whatever terminal happened to be watching, and there was no way to package what one looked like afterward. Every recover site now leaves a local crash record behind, two goroutines a checker's own recover cannot reach — one in the CVE scanner's parallel image scan, one in the web dashboard's background scan — get their own, and a new <code>hostveil bugreport</code> command turns those records plus a redacted scan summary into a report: previewed locally, and only ever sent after <code>--send</code> and an explicit confirmation.</p>
           <h3>Features</h3>
