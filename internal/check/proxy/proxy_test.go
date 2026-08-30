@@ -33,8 +33,13 @@ func nginxRoot(t *testing.T, files map[string]string) string {
 
 // noDocker is a host with no Docker at all, which is the arrangement every
 // nginx test wants: the Traefik half then has nothing to say and cannot
-// degrade the domain.
-func noDocker() platform.Env { return checktest.New().Without("docker").Env() }
+// degrade the domain. fail2ban is scripted as not installed for the same
+// reason — a test about TLS versions or directory listing has nothing to
+// say about scan protection either, and without this every one of them
+// would degrade on an unscripted systemctl call.
+func noDocker() platform.Env {
+	return scriptFail2ban(checktest.New().Without("docker"), false).Env()
+}
 
 func has(fs []model.Finding, id string) *model.Finding {
 	for i := range fs {

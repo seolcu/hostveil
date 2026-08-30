@@ -38,6 +38,10 @@ var recommendedFirst = map[string]struct{ label, why string }{
 		label: "deny",
 		why:   "the rule table's first safe value; ask is the same door with a prompt on it",
 	},
+	"proxy.no-scan-jail": {
+		label: "fail2ban's own default",
+		why:   "a batch applying this with nobody watching should not also be the one picking the longer, harder-to-notice-and-undo ban",
+	},
 }
 
 // The sysctl fixes all share one shape, so they share one entry rather than

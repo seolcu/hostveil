@@ -148,9 +148,9 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">174</strong> findings, and <strong data-counted="findings.fixable">127</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">52</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">175</strong> findings, and <strong data-counted="findings.fixable">128</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">53</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
             <div class="ledger-bar-group">
-              <p class="ledger-bar-title">How the 174 findings resolve</p>
+              <p class="ledger-bar-title">How the 175 findings resolve</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Auto</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:43%"></div></div>
@@ -159,7 +159,7 @@
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:30%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">52</span>
+                <span class="ledger-bar-value" data-counted="findings.review">53</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
@@ -378,6 +378,7 @@
                   <tr><td><code>proxy.traefik-api-insecure</code></td><td>Traefik's API and dashboard are served with no authentication, listing every router and backend address behind the proxy</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>proxy.tls-deprecated-protocols</code></td><td><code>ssl_protocols</code> still offers TLS 1.0 or 1.1, which RFC 8996 deprecated and every current browser refuses</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>proxy.directory-listing</code></td><td><code>autoindex on</code> makes every directory with no index file browsable</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxy.no-scan-jail</code></td><td>fail2ban is installed but its nginx-botsearch jail, built to catch repeated requests for nonexistent or known-vulnerable paths, is not enabled</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-proxy.no-scan-jail">Review</a></td></tr>
                 </tbody>
               </table>
             </div>
@@ -1385,6 +1386,24 @@
               <p lang="en">Set RestrictSUIDSGID=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Stops the unit creating new setuid or setgid files, closing a persistence and privilege-escalation path a compromised service could otherwise leave behind for later.</p>
               <p class="fix-warning" lang="en">⚠ Only a service that itself creates setuid or setgid files — a package manager, an installer — needs this off. An ordinary network daemon does not create such files and is unaffected.</p>
+            </dd>
+          </dl>
+          <h3>Proxy</h3>
+          <dl class="fix-actions">
+            <dt id="fix-proxy.no-scan-jail"><code>proxy.no-scan-jail</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p lang="en">Enable it (fail2ban's own default: 10 minute ban) (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ Once fail2ban reloads, an IP that repeatedly requests nonexistent or known-vulnerable paths gets banned automatically — no more finding it and banning it yourself.</p>
+              <p class="fix-warning" lang="en">⚠ Takes effect on the next <code>fail2ban-client reload</code>, not immediately. A shared or NAT'd IP address could ban more than the one visitor responsible for it. This only ever affects HTTP(S) traffic — never SSH, and never the operator's own access to the host.</p>
+                </li>
+                <li>
+              <p lang="en">Enable it with a longer ban (1 week)</p>
+              <p class="fix-benefit" lang="en">✓ Once fail2ban reloads, an IP that repeatedly requests nonexistent or known-vulnerable paths gets banned automatically — no more finding it and banning it yourself.</p>
+              <p class="fix-warning" lang="en">⚠ Takes effect on the next <code>fail2ban-client reload</code>, not immediately. A shared or NAT'd IP address could ban more than the one visitor responsible for it. This only ever affects HTTP(S) traffic — never SSH, and never the operator's own access to the host.</p>
+                </li>
+              </ul>
             </dd>
           </dl>
 
