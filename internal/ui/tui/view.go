@@ -316,6 +316,14 @@ func (m *appModel) View() tea.View {
 	case modeExportPath:
 		content = m.compose(compactHeader("EXPORT"), nil, exportPathHint,
 			func(n int) []string { return m.clipRows(m.exportPathRows(), n) })
+
+	case modeAdvice:
+		content = m.compose(compactHeader("ADVISE"), nil, adviceHint,
+			func(n int) []string { return m.clipRows(m.adviceRows(), n) })
+
+	case modeAIContext:
+		content = m.compose(compactHeader("HOST DESCRIPTION"), nil, aiContextHint,
+			func(n int) []string { return m.clipRows(m.aiContextRows(), n) })
 	}
 
 	// Paint the terminal background too. Without it a theme only recolors the
@@ -423,15 +431,15 @@ func (m *appModel) axesLine() string {
 
 const (
 	listHint = "↑/↓ move   enter details   f fix   space select   a fix marked\n" +
-		"s severity   d domain   x fixable   c clear   h history   t theme   l layout   e export   r rescan   q quit"
-	emptyListHint = "c clear   t theme   l layout   e export   r rescan   q quit"
+		"s severity   d domain   x fixable   c clear   h history   t theme   l layout   e export   v advise   r rescan   q quit"
+	emptyListHint = "c clear   t theme   l layout   e export   v advise   r rescan   q quit"
 	historyHint   = "↑/↓ move   enter roll back   esc back   q list"
 	themeHint     = "↑/↓ preview   enter keep   esc cancel"
 	// The lanes arrangement adds one key, so it adds one line of hint. Written
 	// as its own string rather than appended at the call site because the
 	// footer is the only documentation these bindings have.
 	laneListHint = "↑/↓ move   enter details   f fix   space select   m select lane   a fix marked\n" +
-		"s severity   d domain   x fixable   c clear   h history   t theme   l layout   e export   r rescan   q quit"
+		"s severity   d domain   x fixable   c clear   h history   t theme   l layout   e export   v advise   r rescan   q quit"
 	// Not "preview", which is what the theme picker's says and earns: moving
 	// the cursor there restyles the whole frame on the spot. Here there is
 	// nothing to preview, because the picker screen is not one of the
@@ -439,6 +447,8 @@ const (
 	layoutHint     = "↑/↓ choose   enter apply   esc cancel"
 	exportHint     = "↑/↓ choose   enter next   esc cancel"
 	exportPathHint = "enter export   esc back"
+	adviceHint     = "c edit host description   esc back"
+	aiContextHint  = "enter save   esc cancel"
 )
 
 // listHintFor picks the footer for the active arrangement.
@@ -1777,6 +1787,65 @@ func (m *appModel) exportPathRows() []string {
 	out = append(out, "  "+row)
 	out = append(out, "")
 	out = append(out, styledRows(s.dim, wrap("Every character is editable — this is only a starting point.",
+		min(m.width-2, 78)))...)
+	return out
+}
+
+// adviceRows is the whole-scan advisory screen: the deterministic
+// benefit/cost listing every Advise call carries regardless of AI
+// (detailFactsRows's AI section is the model this mirrors for the verdict
+// itself), plus the host description it was judged against.
+func (m *appModel) adviceRows() []string {
+	s := m.sty()
+	w := m.proseWidth(bodyInset)
+	out := []string{""}
+
+	desc := m.aiContext
+	if desc == "" {
+		out = append(out, styledRows(s.dim, wrap("No host description saved — press c to add one so a "+
+			"verdict can be judged for this host specifically, not in general.", w))...)
+	} else {
+		out = append(out, s.accent.Render("THIS HOST"))
+		out = append(out, styledRows(s.bone, wrap(desc, w))...)
+	}
+	out = append(out, "")
+
+	out = append(out, s.accent.Render("FIXABLE FINDINGS"))
+	out = append(out, styledRows(s.bone, wrap(m.advice.Plain, w))...)
+
+	if m.adviceBusy || m.advice.AI != "" || m.advice.AIError != "" {
+		out = append(out, "", s.accent.Render("AI VERDICT (ADVISORY)"))
+		switch {
+		case m.adviceBusy:
+			out = append(out, s.dim.Render("asking the local AI model…"))
+		case m.advice.AI != "":
+			out = append(out, styledRows(s.bone, wrap(m.advice.AI, w))...)
+		default:
+			out = append(out, styledRows(s.dim, wrap(m.advice.AIError, w))...)
+		}
+	}
+	return out
+}
+
+// aiContextRows is the free-text host-description editor — the same
+// cursor-rendering shape as exportPathRows, applied to a different field.
+func (m *appModel) aiContextRows() []string {
+	s := m.sty()
+	out := []string{"", s.dim.Render("Describe this host in one line — its purpose, and whether it favors staying current or staying stable:")}
+
+	before := string(m.aiContextText[:m.aiContextCursor])
+	at := " "
+	if m.aiContextCursor < len(m.aiContextText) {
+		at = string(m.aiContextText[m.aiContextCursor])
+	}
+	after := ""
+	if m.aiContextCursor < len(m.aiContextText) {
+		after = string(m.aiContextText[m.aiContextCursor+1:])
+	}
+	row := s.bone.Render(before) + s.sel.Render(at) + s.bone.Render(after)
+	out = append(out, "  "+row)
+	out = append(out, "")
+	out = append(out, styledRows(s.dim, wrap("Used by every AI explanation from here on, not just this screen.",
 		min(m.width-2, 78)))...)
 	return out
 }

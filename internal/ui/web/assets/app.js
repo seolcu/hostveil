@@ -893,6 +893,62 @@ async function showHistory() {
   cps.forEach((cp) => d.append(checkpointBox(cp)));
 }
 
+// ── AI advisory ───────────────────────────────────────────────────────
+// The whole-scan counterpart to explainAI: every fixable finding's
+// benefit/cost, judged against the host description saved here, which
+// this panel is also where that description gets edited. GET/POST
+// /api/ai-context and GET /api/advise are the whole surface; nothing
+// beyond what is on screen is kept client-side.
+async function showAdvise() {
+  selected = null;
+  document.querySelectorAll(".finding").forEach((n) => n.classList.remove("active"));
+  const d = document.getElementById("detail");
+  d.replaceChildren(el("h3", {}, "Should these fixes be applied here?"));
+
+  let ctx = "";
+  try {
+    ctx = (await api("/api/ai-context")).text || "";
+  } catch (e) { flash("Could not load the host description: " + e.message, true); }
+
+  const textarea = Object.assign(document.createElement("textarea"), {
+    className: "ctxinput", value: ctx,
+    placeholder: "Describe this host in one line — its purpose, and whether it favors staying current or staying stable.",
+  });
+  const saveBtn = el("button", {}, "Save");
+  d.append(el("div", { class: "fixbox ctxbox" },
+    el("div", { class: "fixbox-head" }, "This host"),
+    el("div", { class: "fixbox-body" }, textarea, el("div", { class: "row" }, saveBtn))));
+
+  const resultBody = el("div", { class: "fixbox-body" }, el("p", { class: "meta" }, "Judging every fixable finding…"));
+  d.append(el("div", { class: "fixbox" }, resultBody));
+
+  const loadAdvice = async () => {
+    resultBody.replaceChildren(el("p", { class: "meta" }, "Judging every fixable finding…"));
+    try {
+      const adv = await api("/api/advise");
+      resultBody.replaceChildren(
+        el("pre", { class: "advise-plain" }, adv.plain),
+        adv.ai ? el("div", { class: "aibox" },
+          el("div", { class: "howto" }, "AI verdict (advisory)"), el("p", {}, adv.ai)) : "",
+        !adv.ai && adv.ai_error ? el("div", { class: "aibox" },
+          el("div", { class: "howto" }, "AI verdict (advisory)"), el("p", { class: "meta" }, adv.ai_error)) : ""
+      );
+    } catch (e) {
+      resultBody.replaceChildren(el("p", { class: "meta" }, "Advise failed: " + e.message));
+    }
+  };
+
+  saveBtn.onclick = () => whileBusy(saveBtn, "Saving…", async () => {
+    await api("/api/ai-context", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: textarea.value }),
+    });
+    await loadAdvice();
+  });
+
+  await loadAdvice();
+}
+
 function checkpointBox(cp) {
   const when = new Date(cp.created_at).toLocaleString();
   const body = el("div", { class: "fixbox-body" });
@@ -1030,6 +1086,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.getElementById("history").onclick = showHistory;
+document.getElementById("advise").onclick = showAdvise;
 
 // Export downloads /api/export as a file rather than navigating to it: the
 // route can answer 409 (no scan yet) or 400 (bad format), and a plain <a

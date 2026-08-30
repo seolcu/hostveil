@@ -100,14 +100,26 @@ func (a *Anthropic) Available(ctx context.Context) bool {
 }
 
 // Explain asks Claude for an advisory explanation of the finding.
-func (a *Anthropic) Explain(ctx context.Context, f model.Finding) (string, error) {
+func (a *Anthropic) Explain(ctx context.Context, f model.Finding, siteContext string) (string, error) {
+	return a.complete(ctx, buildPrompt(f, siteContext), 120)
+}
+
+// Advise asks Claude to judge a whole batch of findings against
+// siteContext at once.
+func (a *Anthropic) Advise(ctx context.Context, findings []model.Finding, siteContext string) (string, error) {
+	return a.complete(ctx, buildAdvisePrompt(findings, siteContext), 500)
+}
+
+// complete sends prompt to the Claude API and returns its response, capped
+// to wordCap words. Shared by Explain and Advise.
+func (a *Anthropic) complete(ctx context.Context, prompt string, wordCap int) (string, error) {
 	if a.APIKey == "" {
 		return "", fmt.Errorf("ANTHROPIC_API_KEY is not set")
 	}
 	body, err := json.Marshal(anthropicRequest{
 		Model:        a.Model,
 		MaxTokens:    2048,
-		Messages:     []anthropicMessage{{Role: "user", Content: buildPrompt(f)}},
+		Messages:     []anthropicMessage{{Role: "user", Content: prompt}},
 		OutputConfig: &anthropicOutputConfig{Effort: "low"},
 	})
 	if err != nil {
@@ -143,7 +155,7 @@ func (a *Anthropic) Explain(ctx context.Context, f model.Finding) (string, error
 			text.WriteString(block.Text)
 		}
 	}
-	return limitWords(text.String(), 120), nil
+	return limitWords(text.String(), wordCap), nil
 }
 
 func (a *Anthropic) setHeaders(req *http.Request) {

@@ -71,8 +71,21 @@ type generateResponse struct {
 }
 
 // Explain asks the local model for an advisory explanation of the finding.
-func (o *Ollama) Explain(ctx context.Context, f model.Finding) (string, error) {
-	body, err := json.Marshal(generateRequest{Model: o.Model, Prompt: buildPrompt(f), Stream: false})
+func (o *Ollama) Explain(ctx context.Context, f model.Finding, siteContext string) (string, error) {
+	return o.complete(ctx, buildPrompt(f, siteContext), 120)
+}
+
+// Advise asks the local model to judge a whole batch of findings against
+// siteContext at once.
+func (o *Ollama) Advise(ctx context.Context, findings []model.Finding, siteContext string) (string, error) {
+	return o.complete(ctx, buildAdvisePrompt(findings, siteContext), 500)
+}
+
+// complete sends prompt to the local model and returns its response,
+// capped to wordCap words. Shared by Explain and Advise, which differ only
+// in what prompt they build and how long an answer makes sense.
+func (o *Ollama) complete(ctx context.Context, prompt string, wordCap int) (string, error) {
+	body, err := json.Marshal(generateRequest{Model: o.Model, Prompt: prompt, Stream: false})
 	if err != nil {
 		return "", err
 	}
@@ -103,7 +116,7 @@ func (o *Ollama) Explain(ctx context.Context, f model.Finding) (string, error) {
 	if decoder.InputOffset() > maxOllamaResponse {
 		return "", fmt.Errorf("ollama response exceeds %d bytes", maxOllamaResponse)
 	}
-	return limitWords(gr.Response, 120), nil
+	return limitWords(gr.Response, wordCap), nil
 }
 
 func (o *Ollama) endpoint(path string) (string, error) {

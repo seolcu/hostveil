@@ -11,6 +11,15 @@
             <p>내장된 쉬운 말 설명은 항상 먼저 출력되며, <code>--ai</code>는 <em>AI 설명(조언)</em> 섹션을 뒤에 덧붙입니다. 모델에 연결할 수 없으면 Hostveil은 그 사실을 알리고 계속 진행합니다. AI를 사용할 수 없다고 해서 명령이 실패하는 일은 없습니다.</p>
             <p>다른 인터페이스에서도 같은 설명을 한 번의 동작으로 볼 수 있습니다. 대시보드의 발견 항목 패널에는 <em>Explain with AI</em> 버튼이 있고, TUI의 상세 화면에서는 <code>e</code> 키가 응답합니다. 둘 다 CLI와 같은 방식으로 우아하게 동작이 줄어듭니다. 닿는 프로바이더가 없으면 오류가 아니라 한 줄 안내가 나옵니다.</p>
 
+            <h2 id="context">이 호스트에 맞춰 Fix를 판단하기</h2>
+            <p>Fix의 득실은 일반론입니다. <code>cve.outdated-image</code>의 재수신은 CVE 패치를 빨리 받고 싶은 셀프호스팅 서버에는 매력적이지만, 지금 안정적으로 돌아가는 서버에는 위험할 수 있습니다. 어느 쪽인지 hostveil에게 알려주지 않으면 판단할 방법이 없습니다. <code>hostveil ai-context</code>는 이 호스트를 한 줄로 설명한 문구를 저장해 두고, 바꾸기 전까지 계속 씁니다.</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="hostveil ai-context &quot;개인 미디어 서버, 안정성보다 최신 보안 패치가 중요함&quot;">Copy</button>
+              <pre><code>hostveil ai-context "개인 미디어 서버, 안정성보다 최신 보안 패치가 중요함"</code></pre>
+            </div>
+            <p>한 번 저장해 두면 <code>--ai</code>를 쓰는 모든 답변(<code>explain</code>, 대시보드 버튼, TUI의 <code>e</code>)이 이 문구를 자동으로 읽어, 일반적인 설명 대신 그런 호스트를 염두에 둔 판단 문장으로 답을 마무리합니다. 인자 없이 <code>hostveil ai-context</code>를 실행하면 저장된 내용을 보여주고, <code>--clear</code>는 지웁니다.</p>
+            <p><code>hostveil advise [--ai]</code>는 같은 질문을 Fix가 있는 모든 발견 항목에 한 번에 던집니다. AI 없이도 각 Fix가 무엇을 얻고 무엇을 치르는지 결정론적으로 나열하고, <code>--ai</code>를 주면 저장된 설명에 비추어 발견 항목마다 적용/보류/상황에 따라 다름 중 하나의 한 줄 판단도 덧붙입니다. TUI의 <code>v</code> 키와 대시보드의 <em>Advise</em> 버튼도 같은 기능으로 이어집니다.</p>
+
             <h2>기본은 로컬, 선택하면 외부 API</h2>
             <p>백엔드는 <code>HOSTVEIL_AI_PROVIDER</code>로 고릅니다. 기본값은 <strong>Ollama</strong>이며 사용자 본인의 머신에서 실행되므로, 다른 프로바이더를 직접 지정하지 않는 한 아무것도 호스트 밖으로 나가지 않습니다.</p>
             <div class="docs-table-wrap">
@@ -50,7 +59,7 @@ hostveil explain ssh.rootlogin --ai</code></pre></div>
             </div>
             <div class="callout warn">
               <span class="callout-label">개인정보 보호</span>
-              <p>모델에는 사람이 읽을 수 있는 필드만 전송됩니다. 발견 항목의 제목, 서비스, 설명, 수정 방법 텍스트뿐입니다. 비밀 값, 포트, 파일 경로 같은 원본 증거 값은 <strong>절대</strong> 프롬프트에 포함되지 않으므로, 외부 프로바이더를 선택하더라도 민감한 세부 정보가 호스트 밖으로 나가지 않습니다. <code>anthropic</code>이나 <code>openai</code>를 쓰면 호스트를 벗어나는 것은 그렇게 줄인 프롬프트 자체이며, 설정한 API로 전송됩니다. 기본값인 <code>ollama</code>에서는 애초에 아무것도 나가지 않습니다.</p>
+              <p>모델에는 사람이 읽을 수 있는 필드만 전송됩니다. 발견 항목의 제목, 서비스, 설명, 수정 방법 텍스트, 그리고 그 Fix의 효능/부작용 요약입니다. 비밀 값, 포트, 파일 경로 같은 원본 증거 값은 <strong>절대</strong> 프롬프트에 포함되지 않으므로, 외부 프로바이더를 선택하더라도 민감한 세부 정보가 호스트 밖으로 나가지 않습니다. 호스트 설명을 저장해 두었다면(<code>hostveil ai-context</code>) 그 문구도 함께 전송됩니다. 애초에 그러라고 저장한 것이니, 문구를 쓸 때 이 점을 염두에 두세요. <code>anthropic</code>이나 <code>openai</code>를 쓰면 호스트를 벗어나는 것은 그렇게 줄인 프롬프트 자체이며, 설정한 API로 전송됩니다. 기본값인 <code>ollama</code>에서는 애초에 아무것도 나가지 않습니다.</p>
             </div>
 
             <div class="docs-pager">

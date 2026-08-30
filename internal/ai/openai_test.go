@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/seolcu/hostveil/internal/model"
 )
 
 func TestOpenAICompatExplainAsksForOneResponseRatherThanAStream(t *testing.T) {
@@ -32,7 +34,7 @@ func TestOpenAICompatExplainAsksForOneResponseRatherThanAStream(t *testing.T) {
 	defer srv.Close()
 
 	c := &OpenAICompat{BaseURL: srv.URL, APIKey: "sk-test", Model: "gpt-4o-mini", http: srv.Client()}
-	out, err := c.Explain(context.Background(), finding())
+	out, err := c.Explain(context.Background(), finding(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +55,7 @@ func TestOpenAICompatExplainAsksForOneResponseRatherThanAStream(t *testing.T) {
 
 func TestOpenAICompatExplainRequiresAModel(t *testing.T) {
 	c := &OpenAICompat{BaseURL: "https://api.openai.com/v1", APIKey: "sk-test", http: http.DefaultClient}
-	if _, err := c.Explain(context.Background(), finding()); err == nil {
+	if _, err := c.Explain(context.Background(), finding(), ""); err == nil {
 		t.Fatal("Explain accepted an empty model")
 	}
 }
@@ -68,7 +70,7 @@ func TestOpenAICompatExplainDoesNotSendAnAuthHeaderWithNoKey(t *testing.T) {
 	defer srv.Close()
 
 	c := &OpenAICompat{BaseURL: srv.URL, Model: "local-model", http: srv.Client()}
-	if _, err := c.Explain(context.Background(), finding()); err != nil {
+	if _, err := c.Explain(context.Background(), finding(), ""); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -80,7 +82,7 @@ func TestOpenAICompatExplainNamesTheVendorWhenItRefuses(t *testing.T) {
 	defer srv.Close()
 
 	c := &OpenAICompat{BaseURL: srv.URL, APIKey: "sk-bad", Model: "gpt-4o-mini", http: srv.Client()}
-	_, err := c.Explain(context.Background(), finding())
+	_, err := c.Explain(context.Background(), finding(), "")
 	if err == nil {
 		t.Fatal("Explain returned no error for a 401")
 	}
@@ -92,7 +94,7 @@ func TestOpenAICompatExplainNamesTheVendorWhenItRefuses(t *testing.T) {
 func TestOpenAICompatExplainRejectsUnsafeOrAmbiguousBaseURLs(t *testing.T) {
 	for _, base := range []string{"file:///tmp/socket", "https://user:pass@api.openai.com/v1", "https://api.openai.com/v1?target=elsewhere"} {
 		c := &OpenAICompat{BaseURL: base, Model: "x", http: http.DefaultClient}
-		if _, err := c.Explain(context.Background(), finding()); err == nil {
+		if _, err := c.Explain(context.Background(), finding(), ""); err == nil {
 			t.Errorf("Explain accepted base URL %q", base)
 		}
 	}
@@ -105,7 +107,7 @@ func TestOpenAICompatExplainBoundsAndCapsTheResponse(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := &OpenAICompat{BaseURL: srv.URL, Model: "x", http: srv.Client()}
-	got, err := c.Explain(context.Background(), finding())
+	got, err := c.Explain(context.Background(), finding(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +120,7 @@ func TestOpenAICompatExplainBoundsAndCapsTheResponse(t *testing.T) {
 	}))
 	defer tooLarge.Close()
 	c = &OpenAICompat{BaseURL: tooLarge.URL, Model: "x", http: tooLarge.Client()}
-	if _, err := c.Explain(context.Background(), finding()); err == nil {
+	if _, err := c.Explain(context.Background(), finding(), ""); err == nil {
 		t.Fatal("Explain accepted an oversized response")
 	}
 }
@@ -192,5 +194,30 @@ func TestNewOpenAICompatReadsTheEnvironment(t *testing.T) {
 	}
 	if c.APIKey != "sk-or-test" || c.Model != "meta-llama/llama-3.1-8b-instruct" {
 		t.Errorf("NewOpenAICompat = %q/%q, want the environment's values", c.APIKey, c.Model)
+	}
+}
+
+func TestOpenAICompatAdviseSendsEveryFindingAndTheSiteContext(t *testing.T) {
+	var got openAIRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		if err := json.Unmarshal(b, &got); err != nil {
+			t.Fatalf("request body is not the JSON OpenAI expects: %v", err)
+		}
+		_, _ = io.WriteString(w, `{"choices":[{"message":{"role":"assistant","content":"1. Apply"}}]}`)
+	}))
+	defer srv.Close()
+
+	c := &OpenAICompat{BaseURL: srv.URL, Model: "gpt-test", http: srv.Client()}
+	findings := []model.Finding{finding()}
+	if _, err := c.Advise(context.Background(), findings, "a personal media server"); err != nil {
+		t.Fatal(err)
+	}
+	prompt := got.Messages[0].Content
+	if !strings.Contains(prompt, "SSH permits root login") {
+		t.Errorf("prompt does not name the finding: %q", prompt)
+	}
+	if !strings.Contains(prompt, "a personal media server") {
+		t.Errorf("prompt does not carry the site context: %q", prompt)
 	}
 }

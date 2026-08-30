@@ -36,7 +36,7 @@ func TestFromEnvNamesTheBadValueRatherThanSilentlyFallingBack(t *testing.T) {
 	if !e.Available(context.Background()) {
 		t.Fatal("unknownProvider must report Available so Explain actually runs and surfaces the bad value")
 	}
-	_, err := e.Explain(context.Background(), finding())
+	_, err := e.Explain(context.Background(), finding(), "")
 	if err == nil || !strings.Contains(err.Error(), "chatgpt") {
 		t.Errorf("Explain error = %v, want it to name the misconfigured value", err)
 	}

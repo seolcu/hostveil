@@ -34,6 +34,10 @@ type unknownProvider struct{ name string }
 
 func (unknownProvider) Available(context.Context) bool { return true }
 
-func (u unknownProvider) Explain(context.Context, model.Finding) (string, error) {
+func (u unknownProvider) Explain(context.Context, model.Finding, string) (string, error) {
+	return "", fmt.Errorf("unknown HOSTVEIL_AI_PROVIDER %q (want ollama, anthropic, or openai)", u.name)
+}
+
+func (u unknownProvider) Advise(context.Context, []model.Finding, string) (string, error) {
 	return "", fmt.Errorf("unknown HOSTVEIL_AI_PROVIDER %q (want ollama, anthropic, or openai)", u.name)
 }

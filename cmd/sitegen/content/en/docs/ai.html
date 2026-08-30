@@ -11,6 +11,15 @@
             <p>The built-in plain explanation always prints first; <code>--ai</code> appends an <em>AI explanation (advisory)</em> section. If the model is not reachable, Hostveil says so and continues. The command never fails because AI is unavailable.</p>
             <p>The same explanation is one action away in the other interfaces: the dashboard's finding panel has an <em>Explain with AI</em> button, and the TUI's detail view answers <code>e</code>. Both degrade the same way the CLI does: no provider reachable means a one-line note, never an error.</p>
 
+            <h2 id="context">Judging a fix for this host specifically</h2>
+            <p>A fix's trade-off is generic — <code>cve.outdated-image</code>'s re-pull is attractive on a self-hosted box that wants CVE patches fast, and risky on one that is stable today — and Hostveil has no way to know which side of that this host is on unless it's told. <code>hostveil ai-context</code> saves one line describing the host, remembered until changed:</p>
+            <div class="command-box">
+              <button class="copy-btn" type="button" data-copy="hostveil ai-context &quot;a personal media server, want fast security patches more than stability&quot;">Copy</button>
+              <pre><code>hostveil ai-context "a personal media server, want fast security patches more than stability"</code></pre>
+            </div>
+            <p>Once it's set, every <code>--ai</code> answer — <code>explain</code>, the dashboard button, the TUI's <code>e</code> — reads it automatically and closes with a sentence judging the fix for a host like the one described, instead of a generic explanation. <code>hostveil ai-context</code> with no argument shows what's saved; <code>--clear</code> removes it.</p>
+            <p><code>hostveil advise [--ai]</code> asks the same question about every fixable finding at once: a deterministic list of what each fix would get you and cost you (no AI required), and with <code>--ai</code>, a one-line verdict per finding — Apply, Skip, or Depends — weighed against the same saved description. The TUI's <code>v</code> key and the dashboard's <em>Advise</em> button reach the same thing.</p>
+
             <h2>Local by default, an external API by choice</h2>
             <p><code>HOSTVEIL_AI_PROVIDER</code> selects the backend. It defaults to <strong>Ollama</strong>, running on your own machine, so nothing leaves the host unless you name a different provider explicitly.</p>
             <div class="docs-table-wrap">
@@ -50,7 +59,7 @@ hostveil explain ssh.rootlogin --ai</code></pre></div>
             </div>
             <div class="callout warn">
               <span class="callout-label">Privacy</span>
-              <p>Only human-readable fields are sent to the model: a finding's title, service, description, and how-to-fix text. Raw evidence values such as secrets, ports, and file paths are <strong>never</strong> included in the prompt, so sensitive detail does not leave the host even when you opt in — including when you opt into an off-host provider. What does leave the host with <code>anthropic</code> or <code>openai</code> is that reduced prompt itself, sent to whichever API you configured; with the default <code>ollama</code> nothing leaves the host at all.</p>
+              <p>Only human-readable fields are sent to the model: a finding's title, service, description, how-to-fix text, and its fix's benefit/side-effect summary. Raw evidence values such as secrets, ports, and file paths are <strong>never</strong> included in the prompt, so sensitive detail does not leave the host even when you opt in — including when you opt into an off-host provider. If a host description is saved (<code>hostveil ai-context</code>), that text is sent too, since it's the whole reason to ask — write it accordingly. What does leave the host with <code>anthropic</code> or <code>openai</code> is that reduced prompt itself, sent to whichever API you configured; with the default <code>ollama</code> nothing leaves the host at all.</p>
             </div>
 
             <div class="docs-pager">

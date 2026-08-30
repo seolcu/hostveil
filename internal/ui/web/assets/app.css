@@ -295,6 +295,19 @@ pre.diff .del { color: var(--crit); }
 pre.diff .ctx { color: var(--slate); }
 .fixbox .row { display: flex; gap: 8px; }
 
+/* ── AI advisory ── */
+.ctxinput {
+  display: block; width: 100%; min-height: 44px; resize: vertical;
+  font: 400 12px/1.5 var(--mono); color: var(--bone); background: var(--ink);
+  border: 1px solid var(--line-2); border-radius: 0; padding: 8px 10px; margin: 0 0 10px;
+}
+.ctxinput:focus-visible { outline: 2px solid var(--safe); outline-offset: 1px; }
+.ctxinput::placeholder { color: var(--slate); }
+.advise-plain {
+  margin: 0; font: 400 12px/1.6 var(--mono); color: var(--bone);
+  white-space: pre-wrap; word-break: break-word;
+}
+
 /* ── scrollbars — quiet, and said rather than inferred ──
    The ::-webkit- rules are Chromium's; Firefox ignores every one of them and
    was left to derive the scrollbar from `color-scheme: dark`, which themes.css

@@ -285,6 +285,35 @@ hostveil history --scans</code></pre></div>
             </div>
             <p>Exit code is the same gate as <code>scan</code> &mdash; see <a href="#exit-codes">exit codes</a>.</p>
 
+            <h2 id="advise">advise</h2>
+            <p>Scan the host and list every finding with a registered fix, alongside what applying it would get you and cost you. With <code>--ai</code>, add a verdict &mdash; Apply, Skip, or Depends &mdash; weighed against the host description saved with <a href="#ai-context">ai-context</a>, if one is set. See <a href="ai">AI explanations</a>.</p>
+            <div class="code-block"><pre><code>hostveil advise [--ai] [flags]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--ai</code></td><td><code>false</code></td><td>Add an AI verdict per finding. Ollama (local) by default; set <code>HOSTVEIL_AI_PROVIDER</code> for an external API.</td></tr>
+                  <tr><td><code>--only LIST</code></td><td>&mdash;</td><td>Scan only these domains, comma-separated.</td></tr>
+                  <tr><td><code>--skip LIST</code></td><td>&mdash;</td><td>Scan every domain except these, comma-separated. Mutually exclusive with <code>--only</code>.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>The deterministic listing always prints, with no AI required. <code>--ai</code> adds the situational verdict beneath it, or says why it could not.</p>
+
+            <h2 id="ai-context">ai-context</h2>
+            <p>Show, set, or clear the saved one-line description of this host &mdash; "a personal media server, want fast security patches more than stability" &mdash; that <code>explain --ai</code> and <code>advise --ai</code> use to judge a fix for this host specifically rather than in the abstract. Remembered in the same state directory as everything else hostveil keeps, until changed or cleared.</p>
+            <div class="code-block"><pre><code>hostveil ai-context               # show the current description
+hostveil ai-context "TEXT"        # set it
+hostveil ai-context --clear       # remove it</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--clear</code></td><td><code>false</code></td><td>Remove the saved description instead of showing it.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
             <h2 id="serve">serve</h2>
             <p>Run the localhost web dashboard. <code>hostveil web</code> is an alias.</p>
             <div class="code-block"><pre><code>hostveil serve [--addr ADDR] [--theme NAME] [--layout NAME]</code></pre></div>
