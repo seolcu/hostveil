@@ -134,6 +134,17 @@
 
             <p>각 버전의 릴리스 아카이브, 체크섬, SBOM, 서명된 빌드 프로버넌스는 <a href="https://github.com/seolcu/hostveil/releases">릴리스 페이지</a>에 있습니다. 업그레이드는 <code>hostveil update</code>로 합니다.</p>
 
+          <h2 id="v3.26.0"><a href="https://github.com/seolcu/hostveil/compare/v3.25.0...v3.26.0">3.26.0</a> <span class="changelog-date">2026-08-31</span></h2>
+          <p>지금까지 Fix의 득실은 일반론으로만 적혀 있었습니다. 이제 hostveil은 그 판단을 특정 호스트에 맞춰 내릴 수 있습니다. <code>hostveil ai-context</code>는 이 호스트가 어떤 용도인지 한 줄로 저장해 둡니다. <code>hostveil advise</code>와 <code>explain --ai</code>, TUI의 <code>v</code> 키, 새로 생긴 대시보드 버튼은 이 설명을 읽어, 고칠 수 있는 발견 항목마다 득실을 판단합니다. 원하면 AI 의견도 덧붙습니다. 별도로, 존재하지 않거나 취약한 URL로 반복 접근하는 스캔에 대응하는 기능도 추가됐습니다. fail2ban이 설치돼 있어도 nginx를 감시하도록 켜져 있지 않은 경우를 찾아내, nginx-botsearch 감시 규칙을 켜자고 제안합니다. proxy 영역에 등록된 첫 Fix입니다.</p>
+          <h3>새 기능</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>ai:</strong> <code>hostveil ai-context</code>와 <code>hostveil advise</code>를 추가했습니다. 이제 Fix의 일반적인 득실을 특정 호스트 사정에 맞춰 판단할 수 있습니다. <code>ai-context</code>는 호스트를 한 줄로 설명한 문구를 저장합니다(테마·레이아웃 설정과 같은 상태 디렉터리). <code>advise [--ai]</code>는 고칠 수 있는 발견 항목마다 득실을 나열하고, 원하면 저장된 설명에 비추어 발견 항목별 AI 판단도 덧붙입니다. <code>explain --ai</code>도 이제 같은 설명을 자동으로 읽습니다. TUI(<code>v</code> 키로 여는 판단 화면, <code>c</code> 키로 여는 설명 편집)와 대시보드(Advise 버튼과 편집 가능한 설명 입력창)에서 모두 쓸 수 있으며, 기본이 로컬 Ollama이고 아무것도 직접 적용하지 않는 기존 AI 계층 위에 얹었습니다.</p>
+            </li>
+            <li>
+              <p><strong>check:</strong> URL/경로 스캔에 자동으로 대응하지 못하는 리버스 프록시를 찾아내고 고치는 기능을 추가했습니다. <code>proxy.no-scan-jail</code>은 fail2ban은 설치돼 있지만, 존재하지 않거나 취약한 경로로의 반복 요청을 잡아내는 업스트림 <code>nginx-botsearch</code> 감시 규칙이 꺼져 있을 때 발생합니다. <code>proxy</code> 영역에 등록된 첫 Fix로, fail2ban 자체 기본 차단 시간과 더 긴 차단 시간 중 하나를 고르는 Review 두 개를 제공하며, 미리보기·적용·롤백을 거치는 평소 경로 그대로 작은 jail.d 드롭인 파일 하나를 씁니다. 새로운 데몬은 없습니다. 감시와 차단은 fail2ban이 그대로 맡습니다.</p>
+            </li>
+          </ul>
           <h2 id="v3.25.0"><a href="https://github.com/seolcu/hostveil/compare/v3.24.0...v3.25.0">3.25.0</a> <span class="changelog-date">2026-08-30</span></h2>
           <p>이제 hostveil은 스캔 결과를 터미널을 보지 않는 사람에게도 전달할 수 있습니다. <code>hostveil export</code> 명령(TUI와 웹 대시보드에서도 사용 가능)은 결과를 동료에게 보여줄 Markdown, Word, PDF로, 다른 프로그램이 읽을 JSON이나 SARIF로 각각 만들어 줍니다. 등록된 모든 Fix는 이제 이미 안내하던 위험 옆에 실제로 얻는 효과도 함께 적습니다. <code>bugreport</code>의 네트워크 전송 경로는 사라지고 로컬 전용 <code>hostveil diagnostics</code>가 그 자리를 대신하며, 설치 스크립트에는 색상 출력과 시작 배너가 추가됐습니다.</p>
           <h3>새 기능</h3>

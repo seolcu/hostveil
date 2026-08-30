@@ -2,6 +2,42 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.26.0](https://github.com/seolcu/hostveil/compare/v3.25.0...v3.26.0) (2026-08-31)
+
+A fix's trade-off used to be stated once, in general — hostveil can now
+judge it against a particular host. `hostveil ai-context` saves a one-line
+description of what a host is for, and `hostveil advise` (plus
+`explain --ai`, the TUI's `v` key, and a new dashboard button) weighs every
+fixable finding's benefit and cost against it, with an optional AI verdict.
+Separately, hostveil can now do something about a proxy being scanned for
+nonexistent or known-vulnerable URLs: it detects when fail2ban is installed
+but not watching nginx for exactly that, and offers to enable its
+nginx-botsearch jail — the first registered fix the proxy domain has ever
+had.
+
+### Features
+
+* **ai:** add `hostveil ai-context` and `hostveil advise`, so a fix's
+  generic trade-off can be judged against what a particular host is
+  actually for. `ai-context` saves a one-line description (state
+  directory, same as the theme/layout preferences); `advise [--ai]` lists
+  every fixable finding's benefit and cost, with an optional AI verdict
+  per finding weighed against the saved description. `explain --ai` now
+  reads the same context automatically. Reachable from the TUI (`v` for
+  the advice screen, `c` to edit the context) and the dashboard (an
+  Advise button and an editable context field), on top of the existing
+  local-Ollama-by-default, strictly advisory AI layer that never applies
+  anything itself.
+* **check:** detect and fix a reverse proxy with no automated response to
+  URL/path scanning. `proxy.no-scan-jail` fires when fail2ban is
+  installed but its upstream `nginx-botsearch` jail — built to catch
+  repeated requests for nonexistent or known-vulnerable paths — is not
+  enabled, and offers the first registered fix the `proxy` domain has
+  ever had: a Review with two alternatives (fail2ban's own default ban
+  time, or a longer one), written as a small jail.d drop-in through the
+  normal preview/apply/rollback path. No new daemon — fail2ban does the
+  watching and the banning.
+
 ## [3.25.0](https://github.com/seolcu/hostveil/compare/v3.24.0...v3.25.0) (2026-08-30)
 
 hostveil can now hand a scan result to someone who is not looking at a

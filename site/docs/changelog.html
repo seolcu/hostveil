@@ -133,6 +133,17 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.26.0"><a href="https://github.com/seolcu/hostveil/compare/v3.25.0...v3.26.0">3.26.0</a> <span class="changelog-date">2026-08-31</span></h2>
+          <p>A fix's trade-off used to be stated once, in general — hostveil can now judge it against a particular host. <code>hostveil ai-context</code> saves a one-line description of what a host is for, and <code>hostveil advise</code> (plus <code>explain --ai</code>, the TUI's <code>v</code> key, and a new dashboard button) weighs every fixable finding's benefit and cost against it, with an optional AI verdict. Separately, hostveil can now do something about a proxy being scanned for nonexistent or known-vulnerable URLs: it detects when fail2ban is installed but not watching nginx for exactly that, and offers to enable its nginx-botsearch jail — the first registered fix the proxy domain has ever had.</p>
+          <h3>Features</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>ai:</strong> add <code>hostveil ai-context</code> and <code>hostveil advise</code>, so a fix's generic trade-off can be judged against what a particular host is actually for. <code>ai-context</code> saves a one-line description (state directory, same as the theme/layout preferences); <code>advise [--ai]</code> lists every fixable finding's benefit and cost, with an optional AI verdict per finding weighed against the saved description. <code>explain --ai</code> now reads the same context automatically. Reachable from the TUI (<code>v</code> for the advice screen, <code>c</code> to edit the context) and the dashboard (an Advise button and an editable context field), on top of the existing local-Ollama-by-default, strictly advisory AI layer that never applies anything itself.</p>
+            </li>
+            <li>
+              <p><strong>check:</strong> detect and fix a reverse proxy with no automated response to URL/path scanning. <code>proxy.no-scan-jail</code> fires when fail2ban is installed but its upstream <code>nginx-botsearch</code> jail — built to catch repeated requests for nonexistent or known-vulnerable paths — is not enabled, and offers the first registered fix the <code>proxy</code> domain has ever had: a Review with two alternatives (fail2ban's own default ban time, or a longer one), written as a small jail.d drop-in through the normal preview/apply/rollback path. No new daemon — fail2ban does the watching and the banning.</p>
+            </li>
+          </ul>
           <h2 id="v3.25.0"><a href="https://github.com/seolcu/hostveil/compare/v3.24.0...v3.25.0">3.25.0</a> <span class="changelog-date">2026-08-30</span></h2>
           <p>hostveil can now hand a scan result to someone who is not looking at a terminal: <code>hostveil export</code> (also reachable from the TUI and the web dashboard) renders it as Markdown, Word, or PDF for a colleague, or as JSON or SARIF for another program. Every registered fix now states what applying it actually gets you, next to the risk it already disclosed. <code>bugreport</code>'s network-send path is gone in favor of a local-only <code>hostveil diagnostics</code>, and the installer script gained color output and a startup banner.</p>
           <h3>Features</h3>
