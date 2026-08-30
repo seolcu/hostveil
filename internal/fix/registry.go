@@ -28,6 +28,15 @@ const (
 type Action struct {
 	Label   string
 	Warning string // shown in preview for risky actions (e.g. may lock out SSH)
+
+	// Benefit is one sentence stating what applying this action actually
+	// gets the operator, shown in preview beside Warning so the payoff and
+	// the risk are read together — a medicine label states efficacy next
+	// to side effects, not side effects alone. Required on every action
+	// (see Validate), unlike Warning, which stays optional: not every fix
+	// has a real side effect, but every registered fix is worth doing, so
+	// it should be able to say why.
+	Benefit string
 	Kind    ActionKind
 
 	// Edit
@@ -285,6 +294,13 @@ func matchPattern(pattern, id string) bool {
 // against the representative findings those tests happen to construct,
 // which left the contract unenforced for every other finding — and the
 // first thing to notice a missing Transform was applyEdit calling it.
+//
+// It also requires Benefit on every action, unconditionally — unlike
+// Warning, which stays optional because not every fix has a real side
+// effect. Every fix is registered because it is worth doing, so it should
+// be able to say why; a registration that cannot is the same shape defect
+// this function already exists to catch before it reaches a UI as a
+// silent button.
 func Validate(fx Fix) error {
 	switch fx.Kind {
 	case model.RemediationAuto:
@@ -299,6 +315,9 @@ func Validate(fx Fix) error {
 		return fmt.Errorf("fix %q has non-fixable kind %v", fx.FindingID, fx.Kind)
 	}
 	for i, a := range fx.Actions {
+		if a.Benefit == "" {
+			return fmt.Errorf("fix %q action %d has no Benefit", fx.FindingID, i)
+		}
 		if a.Kind == ActionEdit && a.Transform == nil {
 			return fmt.Errorf("fix %q action %d is an edit with no Transform", fx.FindingID, i)
 		}

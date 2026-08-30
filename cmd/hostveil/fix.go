@@ -266,6 +266,9 @@ func printPreview(f model.Finding, p model.FixPreview, idx int) {
 	a := p.Actions[idx]
 	fmt.Printf("\nFix for %s (%s): %s\n", f.ID, f.Service, p.Label)
 	fmt.Printf("Action: %s\n", a.Label)
+	if a.Benefit != "" {
+		fmt.Printf("\n✓  %s\n", a.Benefit)
+	}
 	if a.Warning != "" {
 		fmt.Printf("\n⚠  %s\n", a.Warning)
 	}

@@ -52,6 +52,9 @@ func serviceDirective(key string) *regexp.Regexp {
 
 func buildSystemdNoNewPrivileges(f model.Finding) (Fix, error) {
 	return systemdDropIn(f, "NoNewPrivileges", "yes",
+		"Closes the setuid escalation path out of this unit — a compromised process cannot gain "+
+			"more privilege than the service already had, the same protection compose.ds006 gives a "+
+			"container.",
 		"Closes the setuid path out of this service. A service that deliberately "+
 			"escalates — anything calling a setuid helper — stops working, and it "+
 			"stops at the next restart rather than now.")
@@ -70,6 +73,9 @@ func buildSystemdNoNewPrivileges(f model.Finding) (Fix, error) {
 
 func buildSystemdProtectClock(f model.Finding) (Fix, error) {
 	return systemdDropIn(f, "ProtectClock", "yes",
+		"Stops the unit changing the system or hardware clock, closing off a way a compromised "+
+			"service could hide its tracks by tampering with timestamps or break time-based "+
+			"authentication.",
 		"Only time-sync daemons (chronyd, ntpd, systemd-timesyncd) legitimately need "+
 			"to change the system or hardware clock. A service that is not one of "+
 			"those stops being able to, at the next restart.")
@@ -77,6 +83,8 @@ func buildSystemdProtectClock(f model.Finding) (Fix, error) {
 
 func buildSystemdLockPersonality(f model.Finding) (Fix, error) {
 	return systemdDropIn(f, "LockPersonality", "yes",
+		"Stops the unit switching to an alternate execution personality, closing an old technique "+
+			"for bypassing ASLR.",
 		"Needing an alternate execution personality is rare outside emulation and "+
 			"compatibility layers. An ordinary service is unaffected; one that "+
 			"needs one fails at the next restart.")
@@ -84,6 +92,8 @@ func buildSystemdLockPersonality(f model.Finding) (Fix, error) {
 
 func buildSystemdRestrictSUIDSGID(f model.Finding) (Fix, error) {
 	return systemdDropIn(f, "RestrictSUIDSGID", "yes",
+		"Stops the unit creating new setuid or setgid files, closing a persistence and "+
+			"privilege-escalation path a compromised service could otherwise leave behind for later.",
 		"Only a service that itself creates setuid or setgid files — a package "+
 			"manager, an installer — needs this off. An ordinary network daemon "+
 			"does not create such files and is unaffected.")
@@ -91,12 +101,16 @@ func buildSystemdRestrictSUIDSGID(f model.Finding) (Fix, error) {
 
 func buildSystemdProtectKernelLogs(f model.Finding) (Fix, error) {
 	return systemdDropIn(f, "ProtectKernelLogs", "yes",
+		"Stops the unit reading /dev/kmsg directly, closing an information-leak path that can hand "+
+			"an attacker kernel addresses useful for a further exploit.",
 		"Only a service that reads kernel logs directly — a diagnostics tool, an "+
 			"agent reading /dev/kmsg — needs this off. Most services never touch it.")
 }
 
 func buildSystemdProtectKernelModules(f model.Finding) (Fix, error) {
 	return systemdDropIn(f, "ProtectKernelModules", "yes",
+		"Stops the unit loading or removing kernel modules itself, closing a direct path to "+
+			"running arbitrary code in kernel space from what should be an ordinary service.",
 		"Only a service that loads or removes kernel modules itself at runtime — "+
 			"rather than modules already loaded at boot — needs this off.")
 }
@@ -108,7 +122,7 @@ func buildSystemdProtectKernelModules(f model.Finding) (Fix, error) {
 // would be a second answer to a question that has one. It is also the path
 // that checker's own how-to tells the operator to create, which is what makes
 // the fix and the instructions the same instruction.
-func systemdDropIn(f model.Finding, key, value, warning string) (Fix, error) {
+func systemdDropIn(f model.Finding, key, value, benefit, warning string) (Fix, error) {
 	// Empty means the checker found a drop-in systemd loads after anything
 	// hostveil could write. Drop-ins are applied in filename order whichever
 	// directory they live in (systemd.unit(5)), so the file this fix would
@@ -134,6 +148,7 @@ func systemdDropIn(f model.Finding, key, value, warning string) (Fix, error) {
 		Kind:      model.RemediationAuto, // one action; the checker asks for Review
 		Actions: []Action{{
 			Label:   "Set " + line + " for " + unit,
+			Benefit: benefit,
 			Warning: warning,
 			Kind:    ActionEdit,
 			Path:    path,

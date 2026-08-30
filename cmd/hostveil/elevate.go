@@ -11,7 +11,7 @@ import (
 // and unknown commands do not.
 func needsRoot(cmd string) bool {
 	switch cmd {
-	case "scan", "tui", "fix", "serve", "web", "explain", "rollback", "history",
+	case "scan", "tui", "fix", "serve", "web", "explain", "export", "rollback", "history",
 		"diagnostics", "update", "uninstall":
 		return true
 	}

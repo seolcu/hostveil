@@ -32,6 +32,7 @@ func TestAnExecFixIsNeverClassifiedAuto(t *testing.T) {
 			Kind:  model.RemediationAuto, // one action: Auto *shape*
 			Actions: []fix.Action{{
 				Label:    "Install and enable unattended-upgrades",
+				Benefit:  "test benefit",
 				Kind:     fix.ActionExec,
 				Commands: [][]string{{"apt-get", "install", "-y", "unattended-upgrades"}},
 			}},

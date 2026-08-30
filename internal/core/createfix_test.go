@@ -38,13 +38,13 @@ func createEngine(t *testing.T, path string) *Engine {
 			Kind:  model.RemediationReview,
 			Actions: []fix.Action{
 				{
-					Label: "write the drop-in", Kind: fix.ActionEdit,
+					Label: "write the drop-in", Benefit: "test benefit", Kind: fix.ActionEdit,
 					Path: path, CreateIfMissing: true,
 					Transform: func(in []byte) ([]byte, error) {
 						return append(in, []byte("kernel.kptr_restrict = 1\n")...), nil
 					},
 				},
-				{Label: "apply now", Kind: fix.ActionExec, Commands: [][]string{{"true"}}},
+				{Label: "apply now", Benefit: "test benefit", Kind: fix.ActionExec, Commands: [][]string{{"true"}}},
 			},
 		}, nil
 	})
@@ -215,7 +215,7 @@ func TestEditWithoutCreateStillFailsOnAMissingFile(t *testing.T) {
 		return fix.Fix{
 			Label: "edit it", Kind: model.RemediationAuto,
 			Actions: []fix.Action{{
-				Label: "edit", Kind: fix.ActionEdit, Path: path,
+				Label: "edit", Benefit: "test benefit", Kind: fix.ActionEdit, Path: path,
 				Transform: func(in []byte) ([]byte, error) { return in, nil },
 			}},
 		}, nil

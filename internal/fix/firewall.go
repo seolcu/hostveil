@@ -71,6 +71,8 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 		Kind: model.RemediationAuto,
 		Actions: []Action{{
 			Label: "Allow SSH on " + spelled + "/tcp, then enable ufw with a default-deny inbound policy",
+			Benefit: "Turns on default-deny, so only the ports hostveil confirmed sshd is actually " +
+				"listening on stay reachable — everything else stops accepting connections from off this host.",
 			Warning: "Every inbound port except " + spelled + "/tcp stops being reachable the moment this " +
 				"runs, including anything a container publishes. There is no rollback checkpoint — " +
 				"exec fixes are not file-backed — so undoing it means `ufw disable` by hand.",
@@ -115,6 +117,9 @@ func buildFixDefaultAllow(f model.Finding) (Fix, error) {
 		Kind: model.RemediationAuto,
 		Actions: []Action{{
 			Label: "Allow SSH on " + spelled + "/tcp, then set ufw's default inbound policy to deny",
+			Benefit: "Flips a firewall that is already running from allow-by-default to deny-by-default, " +
+				"closing every port nothing has explicitly opened on a host where a firewall was already " +
+				"assumed to be doing that job.",
 			Warning: "Every inbound port except " + spelled + "/tcp stops being reachable the moment this " +
 				"runs, including anything a container publishes. There is no rollback checkpoint — " +
 				"exec fixes are not file-backed — so undoing it means `ufw default allow incoming` by hand.",

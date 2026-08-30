@@ -12,6 +12,7 @@ import (
 
 	"github.com/seolcu/hostveil/internal/textwidth"
 
+	"github.com/seolcu/hostveil/internal/core"
 	"github.com/seolcu/hostveil/internal/glyph"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/ui/theme"
@@ -307,6 +308,14 @@ func (m *appModel) View() tea.View {
 		content = m.compose(compactHeader("LAYOUT"),
 			[]string{s.brand.Render(m.layoutName())}, layoutHint,
 			func(n int) []string { return m.clipRows(m.layoutPickerRows(), n) })
+
+	case modeExport:
+		content = m.compose(compactHeader("EXPORT"), nil, exportHint,
+			func(n int) []string { return m.clipRows(m.exportPickerRows(), n) })
+
+	case modeExportPath:
+		content = m.compose(compactHeader("EXPORT"), nil, exportPathHint,
+			func(n int) []string { return m.clipRows(m.exportPathRows(), n) })
 	}
 
 	// Paint the terminal background too. Without it a theme only recolors the
@@ -414,20 +423,22 @@ func (m *appModel) axesLine() string {
 
 const (
 	listHint = "↑/↓ move   enter details   f fix   space select   a fix marked\n" +
-		"s severity   d domain   x fixable   c clear   h history   t theme   l layout   r rescan   q quit"
-	emptyListHint = "c clear   t theme   l layout   r rescan   q quit"
+		"s severity   d domain   x fixable   c clear   h history   t theme   l layout   e export   r rescan   q quit"
+	emptyListHint = "c clear   t theme   l layout   e export   r rescan   q quit"
 	historyHint   = "↑/↓ move   enter roll back   esc back   q list"
 	themeHint     = "↑/↓ preview   enter keep   esc cancel"
 	// The lanes arrangement adds one key, so it adds one line of hint. Written
 	// as its own string rather than appended at the call site because the
 	// footer is the only documentation these bindings have.
 	laneListHint = "↑/↓ move   enter details   f fix   space select   m select lane   a fix marked\n" +
-		"s severity   d domain   x fixable   c clear   h history   t theme   l layout   r rescan   q quit"
+		"s severity   d domain   x fixable   c clear   h history   t theme   l layout   e export   r rescan   q quit"
 	// Not "preview", which is what the theme picker's says and earns: moving
 	// the cursor there restyles the whole frame on the spot. Here there is
 	// nothing to preview, because the picker screen is not one of the
 	// arrangements — enter is what shows you the choice.
-	layoutHint = "↑/↓ choose   enter apply   esc cancel"
+	layoutHint     = "↑/↓ choose   enter apply   esc cancel"
+	exportHint     = "↑/↓ choose   enter next   esc cancel"
+	exportPathHint = "enter export   esc back"
 )
 
 // listHintFor picks the footer for the active arrangement.
@@ -1459,6 +1470,11 @@ func (m *appModel) previewRows() []string {
 	}
 
 	a := m.preview.Actions[idx]
+	if a.Benefit != "" {
+		out = append(out, m.hangingRows(s.safe,
+			m.gl.Of(glyph.OK)+"  ", a.Benefit, m.proseWidth(bodyInset), bodyInset)...)
+		out = append(out, "")
+	}
 	if a.Warning != "" {
 		// It is the one place the preview explains what cannot be undone, and
 		// unwrapped it ran past the terminal edge and was clipped mid-sentence
@@ -1686,6 +1702,82 @@ func (m *appModel) layoutPickerRows() []string {
 	}
 	out = append(out, "", s.dim.Render("Temporary: six arrangements are shipped so one can be chosen. The"))
 	out = append(out, s.dim.Render("dashboard carries the same six under the same letters."))
+	return out
+}
+
+// exportFormatNote is one clause of context per format — core.FormatInfo
+// carries only a label, and a picker choosing between five formats needs to
+// say what each is for, the same way the layout picker's note does for an
+// arrangement.
+func exportFormatNote(id string) string {
+	switch id {
+	case "json":
+		return "For another program to read."
+	case "sarif":
+		return "For CI and code-scanning tools."
+	case "markdown":
+		return "Plain-language report, for you or a colleague."
+	case "docx":
+		return "Word document, same content as the Markdown report."
+	case "pdf":
+		return "PDF document, same content as the Markdown report."
+	default:
+		return ""
+	}
+}
+
+// exportPickerRows is the export-format picker, on the same shape as
+// layoutPickerRows: a choice cannot be judged from this screen, so the note
+// carries what each format is for.
+func (m *appModel) exportPickerRows() []string {
+	s := m.sty()
+	out := []string{""}
+
+	formats := core.ExportFormats()
+	const nameW = 20
+	for i, f := range formats {
+		marker := "  "
+		if i == m.exportCursor {
+			marker = lipgloss.NewStyle().Foreground(s.cBone).Render(m.gl.Of(glyph.Cursor) + " ")
+		}
+		name := padRight(truncate(f.Label, max(1, min(nameW, m.width-2))), nameW)
+		row := marker
+		if i == m.exportCursor {
+			row += s.sel.Render(name)
+		} else {
+			row += s.bone.Render(name)
+		}
+		out = append(out, row)
+	}
+
+	out = append(out, "")
+	if m.exportCursor >= 0 && m.exportCursor < len(formats) {
+		out = append(out, styledRows(s.dim, wrap(exportFormatNote(formats[m.exportCursor].ID), min(m.width-2, 78)))...)
+	}
+	return out
+}
+
+// exportPathRows shows the free-text destination field with a visible
+// cursor — a styled space at exportPathCursor, the same idea the picker
+// rows use for a selection marker, adapted to a caret position.
+func (m *appModel) exportPathRows() []string {
+	s := m.sty()
+	out := []string{"", s.dim.Render("Save to:")}
+
+	before := string(m.exportPath[:m.exportPathCursor])
+	at := " "
+	if m.exportPathCursor < len(m.exportPath) {
+		at = string(m.exportPath[m.exportPathCursor])
+	}
+	after := ""
+	if m.exportPathCursor < len(m.exportPath) {
+		after = string(m.exportPath[m.exportPathCursor+1:])
+	}
+	row := s.bone.Render(before) + s.sel.Render(at) + s.bone.Render(after)
+	out = append(out, "  "+row)
+	out = append(out, "")
+	out = append(out, styledRows(s.dim, wrap("Every character is editable — this is only a starting point.",
+		min(m.width-2, 78)))...)
 	return out
 }
 

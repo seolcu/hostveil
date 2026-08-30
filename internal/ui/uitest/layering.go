@@ -26,6 +26,13 @@ var Forbidden = []string{
 	"internal/history",
 	"internal/check",
 	"internal/compose",
+	// internal/report renders a model.Report into an exported file. Both
+	// UIs reach it through Engine.Export/Engine.ExportFormats, the same as
+	// every other package below — a UI importing it directly would still
+	// technically be "thin" by the letter of Engine.Export existing, but
+	// would duplicate the format table this boundary exists to keep in one
+	// place.
+	"internal/report",
 }
 
 // AssertThinUI fails if any production file in the calling package's

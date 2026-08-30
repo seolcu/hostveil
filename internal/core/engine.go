@@ -288,6 +288,13 @@ func (e *Engine) classify(findings []model.Finding) {
 			// rather than offered and discovered at apply.
 			if fx, ok, err := e.buildFix(findings[i]); ok && err == nil && fx.Kind.IsFixable() {
 				findings[i].Remediation = resolvedKind(findings[i].Remediation, fx)
+				// Actions[0] is the recommendation — the same one
+				// `fix --all --review` applies without asking and every UI
+				// preselects. buildFix already ran fix.Validate as part of
+				// `err == nil`, so Actions has at least one element here
+				// (Auto=1, Review>=2) with no bounds check needed.
+				findings[i].FixBenefit = fx.Actions[0].Benefit
+				findings[i].FixSideEffect = fx.Actions[0].Warning
 			} else if findings[i].Remediation.IsFixable() {
 				findings[i].Remediation = model.RemediationManual
 			}

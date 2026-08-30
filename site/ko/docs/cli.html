@@ -270,6 +270,22 @@ hostveil history --scans</code></pre></div>
             </div>
             <p>내장된 쉬운 말 설명은 항상 출력되며, <code>--ai</code>는 조언 섹션을 추가합니다. <a href="ai">AI 설명</a>을 참고하세요.</p>
 
+            <h2 id="export">export</h2>
+            <p>호스트를 스캔하고 결과를 다섯 가지 형식 중 하나로 내보냅니다. json과 sarif는 <code>scan --json</code>/<code>--sarif</code>와 완전히 같은 결과물로, 다른 프로그램이 읽기 위한 형식입니다. markdown, docx, pdf는 각 발견 항목과 그 수정 방법을 쉬운 말로 설명합니다. 결과를 직접 읽거나 동료에게 전달할 때 쓰는 형식입니다.</p>
+            <div class="code-block"><pre><code>hostveil export --format FMT [flags]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--format FMT</code></td><td>&mdash;</td><td>필수입니다. <code>json</code>, <code>sarif</code>, <code>markdown</code>, <code>docx</code>, <code>pdf</code> 중 하나입니다.</td></tr>
+                  <tr><td><code>--output FILE</code></td><td>&mdash;</td><td>표준 출력 대신 FILE에 씁니다. <code>docx</code>와 <code>pdf</code>는 필수입니다. 터미널에서는 이진 형식을 보여줄 방법이 없기 때문입니다.</td></tr>
+                  <tr><td><code>--only LIST</code></td><td>&mdash;</td><td>이 도메인만 스캔합니다(쉼표로 구분). 스캔하지 않은 도메인은 100이 아니라 N/A로 표시됩니다.</td></tr>
+                  <tr><td><code>--skip LIST</code></td><td>&mdash;</td><td>나열한 도메인만 제외하고 스캔합니다(쉼표로 구분). <code>--only</code>와 함께 쓸 수 없습니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>종료 코드는 <code>scan</code>과 같은 게이트를 따릅니다. <a href="#exit-codes">종료 코드</a>를 참고하세요.</p>
+
             <h2 id="serve">serve</h2>
             <p>localhost 웹 대시보드를 실행합니다. <code>hostveil web</code>은 별칭입니다.</p>
             <div class="code-block"><pre><code>hostveil serve [--addr ADDR] [--theme NAME] [--layout NAME]</code></pre></div>

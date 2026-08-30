@@ -215,12 +215,22 @@ func renderOneFix(registry *fix.Registry, id, lang string) (string, error) {
 // updates.go) — this page's job is to surface that text, not restate it in
 // a second sentence next to it. A future exec fix registered without a
 // Warning should fail the site build, not publish a blank next to "Review".
+//
+// An empty Benefit fails the same way, for every action kind rather than
+// just exec: fix.Validate already refuses to let one reach the registry
+// (see internal/fix/registry.go), but this page calls registry.Build
+// directly and never goes through Validate, so it is the one path where
+// that guarantee would otherwise go unenforced.
 func renderAction(a fix.Action, labelSuffix string) (string, error) {
+	if a.Benefit == "" {
+		return "", fmt.Errorf("action (%q) carries no Benefit", a.Label)
+	}
 	if a.Kind == fix.ActionExec && a.Warning == "" {
 		return "", fmt.Errorf("an exec action (%q) carries no Warning", a.Label)
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "              <p lang=\"en\">%s%s</p>\n", inline(a.Label), labelSuffix)
+	fmt.Fprintf(&b, "              <p class=\"fix-benefit\" lang=\"en\">✓ %s</p>\n", inline(a.Benefit))
 	if a.Warning != "" {
 		fmt.Fprintf(&b, "              <p class=\"fix-warning\" lang=\"en\">⚠ %s</p>\n", inline(a.Warning))
 	}

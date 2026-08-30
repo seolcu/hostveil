@@ -922,9 +922,10 @@ func slowRegistry(d time.Duration) *fix.Registry {
 	r := fix.NewRegistry()
 	r.Register("compose.ds018", func(f model.Finding) (fix.Fix, error) {
 		return fix.Fix{Kind: model.RemediationAuto, Label: "slow", Actions: []fix.Action{{
-			Label: "slow edit",
-			Kind:  fix.ActionEdit,
-			Path:  f.Metadata["file"],
+			Label:   "slow edit",
+			Benefit: "test benefit",
+			Kind:    fix.ActionEdit,
+			Path:    f.Metadata["file"],
 			Transform: func(in []byte) ([]byte, error) {
 				time.Sleep(d)
 				return append(in, []byte("after\n")...), nil

@@ -49,6 +49,25 @@ type Finding struct {
 	// the doc comment on fix.Default(), where a user never sees them; this is
 	// that register reaching the finding it is about.
 	WhyNoFix string `json:"why_no_fix,omitempty"`
+
+	// FixBenefit and FixSideEffect are the one-sentence trade-off of this
+	// finding's recommended fix — fix.Action.Benefit and fix.Action.Warning
+	// off Actions[0] of whatever fix.Registry would build for this finding,
+	// the same action `fix --all --review` applies without asking (see
+	// "Actions[0] is the recommendation" on fix.Fix). They are set by the
+	// engine, in Engine.classify, never by a checker, and only where a fix
+	// exists to describe — both are empty on exactly the findings where
+	// WhyNoFix is not.
+	//
+	// They exist so the trade-off is visible before a user opens the full
+	// preview screen. A fix that pulls a fresh container image is the case
+	// that motivated them: fast patches are attractive on a self-hosted box
+	// and risky on one that is stable today, and until now that reasoning
+	// lived only inside the preview's per-action Warning — never in a list
+	// or detail view, and never for a finding nobody had opened the preview
+	// screen for yet.
+	FixBenefit    string `json:"fix_benefit,omitempty"`
+	FixSideEffect string `json:"fix_side_effect,omitempty"`
 }
 
 // FindingOption customizes optional fields of a Finding.

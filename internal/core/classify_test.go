@@ -25,6 +25,7 @@ func registryOf(id string, a fix.Action) *fix.Registry {
 func editAction() fix.Action {
 	return fix.Action{
 		Label:     "Edit the file",
+		Benefit:   "test benefit",
 		Kind:      fix.ActionEdit,
 		Path:      "/nonexistent/hostveil-classify-test",
 		Transform: func(in []byte) ([]byte, error) { return in, nil },
@@ -34,6 +35,7 @@ func editAction() fix.Action {
 func execAction() fix.Action {
 	return fix.Action{
 		Label:    "Run the thing",
+		Benefit:  "test benefit",
 		Kind:     fix.ActionExec,
 		Commands: [][]string{{"true"}},
 	}
@@ -172,5 +174,47 @@ func TestAFindingWithNoReasonStillGetsTheRegistrys(t *testing.T) {
 
 	if findings[0].WhyNoFix == "" {
 		t.Error("a declined finding with no reason of its own was left with none")
+	}
+}
+
+// classify copies Actions[0]'s Benefit/Warning onto the finding — the same
+// recommendation `fix --all --review` applies without asking — so the
+// trade-off is visible before a user opens the preview screen.
+func TestClassifySetsBenefitAndSideEffectFromTheRecommendation(t *testing.T) {
+	a := fix.Action{
+		Label:     "Do the thing",
+		Benefit:   "Fast patches on a self-hosted box.",
+		Warning:   "Risky on a stable one.",
+		Kind:      fix.ActionEdit,
+		Path:      "/nonexistent/hostveil-classify-test",
+		Transform: func(in []byte) ([]byte, error) { return in, nil },
+	}
+	e := New(Config{Fixes: registryOf("compose.ds018", a), Store: history.NewStore(t.TempDir())})
+	f := model.NewFinding("compose.ds018", "exposed", model.SeverityHigh, model.SourceCompose,
+		model.RemediationAuto, model.WithService("db"))
+
+	findings := []model.Finding{f}
+	e.classify(findings)
+
+	if findings[0].FixBenefit != a.Benefit {
+		t.Errorf("FixBenefit = %q, want %q", findings[0].FixBenefit, a.Benefit)
+	}
+	if findings[0].FixSideEffect != a.Warning {
+		t.Errorf("FixSideEffect = %q, want %q", findings[0].FixSideEffect, a.Warning)
+	}
+}
+
+// A finding nothing can fix must not carry a stale or invented trade-off.
+func TestClassifyLeavesBenefitAndSideEffectEmptyWhenUnfixable(t *testing.T) {
+	e := New(Config{Fixes: fix.Default(), Store: history.NewStore(t.TempDir())})
+	f := model.NewFinding("compose.ds016", "docker socket", model.SeverityHigh, model.SourceCompose,
+		model.RemediationManual, model.WithService("portainer"))
+
+	findings := []model.Finding{f}
+	e.classify(findings)
+
+	if findings[0].FixBenefit != "" || findings[0].FixSideEffect != "" {
+		t.Errorf("unfixable finding carries FixBenefit=%q FixSideEffect=%q, want both empty",
+			findings[0].FixBenefit, findings[0].FixSideEffect)
 	}
 }

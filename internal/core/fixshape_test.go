@@ -115,7 +115,7 @@ func TestWellFormedFixIsStillOffered(t *testing.T) {
 	e := shapeEngine(t, fix.Fix{
 		Label: "tighten it", Kind: model.RemediationAuto,
 		Actions: []fix.Action{{
-			Label: "tighten", Kind: fix.ActionEdit, Path: "/tmp/ok",
+			Label: "tighten", Benefit: "test benefit", Kind: fix.ActionEdit, Path: "/tmp/ok",
 			Transform: func(b []byte) ([]byte, error) { return b, nil },
 		}},
 	})

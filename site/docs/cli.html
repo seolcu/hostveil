@@ -269,6 +269,22 @@ hostveil history --scans</code></pre></div>
             </div>
             <p>The built-in plain explanation always prints; <code>--ai</code> adds an advisory section. See <a href="ai">AI explanations</a>.</p>
 
+            <h2 id="export">export</h2>
+            <p>Scan the host and export the report in one of five formats. <code>json</code> and <code>sarif</code> are byte-identical to <code>scan --json</code>/<code>--sarif</code>, for another program to read. <code>markdown</code>, <code>docx</code>, and <code>pdf</code> explain each finding and its fix in plain language, for a person reading the result or handing it to a colleague.</p>
+            <div class="code-block"><pre><code>hostveil export --format FMT [flags]</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--format FMT</code></td><td>&mdash;</td><td>Required. One of <code>json</code>, <code>sarif</code>, <code>markdown</code>, <code>docx</code>, <code>pdf</code>.</td></tr>
+                  <tr><td><code>--output FILE</code></td><td>&mdash;</td><td>Write to FILE instead of stdout. Required for <code>docx</code> and <code>pdf</code> &mdash; a terminal has no sensible way to show a binary format.</td></tr>
+                  <tr><td><code>--only LIST</code></td><td>&mdash;</td><td>Scan only these domains, comma-separated. Domains not scanned show as N/A, never as 100.</td></tr>
+                  <tr><td><code>--skip LIST</code></td><td>&mdash;</td><td>Scan every domain except these, comma-separated. Mutually exclusive with <code>--only</code>.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Exit code is the same gate as <code>scan</code> &mdash; see <a href="#exit-codes">exit codes</a>.</p>
+
             <h2 id="serve">serve</h2>
             <p>Run the localhost web dashboard. <code>hostveil web</code> is an alias.</p>
             <div class="code-block"><pre><code>hostveil serve [--addr ADDR] [--theme NAME] [--layout NAME]</code></pre></div>

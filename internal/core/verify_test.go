@@ -54,9 +54,10 @@ func verifiedFix(marker string) *fix.Registry {
 			Label: "test fix",
 			Kind:  model.RemediationAuto,
 			Actions: []fix.Action{{
-				Label: "test fix",
-				Kind:  fix.ActionEdit,
-				Path:  f.Evidence["config"],
+				Label:   "test fix",
+				Benefit: "test benefit",
+				Kind:    fix.ActionEdit,
+				Path:    f.Evidence["config"],
 				Transform: func(in []byte) ([]byte, error) {
 					return append(append([]byte(nil), in...), []byte(marker)...), nil
 				},

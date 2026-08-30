@@ -283,6 +283,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .fixbox-head { padding: 10px 14px; border-bottom: 1px solid var(--line);
   font-size: 11px; letter-spacing: .5px; }
 .fixbox-body { padding: 12px 14px; }
+.benefit { color: var(--safe); margin: 0 0 10px; font-size: 12px; }
 .warn { color: var(--high); margin: 0 0 10px; font-size: 12px; }
 .alts { margin: 0 0 12px; }
 .alts label { display: block; margin: 3px 0; cursor: pointer; }

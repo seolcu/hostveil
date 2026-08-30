@@ -116,6 +116,8 @@ func run(ctx context.Context, args []string) (code int) {
 		return cmdServe(ctx, args)
 	case "explain":
 		return cmdExplain(ctx, args)
+	case "export":
+		return cmdExport(ctx, args)
 	case "rollback":
 		return cmdRollback(ctx, args)
 	case "history":
@@ -180,6 +182,8 @@ Usage:
   hostveil fix --all --review    ...and the Review ones, through their first
                                  alternative, after reading what they are
   hostveil explain <id> [flags]  Explain a finding (optionally via AI)
+  hostveil export --format FMT   Export the scan report: json, sarif, markdown,
+                                 docx, or pdf (see Export flags below)
   hostveil serve [flags]         Serve the localhost web dashboard (alias: web)
   hostveil rollback <id> [flags] Undo a previously applied fix
   hostveil history [--scans]     List applied fixes and their rollback IDs;
@@ -203,6 +207,16 @@ Scan flags:
                   last-scan baseline and reports no delta.
   --skip LIST     Scan every domain except these (comma-separated)
   --no-color      Disable colored output
+
+Export flags:
+  --format FMT    json, sarif, markdown, docx, or pdf (required). json and
+                  sarif are byte-identical to scan --json/--sarif. markdown,
+                  docx, and pdf explain each finding and its fix in plain
+                  language, for a person rather than another program.
+  --output FILE   Write to FILE instead of stdout; required for docx/pdf,
+                  since a terminal has no sensible way to show them
+  --only LIST     Scan only these domains (comma-separated)
+  --skip LIST     Scan every domain except these (comma-separated)
 
 Fix flags:
   --all           Apply every safe (Auto) fix; Review and Manual are left alone

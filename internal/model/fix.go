@@ -18,8 +18,12 @@ type FixPreview struct {
 
 // ActionPreview describes one alternative of a fix.
 type ActionPreview struct {
-	Index    int        `json:"index"`
-	Label    string     `json:"label"`
+	Index int    `json:"index"`
+	Label string `json:"label"`
+	// Benefit is copied from fix.Action.Benefit: what this action gets the
+	// operator, rendered beside Warning in every UI's preview screen so the
+	// payoff and the risk are read together.
+	Benefit  string     `json:"benefit,omitempty"`
 	Warning  string     `json:"warning,omitempty"`
 	Type     string     `json:"type"` // "edit" | "exec"
 	Path     string     `json:"path,omitempty"`

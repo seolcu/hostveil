@@ -148,6 +148,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/trend", s.handleTrend)
 	mux.HandleFunc("GET /api/rescan/status", s.handleRescanStatus)
 	mux.HandleFunc("GET /api/explain", s.handleExplain)
+	mux.HandleFunc("GET /api/export", s.handleExport)
 	mux.HandleFunc("POST /api/fix", s.handleFix)
 	mux.HandleFunc("POST /api/fix/all", s.handleFixAll)
 	mux.HandleFunc("POST /api/fix/batch", s.handleFixBatch)
@@ -467,6 +468,35 @@ func (s *Server) handleTrend(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) handleResult(w http.ResponseWriter, _ *http.Request) {
 	report, hasRun := s.engine.Current()
 	writeJSON(w, resultPayload{Report: report, Delta: s.engine.LastDelta(), HasRun: hasRun})
+}
+
+// handleExport renders the current report in the requested format and
+// serves it as a download. It reads whatever the last scan left — a fresh
+// look at the host is what /api/rescan is for — so this stays a safe GET,
+// exempt from the same-origin check the way /api/result already is.
+func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
+	report, hasRun := s.engine.Current()
+	if !hasRun {
+		http.Error(w, "no scan has run yet", http.StatusConflict)
+		return
+	}
+	data, filename, contentType, err := s.engine.Export(report, r.URL.Query().Get("format"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
+	w.Header().Set("Cache-Control", "no-store")
+	// G705 flags this because the request's ?format= value reaches Export,
+	// whose return value is written to the response — a taint chain the
+	// analyzer cannot tell apart from reflecting user input into the body.
+	// format only ever selects which of five fixed renderers runs
+	// (report.Parse rejects anything else with 400 above); it is never
+	// echoed into data, and Content-Type here is never text/html, so there
+	// is no HTML for a browser to interpret regardless.
+	//nolint:gosec // G705: false positive — format selects a renderer, it is not written to the body
+	_, _ = w.Write(data)
 }
 
 // hostWork returns the context a host-mutating or host-scanning operation

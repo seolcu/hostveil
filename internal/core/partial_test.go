@@ -37,11 +37,11 @@ func twoStepFix() *fix.Registry {
 			Label: "Enable unattended upgrades",
 			Kind:  model.RemediationReview,
 			Actions: []fix.Action{
-				{Label: "install and enable", Kind: fix.ActionExec, Commands: [][]string{
+				{Label: "install and enable", Benefit: "test benefit", Kind: fix.ActionExec, Commands: [][]string{
 					{"apt-get", "install", "-y", "unattended-upgrades"},
 					{"systemctl", "enable", "--now", "unattended-upgrades"},
 				}},
-				{Label: "install only", Kind: fix.ActionExec, Commands: [][]string{
+				{Label: "install only", Benefit: "test benefit", Kind: fix.ActionExec, Commands: [][]string{
 					{"apt-get", "install", "-y", "unattended-upgrades"},
 				}},
 			},

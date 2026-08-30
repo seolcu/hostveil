@@ -489,3 +489,35 @@ func TestFilePermsFixHandlesPathsContainingTheHumanSeparator(t *testing.T) {
 		}
 	}
 }
+
+// buildRepullImage's Benefit must not promise more than a re-pulled floating
+// tag can actually deliver: re-resolving the tag *may* pick up a fix for the
+// CVE that triggered the finding, but hostveil has no way to confirm it did,
+// since the same tag can move for unrelated reasons too. This mirrors
+// internal/check/cve's own HowToFix, which carries the identical caveat —
+// and it is the property the whole feature exists to state honestly, per the
+// user's original example: fast patches are attractive on a self-hosted box
+// and risky on a stable one, and a Benefit that oversold "this fixes it"
+// would hide the second half of that trade-off.
+func TestOutdatedImageBenefitDoesNotOverpromise(t *testing.T) {
+	fx, ok, err := Default().Build(representative("cve.outdated-image"))
+	if err != nil || !ok {
+		t.Fatalf("build: ok=%v err=%v", ok, err)
+	}
+	if len(fx.Actions) != 2 {
+		t.Fatalf("cve.outdated-image has %d actions, want 2", len(fx.Actions))
+	}
+
+	pullNow := fx.Actions[0].Benefit
+	if !strings.Contains(pullNow, "may") {
+		t.Errorf("action 0's Benefit does not use non-guarantee language: %q", pullNow)
+	}
+	if strings.Contains(pullNow, "will fix") || strings.Contains(pullNow, "fixes the") {
+		t.Errorf("action 0's Benefit oversells the fix as guaranteed: %q", pullNow)
+	}
+
+	downloadOnly := fx.Actions[1].Benefit
+	if !strings.Contains(downloadOnly, "before deciding") && !strings.Contains(downloadOnly, "inspect") {
+		t.Errorf("action 1's Benefit does not explain it lets the operator inspect before committing: %q", downloadOnly)
+	}
+}
