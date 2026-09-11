@@ -1,0 +1,55 @@
+==> profile cisc-w2026-seeded — recording where the fix history stands
+==> hashing the before-state of every path a finding points at
+==> 56 paths watched
+==> BEFORE
+==> before: hostveil
+==> before: lynis
+==> before: dockerbench
+==> before: extscan
+==> before: listeners
+==> applying every Auto fix
+
+✓ Applied 55. New score: 37/100. 33 of them are written and not in force yet, so the score does not count them.
+Roll back any change with: hostveil history
+==> AFTER (files changed, nothing restarted)
+==> after: hostveil
+==> after: lynis
+==> after: dockerbench
+==> after: extscan
+==> after: listeners
+==> restarting the services into their new configuration
+==>   docker compose -f /opt/stacks/cloud/docker-compose.yml up -d
+==>   docker compose -f /opt/stacks/mgmt/docker-compose.yml up -d
+==>   docker compose -f /opt/stacks/media/docker-compose.yml up -d
+==> RESTARTED
+==> restarted: hostveil
+==> restarted: lynis
+==> restarted: dockerbench
+==> restarted: extscan
+==> restarted: listeners
+==> hostveil fix --all --review — everything the tool can do, the way an operator who read it would
+==>   40 fixes offered, 24 reversible, 16 with no checkpoint
+==>   docker compose -f /opt/stacks/cloud/docker-compose.yml up -d
+==>   docker compose -f /opt/stacks/mgmt/docker-compose.yml up -d
+==>   docker compose -f /opt/stacks/media/docker-compose.yml up -d
+==> REVIEWED
+==> reviewed: hostveil
+==> reviewed: lynis
+==> reviewed: dockerbench
+==> reviewed: extscan
+==> reviewed: listeners
+==> hashing what the fixes left
+==> rolling every checkpoint back
+==> restarting the services back out of it
+==>   docker compose -f /opt/stacks/cloud/docker-compose.yml up -d
+==>   docker compose -f /opt/stacks/mgmt/docker-compose.yml up -d
+==>   docker compose -f /opt/stacks/media/docker-compose.yml up -d
+==> RESTORED
+==> restored: hostveil
+==> restored: lynis
+==> restored: dockerbench
+==> restored: extscan
+==> restored: listeners
+==> wrote /tmp/a.json
+{"profile": "fixes", "score": [28, 37], "changed": 28, "restored": 25, "fidelity": 89, "residue_expected": true}
+RUNSH_EXIT=0
