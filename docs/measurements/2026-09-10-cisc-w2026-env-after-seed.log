@@ -1,0 +1,23 @@
+== manifest ==
+{
+  "distro": "ubuntu",
+  "distro_like": "debian",
+  "instruments": {"docker_bench_revision": "154869da6418089decf7e1ab0cfca0e1cdfc5c49", "trivy_installer_revision": "dcbadb7b15076c405ce7d59f04cde9991b90da22"},
+  "seeded": ["docker", "weak-ssh", "firewall-off", "updates-off", "exposed-datastore", "uid0-twin", "shadow-readable", "debug-sysctl", "systemd-unhardened-unit", "agent-configs", "compose-stacks"],
+  "not_expressible": {}
+}
+== docker ==
+Docker version 29.8.0, build 88096ef
+== trivy ==
+Version: 0.74.0
+== lynis ==
+3.0.9
+== docker-bench-security commit ==
+154869da6418089decf7e1ab0cfca0e1cdfc5c49
+== containers ==
+mgmt-portainer-1	portainer/portainer-ce:2.9.0
+mgmt-monitor-1	alpine:3.14
+media-redis-1	redis:6.0
+media-jellyfin-1	jellyfin/jellyfin:10.8.0
+cloud-nextcloud-1	nextcloud:24
+cloud-db-1	postgres:13

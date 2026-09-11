@@ -1,0 +1,50 @@
+
+==> base packages (ubuntu, apt, systemd)
+
+==> docker
+29.8.0
+
+==> weak SSH — a drop-in that outranks the image's own
+
+==> firewall installed and left off, automatic updates installed and switched off
+
+==> host-level weaknesses — a native datastore on 0.0.0.0, a uid-0 twin, loose perms
+useradd warning: breakglass's uid 0 outside of the UID_MIN 1000 and UID_MAX 60000 range.
+
+==> sysctl overrides that fight the distribution's own defaults
+
+==> an unhardened operator-written systemd unit
+
+==> AI agent runtime configs (OpenClaw + Hermes) under /root
+
+==> compose stacks
+  -- cloud
+ Container cloud-nextcloud-1 Starting 
+ Container cloud-nextcloud-1 Started 
+  -- media
+ Container media-jellyfin-1 Started 
+ Container media-redis-1 Started 
+  -- mgmt
+ Container mgmt-portainer-1 Started 
+ Container mgmt-watchtower-1 Started 
+
+==> the instruments the harness reports through
+
+==> manifest at /var/lib/hostveil-measure/seeded.json
+
+==> seeded — what the harness will find
+  lynis          /usr/sbin/lynis
+  docker-bench   ok
+  trivy          /usr/local/bin/trivy
+  hostveil       /usr/local/bin/hostveil
+  containers     6
+
+Next:
+  go build -o /usr/local/bin/hostveil ./cmd/hostveil
+  scripts/measure/run.sh -c -p seeded /tmp/measurement.json
+
+run.sh applies every fix and then rolls them all back, so it leaves this host
+roughly as this script left it — roughly, because enabling a firewall and
+installing unattended-upgrades are not file edits and have no checkpoint. Seed
+again rather than measuring twice on one host.
+EXIT=0

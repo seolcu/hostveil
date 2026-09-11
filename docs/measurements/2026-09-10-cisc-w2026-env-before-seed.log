@@ -1,0 +1,27 @@
+hostveil v3-dev
+---
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+NAME="Ubuntu"
+VERSION_ID="24.04"
+VERSION="24.04.4 LTS (Noble Numbat)"
+VERSION_CODENAME=noble
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+UBUNTU_CODENAME=noble
+LOGO=ubuntu-logo
+---
+Linux 6.8.0-134-generic x86_64
+---
+bash: line 1: docker: command not found
+---
+bash: line 1: trivy: command not found
+trivy: not yet installed
+---
+bash: line 1: lynis: command not found
+lynis: not yet installed (installed by seed.sh)
+---
+2026-09-10T04:49:45Z

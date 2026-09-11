@@ -1,0 +1,1011 @@
+{
+  "profile": "cisc-w2026-report",
+  "note": "This is a research-report document assembled for a CISC-W 2026 paper submission. It is NOT the project's canonical published measurement — see raw_files for the actual scripts/measure/run.sh outputs this was built from. profile is deliberately NOT 'seeded' or 'control' so internal/docs/measurements_test.go does not treat this file as the site's source of truth.",
+  "generated_by": "Claude Sonnet 5, interactive session, executed directly against disposable Vagrant/libvirt VMs (scripts/measure/Vagrantfile, target 'ubuntu')",
+  "environment": {
+    "source_commit": "290b4d1ad429df94e95e6628fbb583eed800750d",
+    "source_tree_status": "clean (git status --short empty) at the time the VM was rsynced and built",
+    "build_note": "scripts/measure/Vagrantfile builds with `GOFLAGS=-buildvcs=false go build`, so the resulting binary's own `hostveil version` string does NOT embed this commit hash. The commit hash above was captured on the host via `git rev-parse HEAD` immediately before `vagrant up`.",
+    "hostveil_version_string": "hostveil v3-dev",
+    "measured_at_experiment_A_B": "2026-09-10T05:26:39+00:00",
+    "measured_at_experiment_C": "2026-09-11T01:46:06+00:00",
+    "host_experiment_A_B": {
+      "pretty_name": "Ubuntu 24.04.5 LTS",
+      "version_id": "24.04",
+      "id": "ubuntu",
+      "kernel": "6.8.0-134-generic",
+      "arch": "x86_64"
+    },
+    "host_experiment_C": {
+      "pretty_name": "Ubuntu 24.04.4 LTS",
+      "version_id": "24.04",
+      "id": "ubuntu",
+      "kernel": "6.8.0-134-generic",
+      "arch": "x86_64"
+    },
+    "docker_version": "Docker version 29.8.0, build 88096ef",
+    "trivy_version": "Version: 0.74.0",
+    "lynis_version": "3.0.9",
+    "docker_bench_security_commit": "154869da6418089decf7e1ab0cfca0e1cdfc5c49",
+    "trivy_installer_script_commit": "dcbadb7b15076c405ce7d59f04cde9991b90da22",
+    "raw_files": {
+      "env_before_seed": "2026-09-10-cisc-w2026-env-before-seed.log",
+      "env_after_seed": "2026-09-10-cisc-w2026-env-after-seed.log",
+      "experiment_A_B_seed_log": "2026-09-10-cisc-w2026-seedA.log",
+      "experiment_A_B_run_log": "2026-09-10-cisc-w2026-runA.log",
+      "experiment_A_B_full_json": "2026-09-10-cisc-w2026-seeded-raw.json",
+      "experiment_C_first_seed_log": "2026-09-10-cisc-w2026-seedC-initial.log",
+      "experiment_C_manual_control_verification_log": "2026-09-10-cisc-w2026-controlC-manual-verification.log",
+      "experiment_C_reseed_log": "2026-09-10-cisc-w2026-seedC-reseed.log",
+      "experiment_C_run_log": "2026-09-10-cisc-w2026-runC.log",
+      "experiment_C_full_json": "2026-09-10-cisc-w2026-control-raw.json"
+    }
+  },
+  "experiment_A_before_after_rollback": {
+    "methodology": "scripts/measure/run.sh -c -p cisc-w2026-seeded /tmp/a.json, run unmodified, on a host seeded fresh by scripts/measure/seed.sh. Phase mapping to the task's S0-S3: before=S0 (seeded, untouched), after=S1 (post `hostveil fix --all --yes`, nothing restarted), restarted=S2 (S1 + `docker compose up -d` on every stack + sysctl --system + sshd reload), reviewed=S3 (S2 + `hostveil fix --all --review --yes` + restart again). check.py's exit code for this run was 0 (both of its promises held: rollback fidelity and score-improved).",
+    "check_py_summary_line": "{\"profile\": \"fixes\", \"score\": [28, 37], \"changed\": 28, \"restored\": 25, \"fidelity\": 89, \"residue_expected\": true}",
+    "phases": {
+      "before": {
+        "hostveil": {
+          "overall": 28,
+          "applicable": true,
+          "findings": 140,
+          "by_severity": {
+            "high": 40,
+            "medium": 41,
+            "low": 59
+          },
+          "axes": {
+            "container": 0,
+            "ssh": 10,
+            "firewall": 50,
+            "updates": 19,
+            "cve": 5,
+            "ports": 12,
+            "accounts": 15,
+            "fileperms": 25,
+            "agent": 0,
+            "sysctl": 14,
+            "dockerd": 77,
+            "systemd": 100,
+            "proxy": 100
+          },
+          "domains_run": 13,
+          "domains_complete": 13
+        },
+        "lynis": {
+          "hardening_index": 57,
+          "tests_executed": 264,
+          "warnings": 4,
+          "suggestions": 37
+        },
+        "docker_bench": {
+          "version": "1.6.0",
+          "checks": 44,
+          "score": -1
+        },
+        "external_scan": {
+          "from": "container on the docker bridge",
+          "target": "172.17.0.1",
+          "reachable_tcp": [
+            22,
+            5432,
+            6379,
+            6380,
+            8080,
+            8096
+          ],
+          "count": 6
+        },
+        "listeners": {
+          "wildcard_or_routable_tcp": [
+            22,
+            5432,
+            6379,
+            6380,
+            8080,
+            8096
+          ],
+          "loopback_only_tcp": [
+            53
+          ],
+          "count": 6
+        }
+      },
+      "after": {
+        "hostveil": {
+          "overall": 37,
+          "applicable": true,
+          "findings": 97,
+          "by_severity": {
+            "high": 29,
+            "medium": 28,
+            "low": 40
+          },
+          "axes": {
+            "container": 2,
+            "ssh": 31,
+            "firewall": 50,
+            "updates": 23,
+            "cve": 5,
+            "ports": 27,
+            "accounts": 19,
+            "fileperms": 100,
+            "agent": 6,
+            "sysctl": 14,
+            "dockerd": 77,
+            "systemd": 100,
+            "proxy": 100
+          },
+          "domains_run": 13,
+          "domains_complete": 13
+        },
+        "lynis": {
+          "hardening_index": 63,
+          "tests_executed": 264,
+          "warnings": 4,
+          "suggestions": 33
+        },
+        "docker_bench": {
+          "version": "1.6.0",
+          "checks": 44,
+          "score": -1
+        },
+        "external_scan": {
+          "from": "container on the docker bridge",
+          "target": "172.17.0.1",
+          "reachable_tcp": [
+            22,
+            5432,
+            6379,
+            6380,
+            8080,
+            8096
+          ],
+          "count": 6
+        },
+        "listeners": {
+          "wildcard_or_routable_tcp": [
+            22,
+            5432,
+            6379,
+            6380,
+            8080,
+            8096
+          ],
+          "loopback_only_tcp": [
+            53
+          ],
+          "count": 6
+        }
+      },
+      "restarted": {
+        "hostveil": {
+          "overall": 40,
+          "applicable": true,
+          "findings": 83,
+          "by_severity": {
+            "high": 28,
+            "medium": 19,
+            "low": 36
+          },
+          "axes": {
+            "container": 2,
+            "ssh": 31,
+            "firewall": 50,
+            "updates": 23,
+            "cve": 5,
+            "ports": 38,
+            "accounts": 19,
+            "fileperms": 100,
+            "agent": 6,
+            "sysctl": 55,
+            "dockerd": 77,
+            "systemd": 100,
+            "proxy": 100
+          },
+          "domains_run": 13,
+          "domains_complete": 13
+        },
+        "lynis": {
+          "hardening_index": 66,
+          "tests_executed": 264,
+          "warnings": 4,
+          "suggestions": 33
+        },
+        "docker_bench": {
+          "version": "1.6.0",
+          "checks": 44,
+          "score": 3
+        },
+        "external_scan": {
+          "from": "container on the docker bridge",
+          "target": "172.17.0.1",
+          "reachable_tcp": [
+            22,
+            6379
+          ],
+          "count": 2
+        },
+        "listeners": {
+          "wildcard_or_routable_tcp": [
+            22,
+            6379
+          ],
+          "loopback_only_tcp": [
+            53,
+            5432,
+            6380,
+            8080,
+            8096,
+            9000
+          ],
+          "count": 2
+        }
+      },
+      "reviewed": {
+        "hostveil": {
+          "overall": 58,
+          "applicable": true,
+          "findings": 52,
+          "by_severity": {
+            "high": 24,
+            "medium": 11,
+            "low": 17
+          },
+          "axes": {
+            "container": 2,
+            "ssh": 100,
+            "firewall": 100,
+            "updates": 41,
+            "cve": 5,
+            "ports": 50,
+            "accounts": 44,
+            "fileperms": 94,
+            "agent": 13,
+            "sysctl": 88,
+            "dockerd": 77,
+            "systemd": 100,
+            "proxy": 100
+          },
+          "domains_run": 13,
+          "domains_complete": 13
+        },
+        "lynis": {
+          "hardening_index": 79,
+          "tests_executed": 270,
+          "warnings": 3,
+          "suggestions": 22
+        },
+        "docker_bench": {
+          "version": "1.6.0",
+          "checks": 44,
+          "score": 5
+        },
+        "external_scan": {
+          "from": "container on the docker bridge",
+          "target": "172.17.0.1",
+          "reachable_tcp": [
+            22
+          ],
+          "count": 1
+        },
+        "listeners": {
+          "wildcard_or_routable_tcp": [
+            22,
+            6379
+          ],
+          "loopback_only_tcp": [
+            53,
+            5432,
+            6380,
+            8080,
+            8096,
+            9000
+          ],
+          "count": 2
+        }
+      },
+      "restored": {
+        "hostveil": {
+          "overall": 32,
+          "applicable": true,
+          "findings": 121,
+          "by_severity": {
+            "high": 39,
+            "medium": 31,
+            "low": 51
+          },
+          "axes": {
+            "container": 0,
+            "ssh": 10,
+            "firewall": 50,
+            "updates": 34,
+            "cve": 5,
+            "ports": 13,
+            "accounts": 30,
+            "fileperms": 23,
+            "agent": 0,
+            "sysctl": 49,
+            "dockerd": 77,
+            "systemd": 100,
+            "proxy": 100
+          },
+          "domains_run": 13,
+          "domains_complete": 13
+        },
+        "lynis": {
+          "hardening_index": 67,
+          "tests_executed": 270,
+          "warnings": 3,
+          "suggestions": 31
+        },
+        "docker_bench": {
+          "version": "1.6.0",
+          "checks": 44,
+          "score": -3
+        },
+        "external_scan": {
+          "from": "container on the docker bridge",
+          "target": "172.17.0.1",
+          "reachable_tcp": [
+            22,
+            5432,
+            6380,
+            8080,
+            8096,
+            9000
+          ],
+          "count": 6
+        },
+        "listeners": {
+          "wildcard_or_routable_tcp": [
+            22,
+            5432,
+            6379,
+            6380,
+            8080,
+            8096,
+            9000
+          ],
+          "loopback_only_tcp": [
+            53
+          ],
+          "count": 7
+        }
+      }
+    },
+    "fixes_applied_pass": {
+      "attempted": 55,
+      "failed": []
+    },
+    "review_fixes_applied_pass": {
+      "applied": 40,
+      "left_a_checkpoint": 24,
+      "not_reversible": 16
+    },
+    "deltas": {
+      "lynis_suggestions": {
+        "before": 37,
+        "after": {
+          "cleared": [
+            "ACCT-9626",
+            "AUTH-9230",
+            "AUTH-9286",
+            "KRNL-5820"
+          ],
+          "appeared": [],
+          "total": 33
+        },
+        "restarted": {
+          "cleared": [
+            "ACCT-9626",
+            "AUTH-9230",
+            "AUTH-9286",
+            "KRNL-5820"
+          ],
+          "appeared": [],
+          "total": 33
+        },
+        "reviewed": {
+          "cleared": [
+            "ACCT-9622",
+            "ACCT-9626",
+            "ACCT-9628",
+            "AUTH-9230",
+            "AUTH-9286",
+            "BANN-7126",
+            "BANN-7130",
+            "DBS-1886",
+            "DBS-1888",
+            "DEB-0811",
+            "HRDN-7230",
+            "KRNL-5820",
+            "PKGS-7370",
+            "PKGS-7392",
+            "PKGS-7394",
+            "USB-1000"
+          ],
+          "appeared": [
+            "HRDN-7222"
+          ],
+          "total": 22
+        },
+        "restored": {
+          "cleared": [
+            "ACCT-9622",
+            "ACCT-9628",
+            "DEB-0811",
+            "HRDN-7230",
+            "PKGS-7370",
+            "PKGS-7392",
+            "PKGS-7394"
+          ],
+          "appeared": [
+            "HRDN-7222"
+          ],
+          "total": 31
+        }
+      },
+      "lynis_warnings": {
+        "before": 4,
+        "after": {
+          "cleared": [],
+          "appeared": [],
+          "total": 4
+        },
+        "restarted": {
+          "cleared": [],
+          "appeared": [],
+          "total": 4
+        },
+        "reviewed": {
+          "cleared": [
+            "AUTH-9283",
+            "PKGS-7392"
+          ],
+          "appeared": [
+            "KRNL-5830"
+          ],
+          "total": 3
+        },
+        "restored": {
+          "cleared": [
+            "AUTH-9283",
+            "PKGS-7392"
+          ],
+          "appeared": [
+            "KRNL-5830"
+          ],
+          "total": 3
+        }
+      },
+      "docker_bench_warnings": {
+        "before": 15,
+        "after": {
+          "cleared": [],
+          "appeared": [],
+          "total": 15
+        },
+        "restarted": {
+          "cleared": [
+            "5.14",
+            "5.26",
+            "5.3"
+          ],
+          "appeared": [
+            "5.32"
+          ],
+          "total": 13
+        },
+        "reviewed": {
+          "cleared": [
+            "5.11",
+            "5.14",
+            "5.26",
+            "5.3"
+          ],
+          "appeared": [
+            "5.32"
+          ],
+          "total": 12
+        },
+        "restored": {
+          "cleared": [],
+          "appeared": [
+            "5.32"
+          ],
+          "total": 16
+        }
+      },
+      "external_scan_reachable_tcp": {
+        "before": 6,
+        "after": {
+          "cleared": [],
+          "appeared": [],
+          "total": 6
+        },
+        "restarted": {
+          "cleared": [
+            5432,
+            6380,
+            8080,
+            8096
+          ],
+          "appeared": [],
+          "total": 2
+        },
+        "reviewed": {
+          "cleared": [
+            5432,
+            6379,
+            6380,
+            8080,
+            8096
+          ],
+          "appeared": [],
+          "total": 1
+        },
+        "restored": {
+          "cleared": [
+            6379
+          ],
+          "appeared": [
+            9000
+          ],
+          "total": 6
+        }
+      },
+      "listeners_public_tcp": {
+        "before": 6,
+        "after": {
+          "cleared": [],
+          "appeared": [],
+          "total": 6
+        },
+        "restarted": {
+          "cleared": [
+            5432,
+            6380,
+            8080,
+            8096
+          ],
+          "appeared": [],
+          "total": 2
+        },
+        "reviewed": {
+          "cleared": [
+            5432,
+            6380,
+            8080,
+            8096
+          ],
+          "appeared": [],
+          "total": 2
+        },
+        "restored": {
+          "cleared": [],
+          "appeared": [
+            9000
+          ],
+          "total": 7
+        }
+      }
+    },
+    "ss_vs_external_scan_discrepancy": {
+      "observation": "In the 'restored' phase, `ss -ltn` reports port 6379 (native, non-Docker Redis, from seed.sh's exposed-datastore step) bound to 0.0.0.0, but the off-host container scan does NOT report it reachable. Conversely, ports 5432/6380/8080/8096/9000 (all Docker-published container ports) show as both wildcard-bound AND externally reachable, even though ufw is verified 'active' with a default-deny-incoming policy that allows only port 22.",
+      "verified_state_after_restore": {
+        "ufw_status_verbose": "Status: active / Default: deny (incoming), allow (outgoing), deny (routed) / rules: 22/tcp ALLOW IN Anywhere (v4+v6)",
+        "redis_conf_after_rollback": "bind 0.0.0.0 / protected-mode no (matches seed.sh's original seeded values -- the file edit rolled back correctly)"
+      },
+      "root_cause": "ufw's rules apply to the host's own INPUT chain, which the native redis-server process is filtered by. Docker inserts its own iptables DNAT/FORWARD rules for every `-p host:container` published port, and those take effect ahead of ufw's filter chain -- this is the exact mechanism hostveil's own `firewall.docker-bypass` finding (internal/check/firewall) exists to describe. So after rollback, ufw is genuinely enabled and genuinely blocking the one native service it can see (6379), while every Docker-published port remains reachable regardless of ufw state. ss and the external scan are both telling the truth; they are answering different questions (what is bound vs. what a packet filter actually stops), and this is not a measurement bug.",
+      "why_ufw_is_still_enabled_after_a_full_rollback": "`firewall.inactive`'s registered fix is Auto-declared but exec-floored to Review (AGENTS.md: the exec floor in fix.Fix.EffectiveKind) because `ufw enable` is a command, not a file edit, so applyExec keeps no checkpoint. hostveil's own rollback engine has nothing to undo for it -- this is expected residue, not a bug, and is part of why reviewed.not_reversible=16 and residue_expected=true for this run."
+    }
+  },
+  "experiment_B_rollback_fidelity": {
+    "methodology": "Same run as Experiment A. Paths watched = every absolute path any `hostveil scan --json` finding pointed at (metadata/evidence), plus every file under /etc/sysctl.d, SHA-256'd BEFORE any fix ran (the live filesystem, not hostveil's own checkpoints -- scripts/measure/instruments/rollback.sh candidates+hash). Re-hashed after full rollback (`hostveil rollback <id>` newest-first over every checkpoint created during the run).",
+    "paths_watched": 60,
+    "paths_changed_by_fixes": 28,
+    "paths_restored_exactly": 25,
+    "fidelity_percent": 89,
+    "checkpoints_before": 0,
+    "checkpoints_rolled_back": 79,
+    "checkpoint_failures": [],
+    "review_fixes_hostveil_declared_not_reversible": 16,
+    "paths_not_restored_with_individual_cause": [
+      {
+        "path": "/etc/shadow",
+        "cause": "Content-level change, not just permissions. `ssh.emptypasswords`'s local-account half (internal/fix/accounts.go, buildLocalEmptyPasswordFix or equivalent) runs `passwd -l <account>` as an ActionExec against the seeded `contractor` account (empty password from seed.sh's shadow-readable step). ActionExec has no backup -- applyExec records the outcome after running, with nothing file-backed to restore (AGENTS.md: 'Apply order is always backup -> write ... applyExec is the odd one -- commands run first and the record is written after, with no backup at all'). This is deliberate: hostveil cannot and should not restore an empty password. Confirmed real and not a chmod-only artifact: `fileperms.shadow`'s own permission-only fix (0640) for this same file DID roll back exactly -- current mode is 644 (the seeded value), verified directly with `stat` after restore.",
+        "expected": true
+      },
+      {
+        "path": "/etc/issue",
+        "cause": "hostveil's own edit (accounts.local-banner, an ActionEdit / Auto fix with a checkpoint) rolled back correctly -- the currently-restored file content has NO banner text. The hash mismatch against the pre-fix baseline is caused by an UNRELATED event in the same measurement window: `dpkg.log` on the VM shows `upgrade base-files:amd64 13ubuntu10.4 13ubuntu10.5` at 2026-09-10 05:10:44, which is the package that ships /etc/issue's default content, triggered as a side effect of `apt-get install unattended-upgrades` (the exec half of `updates.disabled`'s review fix pulling in a routine apt index refresh). The rollback-fidelity methodology (a single before/after SHA-256 diff) cannot distinguish 'hostveil failed to restore' from 'hostveil restored correctly, then the OS's own package manager rewrote the file for an unrelated reason' -- both produce the same hash mismatch.",
+        "expected": false,
+        "note": "Not a hostveil defect; a limitation of hash-diff-only rollback verification when other processes can also write to a watched path during the measurement window."
+      },
+      {
+        "path": "/etc/issue.net",
+        "cause": "Same root cause and same evidence as /etc/issue above (also owned by base-files).",
+        "expected": false
+      }
+    ],
+    "paths_with_unobserved_before_state": [
+      "/usr/bin/x86_64-linux-gnu-as",
+      "/usr/bin/x86_64-linux-gnu-as (0755)",
+      "/usr/bin/x86_64-linux-gnu-ld.bfd",
+      "/usr/bin/x86_64-linux-gnu-ld.bfd (0755)"
+    ],
+    "paths_with_unobserved_before_state_note": "These four entries are `/usr/bin/x86_64-linux-gnu-as` and `...-ld.bfd`, which only appear because they were installed fresh by a package (build-essential/binutils, pulled in transitively) after the 'before' hash was taken -- report.py's rollback_verdict only excuses a newly-appeared path from this bucket if it falls under an enumerated directory (/etc/sysctl.d); these do not, so they are flagged even though they are not hostveil findings at all. Recorded as-is, not silently dropped."
+  },
+  "experiment_C_control": {
+    "methodology": "A SEPARATE, freshly re-seeded VM (not the same instance as Experiment A/B, and not reused across attempts -- see execution_notes for why a first attempt on this VM had to be discarded and the host re-seeded). `scripts/measure/run.sh -C -c -p cisc-w2026-control /tmp/c.json`, which runs its OWN 'before' measurement, then calls scripts/measure/control.sh internally (CIS Docker Benchmark + Lynis-suggestion-shaped hardening -- sshd, sysctl, file perms, the UID-0 twin account, the Docker daemon config -- with zero reference to hostveil's fix registry), restarts the compose stacks, then measures 'controlled'. hostveil applied nothing in this experiment.",
+    "check_py_summary_line": "{\"profile\": \"control\", \"score\": [30, 38]}",
+    "account_deletion_step_verification": {
+      "observed_stderr": "userdel: user breakglass is currently used by process 1",
+      "printed_not_swallowed": true,
+      "actually_deleted": true,
+      "verification_commands": [
+        "getent passwd breakglass -> exit 2 (no such entry)",
+        "id breakglass -> \"id: 'breakglass': no such user\", exit 1"
+      ],
+      "explanation": "control.sh runs `userdel -f \"$u\"` with no `2>/dev/null || true` (control.sh's own comment documents a PAST version of this script that swallowed this exact error and silently deleted nothing). GNU userdel still PRINTS the 'currently used by process 1' warning even with -f, because the UID-0 twin shares PID 1's UID -- but -f forces the deletion through anyway. Confirmed empirically in this run, not assumed from the log message: the account is genuinely gone afterward."
+    },
+    "phases": {
+      "before": {
+        "hostveil": {
+          "overall": 30,
+          "applicable": true,
+          "findings": 131,
+          "by_severity": {
+            "high": 39,
+            "medium": 36,
+            "low": 56
+          },
+          "axes": {
+            "container": 0,
+            "ssh": 12,
+            "firewall": 50,
+            "updates": 19,
+            "cve": 5,
+            "ports": 24,
+            "accounts": 15,
+            "fileperms": 25,
+            "agent": 0,
+            "sysctl": 27,
+            "dockerd": 77,
+            "systemd": 100,
+            "proxy": 100
+          },
+          "domains_run": 13,
+          "domains_complete": 13
+        },
+        "lynis": {
+          "hardening_index": 60,
+          "tests_executed": 264,
+          "warnings": 4,
+          "suggestions": 37
+        },
+        "docker_bench": {
+          "version": "1.6.0",
+          "checks": 44,
+          "score": 1
+        },
+        "external_scan": {
+          "from": "container on the docker bridge",
+          "target": "172.17.0.1",
+          "reachable_tcp": [
+            22,
+            6379
+          ],
+          "count": 2
+        },
+        "listeners": {
+          "wildcard_or_routable_tcp": [
+            22,
+            5432,
+            6379,
+            6380,
+            8080,
+            8096
+          ],
+          "loopback_only_tcp": [
+            53
+          ],
+          "count": 6
+        }
+      },
+      "controlled": {
+        "hostveil": {
+          "overall": 38,
+          "applicable": true,
+          "findings": 126,
+          "by_severity": {
+            "high": 36,
+            "medium": 35,
+            "low": 55
+          },
+          "axes": {
+            "container": 0,
+            "ssh": 59,
+            "firewall": 50,
+            "updates": 19,
+            "cve": 5,
+            "ports": 12,
+            "accounts": 30,
+            "fileperms": 50,
+            "agent": 0,
+            "sysctl": 27,
+            "dockerd": 77,
+            "systemd": 100,
+            "proxy": 100
+          },
+          "domains_run": 13,
+          "domains_complete": 13
+        },
+        "lynis": {
+          "hardening_index": 62,
+          "tests_executed": 264,
+          "warnings": 2,
+          "suggestions": 37
+        },
+        "docker_bench": {
+          "version": "1.6.0",
+          "checks": 44,
+          "score": -1
+        },
+        "external_scan": {
+          "from": "container on the docker bridge",
+          "target": "172.17.0.1",
+          "reachable_tcp": [
+            22,
+            6379
+          ],
+          "count": 2
+        },
+        "listeners": {
+          "wildcard_or_routable_tcp": [
+            22,
+            5432,
+            6379,
+            6380,
+            8080,
+            8096,
+            9000
+          ],
+          "loopback_only_tcp": [
+            53
+          ],
+          "count": 7
+        }
+      }
+    },
+    "deltas": {
+      "lynis_suggestions": {
+        "before": 37,
+        "controlled": {
+          "cleared": [],
+          "appeared": [],
+          "total": 37
+        }
+      },
+      "lynis_warnings": {
+        "before": 4,
+        "controlled": {
+          "cleared": [
+            "AUTH-9204",
+            "AUTH-9208"
+          ],
+          "appeared": [],
+          "total": 2
+        }
+      },
+      "docker_bench_warnings": {
+        "before": 14,
+        "controlled": {
+          "cleared": [],
+          "appeared": [
+            "5.32"
+          ],
+          "total": 15
+        }
+      },
+      "external_scan_reachable_tcp": {
+        "before": 2,
+        "controlled": {
+          "cleared": [],
+          "appeared": [],
+          "total": 2
+        }
+      },
+      "listeners_public_tcp": {
+        "before": 6,
+        "controlled": {
+          "cleared": [],
+          "appeared": [
+            9000
+          ],
+          "total": 7
+        }
+      }
+    },
+    "axes_that_did_not_move": {
+      "container": "0 -> 0",
+      "firewall": "50 -> 50 (control.sh never touches ufw/firewalld -- CIS 5.2/3.3/1.5/6.1/5.4.2/Docker-2.x sections chosen don't include enabling a firewall)",
+      "updates": "19 -> 19 (control.sh does not install/enable unattended-upgrades)",
+      "cve": "5 -> 5 (control.sh never rebuilds or patches container images)",
+      "sysctl": "27 -> 27 (control.sh writes DIFFERENT sysctl keys than hostveil's checker looks for -- see note below)",
+      "dockerd": "77 -> 77 (control.sh edits /etc/docker/daemon.json, but the daemon is never restarted in this harness -- checker reads live daemon state, matching the documented TakesEffectOn gap)",
+      "systemd": "100 -> 100 (already at cap; control.sh does not touch systemd unit hardening)",
+      "proxy": "100 -> 100 (no reverse proxy in this fixture; already at cap)",
+      "agent": "0 -> 0 (control.sh never touches the AI-agent config fixtures)"
+    },
+    "axis_that_got_worse": {
+      "ports": "24 -> 12",
+      "evidence": "listeners_public_tcp delta shows port 9000 (portainer's web UI) newly bound wildcard in the 'controlled' phase, absent in 'before'.",
+      "likely_cause": "Timing, not control.sh's action: this VM was re-seeded immediately before the run started, and portainer's container appears to have still been starting when the 'before' instrument sweep ran. control.sh never touches ports, ufw, or compose files, so it cannot itself be responsible for a new port appearing. Reported as an honest, unresolved discrepancy rather than smoothed over -- not independently re-verified with a second run because doing so would require re-seeding this host a third time."
+    },
+    "docker_bench_got_worse": {
+      "before_warnings": 14,
+      "controlled_warnings": 15,
+      "appeared_check": "5.32",
+      "note": "This session did not independently verify what CIS Docker Benchmark check 5.32's text says (docker-bench-security's own describe strings were not captured before the VM was destroyed); reported as an ID only, not interpreted."
+    }
+  },
+  "confirmation_D_source_verification": {
+    "detection_domains_and_caps": {
+      "source_file": "internal/model/source.go",
+      "table_name": "sourceDefs",
+      "rows": [
+        {
+          "source": "compose",
+          "axis": "container",
+          "label": "Container exposure",
+          "cap": 13
+        },
+        {
+          "source": "ssh",
+          "axis": "ssh",
+          "label": "SSH hardening",
+          "cap": 13
+        },
+        {
+          "source": "firewall",
+          "axis": "firewall",
+          "label": "Host firewall",
+          "cap": 8
+        },
+        {
+          "source": "updates",
+          "axis": "updates",
+          "label": "Auto-updates",
+          "cap": 7
+        },
+        {
+          "source": "cve",
+          "axis": "cve",
+          "label": "Vulnerabilities",
+          "cap": 9
+        },
+        {
+          "source": "ports",
+          "axis": "ports",
+          "label": "Exposed services",
+          "cap": 7
+        },
+        {
+          "source": "accounts",
+          "axis": "accounts",
+          "label": "Account hygiene",
+          "cap": 7
+        },
+        {
+          "source": "fileperms",
+          "axis": "fileperms",
+          "label": "File permissions",
+          "cap": 5
+        },
+        {
+          "source": "agent",
+          "axis": "agent",
+          "label": "AI agent runtimes",
+          "cap": 7
+        },
+        {
+          "source": "sysctl",
+          "axis": "sysctl",
+          "label": "Kernel hardening",
+          "cap": 5
+        },
+        {
+          "source": "dockerd",
+          "axis": "dockerd",
+          "label": "Docker daemon",
+          "cap": 7
+        },
+        {
+          "source": "systemd",
+          "axis": "systemd",
+          "label": "Service hardening",
+          "cap": 6
+        },
+        {
+          "source": "proxy",
+          "axis": "proxy",
+          "label": "Reverse proxy",
+          "cap": 6
+        }
+      ],
+      "sum_of_caps": 100,
+      "verified": "re-read directly from internal/model/source.go lines ~92-104 in this session; sum computed by hand: 13+13+8+7+9+7+7+5+7+5+7+6+6=100"
+    },
+    "severity_weights": {
+      "source_file": "internal/model/severity.go",
+      "table_name": "severityDefs",
+      "penalties": {
+        "high": 8,
+        "medium": 2,
+        "low": 1
+      },
+      "scaling_constant": {
+        "file": "internal/model/score.go",
+        "name": "topHalves",
+        "value": 16
+      },
+      "effective_weight_of_remaining_axis_credit": {
+        "high": "8/16 = 0.5",
+        "medium": "2/16 = 0.125",
+        "low": "1/16 = 0.0625"
+      },
+      "note": "Matches the task's hypothesis of 1/2, 1/8, 1/16 as fractions of topHalves=16, not as divisors of a constant 1."
+    },
+    "harmonic_repeat_damping": {
+      "source_file": "internal/model/score.go",
+      "function": "weight(f Finding, nth int)",
+      "code": "w := float64(f.Severity.Penalty()) / topHalves; if nth > 1 { w /= float64(nth) }; return w",
+      "applied_in": "scoreOnce, which groups findings by {axis, ID}, sorts heaviest-first, and does remaining[axis] *= 1 - weight(f, n+1) per instance.",
+      "verified": true
+    },
+    "na_and_renormalization": {
+      "source_file": "internal/model/score.go",
+      "functions": [
+        "scoreOnce (sets ScoreAxis.Applicable/Degraded, accumulates only over Applicable axes)",
+        "renormalize(penalty, ranCapSum) (scaled := round(penalty*100/ranCapSum))"
+      ],
+      "verified": true
+    },
+    "unavailable_relief_removed": {
+      "commit": "925d5f10769c17436f4b40514a616bc570e04547",
+      "commit_subject": "fix(model): charge Unavailable findings at full weight (#802)",
+      "grep_for_unavailableRelief_in_internal": "no matches (confirmed removed)",
+      "current_behavior": "weight() has no branch on RemediationKind at all -- RemediationUnavailable findings cost exactly what their severity says, same as any other finding."
+    },
+    "finding_and_fix_inventory": {
+      "raw_NewFinding_call_sites_in_internal_check": 57,
+      "caveat": "Undercounts true distinct finding IDs: several call sites (ssh, sysctl, systemd, agent) are inside loops over rule tables, each emitting many distinct IDs from one NewFinding(...) call site.",
+      "fix_registry_source_file": "internal/fix/register.go, function Default()",
+      "registered_fix_ids_total": 128,
+      "effective_kind_auto": 101,
+      "effective_kind_review": 27,
+      "one_host_dependent_id": "updates.disabled (Auto if unattended-upgrades already installed, Review/exec-floored otherwise -- counted above under its common-case Auto path)",
+      "deliberately_unregistered_categories_from_fix_Default_doc_comment": [
+        "ambiguous / needs a human choice (firewall.docker-bypass, accounts.sudo-nopasswd, agent.sandbox-off, agent.auth-disabled)",
+        "no checkpoint / irreversible (updates.reboot-required, fileperms.owner, accounts.uid0)",
+        "no locatable config path from evidence (ports.exposed-datastore, ports.exposed-admin)",
+        "root-equivalent or breaks legitimate use (compose.ds001/ds005/dr001/ds016/ds020-ds024/ds026)",
+        "guessed value would be wrong for half of hosts (compose.ds009/ds012/ds017/dr004/dr005)",
+        "recoverability failure -- could lock the operator out (ports.exposed, agent.gateway-exposed, proxy.traefik-api-insecure)",
+        "config-precedence hostveil cannot resolve (proxy.tls-deprecated-protocols, proxy.directory-listing)",
+        "per-CVE identifiers with no version-to-image-tag mapping (cve.<id>)",
+        "8 of 14 systemd hardening rules (protect-system, private-tmp, protect-home, private-devices, protect-kernel-tunables, protect-control-groups, restrict-namespaces, memory-deny-write-execute)",
+        "the entire dockerd.* domain (7 findings) -- fixing any of them requires `systemctl restart docker`, which stops every running container"
+      ]
+    }
+  },
+  "execution_notes_and_deviations": [
+    "Experiment C required a discarded first attempt: control.sh was run manually once (to directly verify the account-deletion step in isolation), which then meant the VM was no longer in a pristine seeded state for run.sh -C's own internal 'before' measurement. The VM was re-seeded from scratch before the reported run.sh -C execution; the manual control.sh run is kept in this report only as supplementary account-deletion evidence, not as part of the before/controlled comparison.",
+    "Two attempts at running the Experiment C harness were killed by this session's own background-task memory watchdog due to host memory pressure unrelated to hostveil (the development machine's desktop session -- browser, chat client, game client -- was consuming most of 14GB RAM alongside the 2GB measurement VM). The user freed memory on the host between attempts; the run that is reported here is the one that completed (RUNSH_EXIT=0). This is disclosed because the task instructions require reporting retries rather than silently keeping only a clean-looking run -- the retries here were due to host resource contention, not because earlier attempts produced unfavorable data (no measurement data was produced by the killed attempts; they died during initial path-hashing, before any phase completed).",
+    "Experiment A and B share one run (scripts/measure/run.sh's rollback block is exactly Experiment B).",
+    "hostveil's own version string is 'v3-dev' in both VMs because scripts/measure/Vagrantfile builds with -buildvcs=false and does not pass release ldflags; the source commit is recorded separately in environment.source_commit, verified via `git rev-parse HEAD` on the host immediately before `vagrant up`."
+  ]
+}

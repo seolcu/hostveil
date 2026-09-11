@@ -1,0 +1,9 @@
+==> sshd: CIS 5.2 baseline
+==> sysctl: CIS 3.3/1.5 baseline
+==> file permissions: CIS 6.1
+==> accounts: CIS 5.4.2
+==>   removing UID 0 account breakglass
+userdel: user breakglass is currently used by process 1
+==> docker: CIS Docker Benchmark 2.x
+==> control host hardened — measure it with: scripts/measure/run.sh -p control
+EXIT=0
