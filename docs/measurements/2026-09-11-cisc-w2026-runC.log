@@ -1,0 +1,30 @@
+==> profile cisc-w2026-control-v2 — recording where the fix history stands
+==> hashing the before-state of every path a finding points at
+==> 56 paths watched
+==> BEFORE
+==> before: hostveil
+==> before: lynis
+==> before: dockerbench
+==> before: extscan
+==> before: listeners
+==> hardening the host from the CIS Benchmarks, without hostveil
+==> sshd: CIS 5.2 baseline
+==> sysctl: CIS 3.3/1.5 baseline
+==> file permissions: CIS 6.1
+==> accounts: CIS 5.4.2
+==>   removing UID 0 account breakglass
+userdel: user breakglass is currently used by process 1
+==> docker: CIS Docker Benchmark 2.x
+==> control host hardened — measure it with: scripts/measure/run.sh -p control
+==>   docker compose -f /opt/stacks/cloud/docker-compose.yml up -d
+==>   docker compose -f /opt/stacks/mgmt/docker-compose.yml up -d
+==>   docker compose -f /opt/stacks/media/docker-compose.yml up -d
+==> CONTROLLED
+==> controlled: hostveil
+==> controlled: lynis
+==> controlled: dockerbench
+==> controlled: extscan
+==> controlled: listeners
+==> wrote /tmp/c.json
+{"profile": "control", "score": [28, 38]}
+RUNSH_EXIT=0

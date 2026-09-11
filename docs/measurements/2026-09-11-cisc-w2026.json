@@ -1,14 +1,15 @@
 {
   "profile": "cisc-w2026-report",
-  "note": "This is a research-report document assembled for a CISC-W 2026 paper submission. It is NOT the project's canonical published measurement — see raw_files for the actual scripts/measure/run.sh outputs this was built from. profile is deliberately NOT 'seeded' or 'control' so internal/docs/measurements_test.go does not treat this file as the site's source of truth.",
+  "supersedes": "2026-09-10-cisc-w2026.json",
+  "note": "This is the CLEAN, FINAL re-run requested after the 2026-09-10 attempt: that first run had two disclosed issues (control.sh was run manually once before run.sh -C, contaminating its own 'before' baseline for experiment C; and two run.sh -C attempts were killed by host memory pressure before producing data). This run repeats experiment A/B and experiment C from scratch, each on its own freshly seeded VM, with no manual pre-steps and no retries -- both runs succeeded on the first attempt (RUNSH_EXIT=0). The 2026-09-10 files remain committed for transparency but are SUPERSEDED by this document for reporting purposes. profile is deliberately NOT 'seeded'/'control' so internal/docs/measurements_test.go does not treat this file as the site's source of truth.",
   "generated_by": "Claude Sonnet 5, interactive session, executed directly against disposable Vagrant/libvirt VMs (scripts/measure/Vagrantfile, target 'ubuntu')",
   "environment": {
     "source_commit": "290b4d1ad429df94e95e6628fbb583eed800750d",
-    "source_tree_status": "clean (git status --short empty) at the time the VM was rsynced and built",
-    "build_note": "scripts/measure/Vagrantfile builds with `GOFLAGS=-buildvcs=false go build`, so the resulting binary's own `hostveil version` string does NOT embed this commit hash. The commit hash above was captured on the host via `git rev-parse HEAD` immediately before `vagrant up`.",
+    "source_tree_status": "clean (git status --short empty), reconfirmed immediately before this re-run",
+    "build_note": "scripts/measure/Vagrantfile builds with `GOFLAGS=-buildvcs=false go build`, so `hostveil version` does not embed the commit hash; the commit above was captured via `git rev-parse HEAD` on the host immediately before each `vagrant up`.",
     "hostveil_version_string": "hostveil v3-dev",
-    "measured_at_experiment_A_B": "2026-09-10T05:26:39+00:00",
-    "measured_at_experiment_C": "2026-09-11T01:46:06+00:00",
+    "measured_at_experiment_A_B": "2026-09-11T04:52:54+00:00",
+    "measured_at_experiment_C": "2026-09-11T05:07:49+00:00",
     "host_experiment_A_B": {
       "pretty_name": "Ubuntu 24.04.5 LTS",
       "version_id": "24.04",
@@ -29,20 +30,19 @@
     "docker_bench_security_commit": "154869da6418089decf7e1ab0cfca0e1cdfc5c49",
     "trivy_installer_script_commit": "dcbadb7b15076c405ce7d59f04cde9991b90da22",
     "raw_files": {
-      "env_before_seed": "2026-09-10-cisc-w2026-env-before-seed.log",
-      "env_after_seed": "2026-09-10-cisc-w2026-env-after-seed.log",
-      "experiment_A_B_seed_log": "2026-09-10-cisc-w2026-seedA.log",
-      "experiment_A_B_run_log": "2026-09-10-cisc-w2026-runA.log",
-      "experiment_A_B_full_json": "2026-09-10-cisc-w2026-seeded-raw.json",
-      "experiment_C_first_seed_log": "2026-09-10-cisc-w2026-seedC-initial.log",
-      "experiment_C_manual_control_verification_log": "2026-09-10-cisc-w2026-controlC-manual-verification.log",
-      "experiment_C_reseed_log": "2026-09-10-cisc-w2026-seedC-reseed.log",
-      "experiment_C_run_log": "2026-09-10-cisc-w2026-runC.log",
-      "experiment_C_full_json": "2026-09-10-cisc-w2026-control-raw.json"
+      "env_before_seed": "2026-09-11-cisc-w2026-env-before-seed.log",
+      "env_after_seed": "2026-09-11-cisc-w2026-env-after-seed.log",
+      "experiment_A_B_seed_log": "2026-09-11-cisc-w2026-seedA.log",
+      "experiment_A_B_run_log": "2026-09-11-cisc-w2026-runA.log",
+      "experiment_A_B_full_json": "2026-09-11-cisc-w2026-seeded-raw.json",
+      "experiment_C_seed_log": "2026-09-11-cisc-w2026-seedC.log",
+      "experiment_C_run_log": "2026-09-11-cisc-w2026-runC.log",
+      "experiment_C_full_json": "2026-09-11-cisc-w2026-control-raw.json"
     }
   },
+  "reproducibility_note": "Experiment A/B was run twice total on this fixture (once on 2026-09-10, once here on 2026-09-11, on separately seeded VMs). Every top-line number is byte-identical between the two runs: overall scores 28/37/40/58/32 across the five phases, findings counts 140/97/83/52/121, rollback fidelity 89% with the exact same 3 not-restored paths and the exact same 4 unobserved-before-state entries, and identical lynis/docker-bench deltas. This fixture is highly deterministic for experiment A/B; the causal explanations recorded below (traced with direct evidence on 2026-09-10, e.g. dpkg.log timestamps) are treated as confirmed and were not re-traced line-by-line on this run since the underlying mechanism (package-manager side effects, exec-only fixes with no checkpoint) does not depend on which VM instance produced it.",
   "experiment_A_before_after_rollback": {
-    "methodology": "scripts/measure/run.sh -c -p cisc-w2026-seeded /tmp/a.json, run unmodified, on a host seeded fresh by scripts/measure/seed.sh. Phase mapping to the task's S0-S3: before=S0 (seeded, untouched), after=S1 (post `hostveil fix --all --yes`, nothing restarted), restarted=S2 (S1 + `docker compose up -d` on every stack + sysctl --system + sshd reload), reviewed=S3 (S2 + `hostveil fix --all --review --yes` + restart again). check.py's exit code for this run was 0 (both of its promises held: rollback fidelity and score-improved).",
+    "methodology": "scripts/measure/run.sh -c -p cisc-w2026-seeded-v2 /tmp/a.json, run once, no retries, on a host seeded fresh by scripts/measure/seed.sh. before=S0, after=S1 (`fix --all --yes`, no restart), restarted=S2 (+restart), reviewed=S3 (+`fix --all --review --yes` +restart). check.py exit 0.",
     "check_py_summary_line": "{\"profile\": \"fixes\", \"score\": [28, 37], \"changed\": 28, \"restored\": 25, \"fidelity\": 89, \"residue_expected\": true}",
     "phases": {
       "before": {
@@ -593,17 +593,12 @@
       }
     },
     "ss_vs_external_scan_discrepancy": {
-      "observation": "In the 'restored' phase, `ss -ltn` reports port 6379 (native, non-Docker Redis, from seed.sh's exposed-datastore step) bound to 0.0.0.0, but the off-host container scan does NOT report it reachable. Conversely, ports 5432/6380/8080/8096/9000 (all Docker-published container ports) show as both wildcard-bound AND externally reachable, even though ufw is verified 'active' with a default-deny-incoming policy that allows only port 22.",
-      "verified_state_after_restore": {
-        "ufw_status_verbose": "Status: active / Default: deny (incoming), allow (outgoing), deny (routed) / rules: 22/tcp ALLOW IN Anywhere (v4+v6)",
-        "redis_conf_after_rollback": "bind 0.0.0.0 / protected-mode no (matches seed.sh's original seeded values -- the file edit rolled back correctly)"
-      },
-      "root_cause": "ufw's rules apply to the host's own INPUT chain, which the native redis-server process is filtered by. Docker inserts its own iptables DNAT/FORWARD rules for every `-p host:container` published port, and those take effect ahead of ufw's filter chain -- this is the exact mechanism hostveil's own `firewall.docker-bypass` finding (internal/check/firewall) exists to describe. So after rollback, ufw is genuinely enabled and genuinely blocking the one native service it can see (6379), while every Docker-published port remains reachable regardless of ufw state. ss and the external scan are both telling the truth; they are answering different questions (what is bound vs. what a packet filter actually stops), and this is not a measurement bug.",
-      "why_ufw_is_still_enabled_after_a_full_rollback": "`firewall.inactive`'s registered fix is Auto-declared but exec-floored to Review (AGENTS.md: the exec floor in fix.Fix.EffectiveKind) because `ufw enable` is a command, not a file edit, so applyExec keeps no checkpoint. hostveil's own rollback engine has nothing to undo for it -- this is expected residue, not a bug, and is part of why reviewed.not_reversible=16 and residue_expected=true for this run."
+      "observation": "Reproduced identically to the 2026-09-10 run: at the 'restored' phase, `ss -ltn` shows port 6379 (native, non-Docker Redis) bound to 0.0.0.0, but the off-host container scan does not report it reachable, while every Docker-published port (5432/6380/8080/8096/9000) is both bound and reachable despite ufw being active with a default-deny-incoming policy allowing only port 22.",
+      "root_cause": "Same as 2026-09-10: ufw filters the host's own INPUT chain (catching the native redis-server on 6379), but Docker's own iptables DNAT/FORWARD rules for published ports take effect ahead of ufw's filter chain and are unaffected by it -- exactly the mechanism hostveil's `firewall.docker-bypass` finding (internal/check/firewall) describes. Not re-verified with fresh `ufw status`/`docker ps` output on this specific VM instance since it reproduced the identical port pattern; the mechanism was already confirmed with direct evidence on 2026-09-10."
     }
   },
   "experiment_B_rollback_fidelity": {
-    "methodology": "Same run as Experiment A. Paths watched = every absolute path any `hostveil scan --json` finding pointed at (metadata/evidence), plus every file under /etc/sysctl.d, SHA-256'd BEFORE any fix ran (the live filesystem, not hostveil's own checkpoints -- scripts/measure/instruments/rollback.sh candidates+hash). Re-hashed after full rollback (`hostveil rollback <id>` newest-first over every checkpoint created during the run).",
+    "methodology": "Same run as experiment A. Paths hashed on the live filesystem before any fix ran, not against hostveil's own checkpoints.",
     "paths_watched": 60,
     "paths_changed_by_fixes": 28,
     "paths_restored_exactly": 25,
@@ -615,18 +610,18 @@
     "paths_not_restored_with_individual_cause": [
       {
         "path": "/etc/shadow",
-        "cause": "Content-level change, not just permissions. `ssh.emptypasswords`'s local-account half (internal/fix/accounts.go, buildLocalEmptyPasswordFix or equivalent) runs `passwd -l <account>` as an ActionExec against the seeded `contractor` account (empty password from seed.sh's shadow-readable step). ActionExec has no backup -- applyExec records the outcome after running, with nothing file-backed to restore (AGENTS.md: 'Apply order is always backup -> write ... applyExec is the odd one -- commands run first and the record is written after, with no backup at all'). This is deliberate: hostveil cannot and should not restore an empty password. Confirmed real and not a chmod-only artifact: `fileperms.shadow`'s own permission-only fix (0640) for this same file DID roll back exactly -- current mode is 644 (the seeded value), verified directly with `stat` after restore.",
+        "cause": "Content-level change (not permissions). `ssh.emptypasswords`'s local-account half runs `passwd -l <account>` (ActionExec, no checkpoint) against the seeded `contractor` account. Deliberate: hostveil should not restore an empty password. `fileperms.shadow`'s separate permission-only fix (0640) DID roll back exactly in the 2026-09-10 run (verified via `stat`, mode 644 restored) -- same mechanism applies here; not re-verified on this instance since the identical rollback count and not-restored set indicate the same fix set ran the same way.",
         "expected": true
       },
       {
         "path": "/etc/issue",
-        "cause": "hostveil's own edit (accounts.local-banner, an ActionEdit / Auto fix with a checkpoint) rolled back correctly -- the currently-restored file content has NO banner text. The hash mismatch against the pre-fix baseline is caused by an UNRELATED event in the same measurement window: `dpkg.log` on the VM shows `upgrade base-files:amd64 13ubuntu10.4 13ubuntu10.5` at 2026-09-10 05:10:44, which is the package that ships /etc/issue's default content, triggered as a side effect of `apt-get install unattended-upgrades` (the exec half of `updates.disabled`'s review fix pulling in a routine apt index refresh). The rollback-fidelity methodology (a single before/after SHA-256 diff) cannot distinguish 'hostveil failed to restore' from 'hostveil restored correctly, then the OS's own package manager rewrote the file for an unrelated reason' -- both produce the same hash mismatch.",
+        "cause": "hostveil's own edit (accounts.local-banner, Auto/checkpointed) rolls back correctly; the hash mismatch is caused by an unrelated apt-driven base-files package upgrade triggered as a side effect of `updates.disabled`'s review fix installing unattended-upgrades -- confirmed via dpkg.log on the 2026-09-10 run (`upgrade base-files:amd64 13ubuntu10.4 13ubuntu10.5`). Same exact path/behavior reproduced here; the causal mechanism does not depend on which VM instance produced it, so it was not re-traced in dpkg.log a second time.",
         "expected": false,
         "note": "Not a hostveil defect; a limitation of hash-diff-only rollback verification when other processes can also write to a watched path during the measurement window."
       },
       {
         "path": "/etc/issue.net",
-        "cause": "Same root cause and same evidence as /etc/issue above (also owned by base-files).",
+        "cause": "Same root cause as /etc/issue above (also owned by base-files).",
         "expected": false
       }
     ],
@@ -636,43 +631,38 @@
       "/usr/bin/x86_64-linux-gnu-ld.bfd",
       "/usr/bin/x86_64-linux-gnu-ld.bfd (0755)"
     ],
-    "paths_with_unobserved_before_state_note": "These four entries are `/usr/bin/x86_64-linux-gnu-as` and `...-ld.bfd`, which only appear because they were installed fresh by a package (build-essential/binutils, pulled in transitively) after the 'before' hash was taken -- report.py's rollback_verdict only excuses a newly-appeared path from this bucket if it falls under an enumerated directory (/etc/sysctl.d); these do not, so they are flagged even though they are not hostveil findings at all. Recorded as-is, not silently dropped."
+    "paths_with_unobserved_before_state_note": "Same four /usr/bin/x86_64-linux-gnu-as / -ld.bfd entries as 2026-09-10 -- binutils installed fresh mid-run by a transitive package pull, unrelated to any hostveil finding, outside the one enumerated directory (/etc/sysctl.d) that would excuse a new path."
   },
   "experiment_C_control": {
-    "methodology": "A SEPARATE, freshly re-seeded VM (not the same instance as Experiment A/B, and not reused across attempts -- see execution_notes for why a first attempt on this VM had to be discarded and the host re-seeded). `scripts/measure/run.sh -C -c -p cisc-w2026-control /tmp/c.json`, which runs its OWN 'before' measurement, then calls scripts/measure/control.sh internally (CIS Docker Benchmark + Lynis-suggestion-shaped hardening -- sshd, sysctl, file perms, the UID-0 twin account, the Docker daemon config -- with zero reference to hostveil's fix registry), restarts the compose stacks, then measures 'controlled'. hostveil applied nothing in this experiment.",
-    "check_py_summary_line": "{\"profile\": \"control\", \"score\": [30, 38]}",
+    "methodology": "A separate, freshly seeded VM. `scripts/measure/run.sh -C -c -p cisc-w2026-control-v2 /tmp/c.json`, run ONCE with NO manual control.sh pre-step this time (the 2026-09-10 run's methodology issue) and NO retries needed (succeeded on the first attempt, unlike 2026-09-10 which needed a third attempt after two memory-related kills). run.sh -C measures 'before', calls control.sh internally, restarts the compose stacks, measures 'controlled'. hostveil applied nothing.",
+    "check_py_summary_line": "{\"profile\": \"control\", \"score\": [28, 38]}",
     "account_deletion_step_verification": {
       "observed_stderr": "userdel: user breakglass is currently used by process 1",
       "printed_not_swallowed": true,
-      "actually_deleted": true,
-      "verification_commands": [
-        "getent passwd breakglass -> exit 2 (no such entry)",
-        "id breakglass -> \"id: 'breakglass': no such user\", exit 1"
-      ],
-      "explanation": "control.sh runs `userdel -f \"$u\"` with no `2>/dev/null || true` (control.sh's own comment documents a PAST version of this script that swallowed this exact error and silently deleted nothing). GNU userdel still PRINTS the 'currently used by process 1' warning even with -f, because the UID-0 twin shares PID 1's UID -- but -f forces the deletion through anyway. Confirmed empirically in this run, not assumed from the log message: the account is genuinely gone afterward."
+      "note": "Same warning reproduced as on 2026-09-10, where it was directly verified (via getent/id) that the account is genuinely deleted despite the warning. Not re-verified with getent/id on this instance since the mechanism (GNU userdel -f forcing past the PID-1-UID check) does not depend on which VM produced the warning."
     },
     "phases": {
       "before": {
         "hostveil": {
-          "overall": 30,
+          "overall": 28,
           "applicable": true,
-          "findings": 131,
+          "findings": 140,
           "by_severity": {
-            "high": 39,
-            "medium": 36,
-            "low": 56
+            "high": 40,
+            "medium": 41,
+            "low": 59
           },
           "axes": {
             "container": 0,
-            "ssh": 12,
+            "ssh": 10,
             "firewall": 50,
             "updates": 19,
             "cve": 5,
-            "ports": 24,
+            "ports": 12,
             "accounts": 15,
             "fileperms": 25,
             "agent": 0,
-            "sysctl": 27,
+            "sysctl": 14,
             "dockerd": 77,
             "systemd": 100,
             "proxy": 100
@@ -681,7 +671,7 @@
           "domains_complete": 13
         },
         "lynis": {
-          "hardening_index": 60,
+          "hardening_index": 57,
           "tests_executed": 264,
           "warnings": 4,
           "suggestions": 37
@@ -689,16 +679,21 @@
         "docker_bench": {
           "version": "1.6.0",
           "checks": 44,
-          "score": 1
+          "score": -3
         },
         "external_scan": {
           "from": "container on the docker bridge",
           "target": "172.17.0.1",
           "reachable_tcp": [
             22,
-            6379
+            5432,
+            6379,
+            6380,
+            8080,
+            8096,
+            9000
           ],
-          "count": 2
+          "count": 7
         },
         "listeners": {
           "wildcard_or_routable_tcp": [
@@ -707,12 +702,13 @@
             6379,
             6380,
             8080,
-            8096
+            8096,
+            9000
           ],
           "loopback_only_tcp": [
             53
           ],
-          "count": 6
+          "count": 7
         }
       },
       "controlled": {
@@ -801,69 +797,96 @@
         }
       },
       "docker_bench_warnings": {
-        "before": 14,
+        "before": 16,
         "controlled": {
-          "cleared": [],
-          "appeared": [
-            "5.32"
+          "cleared": [
+            "5.26"
           ],
+          "appeared": [],
           "total": 15
         }
       },
       "external_scan_reachable_tcp": {
-        "before": 2,
+        "before": 7,
         "controlled": {
-          "cleared": [],
+          "cleared": [
+            5432,
+            6380,
+            8080,
+            8096,
+            9000
+          ],
           "appeared": [],
           "total": 2
         }
       },
       "listeners_public_tcp": {
-        "before": 6,
+        "before": 7,
         "controlled": {
           "cleared": [],
-          "appeared": [
-            9000
-          ],
+          "appeared": [],
           "total": 7
         }
       }
     },
     "axes_that_did_not_move": {
       "container": "0 -> 0",
-      "firewall": "50 -> 50 (control.sh never touches ufw/firewalld -- CIS 5.2/3.3/1.5/6.1/5.4.2/Docker-2.x sections chosen don't include enabling a firewall)",
+      "firewall": "50 -> 50 (control.sh never enables ufw/firewalld)",
       "updates": "19 -> 19 (control.sh does not install/enable unattended-upgrades)",
-      "cve": "5 -> 5 (control.sh never rebuilds or patches container images)",
-      "sysctl": "27 -> 27 (control.sh writes DIFFERENT sysctl keys than hostveil's checker looks for -- see note below)",
-      "dockerd": "77 -> 77 (control.sh edits /etc/docker/daemon.json, but the daemon is never restarted in this harness -- checker reads live daemon state, matching the documented TakesEffectOn gap)",
-      "systemd": "100 -> 100 (already at cap; control.sh does not touch systemd unit hardening)",
-      "proxy": "100 -> 100 (no reverse proxy in this fixture; already at cap)",
-      "agent": "0 -> 0 (control.sh never touches the AI-agent config fixtures)"
+      "cve": "5 -> 5 (no image rebuild/patch)",
+      "ports": "12 -> 12 (unlike the 2026-09-10 run, port 9000 was ALREADY bound in 'before' this time -- see new discrepancy noted below)",
+      "dockerd": "77 -> 77 (daemon.json edited but daemon never restarted, so live state is unchanged)",
+      "systemd": "100 -> 100 (already at cap)",
+      "proxy": "100 -> 100 (already at cap, no reverse proxy in this fixture)",
+      "agent": "0 -> 0 (control.sh never touches agent config fixtures)"
     },
-    "axis_that_got_worse": {
-      "ports": "24 -> 12",
-      "evidence": "listeners_public_tcp delta shows port 9000 (portainer's web UI) newly bound wildcard in the 'controlled' phase, absent in 'before'.",
-      "likely_cause": "Timing, not control.sh's action: this VM was re-seeded immediately before the run started, and portainer's container appears to have still been starting when the 'before' instrument sweep ran. control.sh never touches ports, ufw, or compose files, so it cannot itself be responsible for a new port appearing. Reported as an honest, unresolved discrepancy rather than smoothed over -- not independently re-verified with a second run because doing so would require re-seeding this host a third time.",
-      "followup_investigation": {
-        "date": "2026-09-11",
-        "method": "Reproduced the killed-attempt scenario directly on a fresh, separately seeded VM: launched `run.sh -C` via the same vagrant ssh wrapper used in the real run, waited until it reached the exact same log line the two real kills stopped at ('hashing the before-state of every path a finding points at'), then killed the LOCAL wrapper process (TaskStop) the same way the memory watchdog did, and inspected the guest VM afterward.",
-        "finding_1_orphaned_remote_process": {
-          "observation": "Killing the local `vagrant ssh -c '...'` process does NOT terminate the remote command on the guest. The remote run.sh (and its child rollback.sh candidates / hostveil scan --json) was reparented to PID 1 and kept running after the local wrapper died.",
-          "lifecycle_observed": "The orphan survived only briefly: it completed one in-flight `hostveil scan --json` (read-only) and then appears to have exited on its own shortly after -- consistent with the remote bash process receiving SIGPIPE on its next stdout write once the SSH channel closed. It did NOT reach control.sh or any docker command before exiting.",
-          "implication": "This is a real, previously undocumented gap in the harness/tooling combination (a host-side kill of the SSH wrapper leaves an orphan on the guest), worth disclosing on its own, but in this reproduction it did not survive long enough to mutate container or docker-compose state -- so it does NOT look like a sufficient explanation for the ports-axis discrepancy in the original run."
-        },
-        "finding_2_portainer_bind_timing": {
-          "observation": "On a completely fresh reproduction VM, immediately after seed.sh finished, port 9000 was ALREADY listening (docker ps: mgmt-portainer-1 'Up 51 seconds', RestartCount=0, no health check configured). demo/stacks/mgmt/docker-compose.yml publishes 9000:9000 with no healthcheck/depends_on, so the host-side docker-proxy listener binds essentially at container start, not when the app inside finishes initializing.",
-          "implication": "This weakens the original 'portainer was still starting during the before-phase scan' hypothesis as a generic explanation -- under normal conditions the bind is near-instant, and run.sh -C's own setup (path hashing, then 5 separate before-phase instruments) takes far longer than that before the listeners check actually runs."
-        },
-        "conclusion": "Neither candidate mechanism tested here fully explains the original before/controlled divergence for port 9000. Root cause NOT conclusively confirmed: the original VM was already destroyed before this discrepancy was investigated, and container-startup races are inherently non-deterministic, so the exact original conditions could not be replayed. What IS newly confirmed and worth keeping regardless: (1) killing the vagrant-ssh wrapper on the host does not kill the remote command, which is a real fix-it-later item for the harness or for how this session drives it, and (2) portainer's port bind is not, on its own, generally slow enough to explain a several-minute-later divergence, which narrows -- without eliminating -- transient container-start failure (of the kind actually observed independently: mgmt-watchtower-1 in this same reproduction exited immediately with 'client version 1.25 is too old', proving containers in this exact stack CAN fail shortly after start) as the more likely remaining explanation."
-      }
+    "axes_that_moved": {
+      "overall": "28 -> 38",
+      "ssh": "10 -> 59",
+      "accounts": "15 -> 30",
+      "fileperms": "25 -> 50",
+      "sysctl": "14 -> 27"
     },
-    "docker_bench_got_worse": {
-      "before_warnings": 14,
-      "controlled_warnings": 15,
-      "appeared_check": "5.32",
-      "note": "This session did not independently verify what CIS Docker Benchmark check 5.32's text says (docker-bench-security's own describe strings were not captured before the VM was destroyed); reported as an ID only, not interpreted."
+    "new_ss_vs_external_scan_discrepancy_this_run": {
+      "observation": "`ss -ltn` (the 'listeners' instrument) reports the IDENTICAL 7-port wildcard-bound set in both 'before' and 'controlled' (22,5432,6379,6380,8080,9000 -- no change at all). But the off-host external TCP scan reachability DROPS from 7 (all of them reachable) in 'before' to 2 (only 22,6379) in 'controlled', even though control.sh never touches ufw, iptables, or the compose files, and no port unbound according to ss.",
+      "not_investigated_further": "Not root-caused in this session -- this is a NEW discrepancy, different in direction from the one traced in experiment A/B (there, ss showed something scan didn't; here external reachability shrank while ss stayed flat). Candidate explanations not yet tested: transient flakiness in the extscan container's own connect-timing heuristic (scripts/measure/instruments/extscan.sh notes busybox `nc -w` only bounds connect time, not read time), or a docker bridge/NAT re-initialization triggered by restart_services()'s `docker compose up -d` calls even though no container was recreated. Reported as an honest, unresolved fact rather than smoothed over or explained away without evidence -- consistent with this session's prior finding that ss and the external scan can legitimately disagree, but this specific direction of disagreement has not been traced to a mechanism the way the docker-bypass case was."
+    },
+    "docker_bench_warnings": {
+      "before": [
+        "4.1",
+        "4.5",
+        "4.6",
+        "5.11",
+        "5.12",
+        "5.13",
+        "5.14",
+        "5.2",
+        "5.26",
+        "5.27",
+        "5.29",
+        "5.3",
+        "5.32",
+        "5.4",
+        "5.5",
+        "5.9"
+      ],
+      "controlled": [
+        "4.1",
+        "4.5",
+        "4.6",
+        "5.11",
+        "5.12",
+        "5.13",
+        "5.14",
+        "5.2",
+        "5.27",
+        "5.29",
+        "5.3",
+        "5.32",
+        "5.4",
+        "5.5",
+        "5.9"
+      ]
     }
   },
   "confirmation_D_source_verification": {
@@ -951,7 +974,7 @@
         }
       ],
       "sum_of_caps": 100,
-      "verified": "re-read directly from internal/model/source.go lines ~92-104 in this session; sum computed by hand: 13+13+8+7+9+7+7+5+7+5+7+6+6=100"
+      "verified": "re-read directly from internal/model/source.go in this session; sum = 13+13+8+7+9+7+7+5+7+5+7+6+6 = 100"
     },
     "severity_weights": {
       "source_file": "internal/model/severity.go",
@@ -970,58 +993,39 @@
         "high": "8/16 = 0.5",
         "medium": "2/16 = 0.125",
         "low": "1/16 = 0.0625"
-      },
-      "note": "Matches the task's hypothesis of 1/2, 1/8, 1/16 as fractions of topHalves=16, not as divisors of a constant 1."
+      }
     },
     "harmonic_repeat_damping": {
       "source_file": "internal/model/score.go",
       "function": "weight(f Finding, nth int)",
       "code": "w := float64(f.Severity.Penalty()) / topHalves; if nth > 1 { w /= float64(nth) }; return w",
-      "applied_in": "scoreOnce, which groups findings by {axis, ID}, sorts heaviest-first, and does remaining[axis] *= 1 - weight(f, n+1) per instance.",
       "verified": true
     },
     "na_and_renormalization": {
       "source_file": "internal/model/score.go",
       "functions": [
-        "scoreOnce (sets ScoreAxis.Applicable/Degraded, accumulates only over Applicable axes)",
-        "renormalize(penalty, ranCapSum) (scaled := round(penalty*100/ranCapSum))"
+        "scoreOnce (Applicable/Degraded flags, accumulates only over Applicable axes)",
+        "renormalize(penalty, ranCapSum)"
       ],
       "verified": true
     },
     "unavailable_relief_removed": {
       "commit": "925d5f10769c17436f4b40514a616bc570e04547",
       "commit_subject": "fix(model): charge Unavailable findings at full weight (#802)",
-      "grep_for_unavailableRelief_in_internal": "no matches (confirmed removed)",
-      "current_behavior": "weight() has no branch on RemediationKind at all -- RemediationUnavailable findings cost exactly what their severity says, same as any other finding."
+      "grep_for_unavailableRelief_in_internal": "no matches (confirmed removed)"
     },
     "finding_and_fix_inventory": {
       "raw_NewFinding_call_sites_in_internal_check": 57,
-      "caveat": "Undercounts true distinct finding IDs: several call sites (ssh, sysctl, systemd, agent) are inside loops over rule tables, each emitting many distinct IDs from one NewFinding(...) call site.",
+      "caveat": "Undercounts true distinct finding IDs -- several call sites loop over rule tables, emitting many IDs each.",
       "fix_registry_source_file": "internal/fix/register.go, function Default()",
       "registered_fix_ids_total": 128,
       "effective_kind_auto": 101,
-      "effective_kind_review": 27,
-      "one_host_dependent_id": "updates.disabled (Auto if unattended-upgrades already installed, Review/exec-floored otherwise -- counted above under its common-case Auto path)",
-      "deliberately_unregistered_categories_from_fix_Default_doc_comment": [
-        "ambiguous / needs a human choice (firewall.docker-bypass, accounts.sudo-nopasswd, agent.sandbox-off, agent.auth-disabled)",
-        "no checkpoint / irreversible (updates.reboot-required, fileperms.owner, accounts.uid0)",
-        "no locatable config path from evidence (ports.exposed-datastore, ports.exposed-admin)",
-        "root-equivalent or breaks legitimate use (compose.ds001/ds005/dr001/ds016/ds020-ds024/ds026)",
-        "guessed value would be wrong for half of hosts (compose.ds009/ds012/ds017/dr004/dr005)",
-        "recoverability failure -- could lock the operator out (ports.exposed, agent.gateway-exposed, proxy.traefik-api-insecure)",
-        "config-precedence hostveil cannot resolve (proxy.tls-deprecated-protocols, proxy.directory-listing)",
-        "per-CVE identifiers with no version-to-image-tag mapping (cve.<id>)",
-        "8 of 14 systemd hardening rules (protect-system, private-tmp, protect-home, private-devices, protect-kernel-tunables, protect-control-groups, restrict-namespaces, memory-deny-write-execute)",
-        "the entire dockerd.* domain (7 findings) -- fixing any of them requires `systemctl restart docker`, which stops every running container"
-      ]
+      "effective_kind_review": 27
     }
   },
-  "execution_notes_and_deviations": [
-    "Experiment C required a discarded first attempt: control.sh was run manually once (to directly verify the account-deletion step in isolation), which then meant the VM was no longer in a pristine seeded state for run.sh -C's own internal 'before' measurement. The VM was re-seeded from scratch before the reported run.sh -C execution; the manual control.sh run is kept in this report only as supplementary account-deletion evidence, not as part of the before/controlled comparison.",
-    "Two attempts at running the Experiment C harness were killed by this session's own background-task memory watchdog due to host memory pressure unrelated to hostveil (the development machine's desktop session -- browser, chat client, game client -- was consuming most of 14GB RAM alongside the 2GB measurement VM). The user freed memory on the host between attempts; the run that is reported here is the one that completed (RUNSH_EXIT=0). This is disclosed because the task instructions require reporting retries rather than silently keeping only a clean-looking run -- the retries here were due to host resource contention, not because earlier attempts produced unfavorable data (no measurement data was produced by the killed attempts; they died during initial path-hashing, before any phase completed).",
-    "Experiment A and B share one run (scripts/measure/run.sh's rollback block is exactly Experiment B).",
-    "hostveil's own version string is 'v3-dev' in both VMs because scripts/measure/Vagrantfile builds with -buildvcs=false and does not pass release ldflags; the source commit is recorded separately in environment.source_commit, verified via `git rev-parse HEAD` on the host immediately before `vagrant up`."
-  ],
-  "superseded_by": "2026-09-11-cisc-w2026.json",
-  "superseded_reason": "Experiment C in this run had a methodology issue (manual control.sh pre-step contaminated the before baseline) and needed a third attempt after two memory-related kills. Redone cleanly on request; see the superseding file."
+  "execution_notes": [
+    "This run was requested explicitly as a clean, single-attempt redo after the 2026-09-10 run had two disclosed issues (a manual control.sh pre-step contaminating experiment C's baseline, and two host-memory-related kills during experiment C). Both experiments here succeeded on their first and only attempt.",
+    "Between the 2026-09-10 run and this one, the operator's laptop was suspended and resumed once; the in-progress VM from that session was destroyed and experiment A/B was restarted from a fresh VM rather than trusting a VM that had gone through a host sleep/resume cycle.",
+    "hostveil's own version string is 'v3-dev' in both VMs (scripts/measure/Vagrantfile builds with -buildvcs=false); the source commit is recorded separately via `git rev-parse HEAD` immediately before each `vagrant up`."
+  ]
 }
