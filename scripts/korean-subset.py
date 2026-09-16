@@ -18,12 +18,24 @@ finding title — came to be set in fixed-width Hangul with 0.14em of extra
 tracking on top. And where the stack did resolve, it resolved to a sans inside
 a serif design, so the Korean read in a different voice from the English.
 
-So: Noto Serif KR for the body, matching Georgia's weight — that is the whole
-reason it won over Gowun Batang and Nanum Myeongjo, both of which are visibly
-lighter than the Latin they share a line with, and this site mixes scripts in
-almost every sentence ("hostveil은 …"). Noto Sans KR for the slots the Latin
-sets in monospace, because a label is a label and Korean does not have a
-monospace tradition to borrow from.
+So: a Korean serif for the body, and Noto Sans KR for the slots the Latin sets
+in monospace, because a label is a label and Korean does not have a monospace
+tradition to borrow from.
+
+The body face was Noto Serif KR at first, picked over Gowun Batang and Nanum
+Myeongjo because both of those read visibly lighter than Georgia at a shared
+size, and this site mixes scripts in almost every sentence ("hostveil은 …").
+That was the right call on the one axis it was judged by, and the wrong one
+on voice: Noto Serif KR is drawn for uniform coverage across every CJK
+convention at once, and next to Georgia's particular, centuries-old cuts it
+reads as the institutional default it is — closer to a government form than
+to body copy. Nanum Myeongjo is what replaced it, which means the weight
+objection had to be solved rather than dropped. It is solved by serving the
+wrong-sounding face at each name: Nanum Myeongjo's **Bold** ships as
+font-weight 400 and its **ExtraBold** as 700, because at a shared size its
+own Regular is the light weight that lost the first round, and Bold is where
+its strokes actually sit next to Georgia's. See the size-adjust comment in
+site/korean.css for the measurement.
 
 Why a subset. Korean is 11,172 syllables and the full face is megabytes. The
 whole Korean site — 16 pages — uses 766 of them, so the subset is the site's
@@ -71,16 +83,35 @@ UPSTREAM = "https://github.com/google/fonts/raw/e1118da94a8cb00cf6d06cdac9ef13eb
 
 SOURCES = [
     {
-        "family": "Noto Serif KR",
-        "path": "ofl/notoserifkr/NotoSerifKR%5Bwght%5D.ttf",
-        "sha256": "11f8d5de6f1b79195efba3828aaa2ec95c1178f5ae976fb23c8d53250a9938f3",
-        "license": "ofl/notoserifkr/OFL.txt",
-        "license_out": "NotoSerifKR-OFL.txt",
-        "weights": [400, 700],
-        "stem": "NotoSerifKR",
+        # Nanum Myeongjo isn't a variable font — Sandoll cut three fixed
+        # weights — and the two this site uses aren't the ones their names
+        # suggest. "faces" names the served weight (what site/korean.css's
+        # @font-face and the output filename call it) next to the upstream
+        # file that actually backs it: Bold serves as 400 and ExtraBold as
+        # 700, because Regular is the weight that read lighter than Georgia
+        # and lost the first round this font entered. See the rationale
+        # above and the size-adjust comment in site/korean.css.
+        "family": "Nanum Myeongjo",
+        "kind": "static",
+        "license": "ofl/nanummyeongjo/OFL.txt",
+        "license_out": "NanumMyeongjo-OFL.txt",
+        "stem": "NanumMyeongjo",
+        "faces": [
+            {
+                "served_weight": 400,
+                "path": "ofl/nanummyeongjo/NanumMyeongjo-Bold.ttf",
+                "sha256": "bc9ed8e60d93fe6db054b8fb988481b625f2eef8cb2317ad0e9834681b8fe3f3",
+            },
+            {
+                "served_weight": 700,
+                "path": "ofl/nanummyeongjo/NanumMyeongjo-ExtraBold.ttf",
+                "sha256": "60c0077fce069ba90ae97c0a3679f6eb3712e0ca637bdd0c15b72d335ec46db7",
+            },
+        ],
     },
     {
         "family": "Noto Sans KR",
+        "kind": "variable",
         "path": "ofl/notosanskr/NotoSansKR%5Bwght%5D.ttf",
         "sha256": "194018e6b2b293a7964f037b25c0249ce1418bc9ab3c971060a03aa57861e252",
         "license": "ofl/notosanskr/OFL.txt",
@@ -159,36 +190,49 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     built: list[tuple[str, int]] = []
 
+    def subset(static: pathlib.Path, served_weight: int) -> None:
+        out = OUT / f"{src['stem']}-{served_weight}.woff2"
+        run(
+            "pyftsubset",
+            str(static),
+            f"--output-file={out}",
+            "--flavor=woff2",
+            "--text=" + "".join(chars),
+            # Nothing here needs shaping: modern Korean is precomposed
+            # syllables, one codepoint to one glyph. Keeping the layout
+            # tables would keep the jamo composition machinery for jamo
+            # this site does not use.
+            "--layout-features=",
+            "--no-hinting",
+            "--drop-tables+=DSIG",
+            "--name-IDs=0,1,2,3,4,6,13,14",
+        )
+        built.append((out.name, out.stat().st_size))
+        print(f"  {out.name}  {out.stat().st_size / 1024:.0f} KB")
+
     with tempfile.TemporaryDirectory() as tmp:
         tmpdir = pathlib.Path(tmp)
         for src in SOURCES:
             print(f"{src['family']}:")
-            vf = tmpdir / f"{src['stem']}-VF.ttf"
-            fetch(f"{UPSTREAM}/{src['path']}", src["sha256"], vf)
             fetch(f"{UPSTREAM}/{src['license']}", None, OUT / src["license_out"])
 
-            for weight in src["weights"]:
-                static = tmpdir / f"{src['stem']}-{weight}.ttf"
-                run("fonttools", "varLib.instancer", "-q", "-o", str(static), str(vf), f"wght={weight}")
-
-                out = OUT / f"{src['stem']}-{weight}.woff2"
-                run(
-                    "pyftsubset",
-                    str(static),
-                    f"--output-file={out}",
-                    "--flavor=woff2",
-                    "--text=" + "".join(chars),
-                    # Nothing here needs shaping: modern Korean is precomposed
-                    # syllables, one codepoint to one glyph. Keeping the layout
-                    # tables would keep the jamo composition machinery for jamo
-                    # this site does not use.
-                    "--layout-features=",
-                    "--no-hinting",
-                    "--drop-tables+=DSIG",
-                    "--name-IDs=0,1,2,3,4,6,13,14",
-                )
-                built.append((out.name, out.stat().st_size))
-                print(f"  {out.name}  {out.stat().st_size / 1024:.0f} KB")
+            if src["kind"] == "variable":
+                vf = tmpdir / f"{src['stem']}-VF.ttf"
+                fetch(f"{UPSTREAM}/{src['path']}", src["sha256"], vf)
+                for weight in src["weights"]:
+                    static = tmpdir / f"{src['stem']}-{weight}.ttf"
+                    run("fonttools", "varLib.instancer", "-q", "-o", str(static), str(vf), f"wght={weight}")
+                    subset(static, weight)
+            else:
+                # Static faces, fetched and subset directly — no instancer
+                # step, because there is no variable-font axis to slice. The
+                # served weight (the @font-face weight and the output name)
+                # is independent of which upstream file backs it; see the
+                # comment on SOURCES above for why they don't match here.
+                for face in src["faces"]:
+                    static = tmpdir / f"{src['stem']}-{face['served_weight']}-src.ttf"
+                    fetch(f"{UPSTREAM}/{face['path']}", face["sha256"], static)
+                    subset(static, face["served_weight"])
 
     manifest = OUT / "coverage.txt"
     body = [
@@ -205,7 +249,10 @@ def main() -> None:
         f"upstream {UPSTREAM}",
     ]
     for src in SOURCES:
-        body.append(f"source {src['path'].replace('%5B', '[').replace('%5D', ']')} sha256:{src['sha256']}")
+        paths = src["faces"] if src["kind"] == "static" else [src]
+        for p in paths:
+            clean = p["path"].replace("%5B", "[").replace("%5D", "]")
+            body.append(f"source {clean} sha256:{p['sha256']}")
     for name, size in built:
         digest = hashlib.sha256((OUT / name).read_bytes()).hexdigest()
         body.append(f"font {name} {size} sha256:{digest}")

@@ -37,7 +37,7 @@
      --font-mono to Korean *sans* faces, because a label wants a 고딕 and Korean
      has no monospace tradition to borrow one from. `monospace` stays last for
      Latin, which never reaches it. */
-  --font-body: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, "Noto Serif KR", "Noto Serif CJK KR", "Source Han Serif K", AppleMyungjo, Batang, "바탕", serif;
+  --font-body: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, "Nanum Myeongjo", "Noto Serif CJK KR", "Source Han Serif K", AppleMyungjo, Batang, "바탕", serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Noto Sans KR", "Apple SD Gothic Neo", "Noto Sans CJK KR", "Malgun Gothic", "맑은 고딕", monospace;
 }
 
