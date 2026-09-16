@@ -20,17 +20,30 @@
    which is a separate guard for the same thing: they contain three Hangul
    syllables (the 한국어 switcher) and should not pull 112KB to draw them.
 
-   size-adjust is not a fudge factor. Noto Serif KR's syllables ink at 0.94em
-   against Georgia's 0.695em cap and 0.485em x-height, so at a shared font-size
-   the Hangul runs 1.94x the Latin x-height and reads a size larger than the
-   words beside it; 95% puts it at 1.84x, which is where a Korean/Latin pairing
-   sits. The sans needs none — Noto Sans KR inks at 0.885em, and 0.94 x 0.95 is
+   size-adjust is not a fudge factor. Nanum Myeongjo's syllables ink at about
+   0.955em against Georgia's 0.481em x-height — measured the same way, with
+   fontTools' BoundsPen over each glyph's outline rather than a design metric
+   that may go unused — which is within a point of Noto Serif KR's own 0.965em,
+   so the 95% that was already tuned for this pairing carries over unchanged.
+   The sans needs none — Noto Sans KR inks at 0.885em, and 0.94 x 0.95 is
    0.893, so after the adjustment the two faces agree and a label and a
-   paragraph render Hangul at the same optical size. */
+   paragraph render Hangul at the same optical size.
+
+   The two weights below are not Nanum Myeongjo's Regular and Bold. Its
+   Regular inks noticeably thinner than Georgia at a shared size — the same
+   objection that ruled Nanum Myeongjo out the first time this was chosen, when
+   the body was still Noto Serif KR, whose strokes happen to sit close to
+   Georgia's by design. What changed is not the objection but the fix: Nanum
+   Myeongjo's Bold face is served as font-weight 400 and its ExtraBold as 700,
+   so `font-weight: normal` in the CSS lands on the stroke weight that actually
+   matches Georgia rather than on the face the family calls "Regular". Nanum
+   Myeongjo has no variable-weight axis to nudge instead — Sandoll cut three
+   fixed static weights — so which physical file answers which served weight
+   is the only lever there is. */
 
 @font-face {
-  font-family: "Noto Serif KR";
-  src: url(assets/fonts/NotoSerifKR-400.woff2) format("woff2");
+  font-family: "Nanum Myeongjo";
+  src: url(assets/fonts/NanumMyeongjo-400.woff2) format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -39,8 +52,8 @@
 }
 
 @font-face {
-  font-family: "Noto Serif KR";
-  src: url(assets/fonts/NotoSerifKR-700.woff2) format("woff2");
+  font-family: "Nanum Myeongjo";
+  src: url(assets/fonts/NanumMyeongjo-700.woff2) format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
