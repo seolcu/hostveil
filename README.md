@@ -27,52 +27,53 @@ self-hosted AI agent like OpenClaw or Hermes Agent — run on whatever defaults
 the install left behind, and one bad default is
 enough to lose the box. Point Hostveil at one and it checks the places that
 matter most, gives you a single 0–100 score, describes each problem without
-jargon, and offers to fix it: preview first, backup, then apply, with one
-command to undo it.
+jargon, and offers to fix it: preview first, backup, then apply, with rollback
+for file changes.
 
 ## Does it actually work?
 
-Hostveil's own score going up after Hostveil's own fixes proves nothing — the
-same code decides what a finding is and what the score should be afterward.
-So this repository ships a harness that measures a seeded, ordinary
-self-hosted host with tools that have never heard of Hostveil: Lynis,
-Docker's CIS benchmark, a TCP scan from off the host, and the kernel's own
-list of listening sockets. The seed is Nextcloud with PostgreSQL, Jellyfin
-with Redis, Portainer with Watchtower, every port on `0.0.0.0`, root SSH
-login allowed, no firewall, no automatic updates.
+The September 11, 2026 rerun measured a deliberately weakened Ubuntu VM
+with Lynis, Docker's CIS benchmark, a TCP scan from a container on the Docker
+bridge, and the kernel's listening sockets. The seed runs Nextcloud with
+PostgreSQL, Jellyfin with Redis, and Portainer with Watchtower, with root SSH
+login allowed and the firewall and automatic updates disabled.
 
-| Measured by | Before | After `fix --all --review` |
+| Measured by | Before | After Auto + Review fixes and restarts |
 | --- | --- | --- |
-| **Ports answering from off the host** | 7 | **1** |
-| CIS Docker Benchmark (pass / warn) | 16 / 16 | **20 / 12** |
-| Lynis hardening index | 57 | **80** |
+| **Ports answering from the Docker bridge** | 6 | **1** |
+| CIS Docker Benchmark (pass / warn) | 17 / 15 | **20 / 12** |
+| Lynis hardening index | 57 | **79** |
 | Hostveil's SSH domain | 10/100 | **100/100** |
-| Hostveil score | 29 | **60** |
+| Hostveil score | 28 | **58** |
 
-The host that produces those numbers is `scripts/measure/seed.sh`, in this
-repository — the run above is one you can reproduce, not one you have to take
-on trust.
+These are results from source commit `290b4d1`, built as `v3-dev`, on the
+configuration in `scripts/measure/seed.sh`. The
+[final run record](docs/measurements/2026-09-11-cisc-w2026.md) links the raw
+output and explains the method. This includes Review actions and service
+restarts; it is not the result of `fix --all` alone.
 
-Rollback restored 27 of 28, across 79 checkpoints — every *reversible* change,
-exactly. 18 of the 42 reviewed fixes leave nothing to roll back at all — they
-are not file edits — and Hostveil marks each of those `[not reversible]` in
-its own history rather than implying the undo is total. The one file among
-the 28 that stayed changed, `/etc/shadow`, was never reversible to begin
-with: it was rewritten as an ordinary side effect of one of those
-not-reversible fixes installing a package it found missing, not a checkpoint
-that failed.
+Rollback restored 25 of 28, across 79 checkpoints, for **89% fidelity**.
+16 of the 40 reviewed fixes leave nothing to roll back: they are marked
+`[not reversible]`. Three paths retained changes: `/etc/shadow` after an
+account-locking command, and `/etc/issue` and `/etc/issue.net` after a package
+upgrade rewrote the banners. All checkpoint rollbacks completed without a
+reported failure, but the host did not return to its original state.
 
-What did *not* move matters too. The container axis stays near 0 by design: a
-Docker socket mounted into Portainer, host networking, secrets in the
-environment — Manual, not missed. And Lynis's own index moved 57 → 80 while
-Two of Lynis's 3 warnings never cleared, because the index scores tests it
-does not print — a harness that reported only the index would have looked
-better and said less.
+The container score remained near zero and the CVE score did not improve.
+Two of Lynis's 3 warnings concern the extra UID-0 account, which Hostveil also
+reports and leaves for manual handling. The reviewed scan reached only SSH,
+but the kernel still listed both SSH and Redis as wildcard/routable listeners.
+A listening socket and a reachable port are different observations.
 
-Full numbers, the method, and everything that did not move are on the
-[Measured results](https://hostveil.seolcu.com/docs/measurements) page. Run
-it yourself with `scripts/measure/run.sh -c`, on a container or a throwaway
-VM rather than your own machine.
+A separate fresh VM hardened by `control.sh`, with Hostveil only scanning,
+scored **28 → 38**. Its external scan reported **7 → 2** reachable ports while
+its socket list stayed at **7**; the cause was not established in that run.
+
+Full results and limitations are on the
+[Measured results](https://hostveil.seolcu.com/docs/measurements) page. Use
+`scripts/measure/run.sh -c` only on a disposable VM or container. A successful
+check allows residue from irreversible Review actions and does not mean every
+file was restored.
 
 ## How it compares
 

@@ -30,7 +30,7 @@ import (
 // page is updated, which is the only order in which those two can be trusted
 // to agree.
 //
-// It reads the *newest* committed run by filename, which is also the one the
+// It reads the *newest* published-profile run by measured_at, which is the one the
 // page is supposed to describe. Older runs stay in the directory as a record
 // and are not checked against anything: they are what the host looked like
 // then.
@@ -112,7 +112,7 @@ func newestMeasurement(t *testing.T) (string, map[string]any) {
 		// Keyed on the profile the run recorded rather than on its filename,
 		// because the filename is a convention and the profile is a field
 		// run.sh sets from the mode it ran in.
-		if pr, _ := d["profile"].(string); pr != publishedProfile {
+		if pr, _ := d["profile"].(string); !slices.Contains(publishedProfiles, pr) {
 			continue
 		}
 		s, _ := d["measured_at"].(string)
@@ -128,17 +128,25 @@ func newestMeasurement(t *testing.T) (string, map[string]any) {
 		}
 	}
 	if name == "" {
-		t.Fatalf("docs/measurements/ holds %d runs and none has profile %q — the pages "+
+		t.Fatalf("docs/measurements/ holds %d runs and none has a published profile %q — the pages "+
 			"describe a seeded host, and if that run stops being committed every figure "+
-			"on them is resting on nothing", len(names), publishedProfile)
+			"on them is resting on nothing", len(names), publishedProfiles)
 	}
 	return name, doc
 }
 
-// publishedProfile is the experiment the site's figures come from: a seeded
-// host, fixed by hostveil, rolled back. Other profiles are committed beside it
-// and are deliberately not what the pages cite — see newestMeasurement.
-const publishedProfile = "seeded"
+// Published profiles are the seeded experiments used by the site. Keep raw
+// output intact: the September rerun used a named profile, and filtering only
+// for "seeded" silently left every page pinned to August. Summary reports and
+// control experiments have different schemas and must not be selected.
+var publishedProfiles = []string{"seeded", "cisc-w2026-seeded-v2"}
+
+func TestPublishedMeasurementIncludesTheFinalSeptemberRerun(t *testing.T) {
+	name, _ := newestMeasurement(t)
+	if name != "2026-09-11-cisc-w2026-seeded-raw.json" {
+		t.Fatalf("published run = %s; update the pages and this expectation when a newer run is published", name)
+	}
+}
 
 // TestEveryCommittedRunNamesItsProfile.
 //

@@ -149,7 +149,7 @@ func spelledOut(digits string, korean bool) (string, bool) {
 }
 
 func publishedProseClaims() []proseClaim {
-	return []proseClaim{
+	claims := []proseClaim{
 		// The loudest measured claim on the site is its section heading, and
 		// it was the one carrying no pin at all — spelled out in words, where
 		// even a search for the digits would not have found it.
@@ -186,8 +186,8 @@ func publishedProseClaims() []proseClaim {
 		{
 			file:   "README.ko.md",
 			what:   "the rollback tally",
-			parts:  []string{"rollback.checkpoints_rolled_back", "rollback.paths_restored_exactly", "rollback.paths_changed_by_fixes"},
-			phrase: "체크포인트 %s개에 걸쳐 %s개 중 %s개입니다",
+			parts:  []string{"rollback.checkpoints_rolled_back", "rollback.paths_changed_by_fixes", "rollback.paths_restored_exactly"},
+			phrase: "체크포인트 %s개를 롤백한 뒤, 변경된 경로 %s개 중 %s개를 정확히 복원했습니다",
 		},
 		{
 			file:   "README.ko.md",
@@ -202,6 +202,25 @@ func publishedProseClaims() []proseClaim {
 			phrase: "Lynis 경고 %s건 중 2건은",
 		},
 	}
+	// The Markdown tables publish the same measurements as the HTML. Check
+	// whole rows so a value from the control or an older run cannot slip in.
+	for _, metric := range []struct {
+		en, ko, cells string
+		parts         []string
+	}{
+		{"**Ports answering from the Docker bridge**", "**Docker 브리지에서 응답한 포트**", "%s | **%s**", []string{"phases.before.external_scan.count", "phases.reviewed.external_scan.count"}},
+		{"CIS Docker Benchmark (pass / warn)", "CIS Docker 벤치마크 (통과 / 경고)", "%s / %s | **%s / %s**", []string{"phases.before.docker_bench.results.PASS", "phases.before.docker_bench.results.WARN", "phases.reviewed.docker_bench.results.PASS", "phases.reviewed.docker_bench.results.WARN"}},
+		{"Lynis hardening index", "Lynis 하드닝 지수", "%s | **%s**", []string{"phases.before.lynis.hardening_index", "phases.reviewed.lynis.hardening_index"}},
+		{"Hostveil's SSH domain", "Hostveil SSH 영역", "%s/100 | **%s/100**", []string{"phases.before.hostveil.axes.ssh", "phases.reviewed.hostveil.axes.ssh"}},
+		{"Hostveil score", "Hostveil 점수", "%s | **%s**", []string{"phases.before.hostveil.overall", "phases.reviewed.hostveil.overall"}},
+	} {
+		claims = append(claims,
+			proseClaim{file: "README.md", what: metric.en, parts: metric.parts, phrase: "| " + metric.en + " | " + metric.cells + " |"},
+			proseClaim{file: "README.ko.md", what: metric.en, parts: metric.parts, phrase: "| " + metric.ko + " | " + metric.cells + " |"},
+		)
+	}
+	return claims
+
 }
 
 func TestEveryProseFigureQuotesTheNewestRunAndNotAnOlderOne(t *testing.T) {

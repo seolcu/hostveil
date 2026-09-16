@@ -116,16 +116,16 @@
       "ogType": "article",
       "en": {
         "title": "Measured results — Hostveil docs",
-        "description": "What independent instruments say about a host Hostveil has fixed: Lynis, the CIS Docker Benchmark, and a TCP scan from off the host, before and after — including where they did not move, and whether rolling every fix back restores the filesystem byte for byte.",
+        "description": "The September 2026 rerun: Hostveil, Lynis, CIS Docker checks and a Docker-bridge TCP scan across fixes, restarts and rollback, plus a separate control experiment and its unresolved discrepancies.",
         "ogTitle": "Measured results — Hostveil docs",
-        "ogDescription": "Lynis, docker-bench-security and an off-host TCP scan, run before and after Hostveil's fixes on a deliberately misconfigured server. The numbers, the method, and the ones that did not move.",
+        "ogDescription": "September 2026 measurements on freshly seeded VMs: Auto and Review fixes, independent hardening, rollback residue and measurement limits.",
         "nav": "Measured results"
       },
       "ko": {
         "title": "실측 결과 — Hostveil 문서",
-        "description": "Hostveil이 고친 호스트를 독립 계측기로 잰 결과: Lynis, CIS Docker Benchmark, 호스트 밖에서의 TCP 스캔을 수정 전후로 실행한 수치 — 움직이지 않은 항목까지, 그리고 모든 수정을 되돌렸을 때 파일이 바이트 단위로 복원되는지.",
+        "description": "2026년 9월 재실행 결과입니다. Hostveil, Lynis, CIS Docker 검사, Docker 브리지 TCP 스캔으로 수정·재시작·롤백 전후를 비교하고, 별도 대조군과 미해결 불일치도 공개합니다.",
         "ogTitle": "실측 결과 — Hostveil 문서",
-        "ogDescription": "일부러 잘못 설정한 서버에서 Hostveil의 수정 전후를 Lynis, docker-bench-security, 외부 TCP 스캔으로 잰 수치. 방법과 결과, 그리고 움직이지 않은 것들.",
+        "ogDescription": "새 VM에서 측정한 2026년 9월 결과입니다. Auto·Review 수정, 독립 하드닝 대조군, 롤백 후 남은 변경과 측정의 한계를 확인할 수 있습니다.",
         "nav": "실측 결과"
       }
     },

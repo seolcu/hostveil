@@ -260,38 +260,49 @@ picture of something else.
 The end-to-end job checks that the score improves after `fix --all`. That
 only shows hostveil is self-consistent: the same code decides what a finding
 is, what fixing it means, and what the number should be afterwards.
-`scripts/measure/` closes that circle with auditors that have never heard of
-it — Lynis, docker-bench-security, and a TCP connect scan from a container
-off the host — run before the fixes, after them, and again after every fix
-has been rolled back.
+`scripts/measure/` checks it with Lynis, docker-bench-security, a TCP
+connect scan from a container on the Docker bridge, and the kernel's socket
+list. It measures before fixes, after Auto fixes, after service restarts,
+after Review fixes and another restart, and after checkpoint rollback.
+Review includes actions marked not reversible.
 
-The auditors are installed by `scripts/measure/seed.sh`, which is what puts a
-throwaway host into the profile the published figures were taken on. The demo
-VM is built by `demo/provision.sh` instead and has neither Lynis nor
-docker-bench, so the harness there measures hostveil and the port scan and
-records the other two as missing — a full run wants a seeded host.
+Use disposable VMs from `scripts/measure/Vagrantfile`. The auditors and weak
+configuration are installed by `scripts/measure/seed.sh`. The demo VM uses a
+different provisioner and does not include all the independent auditors.
+Run each experiment on its own freshly seeded VM:
 
 ```bash
-# On the demo VM, or any host you are willing to have edited.
-vagrant ssh -c 'sudo /hostveil/scripts/measure/run.sh -c -p seeded /tmp/out.json'
+# Inside the fixes/rollback VM, from /hostveil:
+sudo scripts/measure/seed.sh
+sudo scripts/measure/run.sh -c -p seeded /tmp/fixes.json
 
-# The control group: hardened from the CIS Benchmarks, without hostveil.
-vagrant ssh -c 'sudo /hostveil/scripts/measure/control.sh'
-vagrant ssh -c 'sudo /hostveil/scripts/measure/run.sh -p control /tmp/control.json'
+# Inside a separate fresh control VM, from /hostveil:
+sudo scripts/measure/seed.sh
+sudo scripts/measure/run.sh -c -C -p control /tmp/control.json
 ```
 
-Results are committed under `docs/measurements/` and published on the
-[Measured results](https://hostveil.seolcu.com/docs/measurements) page, whose figures
-are pinned against the committed JSON by `internal/docs/measurements_test.go`.
-A stale number on the page is a test failure, not a reading error.
+`run.sh -C` measures the baseline before invoking `control.sh`. Running
+`control.sh` manually first contaminates that baseline; this is why the
+September 10 control was superseded by the
+[September 11 rerun](measurements/2026-09-11-cisc-w2026.md).
 
-Pass `-c` and the run exits non-zero on the only two claims in its output
-that are promises rather than observations: that rolling every fix back
-restored each changed file byte for byte, and that hostveil's own score moved
-at all. Everything else is recorded and nothing else is asserted — those
-numbers move for reasons no diff is responsible for, and a check that turns
-red for a Lynis release is a check somebody disables, taking the two real
-ones with it.
+Results are committed under `docs/measurements/` and published on the
+[Measured results](https://hostveil.seolcu.com/docs/measurements) page.
+`internal/docs/measurements_test.go` selects the newest raw result among the
+published seeded profiles by `measured_at`. Register a new publication profile
+there when promoting a named experiment; summary reports and control runs
+must not become the default source. The README tables and both languages of
+the landing and measurement pages must be updated together. Control figures
+use `data-measured-run` to identify their separate source.
+
+`-c` runs `check.py`: scores must improve, fixes must change at least one
+watched path, and fix or checkpoint rollback failures are rejected. Full
+restoration is required when no irreversible Review action ran. Otherwise
+residue and unobserved before-states are allowed, so exit 0 is not evidence
+of 100% restoration. Publish the actual fidelity and remaining paths.
+Rollback hashes are compared with the live host's pre-fix state, never with
+the checkpoints themselves. The control check requires a score increase
+without any Hostveil fixes.
 
 ### Provider setup by platform
 

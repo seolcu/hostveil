@@ -196,8 +196,8 @@
         <div class="container">
           <div class="section-heading">
             <p class="eyebrow">측정</p>
-            <h2>호스트 밖에서 응답하던 포트 일곱 개, 그다음엔 하나.</h2>
-            <p>Hostveil이 고친 뒤에 Hostveil의 점수가 오르는 건 아무 증명도 되지 않습니다. 그래서 시드 서버를 Hostveil을 전혀 모르는 도구들로 쟀습니다. Lynis, Docker의 CIS 벤치마크, 그리고 다른 기계에서 쏜 TCP 스캔입니다. 고치기 전과, 제안받은 수정을 전부 받아들인 뒤를 각각 쟀습니다.</p>
+            <h2>호스트 밖에서 응답하던 포트 여섯 개, 그다음엔 하나.</h2>
+            <p>Hostveil이 고친 뒤에 Hostveil의 점수가 오르는 건 아무 증명도 되지 않습니다. 그래서 시드 서버를 Hostveil을 전혀 모르는 도구들로 쟀습니다. Lynis, Docker의 CIS 벤치마크, Docker 브리지의 컨테이너에서 실행한 TCP 스캔입니다. 2026년 9월 11일 실행에서 수정 전 상태와 Auto·Review 적용 및 서비스 재시작 후 상태를 비교했습니다.</p>
           </div>
           <div class="ledger-chart-grid">
             <div class="ledger-bar-group">
@@ -205,11 +205,11 @@
               <div class="ledger-bar">
                 <span class="ledger-bar-label">이전</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill danger" style="--pct:100%"></div></div>
-                <span class="ledger-bar-value" data-measured="phases.before.external_scan.count">7</span>
+                <span class="ledger-bar-value" data-measured="phases.before.external_scan.count">6</span>
               </div>
               <div class="ledger-bar">
-                <span class="ledger-bar-label">이후</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:14%"></div></div>
+                <span class="ledger-bar-label">Review 후</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:17%"></div></div>
                 <span class="ledger-bar-value" data-measured="phases.reviewed.external_scan.count">1</span>
               </div>
             </div>
@@ -217,11 +217,11 @@
               <p class="ledger-bar-title">CIS Docker 벤치마크 통과 항목</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">이전</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill danger" style="--pct:36%"></div></div>
-                <span class="ledger-bar-value" data-measured="phases.before.docker_bench.results.PASS">16</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill danger" style="--pct:39%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.before.docker_bench.results.PASS">17</span>
               </div>
               <div class="ledger-bar">
-                <span class="ledger-bar-label">이후</span>
+                <span class="ledger-bar-label">Review 후</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:45%"></div></div>
                 <span class="ledger-bar-value" data-measured="phases.reviewed.docker_bench.results.PASS">20</span>
               </div>
@@ -234,26 +234,26 @@
                 <span class="ledger-bar-value" data-measured="phases.before.lynis.hardening_index">57</span>
               </div>
               <div class="ledger-bar">
-                <span class="ledger-bar-label">이후</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:80%"></div></div>
-                <span class="ledger-bar-value" data-measured="phases.reviewed.lynis.hardening_index">80</span>
+                <span class="ledger-bar-label">Review 후</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:79%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.reviewed.lynis.hardening_index">79</span>
               </div>
             </div>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">Hostveil 점수</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">이전</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill danger" style="--pct:29%"></div></div>
-                <span class="ledger-bar-value" data-measured="phases.before.hostveil.overall">29</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill danger" style="--pct:28%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.before.hostveil.overall">28</span>
               </div>
               <div class="ledger-bar">
-                <span class="ledger-bar-label">이후</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:60%"></div></div>
-                <span class="ledger-bar-value" data-measured="phases.reviewed.hostveil.overall">60</span>
+                <span class="ledger-bar-label">Review 후</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:58%"></div></div>
+                <span class="ledger-bar-value" data-measured="phases.reviewed.hostveil.overall">58</span>
               </div>
             </div>
           </div>
-          <p class="measured-note">Nextcloud, Jellyfin, Portainer와 그 데이터스토어를 돌리는 실제 서버 한 대입니다. 모든 포트가 <code>0.0.0.0</code>에 열려 있고, root SSH 로그인이 허용돼 있고, 방화벽은 꺼져 있었습니다. 수정이 건드린 파일은 롤백으로 전부 바이트 단위까지 복원됐습니다. <a href="docs/measurements">어떻게 쟀고 무엇이 움직이지 않았는지 &rarr;</a></p>
+          <p class="measured-note">Nextcloud, Jellyfin, Portainer와 데이터스토어를 실행하는 Ubuntu VM입니다. 서비스를 <code>0.0.0.0</code>에 공개하고 root SSH 로그인을 허용했으며 방화벽은 꺼져 있었습니다. 변경된 경로 <span data-measured="rollback.paths_changed_by_fixes">28</span>개 중 <span data-measured="rollback.paths_restored_exactly">25</span>개를 정확히 복원했습니다(<span data-measured="rollback.fidelity">89</span>%). 되돌릴 수 없는 조치의 효과가 남았고, 외부 스캔과 수신 소켓 목록도 서로 달랐습니다. <a href="docs/measurements">어떻게 쟀고 무엇이 움직이지 않았는지 &rarr;</a></p>
         </div>
       </section>
 
