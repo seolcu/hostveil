@@ -34,12 +34,18 @@ Run the same gate CI does:
 
 ```bash
 go build ./... && go vet ./... && gofmt -l . && go mod tidy && go test -race ./...
-go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run ./...
 go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
 go run ./cmd/sitegen && git diff --exit-code site/
 ```
 
-`go run` works for the linters without installing anything.
+`golangci-lint` has to be the released binary, not `go run`: the published
+module is built against an older toolchain than this one targets, so `go run`
+refuses before it even reads the config and silently lints nothing.
+
+```bash
+curl -fsSL https://github.com/golangci/golangci-lint/releases/download/v2.12.2/golangci-lint-2.12.2-linux-amd64.tar.gz \
+  | tar xz -C /tmp && /tmp/golangci-lint-2.12.2-linux-amd64/golangci-lint run ./...
+```
 
 **Pull request titles matter.** Merges are squashed and the title becomes the
 commit subject, which drives the version bump and the changelog. It must be
