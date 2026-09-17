@@ -181,7 +181,7 @@ func TestTheFixingPagePublishesCheckpointRetention(t *testing.T) {
 // The README is where most people meet the classification, and it used to name
 // three of the four kinds and call the first one something the site does not.
 //
-// Both READMEs use the same four English words — "Auto-fix", "Review",
+// Both READMEs use the same four English words — "Auto", "Review",
 // "Manual", "Unavailable" — rather than README.ko.md translating them.
 // hostveil's CLI, TUI, and dashboard are English-only and always print these
 // exact words; a Korean docs page that renamed them would be teaching a

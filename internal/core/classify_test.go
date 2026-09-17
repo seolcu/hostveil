@@ -115,7 +115,7 @@ func TestAnUnsetCheckerDefersToTheRegistry(t *testing.T) {
 //
 // It applied the checker-versus-registry half of the resolution and not the
 // exec floor, so an exec fix a finding correctly carried as Review previewed
-// as "Auto-fix" — on exactly the fixes where "safe to apply unattended" is
+// as "Auto" — on exactly the fixes where "safe to apply unattended" is
 // the claim being ruled out. A user reading the preview was told the opposite
 // of what the list said, with no way to tell which was right.
 func TestPreviewReportsTheSameKindTheFindingCarries(t *testing.T) {
@@ -134,7 +134,7 @@ func TestPreviewReportsTheSameKindTheFindingCarries(t *testing.T) {
 		t.Errorf("finding is %v but its preview says %v", findings[0].Remediation, p.Kind)
 	}
 	if p.Kind == model.RemediationAuto {
-		t.Error("a preview of a command that cannot be rolled back is labelled Auto-fix")
+		t.Error("a preview of a command that cannot be rolled back is labelled Auto")
 	}
 }
 
