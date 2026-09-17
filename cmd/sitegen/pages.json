@@ -135,16 +135,16 @@
       "ogType": "article",
       "en": {
         "title": "Fixing & rollback — Hostveil docs",
-        "description": "How Hostveil fixes findings: Auto-fix, Review, and Manual classifications; preview-first, checkpoint backups, history, and one-command rollback.",
+        "description": "How Hostveil fixes findings: Auto, Review, and Manual classifications; preview-first, checkpoint backups, history, and one-command rollback.",
         "ogTitle": "Fixing & rollback — Hostveil docs",
-        "ogDescription": "Auto-fix, Review, and Manual fixes; preview, backup, history, and one-command rollback.",
+        "ogDescription": "Auto, Review, and Manual fixes; preview, backup, history, and one-command rollback.",
         "nav": "Fixing & rollback"
       },
       "ko": {
         "title": "수정 및 롤백 — Hostveil 문서",
-        "description": "Hostveil이 발견 항목을 고치는 방식: 자동 수정, 검토, 수동 분류; 미리보기 우선, 체크포인트 백업, 이력, 한 번의 명령 롤백.",
+        "description": "Hostveil이 발견 항목을 고치는 방식: Auto, Review, Manual 분류; 미리보기 우선, 체크포인트 백업, 이력, 한 번의 명령 롤백.",
         "ogTitle": "수정 및 롤백 — Hostveil 문서",
-        "ogDescription": "자동 수정, 검토, 수동 수정; 미리보기, 백업, 이력, 한 번의 명령 롤백.",
+        "ogDescription": "Auto, Review, Manual 수정; 미리보기, 백업, 이력, 한 번의 명령 롤백.",
         "nav": "수정 및 롤백"
       }
     },

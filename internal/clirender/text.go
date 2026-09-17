@@ -104,7 +104,7 @@ func Text(r model.Report, opts Options) string {
 			fmt.Fprintf(&b, " %s(%s)%s", c.dim, f.Service, c.reset)
 		}
 		// A pending row reports what is outstanding rather than its
-		// remediation kind. The fix has been applied; "Auto-fix" there would
+		// remediation kind. The fix has been applied; "Auto" there would
 		// point at a button that has already been pressed, on the one row
 		// where pressing it again achieves nothing.
 		if f.Pending {

@@ -253,12 +253,12 @@ Every finding is classified, so the tool never changes anything blindly:
 
 | Kind | Meaning | Hostveil can apply it |
 | --- | --- | --- |
-| **Auto-fix** | One clearly correct change. You still see it first. | Yes |
+| **Auto** | One clearly correct change. You still see it first. | Yes |
 | **Review** | Two or more independent alternatives; you pick one. | Yes |
 | **Manual** | Nothing safe to automate, so Hostveil explains what to do instead. | No |
 | **Unavailable** | A real problem with no fix in existence yet, such as a CVE with no published patch. | No |
 
-`fix --all` applies only the Auto-fix ones. `fix --all --review` applies the
+`fix --all` applies only the Auto ones. `fix --all --review` applies the
 Review ones too, each through its first alternative.
 
 **Applying a fix is not always a change the host has seen, and the score
@@ -267,9 +267,9 @@ recreated, a systemd drop-in when the unit is reloaded, a sysctl drop-in at
 the next boot — until then the finding stays charged and its row is marked
 `PEND`, and each fix names the command that puts it in force.
 
-A finding is Auto-fix only when all three hold: it's **reversible** (a
+A finding is Auto only when all three hold: it's **reversible** (a
 checkpoint restores exactly what changed — a fix that runs a command has
-nothing to store, so it's never Auto-fix), **recoverable in practice**
+nothing to store, so it's never Auto), **recoverable in practice**
 (nothing that can cut off your own access, like SSH auth or firewall policy,
 even if the edit itself reverses cleanly), and **unambiguous** (exactly one
 correct remediation). Failing that makes a finding Review when there are
@@ -375,7 +375,8 @@ graph TD
     v1["3.1.0: AI agent runtimes"] --> v2["3.6.0: Kernel hardening"]
     v2 --> v3["3.8.0: Docker daemon"]
     v3 --> v4["3.9.0: Service hardening"]
-    v4 -.-> n1["More agent runtimes"]
+    v4 --> v5["3.22.0: Reverse proxy"]
+    v5 -.-> n1["More agent runtimes"]
     n1 -.-> n2["More reverse proxies"]
     n2 -.-> n3["Wider distro coverage"]
     n3 -.-> e1(["Proxmox VE hardening"])
@@ -387,7 +388,7 @@ graph TD
         x1["Plugin / rule system"]
         x2["AI applies fixes alone"]
         x3["Hosted dashboard"]
-        x4["Auto-fix Manual findings"]
+        x4["Automatically fixing Manual findings"]
     end
 
     classDef shipped fill:#16231f,stroke:#d2bc74,stroke-width:2px,color:#f5ead2
@@ -396,7 +397,7 @@ graph TD
     classDef notplanned fill:#101816,stroke:#516057,stroke-width:1px,stroke-dasharray:4 3,color:#9aa89f
     classDef npTitle fill:#07100f,stroke:#31413b,color:#9aa89f
 
-    class v1,v2,v3,v4 shipped
+    class v1,v2,v3,v4,v5 shipped
     class n1,n2,n3 next
     class e1,e2,e3,e4 exploring
     class x1,x2,x3,x4 notplanned

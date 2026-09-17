@@ -180,7 +180,7 @@ Trivy는 이미지 CVE 스캔이 필요할 때만 설치하면 됩니다. 업그
 hostveil                 # 대화형 TUI (터미널에서의 기본값)
 hostveil scan            # 점수가 매겨진 보고서 출력 (-v 상세, --json JSON)
 hostveil fix <id>        # 발견 항목 하나를 미리 보고 수정 적용
-hostveil fix --all       # 안전한(Auto-fix) 항목을 한 번에 모두 적용
+hostveil fix --all       # 안전한(Auto) 항목을 한 번에 모두 적용
 hostveil fix --all --review  # Review 항목까지, 무엇인지 읽고 나서
 hostveil rollback <id>   # 이미 적용한 수정을 되돌리기
 hostveil history         # 적용된 수정과 롤백 ID 목록
@@ -246,12 +246,12 @@ HOSTVEIL_DEBUG=1 hostveil scan
 
 | 종류 | 뜻 | Hostveil이 적용 가능 |
 | --- | --- | --- |
-| **Auto-fix** | 명백히 옳은 변경 하나. 그래도 먼저 보여 줍니다. | 예 |
+| **Auto** | 명백히 옳은 변경 하나. 그래도 먼저 보여 줍니다. | 예 |
 | **Review** | 독립적인 대안이 둘 이상. 하나를 고르세요. | 예 |
 | **Manual** | 안전하게 자동화할 방법이 없어서, 대신 무엇을 해야 하는지 설명합니다. | 아니요 |
 | **Unavailable** | 실재하는 문제지만 아직 세상에 고칠 방법이 없는 경우. 패치가 나오지 않은 CVE 같은 것입니다. | 아니요 |
 
-`fix --all`은 Auto-fix만 적용합니다. `fix --all --review`를 쓰면 Review
+`fix --all`은 Auto만 적용합니다. `fix --all --review`를 쓰면 Review
 항목도 각각의 첫 번째 대안으로 적용합니다.
 
 **수정을 적용했다고 해서 호스트가 곧바로 그 변경을 보는 것은 아니며, 점수는
@@ -260,10 +260,10 @@ HOSTVEIL_DEBUG=1 hostveil scan
 항목은 계속 감점되고 행에는 `PEND`가 붙으며, 각 수정은 무엇을 실행해야
 반영되는지 알려 줍니다.
 
-어떤 항목이 Auto-fix가 되려면 세 가지를 모두 만족해야 합니다.
+어떤 항목이 Auto가 되려면 세 가지를 모두 만족해야 합니다.
 
 1. **되돌릴 수 있다.** 체크포인트가 바꾼 것을 정확히 복원합니다. 명령을
-   실행하는 조치는 남길 것이 없으므로 결코 Auto-fix가 아닙니다.
+   실행하는 조치는 남길 것이 없으므로 결코 Auto가 아닙니다.
 2. **실제로 복구할 수 있다.** 변경이 잘못됐을 때도 그 기계에 여전히 닿을 수
    있어야 합니다. SSH 인증이나 방화벽 정책처럼 접근 자체를 끊을 수 있는
    것은, 편집이 깨끗하게 되돌아가더라도 여기서 탈락합니다.
@@ -374,7 +374,8 @@ graph TD
     v1["3.1.0: AI 에이전트 런타임"] --> v2["3.6.0: 커널 강화"]
     v2 --> v3["3.8.0: Docker 데몬"]
     v3 --> v4["3.9.0: 서비스 강화"]
-    v4 -.-> n1["에이전트 런타임 확대"]
+    v4 --> v5["3.22.0: 리버스 프록시"]
+    v5 -.-> n1["에이전트 런타임 확대"]
     n1 -.-> n2["리버스 프록시 확대"]
     n2 -.-> n3["배포판 커버리지 확대"]
     n3 -.-> e1(["Proxmox VE 강화"])
@@ -386,7 +387,7 @@ graph TD
         x1["플러그인·룰 시스템"]
         x2["스스로 수정 적용하는 AI"]
         x3["호스팅형 대시보드"]
-        x4["Manual 항목 Auto-fix"]
+        x4["Manual 항목을 자동으로 고치기"]
     end
 
     classDef shipped fill:#16231f,stroke:#d2bc74,stroke-width:2px,color:#f5ead2
@@ -395,7 +396,7 @@ graph TD
     classDef notplanned fill:#101816,stroke:#516057,stroke-width:1px,stroke-dasharray:4 3,color:#9aa89f
     classDef npTitle fill:#07100f,stroke:#31413b,color:#9aa89f
 
-    class v1,v2,v3,v4 shipped
+    class v1,v2,v3,v4,v5 shipped
     class n1,n2,n3 next
     class e1,e2,e3,e4 exploring
     class x1,x2,x3,x4 notplanned

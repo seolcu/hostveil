@@ -64,7 +64,7 @@ func TestFixActionsRendersNoLiteralBackticks(t *testing.T) {
 
 // TestFixColumnLinksResolveAndCoverEveryFixableRow checks the two directions
 // linkFixColumnRows needs to get right on the real checks.html source for
-// each language: every Auto-fix/Review row (or its Korean name) for a
+// each language: every Auto/Review row for a
 // registered ID becomes a link, and every link it produces points at an id
 // renderFixActions actually emitted — a stray anchor pointing at nothing
 // would be a worse reading experience than the plain text it replaced. This

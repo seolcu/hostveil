@@ -138,7 +138,7 @@
             <p>And if you would rather see it than read about it, the repository carries a <strong>Vagrant VM seeded to be vulnerable</strong>. You can watch a hardening tool edit a server, roll the changes back, and rescan &mdash; before you let it near one of yours. See <a href="contributing">Contributing</a>.</p>
 
             <h2>What if a fix has tradeoffs?</h2>
-            <p>Then it's a <strong>Review</strong> fix, not Auto-fix. Hostveil presents independent alternatives and makes you choose one with <code>--action</code>. <code>fix --all</code> touches only the clearly-safe Auto-fix findings and leaves everything else to you, unless you add <code>--review</code> &mdash; which applies each Review fix through its first alternative, the one its how-to-fix describes.</p>
+            <p>Then it's a <strong>Review</strong> fix, not Auto. Hostveil presents independent alternatives and makes you choose one with <code>--action</code>. <code>fix --all</code> touches only the clearly-safe Auto findings and leaves everything else to you, unless you add <code>--review</code> &mdash; which applies each Review fix through its first alternative, the one its how-to-fix describes.</p>
 
             <h2>Do I need Docker or Trivy?</h2>
             <p>No. The SSH, firewall, and auto-update checks run natively with no extra tooling. The Docker/Compose audit needs Docker, and image CVE scanning needs Trivy — each is used when present and skipped cleanly when not, with the score renormalized so a skipped domain doesn't inflate your result.</p>

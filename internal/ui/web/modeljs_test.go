@@ -192,7 +192,7 @@ func TestAppJSHasNoMirroredTables(t *testing.T) {
 		// past them. A guard against a stale copy must not itself be one.
 		{severityArrayLiteral(model.Severity.String), "a severity name table"},
 		{severityArrayLiteral(model.Severity.Abbr), "a severity abbreviation table"},
-		{`"Unclassified", "Auto-fix"`, "a remediation label table"},
+		{`"Unclassified", "Auto"`, "a remediation label table"},
 		{`>= 80 ?`, "the score band thresholds"},
 		{`SCAN_DONE = `, "the scan-state ordinals"},
 		{`REM_AUTO = `, "the remediation ordinals"},

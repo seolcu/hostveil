@@ -59,13 +59,13 @@ func domainHeading(lang string, src model.Source) (string, error) {
 // renderFixActions builds the "what each fix actually does" section of the
 // checks page: for every finding with a registered fix, what fix.Default()
 // actually builds for it, read straight from the registry rather than typed
-// out by hand. The checks table's Fix column ("Auto-fix"/"Review", or their
+// out by hand. The checks table's Fix column ("Auto"/"Review", or their
 // Korean names) already says whether a finding is fixed unattended; this
 // says what running it would actually change, so a reader can decide
 // whether "Auto" means safe enough for their own host before a single one
 // ever runs.
 //
-// The structure — domain headings, the Auto-fix/Review kind name, "
+// The structure — domain headings, the Auto/Review kind name, "
 // (recommended)" — is localized through domainHeading and kindLabels. Each
 // individual fix's Label and Warning text is not: those strings live in
 // internal/fix/*.go with no i18n hook, and this codebase's rule for Korean
@@ -246,11 +246,10 @@ func renderAction(a fix.Action, labelSuffix string) (string, error) {
 // drifting apart.
 //
 // autoLabel/reviewLabel are interpolated in rather than hardcoded to
-// "Auto-fix"/"Review": those are the English words, and a checks.html
-// written in Korean spells the same two kinds "자동 수정"/"검토" — see
-// kindLabels. A regex built from the same table renderOneFix reads its own
-// kind name from is what keeps the two from disagreeing about what a row
-// says, in either language.
+// "Auto"/"Review": those come from kindLabels, and reading them from the
+// same table renderOneFix reads its own kind name from is what keeps the
+// two from disagreeing about what a row says, in either language — even
+// though today both languages spell both words the same way.
 func checksFixKindCell(lang string) *regexp.Regexp {
 	auto := regexp.QuoteMeta(kindLabels[lang][model.RemediationAuto])
 	review := regexp.QuoteMeta(kindLabels[lang][model.RemediationReview])
@@ -259,7 +258,7 @@ func checksFixKindCell(lang string) *regexp.Regexp {
 }
 
 // linkFixColumnRows rewrites the checks table's Fix column so its
-// Auto-fix/Review cell links down to the matching entry renderFixActions
+// Auto/Review cell links down to the matching entry renderFixActions
 // produced, instead of sitting as plain text next to a description of what
 // running it does with nothing connecting the two.
 //
@@ -270,7 +269,7 @@ func checksFixKindCell(lang string) *regexp.Regexp {
 // candidate is re-verified against the registry rather than trusted from
 // the row's own hand-typed label, so a row this function cannot back with a
 // real entry below is left as plain text instead of becoming a dead link —
-// the row read "Auto-fix" was already correct, wiring it to nothing at all
+// the row read "Auto" was already correct, wiring it to nothing at all
 // would not be.
 func linkFixColumnRows(html string, registry *fix.Registry, lang string) string {
 	pattern := checksFixKindCell(lang)

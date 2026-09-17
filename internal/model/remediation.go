@@ -42,7 +42,7 @@ type remediationDef struct {
 // refuse to offer a fix button.
 var remediationDefs = []remediationDef{
 	{RemediationUnset, "unset", "Unclassified", "?", false},
-	{RemediationAuto, "auto", "Auto-fix", "auto", true},
+	{RemediationAuto, "auto", "Auto", "auto", true},
 	{RemediationReview, "review", "Review", "review", true},
 	{RemediationManual, "manual", "Manual", "manual", false},
 	{RemediationUnavailable, "unavailable", "Unavailable", "n/a", false},

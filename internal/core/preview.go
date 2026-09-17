@@ -33,11 +33,11 @@ func (e *Engine) PreviewFix(f model.Finding) (model.FixPreview, error) {
 
 	// Report the resolved kind, not the registry's raw one: classify may
 	// hold a fix at Review that the registry shapes as Auto, and a preview
-	// labelled "Auto-fix" next to a finding labelled "Review" would be a
+	// labelled "Auto" next to a finding labelled "Review" would be a
 	// contradiction the user has to resolve. It has to be the *same*
 	// resolution the finding went through, exec floor included — this used to
 	// call only the checker-versus-registry half, so an exec fix the finding
-	// carried as Review previewed as "Auto-fix", producing that contradiction
+	// carried as Review previewed as "Auto", producing that contradiction
 	// on exactly the fixes where unattended application is the thing being
 	// ruled out.
 	preview := model.FixPreview{FindingID: f.ID, Label: fx.Label, Kind: resolvedKind(f.Remediation, fx)}
