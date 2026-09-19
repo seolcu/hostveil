@@ -118,6 +118,49 @@ vagrant rsync && vagrant ssh -c 'cd /hostveil && sudo /usr/local/go/bin/go build
 
 ---
 
+## AI explanations (optional)
+
+`hostveil explain <id> --ai` and the dashboard's *Explain with AI* button are
+optional and advisory — see [docs/ai.html](https://hostveil.seolcu.com/docs/ai)
+for the full contract. Nothing here is on by default, and `./run.sh scan` /
+`./run.sh web` work exactly as above with none of this set.
+
+hostveil itself has no config file, but `run.sh` has its own, purely as a
+convenience so you don't have to `export` the same key every session: copy
+`demo/.env.example` to `demo/.env` and fill in a provider's block. `run.sh`
+sources it automatically (if present) and forwards what it sets onto its
+`vagrant ssh` command for `scan` and `web`:
+
+```bash
+cp demo/.env.example demo/.env
+$EDITOR demo/.env      # uncomment one provider block, fill in the key
+./run.sh web
+```
+
+`demo/.env` is gitignored — it never reaches a commit, only `.env.example`
+does. If you'd rather not have a file at all, exporting the same variables on
+the host before running `scan`/`web`/`shell` works identically:
+
+```bash
+export HOSTVEIL_AI_PROVIDER=openai
+export HOSTVEIL_OPENAI_BASE_URL=https://opencode.ai/zen/v1   # or .../zen/go/v1 for OpenCode Go
+export HOSTVEIL_OPENAI_API_KEY=...
+export HOSTVEIL_OPENAI_MODEL=...   # a model ID from that provider's own catalog
+./run.sh web
+```
+
+Any OpenAI-compatible vendor works the same way — only the base URL, key and
+model change. `HOSTVEIL_AI_PROVIDER=anthropic ANTHROPIC_API_KEY=...` or a
+local `HOSTVEIL_AI_PROVIDER=ollama` (the default) work identically, from
+either `.env` or an export; `run.sh` forwards whichever of those end up set
+and leaves the rest alone.
+
+`./run.sh shell` does not source `.env` for you inside the VM — the guest's
+own shell has no view of it — so `export` the same variables by hand there
+before running `hostveil explain ... --ai` directly.
+
+---
+
 ## Suggested demo script (5 minutes)
 
 1. **Scan** — `hostveil scan`

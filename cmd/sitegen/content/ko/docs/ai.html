@@ -50,6 +50,12 @@ hostveil explain ssh.rootlogin --ai</code></pre></div>
   HOSTVEIL_OPENAI_API_KEY=sk-or-... \
   HOSTVEIL_OPENAI_MODEL=meta-llama/llama-3.1-8b-instruct \
   hostveil explain ssh.rootlogin --ai</code></pre></div>
+            <p>OpenCode Zen과 OpenCode Go도 같은 방식입니다. 둘 다 OpenAI 호환 게이트웨이이므로, 그 벤더의 기본 URL과 카탈로그에 있는 모델 ID만 바꾸면 됩니다.</p>
+            <div class="code-block"><pre><code>HOSTVEIL_AI_PROVIDER=openai \
+  HOSTVEIL_OPENAI_BASE_URL=https://opencode.ai/zen/v1 \
+  HOSTVEIL_OPENAI_API_KEY=... \
+  HOSTVEIL_OPENAI_MODEL=... \
+  hostveil explain ssh.rootlogin --ai</code></pre></div>
             <p>매번 명령마다 반복하는 대신, 셸 프로필이나 systemd 유닛에 넣어 두면 그 호스트에서는 선택이 고정됩니다. 어느 프로바이더든 호스트를 벗어나면 인증 정보와 프롬프트도 함께 나갑니다. 그 프롬프트에 정확히 무엇이 담기는지는 아래 개인정보 항목을 보세요.</p>
 
             <h2>조언 전용이며, 설계상 비공개</h2>

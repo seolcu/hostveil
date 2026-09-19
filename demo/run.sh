@@ -15,6 +15,21 @@ set -euo pipefail
 cd "$(dirname "$0")"
 export VAGRANT_CWD="$PWD"
 
+# demo/.env, if present, is sourced for exactly the AI env vars ai_env_argv
+# forwards below — see .env.example for the ones it reads. This is the demo
+# scripts' own convenience file, not hostveil's: hostveil itself still has no
+# config file. demo/.gitignore excludes .env, so a real key placed here never
+# reaches a commit; .env.example ships instead, with placeholders.
+#
+# set -a exports every name .env assigns, without listing them a second time
+# here — the single list that matters is ai_env_argv's.
+if [ -f .env ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
+fi
+
 # An unprivileged libvirt client resolves to qemu:///session, and this demo
 # cannot run there: session mode has no management network, so the VM boots,
 # never gets an address, and vagrant gives up several minutes later with "not
@@ -147,6 +162,28 @@ start_stacks() {
   vagrant ssh -c 'for d in /opt/stacks/*/; do (cd "$d" && sudo docker compose up -d); done' 2>/dev/null
 }
 
+# The AI-related env vars, forwarded onto the guest's `sudo` command line —
+# `sudo NAME=value cmd` sets them for that command regardless of env_reset,
+# the same mechanism cmd/hostveil/elevate.go's carriedThroughSudo already
+# relies on one layer further in, once these are inside the VM. `vagrant ssh
+# -c` does not forward the host's environment on its own, so without this an
+# operator's own `export HOSTVEIL_OPENAI_API_KEY=...` never reaches
+# `hostveil` here — nothing else in this file passes any environment into
+# the guest at all.
+#
+# Only variables the host actually has set are emitted, so a host with none
+# of these set builds the exact command line it built before. No provider or
+# model is ever assumed here — see demo/README.md for how to point this at
+# OpenCode Zen/Go, Anthropic, or a local Ollama.
+ai_env_argv() {
+  for name in HOSTVEIL_AI_PROVIDER HOSTVEIL_OLLAMA_HOST HOSTVEIL_OLLAMA_MODEL \
+    ANTHROPIC_API_KEY HOSTVEIL_ANTHROPIC_MODEL \
+    HOSTVEIL_OPENAI_BASE_URL HOSTVEIL_OPENAI_API_KEY HOSTVEIL_OPENAI_MODEL; do
+    val="${!name:-}"
+    [ -n "$val" ] && printf '%s=%q ' "$name" "$val"
+  done
+}
+
 # Re-sync the repo and rebuild hostveil inside the VM. `vagrant up` only runs
 # provisioners the first time a VM is created, and the build lives in
 # provision.sh — so without this every later boot leaves the VM running
@@ -192,13 +229,13 @@ case "${1:-up}" in
     rebuild
     echo "Rebuilt /usr/local/bin/hostveil from the current working tree."
     ;;
-  scan)    vagrant ssh -c "sudo hostveil scan ${2:-}" ;;
+  scan)    vagrant ssh -c "sudo $(ai_env_argv)hostveil scan ${2:-}" ;;
   web)
     # 0.0.0.0 so Vagrant's NAT port-forward can reach the listener; the
     # browser still addresses it as localhost, which is what the dashboard's
     # Host allowlist checks. Open the tokenized URL hostveil prints below.
     echo "Dashboard: http://localhost:8787   (open the URL printed below — it carries the access token)"
-    vagrant ssh -c "sudo hostveil serve --addr 0.0.0.0:8787"
+    vagrant ssh -c "sudo $(ai_env_argv)hostveil serve --addr 0.0.0.0:8787"
     ;;
   shell)   vagrant ssh ;;
   snapshot) vagrant snapshot save clean && echo "Saved snapshot 'clean'." ;;

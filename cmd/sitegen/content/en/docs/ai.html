@@ -50,6 +50,12 @@ hostveil explain ssh.rootlogin --ai</code></pre></div>
   HOSTVEIL_OPENAI_API_KEY=sk-or-... \
   HOSTVEIL_OPENAI_MODEL=meta-llama/llama-3.1-8b-instruct \
   hostveil explain ssh.rootlogin --ai</code></pre></div>
+            <p>OpenCode Zen and OpenCode Go are the same shape — each is an OpenAI-compatible gateway with its own base URL, so nothing beyond <code>HOSTVEIL_OPENAI_BASE_URL</code> and a model ID from that vendor's own catalog changes:</p>
+            <div class="code-block"><pre><code>HOSTVEIL_AI_PROVIDER=openai \
+  HOSTVEIL_OPENAI_BASE_URL=https://opencode.ai/zen/v1 \
+  HOSTVEIL_OPENAI_API_KEY=... \
+  HOSTVEIL_OPENAI_MODEL=... \
+  hostveil explain ssh.rootlogin --ai</code></pre></div>
             <p>Set these in a shell profile or a systemd unit to make the choice permanent for that host, rather than repeating them on every command. Whichever provider is off-host, credentials and prompts leave the machine — see the privacy note below for exactly what that prompt contains.</p>
 
             <h2>Advisory only, and private by design</h2>

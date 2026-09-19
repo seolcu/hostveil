@@ -1,2 +1,5 @@
 .vagrant/
 *.log
+
+# Real API keys go here (see .env.example), never in a commit.
+.env
