@@ -153,6 +153,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/ai-context", s.handleAIContextGet)
 	mux.HandleFunc("POST /api/ai-context", s.handleAIContextSet)
 	mux.HandleFunc("POST /api/fix", s.handleFix)
+	mux.HandleFunc("POST /api/fix/one", s.handleFixOne)
 	mux.HandleFunc("POST /api/fix/all", s.handleFixAll)
 	mux.HandleFunc("POST /api/fix/batch", s.handleFixBatch)
 	mux.HandleFunc("POST /api/rescan", s.handleRescan)
@@ -687,6 +688,39 @@ func (s *Server) handleFix(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, outcome)
+}
+
+// fixOneResponse is a single finding's outcome from the batch loop's own
+// per-item step (see Engine.ApplyOne) — no verify, unlike POST /api/fix.
+// Skipped mirrors what a batch response would have counted this finding as:
+// already fixed, not eligible, or a fix whose shape did not match.
+type fixOneResponse struct {
+	model.FixOutcome
+	Skipped bool `json:"skipped,omitempty"`
+}
+
+// handleFixOne applies one finding under the batch's eligibility rule and
+// no-verify semantics, so the dashboard's progress modal can drive a real
+// per-item loop (POST /api/fix/all and /api/fix/batch each still apply
+// everything in one request, for the CLI and for a client that does not
+// need a live count) without paying for a per-fix domain re-check.
+func (s *Server) handleFixOne(w http.ResponseWriter, r *http.Request) {
+	var req fixRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	f, ok := s.lookup(req.ID, req.Service)
+	if !ok {
+		http.Error(w, "no such finding", http.StatusNotFound)
+		return
+	}
+	outcome, eligible, err := s.engine.ApplyOne(hostWork(r), f, false)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, fixOneResponse{FixOutcome: outcome, Skipped: !eligible})
 }
 
 func (s *Server) handleFixAll(w http.ResponseWriter, r *http.Request) {

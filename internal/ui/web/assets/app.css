@@ -89,17 +89,21 @@ button:disabled { opacity: .45; cursor: default; }
 /* The right padding is not symmetric on purpose: the browser draws the
    dropdown arrow inside the control, and with uppercase + letter-spacing the
    longest name ("Catppuccin Mocha") ran right into it. */
-#theme, #layout {
+#theme, #layout, #sort {
   font: 600 11px/1 var(--mono); letter-spacing: .8px; text-transform: uppercase;
   background: transparent; color: var(--bone); border: 1px solid var(--line-2);
   border-radius: 0; padding: 8px 18px 8px 12px; cursor: pointer;
 }
-#theme:hover, #layout:hover { border-color: var(--bone); }
-#theme:focus-visible, #layout:focus-visible { outline: 2px solid var(--safe); outline-offset: 1px; }
-#theme option, #layout option { background: var(--ink-2); color: var(--bone); text-transform: none; }
+#theme:hover, #layout:hover, #sort:hover { border-color: var(--bone); }
+#theme:focus-visible, #layout:focus-visible, #sort:focus-visible { outline: 2px solid var(--safe); outline-offset: 1px; }
+#theme option, #layout option, #sort option { background: var(--ink-2); color: var(--bone); text-transform: none; }
 /* The layout picker is scaffolding for a decision, not a preference — it is
    marked as such so it does not read as a permanent twin of the theme one. */
 #layout { border-style: dashed; }
+/* #sort sits in the findings pane's own header rather than the (already
+   busy) top statusbar, so it is smaller than its top-bar siblings — a
+   list-scoped control, not a global one. */
+#sort { padding: 5px 16px 5px 10px; font-size: 10px; }
 
 /* ── exposure gauge (the signature) ── */
 .gauge { display: flex; align-items: center; gap: 12px; }
@@ -157,6 +161,15 @@ button:disabled { opacity: .45; cursor: default; }
 .axis.na .axis-val { color: var(--slate); }
 .axis.partial .axis-val { color: var(--med); }
 
+/* ── scan-in-progress: the axes strip's other job ──
+   #axes shows either the finished score's per-domain bars, or — while a
+   scan is running — this one row instead. grid-column spans every track
+   .axes's own auto-fit would otherwise divide it into, since this is the
+   only thing in the strip while it is showing. */
+.scan-status { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; }
+.scan-status .meter { width: 220px; height: 8px; flex: 0 1 220px; }
+.scan-elapsed { color: var(--slate); font-size: 11px; font-variant-numeric: tabular-nums; }
+
 /* ── domain coverage notice: which checkers did not fully run ──
    Persistent, unlike .status — a score drawn from a partial scan must keep
    saying so, not flash once and vanish. */
@@ -190,7 +203,8 @@ main { flex: 1 1 auto; min-height: 0; display: grid;
 .detail { overflow-y: auto; min-height: 0; padding: 16px 22px; }
 
 .pane-head { background: var(--ink); padding: 10px 18px; border-bottom: 1px solid var(--line);
-  font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); }
+  font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 #findings { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
 ul { list-style: none; margin: 0; padding: 0; }
 
@@ -226,6 +240,12 @@ ul { list-style: none; margin: 0; padding: 0; }
 .finding .title { min-width: 0; }
 .finding .title .name { color: var(--bone); }
 .finding .title .rem { color: var(--slate); font-size: 11px; }
+/* Manual and Unavailable used to share this same slate — indistinguishable
+   from each other and from plain muted text. Both stay deliberately muted
+   (neither is a heat: see internal/ui/theme's Palette doc comment), just no
+   longer identical. */
+.finding .title .rem.rem-manual { color: var(--manual); }
+.finding .title .rem.rem-unavailable { color: var(--unavail); }
 /* A finding whose fix is applied and not yet in force. It keeps its severity
    colour on the left edge because the risk is still standing and the score
    still charges it — the row is not resolved, it is waiting. The accent on
@@ -252,6 +272,27 @@ ul { list-style: none; margin: 0; padding: 0; }
   margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .detail p { max-width: 74ch; margin: 0 0 12px; }
 .detail .howto { color: var(--accent); text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px; }
+/* Explain with AI + Close, as one row rather than two bare buttons appended
+   straight to #detail — without this neither carried a margin of its own,
+   so whichever came right before (a paragraph, or the fixbox) butted
+   straight up against them with no breathing room at all. */
+.detail-actions { display: flex; gap: 8px; margin-top: 18px; }
+
+/* ── scan-in-progress: the detail pane's other job ──
+   #detail shows a selected finding, or — while a scan is running — this
+   checklist instead, one row per domain the model knows about. Colors
+   mirror what the same four states already mean elsewhere on this page
+   (.dom-err is --crit, .axis.partial is --med) rather than deciding a
+   fourth time what "degraded" or "failed" looks like. */
+.scan-domains { max-width: 52ch; }
+.scan-domain-row { display: flex; justify-content: space-between; gap: 12px;
+  padding: 7px 0; border-bottom: 1px solid var(--ink-2); font-size: 12px; }
+.scan-domain-row:last-child { border-bottom: 0; }
+.scan-pending, .scan-skipped { color: var(--slate); }
+.scan-running { color: var(--bone); }
+.scan-done { color: var(--safe); }
+.scan-degraded { color: var(--med); }
+.scan-error { color: var(--crit); }
 
 /* ── overview (detail pane before a finding is selected) ── */
 .overview { max-width: 68ch; }
@@ -279,7 +320,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .aibox { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); background: var(--ink-2); }
 .aibox p { margin: 6px 0 0; }
 
-.fixbox { margin-top: 18px; border: 1px solid var(--line); background: var(--ink-2); }
+.fixbox { margin: 18px 0; border: 1px solid var(--line); background: var(--ink-2); }
 .fixbox-head { padding: 10px 14px; border-bottom: 1px solid var(--line);
   font-size: 11px; letter-spacing: .5px; }
 .fixbox-body { padding: 12px 14px; }
@@ -294,6 +335,33 @@ pre.diff .add { color: var(--safe); }
 pre.diff .del { color: var(--crit); }
 pre.diff .ctx { color: var(--slate); }
 .fixbox .row { display: flex; gap: 8px; }
+
+/* ── modal ──────────────────────────────────────────────────────────────
+   One overlay for what used to be spread across a toast, a native
+   confirm(), and a picker glued to a button: choosing an export format, a
+   fix's outcome, and a batch's per-item progress. <dialog> gives focus
+   handling, Escape and a ::backdrop for free — openModal()/closeModal() in
+   app.js are the whole interface to it. */
+#modal {
+  background: var(--ink-2); color: var(--bone); border: 1px solid var(--line);
+  border-radius: 0; padding: 0; width: min(440px, 92vw);
+  font: 13px/1.55 var(--mono);
+}
+/* Same tint .scrim uses for the overlay layouts' detail panel, so a modal
+   reads as the same kind of thing wherever it appears. */
+#modal::backdrop { background: color-mix(in srgb, var(--ink) 62%, transparent); }
+.modal-body { padding: 16px 18px; }
+.modal-body h3 { margin: 0 0 12px; font-size: 14px; font-weight: 700; }
+.modal-body p { margin: 0 0 8px; }
+.modal-body .row { display: flex; gap: 8px; margin-top: 14px; }
+.modal-body .meta { color: var(--slate); font-size: 11px; }
+.modal-body .warn { color: var(--high); }
+/* Export's format list — radios rather than a native <select>, so the whole
+   row is one click target and the choice is visible without opening a
+   second control inside the first one. */
+.modal-fmt { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.modal-fmt label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.modal-fmt input { accent-color: var(--safe); }
 
 /* ── AI advisory ── */
 .ctxinput {

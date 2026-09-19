@@ -56,7 +56,11 @@ func TestEveryThemeMeetsTheContrastFloor(t *testing.T) {
 	floors := map[string]float64{
 		"bone": 4.5, "slate": 4.5,
 		"crit": 4.5, "high": 4.5, "med": 4.5, "safe": 4.5,
-		"low": 3.5,
+		// Manual and Unavail share Low's exception and for the same reason:
+		// both are deliberately the quietest colors for their meaning, not a
+		// severity, and a host can legitimately carry many Manual findings at
+		// once without that reading as an emergency.
+		"low": 3.5, "manual": 3.5, "unavail": 3.5,
 		// The accent is set on panel headers and on the key letters in the
 		// footer — small text a reader is meant to pick out of a dim row, so
 		// it takes the normal-text floor and not Low's exception.
@@ -67,7 +71,7 @@ func TestEveryThemeMeetsTheContrastFloor(t *testing.T) {
 		roles := map[string]string{
 			"bone": p.Bone, "slate": p.Slate,
 			"crit": p.Crit, "high": p.High, "med": p.Med, "low": p.Low, "safe": p.Safe,
-			"accent": p.Accent,
+			"accent": p.Accent, "manual": p.Manual, "unavail": p.Unavail,
 		}
 		// Both grounds a finding is ever drawn on: the page and the raised
 		// surface used by hovered/selected rows and the fix preview box.

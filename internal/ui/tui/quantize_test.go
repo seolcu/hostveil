@@ -64,11 +64,20 @@ func chromaticRoles(p theme.Palette) map[string]string {
 // chromaticRoles: "no known path today" is allowed to be a grey, and is one on
 // purpose — it just may not be *the same* grey as the muted text it sits
 // beside, or as the body text.
+//
+// Manual and Unavail join Low here for the same reason, not chromaticRoles:
+// both are deliberately muted rather than heats (see the Palette doc
+// comment), so a 256-color terminal collapsing one to a cube greyscale entry
+// is acceptable — it just may not be the *same* entry as Low, Slate, Bone, or
+// each other, which is exactly the collision the two used to share when both
+// fell back to one dim grey in kindStyle.
 func distinctRoles(p theme.Palette) map[string]string {
 	m := chromaticRoles(p)
 	m["Low"] = p.Low
 	m["Bone"] = p.Bone
 	m["Slate"] = p.Slate
+	m["Manual"] = p.Manual
+	m["Unavail"] = p.Unavail
 	return m
 }
 
@@ -100,7 +109,7 @@ func TestEveryHeatSurvivesA256ColorTerminal(t *testing.T) {
 func TestNoTwoRolesCollapseOntoOneColor(t *testing.T) {
 	for _, th := range theme.All() {
 		seen := map[int]string{}
-		for _, role := range []string{"Crit", "High", "Med", "Low", "Safe", "Accent", "Bone", "Slate"} {
+		for _, role := range []string{"Crit", "High", "Med", "Low", "Safe", "Accent", "Bone", "Slate", "Manual", "Unavail"} {
 			hex := distinctRoles(th.Palette)[role]
 			i := index256(hex)
 			if other, ok := seen[i]; ok {

@@ -59,9 +59,9 @@ func TestGeneratedModelCoversEveryEnum(t *testing.T) {
 			t.Errorf("/model.js is missing severity %s", strings.TrimSpace(want))
 		}
 	}
-	for _, r := range model.AllRemediationKinds() {
-		want := fmt.Sprintf("    %q: {name: %q, label: %q, fixable: %t, auto: %t},",
-			r.String(), r.String(), r.Label(), r.IsFixable(), r == model.RemediationAuto)
+	for i, r := range model.AllRemediationKinds() {
+		want := fmt.Sprintf("    %q: {name: %q, label: %q, fixable: %t, auto: %t, rank: %d},",
+			r.String(), r.String(), r.Label(), r.IsFixable(), r == model.RemediationAuto, i)
 		if !strings.Contains(js, want) {
 			t.Errorf("/model.js is missing remediation %s", strings.TrimSpace(want))
 		}
