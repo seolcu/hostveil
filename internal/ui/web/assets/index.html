@@ -35,13 +35,6 @@
       <div class="actions">
         <select id="layout" aria-label="Dashboard layout"></select>
         <select id="theme" aria-label="Color theme"></select>
-        <select id="export-format" aria-label="Export format">
-          <option value="markdown">Markdown</option>
-          <option value="docx">Word</option>
-          <option value="pdf">PDF</option>
-          <option value="json">JSON</option>
-          <option value="sarif">SARIF</option>
-        </select>
         <button id="export">Export</button>
         <button id="advise">Advise</button>
         <button id="history">History</button>
@@ -64,7 +57,14 @@
 
     <main>
       <section class="findings">
-        <div class="pane-head" id="findings-title">Findings</div>
+        <div class="pane-head" id="findings-title">
+          <span id="findings-title-text">Findings</span>
+          <select id="sort" aria-label="Sort findings">
+            <option value="severity">Sort: Severity</option>
+            <option value="domain">Sort: Domain</option>
+            <option value="remediation">Sort: Remediation</option>
+          </select>
+        </div>
         <div class="filterbar" id="filterbar"></div>
         <div class="batchbar" id="batchbar" hidden></div>
         <ul id="findings"></ul>
@@ -79,6 +79,11 @@
       <div class="scrim" id="scrim" hidden></div>
     </main>
   </div>
+
+  <!-- One mount point for every modal the dashboard shows: export format,
+       a fix's outcome, and a batch's per-item progress. openModal()/
+       closeModal() in app.js are the whole interface to it. -->
+  <dialog id="modal"><div class="modal-body" id="modal-body"></div></dialog>
 
   <script src="/app.js"></script>
 </body>

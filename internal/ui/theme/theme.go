@@ -48,20 +48,36 @@ import (
 // Accent is each theme's own blue, spent only on structure: where you are and
 // how to move, never how bad something is. Risk and safety keep their
 // monopoly on the heats.
+//
+// Manual and Unavail answer a different question — not "how bad" but "what
+// kind of nothing can hostveil do about it" — and they are deliberately not
+// heats. A host can legitimately carry a dozen Manual findings by design (no
+// safe automatable action exists) and that must not read as a dozen problems
+// screaming for attention the way a dozen Crit findings would. Both sit at
+// Low's contrast floor rather than Bone's for the same reason Low does: they
+// are meant to be findable, not to compete with severity for the eye. Manual
+// is a muted warm (clay/tan) tone so it never gets mistaken for Med's amber;
+// Unavail is a muted cool (dusty violet) tone so it never gets mistaken for
+// Accent's blue or for the neutral greys (Slate, Low). Before this pair
+// existed, Manual and Unavailable were drawn identically — the two kinds a
+// finding can be that hostveil will never offer a button for, on purpose,
+// looked like one undifferentiated "nothing to do here" in every UI.
 type Palette struct {
-	Ink    string
-	Ink2   string
-	Ink3   string
-	Line   string
-	Line2  string
-	Bone   string
-	Slate  string
-	Crit   string
-	High   string
-	Med    string
-	Low    string
-	Safe   string
-	Accent string
+	Ink     string
+	Ink2    string
+	Ink3    string
+	Line    string
+	Line2   string
+	Bone    string
+	Slate   string
+	Crit    string
+	High    string
+	Med     string
+	Low     string
+	Safe    string
+	Accent  string
+	Manual  string
+	Unavail string
 }
 
 // Theme is a named palette. ID is what a user types (--theme, HOSTVEIL_THEME,
@@ -117,6 +133,7 @@ var themes = []Theme{
 			Bone: "#c8ccd4", Slate: "#8e939b",
 			Crit: "#ed7379", High: "#d19a66", Med: "#e5c07b", Low: "#79808e",
 			Safe: "#98c379", Accent: "#61afef",
+			Manual: "#b3906a", Unavail: "#8f88c9",
 		},
 	},
 	{
@@ -130,6 +147,7 @@ var themes = []Theme{
 			// contrast floor on the raised surface; lifted just past it.
 			Crit: "#fb533f", High: "#fe8019", Med: "#fabd2f", Low: "#877a6f",
 			Safe: "#b8bb26", Accent: "#83a598",
+			Manual: "#bb9250", Unavail: "#9591c7",
 		},
 	},
 	{
@@ -154,6 +172,7 @@ var themes = []Theme{
 			Bone: "#eceff4", Slate: "#8d9caf",
 			Crit: "#cf818a", High: "#d08770", Med: "#ebcb8b", Low: "#76839d",
 			Safe: "#a3be8c", Accent: "#88c0d0",
+			Manual: "#ad8f6f", Unavail: "#b18eb0",
 		},
 	},
 	{
@@ -165,6 +184,7 @@ var themes = []Theme{
 			Bone: "#cdd6f4", Slate: "#9399b2",
 			Crit: "#f38ba8", High: "#fab387", Med: "#f9e2af", Low: "#6f7389",
 			Safe: "#a6e3a1", Accent: "#89b4fa",
+			Manual: "#b99b73", Unavail: "#9c94c7",
 		},
 	},
 	{
@@ -181,6 +201,7 @@ var themes = []Theme{
 			// skip this" arrived the same.
 			Crit: "#f7768e", High: "#ff9e64", Med: "#e0af68", Low: "#676ea1",
 			Safe: "#9ece6a", Accent: "#71a2f7",
+			Manual: "#af8f6a", Unavail: "#9a8cc4",
 		},
 	},
 }
@@ -223,6 +244,7 @@ func (p Palette) vars() map[string]string {
 		"--bone": p.Bone, "--slate": p.Slate,
 		"--crit": p.Crit, "--high": p.High, "--med": p.Med, "--low": p.Low,
 		"--safe": p.Safe, "--accent": p.Accent,
+		"--manual": p.Manual, "--unavail": p.Unavail,
 	}
 }
 

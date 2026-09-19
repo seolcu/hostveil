@@ -139,6 +139,45 @@ func TestFixThroughAPI(t *testing.T) {
 	}
 }
 
+// TestFixOneThroughAPI pins /api/fix/one — the batch loop's own per-item
+// step, exposed so the dashboard's progress modal can drive a real loop over
+// several findings without routing through /api/fix's verify step (see
+// Engine.ApplyOne's doc comment). Skip/eligibility is pinned at the engine
+// level (internal/core/applyone_test.go); this is the wire shape: an
+// eligible finding applies and is not reported skipped, and an unknown
+// finding 404s the same way /api/fix does.
+func TestFixOneThroughAPI(t *testing.T) {
+	s, path := testServer(t)
+
+	fixOne := func(body string) (int, fixOneResponse) {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		req := authed(s, httptest.NewRequest(http.MethodPost, "/api/fix/one", strings.NewReader(body)))
+		req.Host = "127.0.0.1:8787"
+		req.Header.Set("Content-Type", "application/json")
+		s.Handler().ServeHTTP(rec, req)
+		var out fixOneResponse
+		_ = json.NewDecoder(rec.Body).Decode(&out)
+		return rec.Code, out
+	}
+
+	code, out := fixOne(`{"id":"compose.ds018","service":"cache"}`)
+	if code != http.StatusOK {
+		t.Fatalf("fix/one: status = %d", code)
+	}
+	if out.Skipped || !out.Success {
+		t.Errorf("fix/one: skipped=%v success=%v, want an applied fix", out.Skipped, out.Success)
+	}
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), "127.0.0.1:6379:6379") {
+		t.Errorf("fix/one did not apply to the file:\n%s", data)
+	}
+
+	if code, _ := fixOne(`{"id":"no.such.finding","service":""}`); code != http.StatusNotFound {
+		t.Errorf("fix/one on an unknown finding: status = %d, want 404", code)
+	}
+}
+
 func TestFixBatchThroughAPI(t *testing.T) {
 	s, path := testServer(t)
 	srv := httptest.NewServer(s.Handler())
@@ -658,7 +697,7 @@ func TestMutatingRoutesRejectGET(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, route := range []string{"/api/fix", "/api/fix/all", "/api/fix/batch", "/api/rescan", "/api/rollback"} {
+	for _, route := range []string{"/api/fix", "/api/fix/one", "/api/fix/all", "/api/fix/batch", "/api/rescan", "/api/rollback"} {
 		rec := httptest.NewRecorder()
 		req := authed(s, httptest.NewRequest(http.MethodGet, route, nil))
 		req.Host = "127.0.0.1:8787"

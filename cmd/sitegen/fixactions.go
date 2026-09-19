@@ -246,10 +246,11 @@ func renderAction(a fix.Action, labelSuffix string) (string, error) {
 // drifting apart.
 //
 // autoLabel/reviewLabel are interpolated in rather than hardcoded to
-// "Auto"/"Review": those come from kindLabels, and reading them from the
-// same table renderOneFix reads its own kind name from is what keeps the
-// two from disagreeing about what a row says, in either language — even
-// though today both languages spell both words the same way.
+// "Auto"/"Review": those are the English words, and a checks.html
+// written in Korean spells the same two kinds "자동 수정"/"검토" — see
+// kindLabels. A regex built from the same table renderOneFix reads its own
+// kind name from is what keeps the two from disagreeing about what a row
+// says, in either language.
 func checksFixKindCell(lang string) *regexp.Regexp {
 	auto := regexp.QuoteMeta(kindLabels[lang][model.RemediationAuto])
 	review := regexp.QuoteMeta(kindLabels[lang][model.RemediationReview])

@@ -27,16 +27,18 @@ import (
 // internal/ui/theme — one registry, shared with the dashboard — and a themed
 // TUI needs to rebuild them at runtime, which a package var cannot do.
 type styles struct {
-	cInk    color.Color
-	cLine   color.Color
-	cBone   color.Color
-	cSlate  color.Color
-	cCrit   color.Color
-	cHigh   color.Color
-	cMed    color.Color
-	cLow    color.Color
-	cSafe   color.Color
-	cAccent color.Color
+	cInk     color.Color
+	cLine    color.Color
+	cBone    color.Color
+	cSlate   color.Color
+	cCrit    color.Color
+	cHigh    color.Color
+	cMed     color.Color
+	cLow     color.Color
+	cSafe    color.Color
+	cAccent  color.Color
+	cManual  color.Color
+	cUnavail color.Color
 
 	bone  lipgloss.Style
 	dim   lipgloss.Style
@@ -48,26 +50,34 @@ type styles struct {
 	// which key does the thing. Never risk — the heats own that, and a header
 	// that borrowed one would be claiming the panel is dangerous.
 	accent lipgloss.Style
+	// manual and unavail are kindStyle's other two colors — muted, not heats.
+	// See the Palette doc comment in internal/ui/theme.
+	manual  lipgloss.Style
+	unavail lipgloss.Style
 }
 
 func newStyles(t theme.Theme) *styles {
 	p := t.Palette
 	s := &styles{
-		cInk:    lipgloss.Color(p.Ink),
-		cLine:   lipgloss.Color(p.Line2),
-		cBone:   lipgloss.Color(p.Bone),
-		cSlate:  lipgloss.Color(p.Slate),
-		cCrit:   lipgloss.Color(p.Crit),
-		cHigh:   lipgloss.Color(p.High),
-		cMed:    lipgloss.Color(p.Med),
-		cLow:    lipgloss.Color(p.Low),
-		cSafe:   lipgloss.Color(p.Safe),
-		cAccent: lipgloss.Color(p.Accent),
+		cInk:     lipgloss.Color(p.Ink),
+		cLine:    lipgloss.Color(p.Line2),
+		cBone:    lipgloss.Color(p.Bone),
+		cSlate:   lipgloss.Color(p.Slate),
+		cCrit:    lipgloss.Color(p.Crit),
+		cHigh:    lipgloss.Color(p.High),
+		cMed:     lipgloss.Color(p.Med),
+		cLow:     lipgloss.Color(p.Low),
+		cSafe:    lipgloss.Color(p.Safe),
+		cAccent:  lipgloss.Color(p.Accent),
+		cManual:  lipgloss.Color(p.Manual),
+		cUnavail: lipgloss.Color(p.Unavail),
 	}
 	s.accent = lipgloss.NewStyle().Foreground(s.cAccent)
 	s.bone = lipgloss.NewStyle().Foreground(s.cBone)
 	s.dim = lipgloss.NewStyle().Foreground(s.cSlate)
 	s.safe = lipgloss.NewStyle().Foreground(s.cSafe)
+	s.manual = lipgloss.NewStyle().Foreground(s.cManual)
+	s.unavail = lipgloss.NewStyle().Foreground(s.cUnavail)
 	s.brand = lipgloss.NewStyle().Foreground(s.cBone).Bold(true)
 	s.sel = lipgloss.NewStyle().Foreground(s.cBone).Background(s.cLine).Bold(true)
 	s.track = lipgloss.NewStyle().Foreground(s.cLine)
@@ -83,9 +93,13 @@ func newStyles(t theme.Theme) *styles {
 //
 // So: safe for Auto, which is the same green the pick marker already spends on
 // the same claim; accent for Review, which is the colour this TUI uses for
-// "there is a key here that does something"; and the muted grey for the three
-// kinds that offer no button at all, which is what the grey means everywhere
-// else on the screen.
+// "there is a key here that does something"; manual and unavail for the two
+// kinds that offer no button at all but are not the same kind of nothing — a
+// host can carry many Manual findings by design, which must not read as an
+// emergency, so both are muted rather than heats (see the Palette doc
+// comment) and merely distinct from each other and from the neutral grey.
+// Unset stays on the plain dim grey: it is not a kind hostveil ever assigns
+// on purpose, so it gets no color of its own to be muted about.
 func (s *styles) kindStyle(f model.Finding) lipgloss.Style {
 	// Pending is drawn in the accent rather than the safe green, and the
 	// distinction is the point: green on this column has meant "hostveil can
@@ -101,6 +115,10 @@ func (s *styles) kindStyle(f model.Finding) lipgloss.Style {
 		return s.safe
 	case model.RemediationReview:
 		return s.accent
+	case model.RemediationManual:
+		return s.manual
+	case model.RemediationUnavailable:
+		return s.unavail
 	default:
 		return s.dim
 	}

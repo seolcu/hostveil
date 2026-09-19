@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/seolcu/hostveil/internal/core"
 	"github.com/seolcu/hostveil/internal/model"
 )
 
@@ -66,11 +67,25 @@ func modelJS() string {
 	b.WriteString("  },\n")
 
 	b.WriteString("  remediations: {\n")
-	for _, r := range model.AllRemediationKinds() {
-		fmt.Fprintf(&b, "    %q: {name: %q, label: %q, fixable: %t, auto: %t},\n",
-			r.String(), r.String(), r.Label(), r.IsFixable(), r == model.RemediationAuto)
+	for i, r := range model.AllRemediationKinds() {
+		fmt.Fprintf(&b, "    %q: {name: %q, label: %q, fixable: %t, auto: %t, rank: %d},\n",
+			r.String(), r.String(), r.Label(), r.IsFixable(), r == model.RemediationAuto, i)
 	}
 	b.WriteString("  },\n")
+
+	// The dashboard's Export button reads this instead of hand-typing the
+	// format list a second time — the same drift this whole file exists to
+	// stop, just one table over.
+	//
+	// label before id: TestGeneratedDomainsCoverEverySource's nothing-
+	// extracted guard counts every "{id: " in this file to make sure it
+	// found exactly the domain table and nothing else — an entry that
+	// happened to start the same way would silently inflate that count.
+	b.WriteString("  exportFormats: [\n")
+	for _, f := range core.ExportFormats() {
+		fmt.Fprintf(&b, "    {label: %q, id: %q},\n", f.Label, f.ID)
+	}
+	b.WriteString("  ],\n")
 
 	// complete, not ran: the dashboard asks this to decide whether it may
 	// call a host clean, and a degraded domain ran without covering its

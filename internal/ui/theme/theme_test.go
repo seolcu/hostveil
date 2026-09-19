@@ -81,6 +81,9 @@ func TestOneDarkUnchanged(t *testing.T) {
 		Safe: "#98c379",
 		// One Dark's blue, for structure only — see the Palette doc comment.
 		Accent: "#61afef",
+		// Manual/Unavail: muted clay and dusty violet, neither a heat — see
+		// the Palette doc comment.
+		Manual: "#b3906a", Unavail: "#8f88c9",
 	}
 	got, ok := Lookup("onedark")
 	if !ok {

@@ -49,41 +49,13 @@ func (e *Engine) applyBatch(ctx context.Context, findings []model.Finding, revie
 			out.Skipped = append(out.Skipped, f.ID)
 			continue
 		}
-		eligible := f.Remediation == model.RemediationAuto ||
-			(reviewed && f.Remediation == model.RemediationReview)
-		// Fixed, not !Active: this asks whether hostveil has already applied
-		// something here, and for a pending fix it has. Asking Active would
-		// re-apply it on every batch until the operator restarted the service,
-		// writing a checkpoint each time over a file that had not changed.
-		if f.Fixed || !eligible {
-			out.Skipped = append(out.Skipped, f.ID)
-			continue
-		}
-		fx, ok, err := e.buildFix(f)
-		// A fix that exists and could not be built is a defect in hostveil,
-		// not a property of the finding — a malformed registration, or
-		// evidence the checker did not write. Reporting it as Skipped made it
-		// indistinguishable from "there is no fix for this", which is the one
-		// reading that guarantees nobody ever looks.
+		res, eligible, err := e.applyOneLocked(ctx, f, reviewed)
 		if err != nil {
 			out.Failed[f.ID] = err.Error()
 			continue
 		}
-		if !ok || len(fx.Actions) == 0 {
+		if !eligible {
 			out.Skipped = append(out.Skipped, f.ID)
-			continue
-		}
-		// An Auto fix is one action by definition (fix.Validate enforces it),
-		// and a batch that silently picked one of several would be choosing
-		// for the operator. A reviewed batch takes the first alternative
-		// because that is where every builder puts the primary remediation.
-		if !reviewed && len(fx.Actions) != 1 {
-			out.Skipped = append(out.Skipped, f.ID)
-			continue
-		}
-		res, err := e.applyFix(ctx, f, 0)
-		if err != nil {
-			out.Failed[f.ID] = err.Error()
 			continue
 		}
 		out.Applied = append(out.Applied, f.ID)
@@ -101,4 +73,68 @@ func (e *Engine) applyBatch(ctx context.Context, findings []model.Finding, revie
 	// outcome rather than four descriptions of it.
 	out.Message = out.Summary()
 	return out
+}
+
+// applyOneLocked is one iteration of applyBatch's loop, factored out so
+// ApplyOne can offer the same eligibility rule and no-verify semantics to a
+// caller that wants to apply findings one at a time — the web dashboard's
+// per-item progress modal, specifically, which needs real per-fix results
+// without paying for ApplyFix's verify step on every item (see ApplyFix's
+// doc comment: a checker re-run per fix is what the batch path exists to
+// avoid). The caller must already hold applyMu.
+//
+// eligible is false for a finding the batch would report as Skipped
+// (already fixed, not Auto/reviewed-Review, unregistered, or a
+// shape-mismatched fix); err is non-nil only for a finding the batch would
+// report as Failed — a defect in hostveil, not a property of the finding.
+func (e *Engine) applyOneLocked(ctx context.Context, f model.Finding, reviewed bool) (res model.FixOutcome, eligible bool, err error) {
+	eligible = f.Remediation == model.RemediationAuto ||
+		(reviewed && f.Remediation == model.RemediationReview)
+	// Fixed, not !Active: this asks whether hostveil has already applied
+	// something here, and for a pending fix it has. Asking Active would
+	// re-apply it on every batch until the operator restarted the service,
+	// writing a checkpoint each time over a file that had not changed.
+	if f.Fixed || !eligible {
+		return model.FixOutcome{}, false, nil
+	}
+	fx, ok, err := e.buildFix(f)
+	// A fix that exists and could not be built is a defect in hostveil,
+	// not a property of the finding — a malformed registration, or
+	// evidence the checker did not write. Reporting it as Skipped made it
+	// indistinguishable from "there is no fix for this", which is the one
+	// reading that guarantees nobody ever looks.
+	if err != nil {
+		return model.FixOutcome{}, true, err
+	}
+	if !ok || len(fx.Actions) == 0 {
+		return model.FixOutcome{}, false, nil
+	}
+	// An Auto fix is one action by definition (fix.Validate enforces it),
+	// and a batch that silently picked one of several would be choosing
+	// for the operator. A reviewed batch takes the first alternative
+	// because that is where every builder puts the primary remediation.
+	if !reviewed && len(fx.Actions) != 1 {
+		return model.FixOutcome{}, false, nil
+	}
+	res, err = e.applyFix(ctx, f, 0)
+	return res, true, err
+}
+
+// ApplyOne applies a single finding under the same eligibility rule and
+// no-verify semantics as ApplyBatch's loop — the batch's own iteration,
+// exposed as one call. It exists for a caller that wants real per-item
+// progress over a set of findings (the web dashboard's "Fix all safe" /
+// "Fix selected" progress modal) without looping over ApplyFix, whose
+// verify step is deliberately reserved for the single-finding path a person
+// is watching (see ApplyFix's doc comment) and would otherwise re-run a
+// checker — for compose, every container on the host; for cve, Trivy —
+// once per finding in what is supposed to be a batch.
+//
+// eligible reports whether this finding was one ApplyBatch would have acted
+// on at all; a caller driving a progress loop counts it as skipped, not
+// failed, when eligible is false and err is nil.
+func (e *Engine) ApplyOne(ctx context.Context, f model.Finding, reviewed bool) (outcome model.FixOutcome, eligible bool, err error) {
+	e.applyMu.Lock()
+	defer e.applyMu.Unlock()
+	return e.applyOneLocked(ctx, f, reviewed)
 }

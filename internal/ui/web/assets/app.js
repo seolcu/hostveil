@@ -67,9 +67,20 @@ let report = null;
 let trend = null;
 let selected = null; // {id, service} — the inspected finding (single-select)
 
-// Filter + multi-select state.
+// Filter + multi-select + sort state.
 const filters = { sev: new Set(), domain: new Set(), fixable: false };
 const marked = new Set(); // keys of findings picked for a batch fix
+let sortBy = "severity"; // "severity" | "domain" | "remediation" — see #sort
+
+// Comparators for the findings list. Each reads the same rank() the model's
+// own tables carry, so "Domain" and "Remediation" sort in the order the
+// engine declared them in, not alphabetically or by whichever order the
+// scan happened to enumerate them.
+const sortComparators = {
+  severity: (a, b) => rank(SEV, a.severity) - rank(SEV, b.severity),
+  domain: (a, b) => rank(SRC, a.source) - rank(SRC, b.source),
+  remediation: (a, b) => rank(REM, a.remediation) - rank(REM, b.remediation),
+};
 
 function fkey(f) { return f.id + "|" + (f.service || ""); }
 
@@ -269,24 +280,49 @@ function selectAllAuto() {
 
 function clearMarked() { marked.clear(); render(); }
 
-async function applyBatch() {
+function applyBatch() {
   const findings = active(report.findings)
     .filter((f) => marked.has(fkey(f)))
-    .map((f) => ({ id: f.id, service: f.service || "" }));
+    .map((f) => ({ id: f.id, service: f.service || "", title: f.title }));
+  return applyMany(findings, "Fixing");
+}
+
+// applyMany drives a per-item progress modal over `findings`, calling
+// /api/fix/one once per finding in sequence rather than the batch routes'
+// one-shot /api/fix/all or /api/fix/batch. That endpoint is Engine.ApplyOne
+// — the batch loop's own eligibility rule and no-verify semantics exposed
+// per item, not a loop over the single-fix endpoint, which would re-run
+// each finding's domain checker (expensive for compose and cve) once per
+// item instead of zero times. See internal/core.ApplyOne's doc comment.
+async function applyMany(findings, verb) {
   if (!findings.length) return;
-  try {
-    const o = await api("/api/fix/batch", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ findings }),
-    });
-    // The engine's own sentence. Written here by hand it counted applied,
-    // skipped and failed but never mentioned o.interrupted, so a batch cut
-    // short read exactly like one that ran to completion — which is the one
-    // thing that flag exists to prevent.
-    flash(o.message);
-    marked.clear();
-    await refresh();
-  } catch (e) { flash("Batch fix failed: " + e.message, true); }
+  const body = el("div", {}, el("p", {}, `${verb} 1 of ${findings.length}…`));
+  openModal(el("div", {}, el("h3", {}, verb + "…"), body), { blocking: true });
+
+  let applied = 0, skipped = 0, failed = 0;
+  for (let i = 0; i < findings.length; i++) {
+    const f = findings[i];
+    body.replaceChildren(el("p", {}, `${verb} ${i + 1} of ${findings.length}: ${f.title || f.id}`));
+    try {
+      const o = await api("/api/fix/one", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: f.id, service: f.service || "" }),
+      });
+      o.skipped ? skipped++ : applied++;
+    } catch (e) {
+      failed++;
+    }
+  }
+
+  document.getElementById("modal").removeAttribute("data-busy");
+  const done = el("button", { class: "primary" }, "Done");
+  done.onclick = closeModal;
+  body.replaceChildren(
+    el("p", {}, `Applied ${applied} · skipped ${skipped} · failed ${failed}.`),
+    el("div", { class: "row" }, done)
+  );
+  marked.clear();
+  await refresh();
 }
 
 // Show which checkers did not fully cover their domain. Without this the
@@ -529,8 +565,10 @@ function render() {
   renderVerdict(all);
   renderRail(all);
   renderFilterbar(all);
-  const items = applyFilters(all).sort((a, b) => rank(SEV, a.severity) - rank(SEV, b.severity));
-  document.getElementById("findings-title").textContent =
+  // lanes always groups by severity regardless of sortBy (see laneRows) — a
+  // domain/remediation sort applies within each lane, not instead of it.
+  const items = applyFilters(all).sort(sortComparators[sortBy] || sortComparators.severity);
+  document.getElementById("findings-title-text").textContent =
     filterActive() ? `Findings · ${items.length}/${all.length}` : `Findings · ${all.length}`;
 
   if (all.length === 0) {
@@ -562,7 +600,7 @@ function render() {
       el("span", { class: "sev" }, sevAbbr(f)),
       el("div", { class: "title" },
         el("div", { class: "name" }, f.title),
-        el("div", { class: "rem" }, f.id + "  ·  " +
+        el("div", { class: "rem rem-" + f.remediation }, f.id + "  ·  " +
           (isPending(f) ? "Applied — not in force yet" : remLabel(f.remediation)))
       ),
       f.service ? el("span", { class: "svc" }, f.service) : ""
@@ -723,23 +761,34 @@ function selectFinding(f, li) {
     f.description ? el("p", {}, f.description) : "",
     f.how_to_fix ? el("div", { class: "howto" }, "How to fix") : "",
     f.how_to_fix ? el("p", {}, f.how_to_fix) : "",
-    // Under the instructions, not above them. A reader with no Preview fix
-    // button still needs the how-to first; this answers the question they
-    // ask second, and it is absent entirely on anything fixable.
+    // Under the instructions, not above them: this answers the question a
+    // reader asks second, and it is absent entirely on anything fixable.
     f.why_no_fix ? el("div", { class: "howto" }, "Why there is no fix button") : "",
     f.why_no_fix ? el("p", { class: "whynofix" }, f.why_no_fix) : ""
   );
+  // Shown immediately rather than behind a "Preview fix" click: there is
+  // nothing to decide before seeing it, and gating it behind a button meant
+  // a second click re-appended a second copy underneath the first, since
+  // nothing ever removed the one already there.
   if (isFixable(f)) {
-    d.append(el("button", { class: "primary", onclick: () => preview(f) }, "Preview fix"));
+    const box = el("div", { class: "fixbox" },
+      el("div", { class: "fixbox-head" }, "Fix preview"),
+      el("div", { class: "fixbox-body" }, el("p", { class: "meta" }, "Loading fix preview…")));
+    d.append(box);
+    loadPreview(f, box);
   }
-  d.append(el("button", { onclick: (ev) => explainAI(f, ev.target) }, "Explain with AI"));
+  // A row, not two bare buttons appended straight to #detail: without a
+  // wrapper neither had any margin of its own, so whichever came right
+  // before (a paragraph, or the fixbox) butted straight up against
+  // "Explain with AI" with no breathing room at all.
+  const explainBtn = el("button", { onclick: (ev) => explainAI(f, ev.target) }, "Explain with AI");
   // The overlay and inline layouts need a way out that is not "pick another
   // finding": an overlay covers the list it was opened from, and an inline
   // panel has pushed the next finding off the bottom. The pane layouts have
   // neither problem, so CSS hides it there.
   const close = el("button", { class: "detail-close" }, "Close");
   close.onclick = closeDetail;
-  d.append(close);
+  d.append(el("div", { class: "detail-actions" }, explainBtn, close));
 }
 
 // closeDetail returns to the unselected state: the overview comes back in
@@ -773,19 +822,25 @@ async function explainAI(f, btn) {
   }
 }
 
-async function preview(f) {
+// loadPreview fetches a finding's fix preview into a box selectFinding has
+// already appended to #detail, replacing its "Loading…" placeholder either
+// way — with the diff, or with why it could not be fetched.
+async function loadPreview(f, box) {
   try {
     const p = await api(`/api/preview?id=${encodeURIComponent(f.id)}&service=${encodeURIComponent(f.service || "")}`);
-    showPreview(f, p);
-  } catch (e) { flash("Preview failed: " + e.message, true); }
+    drawPreviewInto(box, f, p);
+  } catch (e) {
+    box.querySelector(".fixbox-body").replaceChildren(el("p", { class: "meta" }, "Preview failed: " + e.message));
+  }
 }
 
-function showPreview(f, p) {
+// drawPreviewInto renders a fetched preview into a box already in the DOM —
+// the alternative-picker/Apply pair a Review finding needs, redrawn in
+// place each time a different alternative is chosen.
+function drawPreviewInto(box, f, p) {
   let chosen = 0;
-  const box = el("div", { class: "fixbox" });
-  const head = el("div", { class: "fixbox-head" });
-  const body = el("div", { class: "fixbox-body" });
-  box.append(head, body);
+  const head = box.querySelector(".fixbox-head");
+  const body = box.querySelector(".fixbox-body");
   const draw = () => {
     const a = p.actions[chosen];
     head.textContent = p.label;
@@ -795,13 +850,11 @@ function showPreview(f, p) {
       a.warning ? el("div", { class: "warn" }, "⚠  " + a.warning) : "",
       actionBody(a),
       el("div", { class: "row" },
-        el("button", { class: "primary", onclick: () => applyFix(f, chosen) }, "Apply"),
-        el("button", { onclick: () => selectFinding(f, document.querySelector(".finding.active")) }, "Cancel")
+        el("button", { class: "primary", onclick: () => applyFix(f, chosen) }, "Apply")
       )
     );
   };
   draw();
-  document.getElementById("detail").append(box);
 }
 
 function altPicker(p, chosen, onpick) {
@@ -849,15 +902,11 @@ async function applyFix(f, action) {
     // The restart hint is not decoration. An edit fix writes the file and
     // nothing reloads the service, so until the operator restarts it the
     // score has improved for a change that is not yet in effect. The CLI has
-    // always said so; the dashboard used to show only the new number.
-    // verify_message is rendered by the engine, not composed here: the
-    // difference between "re-checked and gone" and "applied but not yet in
-    // force" is subtle enough that three interfaces phrasing it themselves
-    // would make three different claims.
-    flash(`Fix applied. Score ${o.new_score.overall}/100.` +
-      (o.restart_hint ? `  Restart '${o.restart_hint}' for it to take effect.` : "") +
-      (o.verify_message ? `  ${o.verify_message}` : "") +
-      (o.checkpoint_id ? `  Rollback: ${o.checkpoint_id}` : ""));
+    // always said so. verify_message is rendered by the engine, not composed
+    // here: the difference between "re-checked and gone" and "applied but
+    // not yet in force" is subtle enough that three interfaces phrasing it
+    // themselves would make three different claims.
+    showOutcomeModal("Fix applied", o);
     await refresh();
   } catch (e) { flash("Fix failed: " + e.message, true); }
 }
@@ -975,15 +1024,22 @@ function checkpointBox(cp) {
 }
 
 async function rollback(cp, force = false) {
-  if (!force && !confirm(`Roll back "${cp.label}"?\n\nThis restores the original file as it was before the fix was applied.`)) return;
+  if (!force) {
+    const ok = await confirmModal(`Roll back "${cp.label}"?`,
+      "This restores the original file as it was before the fix was applied.", "Roll back");
+    if (!ok) return;
+  }
   try {
     const o = await api("/api/rollback", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ checkpoint_id: cp.id, force }),
     });
     const n = o.restored_files ? o.restored_files.length : 0;
-    flash(`Rolled back. Restored ${n} file${n === 1 ? "" : "s"}. Score ${o.new_score.overall}/100.` +
-      (o.restart_service ? `  You may need to restart '${o.restart_service}'.` : ""));
+    showOutcomeModal("Rolled back", {
+      new_score: o.new_score,
+      restart_hint: o.restart_service,
+      verify_message: `Restored ${n} file${n === 1 ? "" : "s"}.`,
+    });
     await refresh();
     await showHistory();
   } catch (e) {
@@ -992,9 +1048,10 @@ async function rollback(cp, force = false) {
     // was done in between. Rollback keeps no checkpoint of its own, so
     // say that plainly and make the override a second, informed answer.
     if (e.status === 409) {
-      if (confirm(`${e.message}\n\nOverwrite it anyway?\n\nThis restores hostveil's backup over the current file, discarding those changes. Rollback writes no checkpoint of its own, so this cannot be undone.`)) {
-        await rollback(cp, true);
-      }
+      const ok = await confirmModal("Overwrite it anyway?",
+        `${e.message} This restores hostveil's backup over the current file, discarding those changes. ` +
+        "Rollback writes no checkpoint of its own, so this cannot be undone.", "Overwrite");
+      if (ok) await rollback(cp, true);
       return;
     }
     flash("Rollback failed: " + e.message, true);
@@ -1021,6 +1078,72 @@ function flash(msg, isErr) {
   s.hidden = false;
   clearTimeout(flash._t);
   flash._t = setTimeout(() => (s.hidden = true), 6000);
+}
+
+// ── modal ──────────────────────────────────────────────────────────────
+// One overlay for what used to be three different things: a native
+// <select> glued to a separate Export button, a one-line toast that a fix
+// or a rollback had to compress its whole outcome into, and no feedback at
+// all for a batch's progress beyond a disabled button. <dialog> gives
+// Escape-to-close and a ::backdrop for free; blocking is set while a batch
+// is mid-run so it cannot be dismissed out from under itself.
+function openModal(contentEl, { blocking = false } = {}) {
+  const dlg = document.getElementById("modal");
+  document.getElementById("modal-body").replaceChildren(contentEl);
+  dlg.toggleAttribute("data-busy", blocking);
+  if (!dlg.open) dlg.showModal();
+}
+function closeModal() {
+  const dlg = document.getElementById("modal");
+  if (dlg.open) dlg.close();
+}
+document.getElementById("modal").addEventListener("cancel", (e) => {
+  if (e.target.hasAttribute("data-busy")) e.preventDefault();
+});
+document.getElementById("modal").addEventListener("click", (e) => {
+  // A click that lands on the <dialog> itself rather than on modal-body's
+  // content is a click on the ::backdrop — <dialog> has no other way to
+  // tell the two apart.
+  if (e.target === e.currentTarget && !e.currentTarget.hasAttribute("data-busy")) closeModal();
+});
+
+// showOutcomeModal renders one fix's or one rollback's result — score,
+// restart hint, verify message, checkpoint id — as a modal with a Done
+// button, instead of compressing it into a one-line toast that disappears
+// in six seconds. o is either a model.FixOutcome or the shape rollback()
+// below builds to match it.
+function showOutcomeModal(title, o) {
+  const lines = [];
+  if (o.new_score) lines.push(el("p", {}, `Score: ${o.new_score.overall}/100`));
+  if (o.restart_hint) lines.push(el("p", { class: "warn" }, `Restart '${o.restart_hint}' for it to take effect.`));
+  if (o.verify_message) lines.push(el("p", {}, o.verify_message));
+  if (o.checkpoint_id) lines.push(el("p", { class: "meta" }, `Rollback checkpoint: ${o.checkpoint_id}`));
+  const done = el("button", { class: "primary" }, "Done");
+  done.onclick = closeModal;
+  openModal(el("div", {}, el("h3", {}, title), ...lines, el("div", { class: "row" }, done)));
+}
+
+// confirmModal replaces window.confirm() with the same modal every other
+// dialog in this file uses — a native confirm() looks like the browser
+// interrupting the page, not the dashboard asking a question, and it can't
+// carry more than one line of plain text. Resolves true on the confirm
+// button, false on Cancel *or* on any other way the dialog closes (Escape,
+// a click on the backdrop) — a dismissal is a "no" here the same way it is
+// for a native confirm().
+function confirmModal(title, message, confirmLabel = "Confirm") {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+      closeModal();
+    };
+    const yes = el("button", { class: "primary", onclick: () => finish(true) }, confirmLabel);
+    const no = el("button", { onclick: () => finish(false) }, "Cancel");
+    openModal(el("div", {}, el("h3", {}, title), el("p", {}, message), el("div", { class: "row" }, yes, no)));
+    document.getElementById("modal").addEventListener("close", () => finish(false), { once: true });
+  });
 }
 
 // ── theme picker ───────────────────────────────────────────────────────
@@ -1076,8 +1199,24 @@ function initThemePicker() {
   };
 }
 
+// ── sort control ───────────────────────────────────────────────────────
+// Lives in the findings pane's own header, not the top statusbar — it is a
+// list-scoped choice, not a global one. Same read-then-write pattern as the
+// theme/layout pickers, minus the localStorage: a sort choice is about what
+// you are looking at right now, not a standing preference across sessions.
+function initSortPicker() {
+  const sel = document.getElementById("sort");
+  if (!sel) return;
+  sel.value = sortBy;
+  sel.onchange = () => {
+    sortBy = sel.value;
+    if (report) render();
+  };
+}
+
 initThemePicker();
 initLayoutPicker();
+initSortPicker();
 
 document.getElementById("scrim").onclick = closeDetail;
 // Escape is what people press at an overlay before they look for a button.
@@ -1088,24 +1227,46 @@ document.addEventListener("keydown", (e) => {
 document.getElementById("history").onclick = showHistory;
 document.getElementById("advise").onclick = showAdvise;
 
-// Export downloads /api/export as a file rather than navigating to it: the
-// route can answer 409 (no scan yet) or 400 (bad format), and a plain <a
-// href> navigation on an error response would replace this whole page with
-// a blank error document instead of leaving flash() to say what happened.
+// Export opens a modal to choose the format, then downloads /api/export as
+// a file rather than navigating to it: the route can answer 409 (no scan
+// yet) or 400 (bad format), and a plain <a href> navigation on an error
+// response would replace this whole page with a blank error document
+// instead of leaving flash() to say what happened.
+//
+// The format list used to be a second <select> beside this button, styled
+// like nothing else in the bar (app.css had rules for #theme/#layout and
+// none for it) and taking a second control to say one thing. exportFormats
+// comes from /model.js — core.ExportFormats(), the same table the CLI's
+// --format flag and the TUI's picker resolve against — so a sixth format
+// only ever needs the one new row there.
 const exportBtn = document.getElementById("export");
-exportBtn.onclick = () => whileBusy(exportBtn, "Exporting…", async () => {
-  const format = document.getElementById("export-format").value;
-  const res = await fetch("/api/export?format=" + encodeURIComponent(format));
-  if (!res.ok) throw new Error((await res.text()) || res.statusText);
-  const blob = await res.blob();
-  const cd = res.headers.get("content-disposition") || "";
-  const name = /filename="([^"]+)"/.exec(cd)?.[1] || ("hostveil-report." + format);
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(a.href);
-});
+exportBtn.onclick = () => {
+  const formats = M.exportFormats || [];
+  let chosen = formats[0] && formats[0].id;
+  const list = el("div", { class: "modal-fmt" },
+    ...formats.map((f, i) => {
+      const input = Object.assign(document.createElement("input"),
+        { type: "radio", name: "fmt", checked: i === 0 });
+      input.onchange = () => { chosen = f.id; };
+      return el("label", {}, input, " " + f.label);
+    })
+  );
+  const dl = el("button", { class: "primary" }, "Download");
+  dl.onclick = () => whileBusy(dl, "Exporting…", async () => {
+    const res = await fetch("/api/export?format=" + encodeURIComponent(chosen));
+    if (!res.ok) throw new Error((await res.text()) || res.statusText);
+    const blob = await res.blob();
+    const cd = res.headers.get("content-disposition") || "";
+    const name = /filename="([^"]+)"/.exec(cd)?.[1] || ("hostveil-report." + chosen);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    closeModal();
+  });
+  openModal(el("div", {}, el("h3", {}, "Export"), list, el("div", { class: "row" }, dl)));
+};
 
 // whileBusy disables a button for the duration of the work it starts, and
 // reports a failure instead of leaving one unhandled.
@@ -1136,7 +1297,6 @@ async function whileBusy(el, label, fn) {
 // for minutes. A 409 means a scan is already running — poll that one.
 const rescanBtn = document.getElementById("rescan");
 rescanBtn.onclick = () => whileBusy(rescanBtn, "Rescanning…", async () => {
-  flash("Rescanning…");
   marked.clear();
   const res = await fetch("/api/rescan", { method: "POST", headers: { "Content-Type": "application/json" } });
   if (!res.ok && res.status !== 409) throw new Error((await res.text()) || res.statusText);
@@ -1144,18 +1304,121 @@ rescanBtn.onclick = () => whileBusy(rescanBtn, "Rescanning…", async () => {
   flash("Rescan complete.");
 });
 
-// pollRescan resolves when the running scan finishes, updating the status
-// line with the per-domain picture roughly once a second. verb is what the
-// status line calls the scan in progress — "Rescanning" from the button
-// above, "Scanning" from boot() below, where there may be no prior result
-// to justify the "re-".
+// scanStartedAt is set once per poll loop (pollRescan) and read by
+// renderScanProgress for the elapsed clock. Module-level rather than a
+// parameter because whileBusy/watchScan/pollRescan's call chain has no
+// natural place to thread it through, and there is only ever one scan
+// running at a time (the engine serialises scan/apply/rollback behind one
+// mutex, so a second poll loop can never overlap this one).
+let scanStartedAt = null;
+
+// formatElapsed mirrors the TUI's clock: seconds under a minute, minutes and
+// seconds after. No ETA anywhere near this — most domains finish in well
+// under a second and the CVE domain's Trivy run can take minutes, so a
+// remaining-time estimate would be confidently wrong for most of the wait.
+// See internal/ui/tui/scanning_test.go's
+// TestTheScanScreenDoesNotEstimateWhatItCannotKnow for why the TUI refuses
+// one too.
+function formatElapsed(ms) {
+  const total = Math.floor(ms / 1000);
+  if (total < 60) return total + "s";
+  const m = Math.floor(total / 60), s = total % 60;
+  return m + ":" + String(s).padStart(2, "0");
+}
+
+// scanStateWord is the label a domain's row shows, in the TUI's own
+// wording (internal/ui/tui/view.go's scanDomainRow) — not SCAN[state].name,
+// which is the stable wire name ("degraded"), not the word a reader wants
+// ("partial").
+function scanStateWord(state) {
+  switch (state) {
+    case "running": return "scanning…";
+    case "done": return "done";
+    case "skipped": return "skipped";
+    case "degraded": return "partial";
+    case "error": return "failed";
+    default: return "waiting"; // pending, or a state this page has never seen
+  }
+}
+
+// scanStateClass picks up colors this file already assigns the same states
+// elsewhere — .dom-err is --crit, .axis.partial is --med — rather than
+// inventing a fourth place these four colors get decided.
+function scanStateClass(state) {
+  switch (state) {
+    case "done": return "scan-done";
+    case "error": return "scan-error";
+    case "degraded": return "scan-degraded";
+    case "skipped": return "scan-skipped";
+    case "running": return "scan-running";
+    default: return "scan-pending";
+  }
+}
+
+// renderScanProgress is the whole of what a running scan shows: an overall
+// bar in the axes strip (where the finished score normally sits), a
+// per-domain checklist in the detail pane (where a selected finding
+// normally sits), and a one-line placeholder in the findings list instead
+// of a bare, silent <ul>. Before this, the entire page showed one line of
+// toast text and nothing else moved until the scan finished.
+//
+// domains is /api/rescan/status's own array — every domain that has
+// reported at least once, in no particular order, some of them possibly
+// absent (not yet started). The full roster comes from SRC (the model's own
+// domain table, already loaded for the filter chips), so an absent domain
+// reads as "waiting" rather than not appearing at all — the same thing
+// internal/ui/tui/tui.go's scanDomains() does with its fetched plan.
+function renderScanProgress(verb, domains) {
+  const bySource = {};
+  (domains || []).forEach((d) => { bySource[d.source] = d; });
+  const roster = Object.keys(SRC).sort(byRank(SRC));
+  const total = roster.length;
+  const done = roster.filter((s) => {
+    const state = (bySource[s] || {}).state;
+    return state && state !== "running" && state !== "pending";
+  }).length;
+
+  const elapsed = scanStartedAt ? formatElapsed(Date.now() - scanStartedAt) : "0s";
+  const pct = total ? (done / total) * 100 : 0;
+  // At least one segment lit as soon as real progress exists — an empty bar
+  // reads as "stuck", not "just started", the same reason the TUI's own
+  // meter (meterAtLeastOne) guarantees the same floor.
+  const bar = meter(done > 0 ? Math.max(pct, 100 / total) : pct, "b-safe");
+  document.getElementById("axes").replaceChildren(
+    el("div", { class: "scan-status" },
+      el("span", {}, `${verb}… ${done} of ${total} domains`),
+      bar,
+      el("span", { class: "scan-elapsed" }, elapsed))
+  );
+
+  document.getElementById("detail").replaceChildren(
+    el("div", { class: "scan-domains" },
+      ...roster.map((s) => {
+        const state = (bySource[s] || {}).state || "pending";
+        return el("div", { class: "scan-domain-row" },
+          el("span", {}, srcLabel(s)),
+          el("span", { class: scanStateClass(state) }, scanStateWord(state)));
+      }))
+  );
+
+  document.getElementById("findings").replaceChildren(
+    el("li", { class: "clean muted" }, "Scanning the host…")
+  );
+}
+
+// pollRescan resolves when the running scan finishes, rendering the
+// per-domain progress roughly once a second (and once immediately, before
+// the first poll response, so there is never a blank frame). verb is what
+// the progress view calls the scan in progress — "Rescanning" from the
+// button above, "Scanning" from boot() below, where there may be no prior
+// result to justify the "re-".
 async function pollRescan(verb) {
+  scanStartedAt = Date.now();
+  renderScanProgress(verb, []);
   for (;;) {
     const st = await api("/api/rescan/status");
+    renderScanProgress(verb, st.domains);
     if (!st.running) return;
-    const working = (st.domains || []).filter((d) => d.state === "running").map((d) => d.source);
-    const done = (st.domains || []).filter((d) => d.state !== "running" && d.state !== "pending").length;
-    flash(verb + "… " + (working.length ? "checking " + working.join(", ") : done + " domain(s) finished"));
     await new Promise((r) => setTimeout(r, 1000));
   }
 }
@@ -1173,18 +1436,14 @@ async function watchScan(verb) {
 }
 
 const fixallBtn = document.getElementById("fixall");
-fixallBtn.onclick = () => {
-  if (!confirm("Apply every safe (Auto) fix now?")) return;
-  whileBusy(fixallBtn, "Applying…", async () => {
-    const o = await api("/api/fix/all", { method: "POST", headers: { "Content-Type": "application/json" } });
-    // Same route's outcome as the batch button above, so the same sentence.
-    // This one used to report only the applied count and the interruption,
-    // so a fix that errored was invisible: the score moved, nothing said
-    // why, and the failure was in the response all along.
-    flash(o.message);
-    marked.clear();
-    await refresh();
-  });
+fixallBtn.onclick = async () => {
+  const ok = await confirmModal("Apply every safe fix?",
+    "Every Auto finding is applied now. Each is previewed and backed up first, and reversible from History.",
+    "Fix all safe");
+  if (!ok) return;
+  const findings = active(report.findings).filter(isAuto)
+    .map((f) => ({ id: f.id, service: f.service || "", title: f.title }));
+  applyMany(findings, "Fixing");
 };
 
 // boot loads the page for the first time. hostveil's own first scan is now
