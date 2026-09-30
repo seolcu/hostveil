@@ -134,6 +134,14 @@
 
             <p>각 버전의 릴리스 아카이브, 체크섬, SBOM, 서명된 빌드 프로버넌스는 <a href="https://github.com/seolcu/hostveil/releases">릴리스 페이지</a>에 있습니다. 업그레이드는 <code>hostveil update</code>로 합니다.</p>
 
+          <h2 id="v3.28.0"><a href="https://github.com/seolcu/hostveil/compare/v3.27.0...v3.28.0">3.28.0</a> <span class="changelog-date">2026-09-30</span></h2>
+          <p>리버스 프록시 영역이 이제 Caddy도 읽습니다. nginx와 Traefik에 이은 세 번째 프록시이고, 패키지로 설치한 경우와 컨테이너로 띄운 경우를 모두 다룹니다.</p>
+          <h3>새 기능</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>check:</strong> proxy 영역에서 Caddy를 점검합니다. 패키지로 설치한 Caddy는 <code>/etc/caddy/Caddyfile</code>에서 <code>import</code>를 따라가며 읽고, 컨테이너로 띄운 Caddy는 Compose 서비스가 바인드 마운트한 Caddyfile을 읽습니다. 새 발견 항목 <code>proxy.admin-api-exposed</code>는 Caddy 관리 API가 루프백이 아닌 주소에서 대기할 때 발생합니다. 이 API는 인증이 없고 실행 중인 설정 전체를 바꿀 수 있어서 호스트에서는 HIGH입니다. 컨테이너에서는 관리 포트를 호스트에 공개했을 때만 HIGH이고, 그렇지 않으면 이웃 컨테이너를 먼저 장악해야 닿을 수 있으므로 MEDIUM입니다. <code>file_server browse</code>는 기존 <code>proxy.directory-listing</code>으로 보고하며, 이 항목은 이제 nginx와 Caddy를 합쳐 하나로 나옵니다. JSON으로 설정한 Caddy나 hostveil이 Caddyfile에 닿을 수 없는 컨테이너는 깨끗하다고 보지 않고 점검하지 못했다고 보고합니다.</p>
+            </li>
+          </ul>
           <h2 id="v3.27.0"><a href="https://github.com/seolcu/hostveil/compare/v3.26.2...v3.27.0">3.27.0</a> <span class="changelog-date">2026-09-30</span></h2>
           <p>Manual과 Unavailable 발견 항목을 이제 색으로 구분할 수 있습니다. 모든 테마에서 각자 차분한 색을 갖고, TUI와 대시보드 모두에 적용됩니다. 대시보드의 "Fix all safe"와 "Fix selected"는 스피너 하나 대신 발견 항목별 진행 상황을 보여 줍니다. 웹사이트는 9월 최종 측정 결과를 인용하고, 한국어 페이지는 문장을 새로 쓰고 본문 서체를 바꿨습니다.</p>
           <h3>새 기능</h3>

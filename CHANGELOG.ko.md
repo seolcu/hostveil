@@ -7,6 +7,27 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.28.0](https://github.com/seolcu/hostveil/compare/v3.27.0...v3.28.0) (2026-09-30)
+
+리버스 프록시 영역이 이제 Caddy도 읽습니다. nginx와 Traefik에 이은 세
+번째 프록시이고, 패키지로 설치한 경우와 컨테이너로 띄운 경우를 모두
+다룹니다.
+
+### 새 기능
+
+* **check:** proxy 영역에서 Caddy를 점검합니다. 패키지로 설치한 Caddy는
+  `/etc/caddy/Caddyfile`에서 `import`를 따라가며 읽고, 컨테이너로 띄운
+  Caddy는 Compose 서비스가 바인드 마운트한 Caddyfile을 읽습니다. 새 발견
+  항목 `proxy.admin-api-exposed`는 Caddy 관리 API가 루프백이 아닌 주소에서
+  대기할 때 발생합니다. 이 API는 인증이 없고 실행 중인 설정 전체를 바꿀 수
+  있어서 호스트에서는 HIGH입니다. 컨테이너에서는 관리 포트를 호스트에
+  공개했을 때만 HIGH이고, 그렇지 않으면 이웃 컨테이너를 먼저 장악해야
+  닿을 수 있으므로 MEDIUM입니다. `file_server browse`는 기존
+  `proxy.directory-listing`으로 보고하며, 이 항목은 이제 nginx와 Caddy를
+  합쳐 하나로 나옵니다. JSON으로 설정한 Caddy나 hostveil이 Caddyfile에
+  닿을 수 없는 컨테이너는 깨끗하다고 보지 않고 점검하지 못했다고
+  보고합니다.
+
 ## [3.27.0](https://github.com/seolcu/hostveil/compare/v3.26.2...v3.27.0) (2026-09-30)
 
 Manual과 Unavailable 발견 항목을 이제 색으로 구분할 수 있습니다. 모든
