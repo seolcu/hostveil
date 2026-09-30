@@ -144,14 +144,15 @@
                   <tr><td>Service hardening</td><td><code>systemd.</code></td><td>systemd</td></tr>
                   <tr><td>Reverse proxy</td><td><code>proxy.</code></td><td>nginx, Caddy or Docker</td></tr>
                   <tr><td>Proxmox VE host</td><td><code>proxmox.</code></td><td>a Proxmox VE host</td></tr>
+                  <tr><td>Single-node Kubernetes</td><td><code>kube.</code></td><td>k3s or k0s</td></tr>
                   <tr><td>Image CVEs <em>(optional)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
                 </tbody>
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">179</strong> findings, and <strong data-counted="findings.fixable">128</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">53</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">128</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">53</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
             <div class="ledger-bar-group">
-              <p class="ledger-bar-title">How the 179 findings resolve</p>
+              <p class="ledger-bar-title">How the 183 findings resolve</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Auto</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:43%"></div></div>
@@ -165,7 +166,7 @@
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:27%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">51</span>
+                <span class="ledger-bar-value" data-counted="findings.manual">55</span>
               </div>
             </div>
 
@@ -196,18 +197,19 @@
               <table>
                 <thead><tr><th>Axis</th><th>Weight</th></tr></thead>
                 <tbody>
-                  <tr><td>Container exposure</td><td>12</td></tr>
-                  <tr><td>SSH hardening</td><td>12</td></tr>
-                  <tr><td>Vulnerabilities</td><td>8</td></tr>
-                  <tr><td>Host firewall</td><td>7</td></tr>
+                  <tr><td>SSH hardening</td><td>11</td></tr>
+                  <tr><td>Container exposure</td><td>10</td></tr>
                   <tr><td>Account hygiene</td><td>7</td></tr>
                   <tr><td>Auto-updates</td><td>7</td></tr>
                   <tr><td>Docker daemon</td><td>7</td></tr>
+                  <tr><td>Vulnerabilities</td><td>7</td></tr>
+                  <tr><td>Host firewall</td><td>6</td></tr>
                   <tr><td>Exposed services</td><td>6</td></tr>
                   <tr><td>AI agent runtimes</td><td>6</td></tr>
                   <tr><td>Reverse proxy</td><td>6</td></tr>
                   <tr><td>Proxmox VE host</td><td>6</td></tr>
                   <tr><td>Service hardening</td><td>6</td></tr>
+                  <tr><td>Single-node Kubernetes</td><td>5</td></tr>
                   <tr><td>File permissions</td><td>5</td></tr>
                   <tr><td>Kernel hardening</td><td>5</td></tr>
                 </tbody>
@@ -400,6 +402,22 @@
               </table>
             </div>
             <p>All three are <strong>Manual</strong>. Which network is the management network is not written anywhere Hostveil can read, and a wrong allow-list locks you out of the hypervisor's interface. A second factor is a device a person holds. And moving off the enterprise repository is two changes in sequence, where doing only the first leaves the host with no Proxmox updates at all.</p>
+
+            <h2 id="kube">Single-node Kubernetes <code>kube.</code></h2>
+            <p>Not a cluster manager: the homelab pattern of one box running one node, with k3s or k0s. This domain runs only where one of them is installed, and reads what a single-host audit can see &mdash; the credentials the distribution writes to disk, and the arguments it starts the API server and kubelet with. What runs inside the cluster (RBAC, pod security, network policy) is the cluster&rsquo;s business and needs a different tool.</p>
+            <p>k3s takes its settings from four layers and the last one wins: <code>/etc/rancher/k3s/config.yaml</code>, then <code>config.yaml.d/*.yaml</code> in name order (a key ending in <code>+</code> appends instead of replacing), then the installer&rsquo;s environment file (<code>/etc/systemd/system/k3s.service.env</code>, or <code>/etc/rancher/k3s/k3s.env</code> on openrc), then the command line in the systemd unit or in <code>/etc/init.d/k3s</code>. Hostveil resolves all four rather than reading the first, because <code>K3S_KUBECONFIG_MODE=644</code> on the install command &mdash; the line most tutorials copy &mdash; lands in the environment file, not in any config. A command line it could not read is reported as not audited, never as "no flags".</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>kube.kubeconfig-readable</code></td><td>The cluster-admin kubeconfig (<code>/etc/rancher/k3s/k3s.yaml</code>, or k0s&rsquo;s <code>admin.conf</code>) is readable by every account &mdash; which makes every local user root, through a privileged pod. Group-readable is <code>write-kubeconfig-group</code> doing its job and is not flagged</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>kube.token-readable</code></td><td>k3s&rsquo;s <code>token</code> or <code>node-token</code>, which lets a machine join the cluster, is readable by every account</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>kube.anonymous-auth</code></td><td><code>anonymous-auth=true</code> is set explicitly for the API server or the kubelet. Both distributions default it off; anonymous requests are still authorised by RBAC, which is why it is not higher</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>kube.secrets-unencrypted</code></td><td>k3s stores Secrets unencrypted in its datastore &mdash; the default, and the first item in the k3s CIS hardening guide</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>All four are <strong>Manual</strong>. k3s rewrites its kubeconfig at start from <code>write-kubeconfig-mode</code>, so a <code>chmod</code> would pass its re-check and be undone at the next restart; a readable token has to be rotated, not only tightened; and the other two change how the control plane starts, which takes a restart of the node every workload runs on.</p>
 
             <h2 id="fileperms">File permissions <code>fileperms.</code></h2>
             <p>Stats a curated set of security-critical files and flags any whose permission bits are looser than they should ever be.</p>

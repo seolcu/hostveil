@@ -68,6 +68,7 @@ func PublishedReport() model.Report {
 		// not a hypervisor; scoring it 100 on Proxmox would publish a
 		// picture of a check that never had anything to look at.
 		model.SourceProxmox: {State: model.ScanSkipped, Reason: "not a Proxmox VE host — no /etc/pve"},
+		model.SourceKube:    {State: model.ScanSkipped, Reason: "no single-node Kubernetes found — no k3s or k0s"},
 	}
 
 	states := map[model.Source]model.ScanState{}

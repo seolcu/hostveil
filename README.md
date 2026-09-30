@@ -116,13 +116,14 @@ column is what you pass to `hostveil fix` and `hostveil explain`.
 | **Service hardening** | `systemd.*` | The units you installed yourself, read as systemd's own *effective* configuration: whether a service can gain privileges through setuid, write to `/usr` and `/etc`, read every user's home directory, or share `/tmp` with the rest of the host. Distribution units are left to the distribution | systemd |
 | **Reverse proxy** | `proxy.*` | The thing on 443 that everything else is behind. nginx read from `/etc/nginx`, following `include` into `conf.d` and `sites-enabled`, for deprecated TLS versions and directory listing; Caddy read from `/etc/caddy` or a container's mounted Caddyfile, for an admin API reachable off loopback — no authentication, and it can replace the whole configuration — and for `file_server browse`; Traefik read from your Compose files, for the dashboard served in insecure mode — an unauthenticated page listing every backend address behind the proxy, and the setting nearly every Traefik tutorial tells you to add | — |
 | **Proxmox VE host** | `proxmox.*` | The hypervisor every guest trusts, read only on a host with `/etc/pve`: a web interface on 8006 that accepts a login from any address, root@pam logging in with a password alone, and an enterprise repository enabled without a subscription — so Proxmox's own packages silently stop updating while Debian's keep arriving. The datacenter firewall is recognised by the firewall domain rather than counted twice | a Proxmox VE host |
+| **Single-node Kubernetes** | `kube.*` | One box running one k3s or k0s node, with k3s's settings resolved across all four of its layers (config.yaml, its drop-ins, the service environment file, the command line): a cluster-admin kubeconfig or join token readable by every account, `anonymous-auth=true` on the API server or kubelet, and Secrets stored unencrypted | k3s or k0s |
 | **Image CVEs** *(optional)* | `cve.*` | Known vulnerabilities in the images your Compose services run | Trivy |
 
 If Docker or Trivy is missing, those domains are skipped and the score is
 renormalized over the ones that ran, so a partial scan never comes back as a
 misleadingly perfect result.
 
-Hostveil can report **179 findings** across those domains, and **128 of them
+Hostveil can report **183 findings** across those domains, and **128 of them
 carry a fix** — 75 Hostveil will apply unattended, 53 only after you have read
 the diff. The rest are Manual on purpose, and each one is named in the register
 in [`internal/fix/register.go`](internal/fix/register.go) with the reason

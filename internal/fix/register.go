@@ -237,6 +237,21 @@ package fix
 //     release), where Review means alternatives, and the first alone leaves
 //     the host with no Proxmox source at all, which is worse than the finding.
 //     A subscription key is the other remedy and is not hostveil's to enter.
+//   - kube.kubeconfig-readable — a chmod would pass its re-check and be
+//     undone at the next restart, because k3s rewrites the file at start
+//     with whatever write-kubeconfig-mode says; the remedy is that setting,
+//     which may live in config.yaml, a drop-in, k3s.service.env or the
+//     unit's own command line, and changing it only takes effect when the
+//     node restarts. k0s's own copy is the same file with a different
+//     owner, and loosening it was deliberate enough that re-tightening it
+//     unattended would break whatever relies on it.
+//   - kube.token-readable — tightening the mode is half of it; the token
+//     has been readable, so the other half is rotating it, which is a
+//     cluster operation hostveil does not perform.
+//   - kube.anonymous-auth and kube.secrets-unencrypted — both are a change
+//     to how the control plane starts, in whichever layer set them, and
+//     both need a restart of the node every workload runs on; encryption
+//     also needs existing Secrets rewritten afterwards.
 //   - accounts.sudo-nopasswd — the blocker is not the lockout risk alone;
 //     accounts.emptypassword carries a comparable one and is registered
 //     below, disclosed through a Warning instead of declined. What actually

@@ -145,14 +145,15 @@
                   <tr><td>서비스 하드닝</td><td><code>systemd.</code></td><td>systemd</td></tr>
                   <tr><td>리버스 프록시</td><td><code>proxy.</code></td><td>nginx, Caddy 또는 Docker</td></tr>
                   <tr><td>Proxmox VE 호스트</td><td><code>proxmox.</code></td><td>Proxmox VE 호스트</td></tr>
+                  <tr><td>단일 노드 쿠버네티스</td><td><code>kube.</code></td><td>k3s 또는 k0s</td></tr>
                   <tr><td>이미지 CVE <em>(선택)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
                 </tbody>
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">179</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">128</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">53</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
+            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">183</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">128</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">53</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
             <div class="ledger-bar-group">
-              <p class="ledger-bar-title">179개 발견 항목의 처리 방식</p>
+              <p class="ledger-bar-title">183개 발견 항목의 처리 방식</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Auto</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:43%"></div></div>
@@ -166,7 +167,7 @@
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:27%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">51</span>
+                <span class="ledger-bar-value" data-counted="findings.manual">55</span>
               </div>
             </div>
 
@@ -197,18 +198,19 @@
               <table>
                 <thead><tr><th>축</th><th>가중치</th></tr></thead>
                 <tbody>
-                  <tr><td>컨테이너 노출</td><td>12</td></tr>
-                  <tr><td>SSH 하드닝</td><td>12</td></tr>
-                  <tr><td>취약점</td><td>8</td></tr>
-                  <tr><td>호스트 방화벽</td><td>7</td></tr>
+                  <tr><td>SSH 하드닝</td><td>11</td></tr>
+                  <tr><td>컨테이너 노출</td><td>10</td></tr>
                   <tr><td>계정 위생</td><td>7</td></tr>
                   <tr><td>자동 업데이트</td><td>7</td></tr>
                   <tr><td>Docker 데몬</td><td>7</td></tr>
+                  <tr><td>취약점</td><td>7</td></tr>
+                  <tr><td>호스트 방화벽</td><td>6</td></tr>
                   <tr><td>노출된 서비스</td><td>6</td></tr>
                   <tr><td>AI 에이전트 런타임</td><td>6</td></tr>
                   <tr><td>리버스 프록시</td><td>6</td></tr>
                   <tr><td>Proxmox VE 호스트</td><td>6</td></tr>
                   <tr><td>서비스 하드닝</td><td>6</td></tr>
+                  <tr><td>단일 노드 쿠버네티스</td><td>5</td></tr>
                   <tr><td>파일 권한</td><td>5</td></tr>
                   <tr><td>커널 하드닝</td><td>5</td></tr>
                 </tbody>
@@ -401,6 +403,22 @@
               </table>
             </div>
             <p>세 항목 모두 <strong>Manual</strong>입니다. 어느 네트워크가 관리 네트워크인지는 Hostveil이 읽을 수 있는 곳 어디에도 적혀 있지 않고, 허용 목록을 잘못 쓰면 하이퍼바이저 관리 화면에서 스스로를 차단하게 됩니다. 2단계 인증은 사람이 손에 쥔 기기입니다. 엔터프라이즈 저장소를 떠나는 일은 순서대로 해야 하는 두 가지 변경이며, 첫 번째만 하면 Proxmox 업데이트를 아예 받지 못하게 됩니다.</p>
+
+            <h2 id="kube">단일 노드 쿠버네티스 <code>kube.</code></h2>
+            <p>클러스터 관리 도구가 아닙니다. 홈랩에서 흔한 "박스 하나에 노드 하나" 구성, 즉 k3s나 k0s를 대상으로 합니다. 둘 중 하나가 설치된 곳에서만 동작하고, 단일 호스트 점검으로 볼 수 있는 것을 읽습니다. 배포판이 디스크에 쓰는 자격 증명과, API 서버와 kubelet을 띄울 때 쓰는 인자입니다. 클러스터 안에서 도는 것(RBAC, 파드 보안, 네트워크 정책)은 클러스터의 몫이고 다른 도구가 필요합니다.</p>
+            <p>k3s는 설정을 네 층에서 읽고, 마지막 층이 이깁니다. <code>/etc/rancher/k3s/config.yaml</code>, 이름 순서대로 읽는 <code>config.yaml.d/*.yaml</code>(키가 <code>+</code>로 끝나면 덮어쓰지 않고 이어 붙입니다), 설치 스크립트가 쓰는 환경 파일(<code>/etc/systemd/system/k3s.service.env</code>, openrc에서는 <code>/etc/rancher/k3s/k3s.env</code>), 그리고 systemd 유닛이나 <code>/etc/init.d/k3s</code>에 적힌 명령행입니다. Hostveil은 첫 층만 읽지 않고 네 층을 모두 풀어서 봅니다. 대부분의 튜토리얼이 설치 명령에 붙이는 <code>K3S_KUBECONFIG_MODE=644</code>는 설정 파일이 아니라 환경 파일에 들어가기 때문입니다. 명령행을 읽지 못하면 "플래그 없음"이 아니라 점검하지 못했다고 보고합니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
+                <tbody>
+                  <tr><td><code>kube.kubeconfig-readable</code></td><td>클러스터 관리자 kubeconfig(<code>/etc/rancher/k3s/k3s.yaml</code> 또는 k0s의 <code>admin.conf</code>)를 모든 계정이 읽을 수 있음. 특권 파드를 거치면 모든 로컬 사용자가 root가 됨. 그룹 읽기 권한은 <code>write-kubeconfig-group</code>의 의도된 동작이라 표시하지 않음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>kube.token-readable</code></td><td>기계를 클러스터에 참여시키는 k3s의 <code>token</code>이나 <code>node-token</code>을 모든 계정이 읽을 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>kube.anonymous-auth</code></td><td>API 서버나 kubelet에 <code>anonymous-auth=true</code>가 명시적으로 설정됨. 두 배포판 모두 기본값은 꺼짐이며, 익명 요청도 RBAC 인가를 거치므로 더 높게 매기지 않음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>kube.secrets-unencrypted</code></td><td>k3s가 Secret을 데이터스토어에 암호화하지 않고 저장함. 기본값이며, k3s CIS 하드닝 가이드의 첫 항목</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>네 항목 모두 <strong>Manual</strong>입니다. k3s는 시작할 때 <code>write-kubeconfig-mode</code>에 따라 kubeconfig를 다시 쓰므로, <code>chmod</code>는 재검사를 통과하고도 다음 재시작에서 되돌아갑니다. 읽을 수 있었던 토큰은 권한만 좁힐 게 아니라 교체해야 합니다. 나머지 둘은 컨트롤 플레인이 뜨는 방식을 바꾸는 일이라, 모든 워크로드가 도는 노드를 재시작해야 합니다.</p>
 
             <h2 id="fileperms">파일 권한 <code>fileperms.</code></h2>
             <p>보안상 중요한 파일 목록의 권한을 확인해, 필요 이상으로 느슨하게 설정된 권한을 표시합니다.</p>
