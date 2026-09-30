@@ -7,6 +7,26 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.29.0](https://github.com/seolcu/hostveil/compare/v3.28.0...v3.29.0) (2026-09-30)
+
+AI 에이전트 영역이 이제 Goose도 봅니다. OpenClaw와 Hermes Agent에 이은
+세 번째 런타임입니다.
+
+### 새 기능
+
+* **check:** Goose를 에이전트 런타임으로 점검합니다. 셸 명령을 포함한
+  모든 도구 호출을 묻지 않고 승인하는 `GOOSE_MODE: auto`는
+  `agent.exec-unrestricted`로 보고합니다. auto가 Goose의 기본값이므로
+  `GOOSE_MODE`를 아예 설정하지 않은 경우도 같이 보고하며, 값이 기본값에서
+  왔다는 사실을 발견 항목에 적습니다. 루프백 밖에서 대기하는 `goose web`은
+  `agent.gateway-exposed`로 보고합니다. 주소가 설정 파일이 아니라 명령행
+  플래그로 정해지므로, 대기 중인 소켓을 포트가 아니라 프로세스 이름으로
+  Goose의 것인지 판별합니다. 키링이 없을 때 Goose가 API 키를 평문으로
+  저장하는 `~/.config/goose/secrets.yaml`은 YAML로 읽어, 소유자 외에도
+  읽을 수 있으면 보고합니다. Goose의 모드 항목은 Manual입니다. 환경
+  변수가 파일보다 우선하고, 흔한 조치는 없는 키를 새로 넣는 일이기
+  때문입니다.
+
 ## [3.28.0](https://github.com/seolcu/hostveil/compare/v3.27.0...v3.28.0) (2026-09-30)
 
 리버스 프록시 영역이 이제 Caddy도 읽습니다. nginx와 Traefik에 이은 세

@@ -134,6 +134,14 @@
 
             <p>각 버전의 릴리스 아카이브, 체크섬, SBOM, 서명된 빌드 프로버넌스는 <a href="https://github.com/seolcu/hostveil/releases">릴리스 페이지</a>에 있습니다. 업그레이드는 <code>hostveil update</code>로 합니다.</p>
 
+          <h2 id="v3.29.0"><a href="https://github.com/seolcu/hostveil/compare/v3.28.0...v3.29.0">3.29.0</a> <span class="changelog-date">2026-09-30</span></h2>
+          <p>AI 에이전트 영역이 이제 Goose도 봅니다. OpenClaw와 Hermes Agent에 이은 세 번째 런타임입니다.</p>
+          <h3>새 기능</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>check:</strong> Goose를 에이전트 런타임으로 점검합니다. 셸 명령을 포함한 모든 도구 호출을 묻지 않고 승인하는 <code>GOOSE_MODE: auto</code>는 <code>agent.exec-unrestricted</code>로 보고합니다. auto가 Goose의 기본값이므로 <code>GOOSE_MODE</code>를 아예 설정하지 않은 경우도 같이 보고하며, 값이 기본값에서 왔다는 사실을 발견 항목에 적습니다. 루프백 밖에서 대기하는 <code>goose web</code>은 <code>agent.gateway-exposed</code>로 보고합니다. 주소가 설정 파일이 아니라 명령행 플래그로 정해지므로, 대기 중인 소켓을 포트가 아니라 프로세스 이름으로 Goose의 것인지 판별합니다. 키링이 없을 때 Goose가 API 키를 평문으로 저장하는 <code>~/.config/goose/secrets.yaml</code>은 YAML로 읽어, 소유자 외에도 읽을 수 있으면 보고합니다. Goose의 모드 항목은 Manual입니다. 환경 변수가 파일보다 우선하고, 흔한 조치는 없는 키를 새로 넣는 일이기 때문입니다.</p>
+            </li>
+          </ul>
           <h2 id="v3.28.0"><a href="https://github.com/seolcu/hostveil/compare/v3.27.0...v3.28.0">3.28.0</a> <span class="changelog-date">2026-09-30</span></h2>
           <p>리버스 프록시 영역이 이제 Caddy도 읽습니다. nginx와 Traefik에 이은 세 번째 프록시이고, 패키지로 설치한 경우와 컨테이너로 띄운 경우를 모두 다룹니다.</p>
           <h3>새 기능</h3>
