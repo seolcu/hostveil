@@ -133,6 +133,20 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.30.0"><a href="https://github.com/seolcu/hostveil/compare/v3.29.0...v3.30.0">3.30.0</a> <span class="changelog-date">2026-09-30</span></h2>
+          <p>hostveil now audits a Proxmox VE host as a domain of its own, the first item on the roadmap's "Under exploration" list to ship. The scoring axes were rebalanced to make room for it, and the firewall domain stops mistaking an enabled Proxmox firewall for no firewall at all.</p>
+          <h3>Features</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>check:</strong> add a Proxmox VE host domain, run only on a host with <code>/etc/pve</code>. <code>proxmox.webui-open</code> reports the web interface on 8006 accepting a login from any address, which is the package default. <code>proxmox.root-no-tfa</code> reports root@pam with no enabled second factor; recovery keys alone do not count, and a scan that cannot read <code>/etc/pve/priv/tfa.cfg</code> says so instead of guessing. <code>proxmox.enterprise-repo-unsubscribed</code> reports an enterprise repository (PVE or Ceph, <code>.list</code> or deb822 <code>.sources</code>) enabled without an active subscription: <code>apt update</code> is refused, Proxmox's own packages stop updating, and Debian's keep arriving. All three are Manual. The new axis is worth 6, taken one point each from the same six axes that funded the last two (container, SSH, vulnerabilities, exposed services, firewall, AI agents), so the ties the scoring page argues for still hold. Every host's score may move slightly.</p>
+            </li>
+          </ul>
+          <h3>Bug Fixes</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>check:</strong> an enabled Proxmox VE firewall filters through its own chains under an INPUT policy of ACCEPT, so the firewall domain reported a firewalled hypervisor as having no firewall. It now asks <code>pve-firewall status</code> directly. <code>policy_in: ACCEPT</code> in <code>cluster.fw</code> is reported as <code>firewall.default-allow</code>. On a Proxmox host, the advice for a missing firewall points at the datacenter firewall, and the ufw fix declines rather than turning ufw on under the platform's own firewall.</p>
+            </li>
+          </ul>
           <h2 id="v3.29.0"><a href="https://github.com/seolcu/hostveil/compare/v3.28.0...v3.29.0">3.29.0</a> <span class="changelog-date">2026-09-30</span></h2>
           <p>The AI agent domain now covers Goose, its third runtime after OpenClaw and Hermes Agent.</p>
           <h3>Features</h3>
