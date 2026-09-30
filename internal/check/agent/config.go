@@ -32,6 +32,32 @@ func decodeConfig(b []byte, format ConfigFormat) (map[string]any, error) {
 	return json5.Decode(b)
 }
 
+// yamlSecretKeys is loadEnvFile's secret test for a secrets file written as
+// YAML — Goose's keyring fallback, `OPENAI_API_KEY: sk-…` one per line. The
+// env parser cuts on '=', so it would read that file as holding nothing, and
+// a world-readable file of API keys would pass as an empty one. Top-level
+// scalar values only: that is the file's whole shape, and a nested value is
+// not a credential this test knows how to recognise.
+func yamlSecretKeys(path string) []string {
+	b, err := platform.ReadFileNoFollow(path, maxAgentFileBytes)
+	if err != nil {
+		return nil
+	}
+	var m map[string]any
+	if yaml.Unmarshal(b, &m) != nil {
+		return nil
+	}
+	var keys []string
+	for k, v := range m {
+		s, ok := v.(string)
+		if ok && secretkey.Matches(k) && secretkey.LooksLiteral(s) {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 // remediation decides how much human judgment a danger finding needs, and
 // records the values that would settle it.
 //
@@ -55,7 +81,10 @@ func decodeConfig(b []byte, format ConfigFormat) (map[string]any, error) {
 // A runtime whose config is not JSON5 gets no values at all. Hermes has no
 // danger rules today; if it gains some, its bind and auth can come from the
 // config, an env file, a systemd unit or a docker flag, and editing the file
-// could silently change nothing. That decline is recorded in fix.Default.
+// could silently change nothing. Goose has one, and the same objection holds:
+// GOOSE_MODE in the environment overrides config.yaml, and the dangerous case
+// is usually a key that is not there, which a replace-only editor cannot
+// write. That decline is recorded in fix.Default.
 func remediation(rt Runtime, rules []DangerRule) (model.RemediationKind, string, string) {
 	if rt.Format != FormatJSON5 {
 		return model.RemediationManual, "", ""

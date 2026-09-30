@@ -52,11 +52,20 @@ type ModeRule struct {
 // safe values that do not dominate each other are a choice for the operator,
 // not a sequence. tools.exec.security is deny or ask, and which one is right
 // depends on whether the agent is expected to run commands at all.
+//
+// Unset is the value the runtime behaves as if the key held when it is absent
+// — from the config, or because there is no config file at all. Leave it empty
+// when absence is safe or undocumented; that is every OpenClaw key, whose
+// defaults fail closed. It exists for the runtime whose default is the
+// dangerous value: Goose runs with GOOSE_MODE=auto unless told otherwise, so
+// the host that never wrote the key is exactly the host the rule is about,
+// and a rule that fired only on an explicit "auto" would pass it as clean.
 type DangerRule struct {
 	ID       string
 	Key      string
 	Bad      []string
 	Good     []any
+	Unset    string
 	Sev      model.Severity
 	Title    string
 	Desc     string
@@ -89,6 +98,15 @@ type GatewayDesc struct {
 	// ProcNames are the program names ss may report for this gateway, used to
 	// attribute an observed listener with more confidence than the port alone.
 	ProcNames []string
+
+	// ListenerOnly is for a gateway whose bind is not in any file hostveil
+	// reads — Goose's web UI takes it from a command-line flag. With no
+	// config to judge, the observed listener is the whole answer, so it must
+	// be attributed by process name rather than by port: port 3000 is
+	// Grafana's as often as anybody's. That is only sound because every name
+	// in ProcNames is the runtime's own binary, not an interpreter; see
+	// matchListener for why node and python3 could never be used this way.
+	ListenerOnly bool
 }
 
 // Runtime describes one self-hosted AI agent runtime entirely as data.
@@ -252,6 +270,46 @@ func runtimes() []Runtime {
 				// unset username on an exposed dashboard is the open case.
 				AuthDisabled: []string{""},
 				ProcNames:    []string{"hermes", "uvicorn", "python", "python3"},
+			},
+		},
+		{
+			Name:    "goose",
+			Display: "Goose",
+			// `goose configure` creates this directory; the desktop app and
+			// the CLI share it.
+			Markers: []string{".config/goose"},
+			Config:  ".config/goose/config.yaml",
+			Format:  FormatYAML,
+			Modes: []ModeRule{
+				// The keyring fallback, and it is the case on a server:
+				// with no desktop keyring service (or GOOSE_DISABLE_KEYRING
+				// set) Goose writes API keys here in plain text, and sets
+				// the file to 0600 itself — so anything looser was loosened
+				// after the fact.
+				{Rel: ".config/goose/secrets.yaml", Max: 0o600, Secret: true},
+			},
+			Gateway: GatewayDesc{
+				// `goose web` takes --host and --port on its command line
+				// (defaults 127.0.0.1 and 3000), and nothing about them is
+				// written to config.yaml. goosed is the server the desktop
+				// app starts; it binds loopback unless someone changed it.
+				ProcNames:    []string{"goose", "goosed"},
+				ListenerOnly: true,
+			},
+			Danger: []DangerRule{
+				{
+					ID: "agent.exec-unrestricted", Key: "GOOSE_MODE", Bad: []string{"auto"},
+					// The documented default. A host where nobody chose a
+					// mode is running the one that approves everything.
+					Unset: "auto",
+					Good:  []any{"approve", "smart_approve"},
+					Sev:   model.SeverityHigh,
+					Title: "Agent can run shell commands without approval",
+					Desc: "Goose is in `auto` mode, which approves every tool call — shell commands and file edits included — without asking. It is also what Goose does when `GOOSE_MODE` is not set at all. " +
+						"Anything that can steer the agent — a malicious web page it reads, a poisoned document, an instruction hidden in a repository it opens — can run commands as the user it runs as. " +
+						"A `GOOSE_MODE` environment variable overrides this file and is not something hostveil can see.",
+					HowToFix: "Set `GOOSE_MODE: approve` (ask before every tool call) or `GOOSE_MODE: smart_approve` (ask only for the ones judged risky) in ~/.config/goose/config.yaml, and make sure no `GOOSE_MODE=auto` is exported where Goose is started.",
+				},
 			},
 		},
 	}

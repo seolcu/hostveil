@@ -94,8 +94,12 @@ type scan struct {
 	in       install
 	cfg      map[string]any
 	cfgKnown bool
-	env      envFile
-	envKnown bool
+	// cfgMissing is a runtime installed but never configured. It is not a
+	// blind spot — there is nothing to read — and for a key with a
+	// documented Unset default it is a complete answer.
+	cfgMissing bool
+	env        envFile
+	envKnown   bool
 }
 
 // Check audits every discovered runtime installation.
@@ -139,6 +143,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		switch {
 		case err != nil && os.IsNotExist(err):
 			// Installed but never configured. Nothing to read, nothing lost.
+			s.cfgMissing = true
 		case err != nil:
 			total++
 			reasons = append(reasons, fmt.Sprintf("cannot read %s config for %s", in.rt.Display, in.user.Name))
@@ -157,7 +162,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 
 		findings = append(findings, modeFindings(s)...)
 		findings = append(findings, gatewayFindings(s, listeners)...)
-		if s.cfgKnown {
+		if s.cfgKnown || s.cfgMissing {
 			findings = append(findings, dangerFindings(s)...)
 		}
 	}
@@ -257,6 +262,9 @@ func secretKeysIn(s scan, path string) []string {
 	if s.envKnown && s.in.rt.EnvFile != "" && path == s.in.path(s.in.rt.EnvFile) {
 		return s.env.SecretKeys
 	}
+	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
+		return yamlSecretKeys(path)
+	}
 	ef, err := loadEnvFile(path, nil)
 	if err != nil {
 		return nil
@@ -277,6 +285,9 @@ func secretKeysIn(s scan, path string) []string {
 // throwing the result away. Nothing failed, so nothing said so.
 func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 	gw := s.in.rt.Gateway
+	if gw.ListenerOnly {
+		return listenerOnlyFindings(s, listeners)
+	}
 	if gw.BindKey == "" {
 		return nil
 	}
@@ -382,6 +393,47 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 	return out
 }
 
+// listenerOnlyFindings reports a ListenerOnly gateway from what the host is
+// listening on: every non-loopback socket held by one of the runtime's own
+// binaries, on any port, since the port is a flag hostveil never sees.
+//
+// ss names the owning process only for a scan that can see it — a non-root
+// scan of another account's process reports none — and an unnamed listener is
+// not attributed. That is the direction to fail in: naming it would put an
+// agent finding on whatever else answers on the port.
+func listenerOnlyFindings(s scan, listeners []platform.Listener) []model.Finding {
+	gw := s.in.rt.Gateway
+	var ports, addrs, procs []string
+	for _, l := range listeners {
+		if l.Loopback() || l.Proc == "" || !slices.Contains(gw.ProcNames, l.Proc) {
+			continue
+		}
+		if p := strconv.Itoa(l.Port); !slices.Contains(ports, p) {
+			ports = append(ports, p)
+		}
+		addrs = append(addrs, l.Addr)
+		if !slices.Contains(procs, l.Proc) {
+			procs = append(procs, l.Proc)
+		}
+	}
+	if len(addrs) == 0 {
+		return nil
+	}
+	// One finding, however many sockets: the finding's key is the runtime
+	// and its owner, and the remedy is the same restart for all of them.
+	return []model.Finding{model.NewFinding("agent.gateway-exposed",
+		s.in.rt.Display+" gateway is reachable from the network",
+		model.SeverityHigh, model.SourceAgent, model.RemediationManual,
+		model.WithService(s.in.subject()),
+		model.WithDescription("The "+s.in.rt.Display+" web interface is listening on an address reachable from the network. It drives an agent that can read files and run commands, so anyone who can reach this port — and get past whatever authentication it was started with — is operating the agent on this host."),
+		model.WithHowToFix("Restart it bound to loopback (the default, `--host 127.0.0.1`) and reach it over an SSH tunnel or a tailnet instead. If it must be remote, put it behind an authenticated reverse proxy and a firewall rule that allows only the addresses you use."),
+		model.WithEvidence("port", strings.Join(ports, model.EvidenceSeparator)),
+		model.WithEvidence("basis", "listener"),
+		model.WithEvidence("address", strings.Join(addrs, model.EvidenceSeparator)),
+		model.WithEvidence("process", strings.Join(procs, model.EvidenceSeparator)),
+	)}
+}
+
 // matchListener finds a non-loopback listener for the gateway.
 //
 // The port is the only trigger. A process name never matches on its own,
@@ -422,9 +474,20 @@ func dangerFindings(s scan) []model.Finding {
 	byID := map[string]*hit{}
 	var order []string
 
+	unset := map[string]bool{}
 	for _, dr := range s.in.rt.Danger {
 		v, ok := lookup(s.cfg, dr.Key)
-		if !ok || !slices.Contains(dr.Bad, scalar(v)) {
+		var val string
+		switch {
+		case ok:
+			val = scalar(v)
+		case dr.Unset != "":
+			val = dr.Unset
+			unset[dr.Key] = true
+		default:
+			continue
+		}
+		if !slices.Contains(dr.Bad, val) {
 			continue
 		}
 		if h, seen := byID[dr.ID]; seen {
@@ -440,8 +503,12 @@ func dangerFindings(s scan) []model.Finding {
 		h := byID[id]
 		first := h.rules[0]
 		keys := make([]string, 0, len(h.rules))
+		var defaulted []string
 		for _, r := range h.rules {
 			keys = append(keys, r.Key)
+			if unset[r.Key] {
+				defaulted = append(defaulted, r.Key+" (unset; defaults to "+r.Unset+")")
+			}
 		}
 
 		opts := []model.FindingOption{
@@ -451,6 +518,9 @@ func dangerFindings(s scan) []model.Finding {
 			model.WithEvidence("settings", strings.Join(keys, model.EvidenceSeparator)),
 			model.WithEvidence("config", s.in.path(s.in.rt.Config)),
 			model.WithEvidence("root", s.in.user.Home),
+		}
+		if len(defaulted) > 0 {
+			opts = append(opts, model.WithEvidence("unset", strings.Join(defaulted, model.EvidenceSeparator)))
 		}
 		kind, primary, alt := remediation(s.in.rt, h.rules)
 		if primary != "" {
