@@ -141,11 +141,18 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			Reason: "cannot read firewall state — re-run with sudo to check the host firewall",
 		}
 	}
+	how := "Enable a firewall that defaults to denying inbound traffic and allow only what you need (e.g. SSH). Important: allow your SSH port before enabling the firewall so you do not lock yourself out."
+	if platform.Has(env.Runner, "pve-firewall") {
+		// ufw or firewalld on a hypervisor would fight the firewall the
+		// platform ships, over the same chains.
+		how = "On Proxmox VE, enable the datacenter firewall rather than installing another one: Datacenter → Firewall → Options → Firewall, or `enable: 1` under [OPTIONS] in /etc/pve/firewall/cluster.fw. " +
+			"Its default inbound policy is DROP, with the web interface (8006) and SSH still allowed from the management network — check that the address you connect from is in it before enabling."
+	}
 	findings := []model.Finding{
 		model.NewFinding("firewall.inactive", "No active host firewall",
 			model.SeverityHigh, model.SourceFirewall, model.RemediationReview,
 			model.WithDescription("Without a firewall, every port a service binds to 0.0.0.0 is reachable from any network the host is on. A firewall is your backstop when a container or service is accidentally exposed."),
-			model.WithHowToFix("Enable a firewall that defaults to denying inbound traffic and allow only what you need (e.g. SSH). Important: allow your SSH port before enabling the firewall so you do not lock yourself out."),
+			model.WithHowToFix(how),
 			model.WithEvidence("available", strings.Join(availableTools(env.Runner), ", ")),
 		),
 	}
@@ -292,6 +299,22 @@ func probe(ctx context.Context, r platform.CommandRunner) (Status, string) {
 			return StatusActive, "firewalld"
 		}
 	}
+	// Proxmox VE's firewall is asked before nft and iptables because neither
+	// can recognise it: it filters through PVEFW-* chains it jumps to from an
+	// INPUT chain whose policy stays ACCEPT, so the iptables probe below read
+	// a firewalled hypervisor as having no firewall at all. The status line
+	// is "Status: enabled/running", with " (pending changes)" appended while
+	// a rule edit is being compiled — still filtering.
+	if st, which := query("pve-firewall", "pve-firewall", []string{"status"}, func(s string) bool {
+		for _, line := range strings.Split(strings.ToLower(s), "\n") {
+			if strings.HasPrefix(strings.TrimSpace(line), "status: enabled/running") {
+				return true
+			}
+		}
+		return false
+	}); st == StatusActive {
+		return st, which
+	}
 	if st, which := query("nft", "nftables", []string{"list", "ruleset"}, hasHostFirewall); st == StatusActive {
 		return st, which
 	}
@@ -357,7 +380,7 @@ func hasDropPolicy(out string) bool {
 // meant that adding a probe here silently turned their "no firewall" fixtures
 // into "firewall state unreadable", changing what they asserted without
 // changing what they said.
-var ProbedTools = []string{"ufw", "firewall-cmd", "nft", "iptables"}
+var ProbedTools = []string{"ufw", "firewall-cmd", "pve-firewall", "nft", "iptables"}
 
 func availableTools(r platform.CommandRunner) []string {
 	var tools []string

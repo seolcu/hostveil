@@ -64,6 +64,10 @@ func PublishedReport() model.Report {
 	exceptions := map[model.Source]model.DomainResult{
 		model.SourceAgent: {State: model.ScanSkipped, Reason: "no self-hosted agent runtime found"},
 		model.SourcePorts: {State: model.ScanDegraded, Reason: "ss reported no process names — run as root to attribute listeners"},
+		// A host whose containers run under Compose on the host itself is
+		// not a hypervisor; scoring it 100 on Proxmox would publish a
+		// picture of a check that never had anything to look at.
+		model.SourceProxmox: {State: model.ScanSkipped, Reason: "not a Proxmox VE host — no /etc/pve"},
 	}
 
 	states := map[model.Source]model.ScanState{}

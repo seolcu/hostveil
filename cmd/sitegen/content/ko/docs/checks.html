@@ -14,19 +14,20 @@
                   <tr><td>노출된 서비스</td><td><code>ports.</code></td><td><code>ss</code></td></tr>
                   <tr><td>계정</td><td><code>accounts.</code></td><td>root (<code>/etc/shadow</code>용)</td></tr>
                   <tr><td>파일 권한</td><td><code>fileperms.</code></td><td>—</td></tr>
-                  <tr><td>AI 에이전트 런타임</td><td><code>agent.</code></td><td>OpenClaw 또는 Hermes 설치</td></tr>
+                  <tr><td>AI 에이전트 런타임</td><td><code>agent.</code></td><td>OpenClaw, Hermes Agent, Goose 중 하나 설치</td></tr>
                   <tr><td>커널 하드닝</td><td><code>sysctl.</code></td><td>—</td></tr>
                   <tr><td>Docker 데몬</td><td><code>dockerd.</code></td><td>Docker</td></tr>
                   <tr><td>서비스 하드닝</td><td><code>systemd.</code></td><td>systemd</td></tr>
-                  <tr><td>리버스 프록시</td><td><code>proxy.</code></td><td>nginx 또는 Docker</td></tr>
+                  <tr><td>리버스 프록시</td><td><code>proxy.</code></td><td>nginx, Caddy 또는 Docker</td></tr>
+                  <tr><td>Proxmox VE 호스트</td><td><code>proxmox.</code></td><td>Proxmox VE 호스트</td></tr>
                   <tr><td>이미지 CVE <em>(선택)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
                 </tbody>
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">176</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">128</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">53</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
+            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">179</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">128</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">53</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
             <div class="ledger-bar-group">
-              <p class="ledger-bar-title">176개 발견 항목의 처리 방식</p>
+              <p class="ledger-bar-title">179개 발견 항목의 처리 방식</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Auto</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:43%"></div></div>
@@ -40,7 +41,7 @@
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:27%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">48</span>
+                <span class="ledger-bar-value" data-counted="findings.manual">51</span>
               </div>
             </div>
 
@@ -71,16 +72,17 @@
               <table>
                 <thead><tr><th>축</th><th>가중치</th></tr></thead>
                 <tbody>
-                  <tr><td>컨테이너 노출</td><td>13</td></tr>
-                  <tr><td>SSH 하드닝</td><td>13</td></tr>
-                  <tr><td>취약점</td><td>9</td></tr>
-                  <tr><td>호스트 방화벽</td><td>8</td></tr>
-                  <tr><td>노출된 서비스</td><td>7</td></tr>
-                  <tr><td>AI 에이전트 런타임</td><td>7</td></tr>
-                  <tr><td>리버스 프록시</td><td>6</td></tr>
+                  <tr><td>컨테이너 노출</td><td>12</td></tr>
+                  <tr><td>SSH 하드닝</td><td>12</td></tr>
+                  <tr><td>취약점</td><td>8</td></tr>
+                  <tr><td>호스트 방화벽</td><td>7</td></tr>
                   <tr><td>계정 위생</td><td>7</td></tr>
                   <tr><td>자동 업데이트</td><td>7</td></tr>
                   <tr><td>Docker 데몬</td><td>7</td></tr>
+                  <tr><td>노출된 서비스</td><td>6</td></tr>
+                  <tr><td>AI 에이전트 런타임</td><td>6</td></tr>
+                  <tr><td>리버스 프록시</td><td>6</td></tr>
+                  <tr><td>Proxmox VE 호스트</td><td>6</td></tr>
                   <tr><td>서비스 하드닝</td><td>6</td></tr>
                   <tr><td>파일 권한</td><td>5</td></tr>
                   <tr><td>커널 하드닝</td><td>5</td></tr>
@@ -176,7 +178,7 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>firewall.inactive</code></td><td>활성화된 호스트 방화벽이 없음 (ufw, firewalld, nftables, 또는 iptables)</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
+                  <tr><td><code>firewall.inactive</code></td><td>활성화된 호스트 방화벽이 없음 (ufw, firewalld, Proxmox VE 방화벽, nftables, 또는 iptables)</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                   <tr><td><code>firewall.default-allow</code></td><td>방화벽이 켜져 있지만 기본 인바운드 정책이 전부 허용</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                   <tr><td><code>firewall.docker-bypass</code></td><td>ufw가 켜져 있는데도 publish된 컨테이너 포트가 외부에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                 </tbody>
@@ -259,6 +261,21 @@
                 </tbody>
               </table>
             </div>
+
+            <h2 id="proxmox">Proxmox VE 호스트 <code>proxmox.</code></h2>
+            <p>하이퍼바이저는 그 위의 모든 게스트가 믿는 기계입니다. 홈랩의 Proxmox는 대개 LAN 전체에서 8006번 포트로 닿고, 막는 것은 root 비밀번호 하나뿐입니다. 이 영역은 <code>/etc/pve</code>가 있는 호스트에서만 동작합니다. 단일 호스트 점검으로 볼 수 있고 게스트 안에서는 볼 수 없는 것을 읽습니다. 관리 인터페이스에 누가 닿을 수 있는지(<code>/etc/default/pveproxy</code>), root@pam에 2단계 인증이 있는지(<code>/etc/pve/priv/tfa.cfg</code>), 구독 없이 엔터프라이즈 저장소가 켜져 있는지(<code>pvesubscription get</code>)입니다. <code>tfa.cfg</code>는 root만 읽을 수 있으므로, root가 아닌 스캔에서는 점검하지 못했다고 보고합니다.</p>
+            <p>데이터센터 방화벽은 이 영역에서 따로 보고하지 않습니다. 필터링이 없는 호스트는 이미 <a href="#firewall">방화벽 영역</a>의 발견 항목입니다. 방화벽 영역은 이제 <code>pve-firewall</code>에 직접 물어서, 켜져 있는 PVE 방화벽을 INPUT 정책만 보고 무방비 호스트로 잘못 읽지 않습니다. SSH root 로그인은 SSH 영역에 맡깁니다. PVE 클러스터는 노드끼리 root SSH를 씁니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
+                <tbody>
+                  <tr><td><code>proxmox.webui-open</code></td><td>8006번의 웹 인터페이스와 API가 어느 주소에서든 로그인을 받음. <code>LISTEN_IP</code>가 없고, 거부 규칙이나 정책이 실제로 적용되는 허용 목록도 없음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxmox.root-no-tfa</code></td><td>root@pam에 켜진 2단계 인증(TOTP, WebAuthn, U2F, Yubico)이 없음. 복구 키만 있는 경우는 인정하지 않음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxmox.enterprise-repo-unsubscribed</code></td><td>활성 구독 없이 엔터프라이즈 저장소(PVE 또는 Ceph)가 켜져 있음. <code>apt update</code>가 거부되어, Debian 업데이트는 계속 들어오는데 Proxmox 자체 패키지는 업데이트가 끊김</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>세 항목 모두 <strong>Manual</strong>입니다. 어느 네트워크가 관리 네트워크인지는 Hostveil이 읽을 수 있는 곳 어디에도 적혀 있지 않고, 허용 목록을 잘못 쓰면 하이퍼바이저 관리 화면에서 스스로를 차단하게 됩니다. 2단계 인증은 사람이 손에 쥔 기기입니다. 엔터프라이즈 저장소를 떠나는 일은 순서대로 해야 하는 두 가지 변경이며, 첫 번째만 하면 Proxmox 업데이트를 아예 받지 못하게 됩니다.</p>
 
             <h2 id="fileperms">파일 권한 <code>fileperms.</code></h2>
             <p>보안상 중요한 파일 목록의 권한을 확인해, 필요 이상으로 느슨하게 설정된 권한을 표시합니다.</p>
