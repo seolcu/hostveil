@@ -132,3 +132,14 @@ func TestTheFirewallFixRefusesAPartlyReadablePortList(t *testing.T) {
 		}
 	}
 }
+
+// ufw switched on under a Proxmox VE host fights the platform's own firewall
+// over the same chains and drops the web interface and the cluster traffic
+// with everything else.
+func TestNoUfwFixOnAProxmoxHost(t *testing.T) {
+	f := firewallFinding()
+	f.Evidence["available"] = "ufw, pve-firewall, iptables"
+	if _, err := buildEnableFirewall(f); err == nil {
+		t.Error("offered to enable ufw on a Proxmox VE host")
+	}
+}

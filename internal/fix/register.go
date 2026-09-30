@@ -222,6 +222,21 @@ package fix
 //     deleted the directive would break a directory somebody meant to be
 //     browsable, and one that turned it off at the server level would change
 //     a vhost hostveil never looked inside.
+//   - proxmox.webui-open — the edit is a few lines in /etc/default/pveproxy
+//     and the values are the operator's alone: which network is the
+//     management network is not in any file hostveil reads, and a guess that
+//     leaves out the address the operator is using locks them out of the
+//     hypervisor's interface on the next restart. LISTEN_IP, the other half,
+//     breaks clusters whose nodes reach each other across subnets, which
+//     upstream warns about in the same breath as documenting it.
+//   - proxmox.root-no-tfa — enrolling a second factor is a person holding a
+//     device, and writing tfa.cfg on their behalf would be hostveil inventing
+//     a credential.
+//   - proxmox.enterprise-repo-unsubscribed — two changes in sequence (turn
+//     the enterprise source off, add the no-subscription one for the right
+//     release), where Review means alternatives, and the first alone leaves
+//     the host with no Proxmox source at all, which is worse than the finding.
+//     A subscription key is the other remedy and is not hostveil's to enter.
 //   - accounts.sudo-nopasswd — the blocker is not the lockout risk alone;
 //     accounts.emptypassword carries a comparable one and is registered
 //     below, disclosed through a Warning instead of declined. What actually

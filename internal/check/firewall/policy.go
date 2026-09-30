@@ -2,6 +2,7 @@ package firewall
 
 import (
 	"context"
+	"os"
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/model"
@@ -69,9 +70,51 @@ func defaultInbound(ctx context.Context, r platform.CommandRunner, which string)
 			return policyUnknown
 		}
 		return parseFirewalldTarget(string(out))
+	case "pve-firewall":
+		b, err := platform.ReadFileBounded(pveClusterFirewall, 1<<20)
+		switch {
+		case os.IsNotExist(err):
+			// No cluster.fw means every option is at its default, and the
+			// default policy_in is DROP.
+			return policyDeny
+		case err != nil:
+			return policyUnknown
+		}
+		return parsePVEPolicyIn(string(b))
 	default:
 		return policyDeny
 	}
+}
+
+// pveClusterFirewall is the datacenter firewall configuration, where
+// policy_in lives. A var so a test can point it at a fixture.
+var pveClusterFirewall = "/etc/pve/firewall/cluster.fw"
+
+// parsePVEPolicyIn reads policy_in from cluster.fw's [OPTIONS] section. Its
+// default is DROP; ACCEPT turns the enabled firewall into one that passes
+// everything no rule names, which is the same finding as ufw with a default
+// of allow.
+func parsePVEPolicyIn(body string) inboundPolicy {
+	section := ""
+	for _, line := range strings.Split(body, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			section = strings.ToUpper(strings.Trim(line, "[]"))
+			continue
+		}
+		if section != "OPTIONS" {
+			continue
+		}
+		k, v, ok := strings.Cut(line, ":")
+		if !ok || strings.TrimSpace(k) != "policy_in" {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(v), "ACCEPT") {
+			return policyAllow
+		}
+		return policyDeny
+	}
+	return policyDeny
 }
 
 // parseUFWDefault reads the incoming half of ufw's default line:
@@ -145,6 +188,9 @@ func parseFirewalldTarget(out string) inboundPolicy {
 // buildable for ufw; firewalld's target flip has no such fix registered yet.
 func defaultAllowFinding(which string) model.Finding {
 	how := "Run `ufw default deny incoming`, then `ufw reload`. Make sure your SSH port is allowed first (`ufw allow OpenSSH`) — the deny policy takes effect immediately and an unallowed session is the one you are using."
+	if which == "pve-firewall" {
+		how = "Set `policy_in: DROP` under [OPTIONS] in /etc/pve/firewall/cluster.fw (Datacenter → Firewall → Options → Input Policy), after adding rules for anything that must stay reachable — the management network keeps the web interface and SSH through the built-in management IP set."
+	}
 	if which == "firewalld" {
 		how = "Set the default zone's target to something other than ACCEPT (`firewall-cmd --permanent --zone=<zone> --set-target=default`, then `firewall-cmd --reload`). Make sure the ssh service is allowed in that zone first — the new target takes effect immediately."
 	}

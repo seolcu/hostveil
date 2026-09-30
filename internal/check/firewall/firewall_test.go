@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/seolcu/hostveil/internal/platform"
+	"os"
 	"strings"
 	"testing"
 
@@ -253,5 +254,56 @@ func TestAHostIsStillAudited(t *testing.T) {
 
 	if ok, why := c.Available(context.Background(), platform.Env{}); !ok {
 		t.Errorf("Available = false (%q); the absence of a firewall on a host is a finding", why)
+	}
+}
+
+// Proxmox VE filters through its own chains under an INPUT policy of ACCEPT,
+// so without asking pve-firewall the iptables probe reads a firewalled
+// hypervisor as unprotected.
+func TestProxmoxFirewall(t *testing.T) {
+	dir := t.TempDir()
+	old := pveClusterFirewall
+	t.Cleanup(func() { pveClusterFirewall = old })
+	iptables := "-P INPUT ACCEPT\n-A INPUT -j PVEFW-INPUT\n"
+
+	for _, tc := range []struct {
+		name    string
+		status  string
+		cluster string // "" = no cluster.fw
+		want    []string
+	}{
+		{"enabled, default policy", "Status: enabled/running\n", "", nil},
+		{"enabled, pending changes", "Status: enabled/running (pending changes)\n", "[OPTIONS]\nenable: 1\n", nil},
+		{"enabled, policy_in DROP", "Status: enabled/running\n", "[OPTIONS]\nenable: 1\npolicy_in: DROP\n", nil},
+		{"enabled, policy_in ACCEPT", "Status: enabled/running\n", "[OPTIONS]\n\nenable: 1\npolicy_in: ACCEPT\n\n[RULES]\n", []string{"firewall.default-allow"}},
+		{"disabled", "Status: disabled/running\n", "", []string{"firewall.inactive"}},
+		{"stopped", "Status: enabled/stopped\n", "", []string{"firewall.inactive"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pveClusterFirewall = dir + "/" + strings.ReplaceAll(tc.name, " ", "_") + ".fw"
+			if tc.cluster != "" {
+				if err := os.WriteFile(pveClusterFirewall, []byte(tc.cluster), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			r := checktest.New().Only("pve-firewall", "iptables").Outputs(map[string]string{
+				"pve-firewall status": tc.status,
+				"iptables -S INPUT":   iptables,
+			})
+			fs, err := New().Check(context.Background(), r.Env())
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got []string
+			for _, f := range fs {
+				got = append(got, f.ID)
+				if f.ID == "firewall.inactive" && !strings.Contains(f.HowToFix, "cluster.fw") {
+					t.Errorf("the how-to must point at the datacenter firewall, got %q", f.HowToFix)
+				}
+			}
+			if strings.Join(got, ",") != strings.Join(tc.want, ",") {
+				t.Errorf("findings = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }

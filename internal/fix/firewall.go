@@ -49,6 +49,15 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 		return Fix{}, fmt.Errorf("finding %s reports no ufw, and the other front-ends "+
 			"take rules this fix cannot write safely", f.ID)
 	}
+	// A Proxmox VE host that also has ufw installed must not have ufw turned
+	// on under it. The hypervisor's own firewall manages the same chains,
+	// and a default-deny INPUT drops the web interface on 8006 and the
+	// cluster's corosync and migration traffic along with everything else —
+	// on the machine every guest depends on, with no checkpoint to undo it.
+	if strings.Contains(f.Evidence["available"], "pve-firewall") {
+		return Fix{}, fmt.Errorf("finding %s is on a Proxmox VE host, where the datacenter "+
+			"firewall is the one to enable, not ufw", f.ID)
+	}
 	list := make([]string, 0, len(ports))
 	for _, p := range ports {
 		list = append(list, strconv.Itoa(p))
