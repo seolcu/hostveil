@@ -133,6 +133,14 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.28.0"><a href="https://github.com/seolcu/hostveil/compare/v3.27.0...v3.28.0">3.28.0</a> <span class="changelog-date">2026-09-30</span></h2>
+          <p>The reverse-proxy domain now reads Caddy, the third proxy it covers after nginx and Traefik, whether it is installed from a package or runs in a container.</p>
+          <h3>Features</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>check:</strong> audit Caddy in the proxy domain. A packaged Caddy is read from <code>/etc/caddy/Caddyfile</code>, following <code>import</code>; a containerised one through the Caddyfile its Compose service bind-mounts. A new finding, <code>proxy.admin-api-exposed</code>, fires when Caddy's admin API listens on anything but loopback. That API has no authentication and can replace the proxy's entire running configuration, so it is High on the host. For a container it is High only when the admin port is published, and Medium otherwise, since reaching it then takes a foothold in a neighbouring container first. <code>file_server browse</code> is reported under the existing <code>proxy.directory-listing</code>, which is now one finding across nginx and Caddy. A Caddy configured in JSON, or a container whose Caddyfile hostveil cannot reach, is reported as not audited rather than as clean.</p>
+            </li>
+          </ul>
           <h2 id="v3.27.0"><a href="https://github.com/seolcu/hostveil/compare/v3.26.2...v3.27.0">3.27.0</a> <span class="changelog-date">2026-09-30</span></h2>
           <p>Manual and Unavailable findings no longer look alike: each gets its own muted colour in every theme, in the TUI and the dashboard. The dashboard's "Fix all safe" and "Fix selected" now show real progress one finding at a time instead of a single spinner. The website quotes the final September measurement run, and the Korean pages were rewritten and reset in a new body face.</p>
           <h3>Features</h3>

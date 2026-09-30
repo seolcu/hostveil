@@ -2,6 +2,28 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.28.0](https://github.com/seolcu/hostveil/compare/v3.27.0...v3.28.0) (2026-09-30)
+
+The reverse-proxy domain now reads Caddy, the third proxy it covers after
+nginx and Traefik, whether it is installed from a package or runs in a
+container.
+
+### Features
+
+* **check:** audit Caddy in the proxy domain. A packaged Caddy is read
+  from `/etc/caddy/Caddyfile`, following `import`; a containerised one
+  through the Caddyfile its Compose service bind-mounts. A new finding,
+  `proxy.admin-api-exposed`, fires when Caddy's admin API listens on
+  anything but loopback. That API has no authentication and can replace
+  the proxy's entire running configuration, so it is High on the host.
+  For a container it is High only when the admin port is published, and
+  Medium otherwise, since reaching it then takes a foothold in a
+  neighbouring container first. `file_server browse` is reported under
+  the existing `proxy.directory-listing`, which is now one finding
+  across nginx and Caddy. A Caddy configured in JSON, or a container
+  whose Caddyfile hostveil cannot reach, is reported as not audited
+  rather than as clean.
+
 ## [3.27.0](https://github.com/seolcu/hostveil/compare/v3.26.2...v3.27.0) (2026-09-30)
 
 Manual and Unavailable findings no longer look alike: each gets its own
