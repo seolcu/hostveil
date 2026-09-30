@@ -2,6 +2,49 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.27.0](https://github.com/seolcu/hostveil/compare/v3.26.2...v3.27.0) (2026-09-30)
+
+Manual and Unavailable findings no longer look alike: each gets its own
+muted colour in every theme, in the TUI and the dashboard. The
+dashboard's "Fix all safe" and "Fix selected" now show real progress one
+finding at a time instead of a single spinner. The website quotes the
+final September measurement run, and the Korean pages were rewritten
+and reset in a new body face.
+
+### Features
+
+* **ui:** give Manual and Unavailable findings their own colours. They
+  used to share one grey, so "hostveil will not do this unattended" and
+  "nobody can fix this yet" read as the same thing. Both colours are
+  muted rather than heat colours, because neither says anything about
+  urgency. They are held to the same contrast floor and 256-colour
+  collision tests as the severity colours. The dashboard also gets a
+  sortable finding list, a per-item progress dialog for batch fixes
+  (backed by a new `POST /api/fix/one` that shares its eligibility rule
+  with the batch path through `Engine.ApplyOne`), and clearer confirm
+  and outcome dialogs.
+* **demo:** forward AI provider environment variables into the demo VM.
+  `demo/run.sh` reads an optional, gitignored `demo/.env` (see
+  `demo/.env.example`) and passes the known provider variables through
+  to `scan` and `web`, which `vagrant ssh -c` does not do on its own.
+
+### Bug Fixes
+
+* **model:** the Auto remediation kind is labelled "Auto" everywhere,
+  not "Auto-fix". It was the only compound name among the four kinds,
+  and it read as the name of a button rather than of a kind.
+* **docs:** the website and both READMEs quote the final September 11
+  measurement run instead of the August one: hostveil 28 → 58, Lynis
+  57 → 79, Docker-bridge reachability 6 → 1, rollback fidelity 25/28.
+  The three paths that were not restored are explained rather than
+  left out.
+* **docs:** `CONTRIBUTING.md` told contributors to run golangci-lint
+  with `go run`, which refuses to run on this toolchain and lints
+  nothing. It now fetches the released binary, as CI does.
+* **site:** the Korean pages use Nanum Myeongjo for body text, and the
+  five longest documentation pages were rewritten as Korean prose
+  rather than sentence-by-sentence renderings of the English.
+
 ## [3.26.2](https://github.com/seolcu/hostveil/compare/v3.26.1...v3.26.2) (2026-08-31)
 
 ### Bug Fixes
