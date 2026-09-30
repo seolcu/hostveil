@@ -196,6 +196,16 @@ package fix
 //     authentication, and hostveil cannot invent which hostname or which
 //     middleware. Deleting the flag alone takes the dashboard away without
 //     saying so.
+//   - proxy.admin-api-exposed — the edit is small and the outcome is not
+//     knowable from here. Moving Caddy's admin API back to loopback, or
+//     turning it off, cuts whatever was calling it: a deploy script, a
+//     configuration manager, a sidecar that reloads certificates. Nothing in
+//     a Caddyfile records who that is, and a proxy that stops accepting its
+//     own updates goes on serving until something needs to change and then
+//     cannot. For a container the setting is as often CADDY_ADMIN in the
+//     Compose file as an option in the Caddyfile, and it is not in force
+//     until the container fronting every other service is recreated — the
+//     proxy.traefik-api-insecure argument again.
 //   - proxy.tls-deprecated-protocols — the line to write is unambiguous and
 //     the file to write it in is not. nginx resolves ssl_protocols by the
 //     usual inheritance: a value in `http` covers every server that does not

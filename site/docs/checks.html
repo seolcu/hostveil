@@ -148,9 +148,9 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">175</strong> findings, and <strong data-counted="findings.fixable">128</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">53</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">176</strong> findings, and <strong data-counted="findings.fixable">128</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">53</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: deleting an account cannot be undone from a checkpoint, removing a Docker socket mount breaks the tool that needs it. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
             <div class="ledger-bar-group">
-              <p class="ledger-bar-title">How the 175 findings resolve</p>
+              <p class="ledger-bar-title">How the 176 findings resolve</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Auto</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:43%"></div></div>
@@ -164,7 +164,7 @@
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:27%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">47</span>
+                <span class="ledger-bar-value" data-counted="findings.manual">48</span>
               </div>
             </div>
 
@@ -369,15 +369,16 @@
             </div>
 
             <h2 id="proxy">Reverse proxy <code>proxy.</code></h2>
-            <p>The component this audience is most likely to have and least likely to have configured: everything else here sits behind whatever answers on 443. Two surfaces, because there are two ways people run one — nginx from a package, read out of <code>/etc/nginx</code> and following <code>include</code> into <code>conf.d</code> and <code>sites-enabled</code>; and Traefik as a container, read out of the Compose files the container domain already discovers.</p>
+            <p>The component this audience is most likely to have and least likely to have configured: everything else here sits behind whatever answers on 443. Two surfaces, because there are two ways people run one — nginx and Caddy from a package, read out of <code>/etc/nginx</code> and <code>/etc/caddy</code> and following <code>include</code> and <code>import</code> into the files they pull in; and Traefik and Caddy as containers, read out of the Compose files the container domain already discovers, with a container's Caddyfile read through its bind mount. A Caddy configured in JSON rather than a Caddyfile is reported as not audited rather than as clean. Deprecated TLS versions are checked for nginx only, because Caddy accepts nothing older than TLS 1.2.</p>
             <p>Three things are <em>deliberately</em> not checked. A proxy serving plain HTTP, because a vhost whose only job is to redirect to HTTPS and a proxy behind something that already terminates TLS are both correct and neither is distinguishable from the config. Missing security headers, because they are worth having and are not what gets somebody breached. And anything about certificates, because expiry and issuer are facts about the network rather than about a file.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
                   <tr><td><code>proxy.traefik-api-insecure</code></td><td>Traefik's API and dashboard are served with no authentication, listing every router and backend address behind the proxy</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxy.admin-api-exposed</code></td><td>Caddy's admin API, which has no authentication and can replace the whole running configuration, listens on something other than loopback. Medium for a container whose port 2019 is not published to the host, since reaching it then takes a foothold in a neighbouring container</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>proxy.tls-deprecated-protocols</code></td><td><code>ssl_protocols</code> still offers TLS 1.0 or 1.1, which RFC 8996 deprecated and every current browser refuses</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>proxy.directory-listing</code></td><td><code>autoindex on</code> makes every directory with no index file browsable</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxy.directory-listing</code></td><td>nginx's <code>autoindex on</code> or Caddy's <code>file_server browse</code> makes every directory with no index file browsable</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>proxy.no-scan-jail</code></td><td>fail2ban is installed but its nginx-botsearch jail, built to catch repeated requests for nonexistent or known-vulnerable paths, is not enabled</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-proxy.no-scan-jail">Review</a></td></tr>
                 </tbody>
               </table>

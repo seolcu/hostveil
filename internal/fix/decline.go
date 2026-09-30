@@ -89,6 +89,7 @@ var declineReasons = map[string]string{
 
 	// accounts
 	"proxy.traefik-api-insecure":     "Traefik reads this at start, so the container fronting every other service must be recreated — and keeping the dashboard needs a router and middleware Hostveil cannot pick.",
+	"proxy.admin-api-exposed":        "Moving the admin API to loopback cuts off whatever calls it, and nothing in the Caddyfile says who that is; a container must also be recreated before the change is in force.",
 	"proxy.tls-deprecated-protocols": "nginx inherits ssl_protocols from http into every server that does not set its own, and Hostveil sees which files name the directive rather than which block each one sits in.",
 	"proxy.directory-listing":        "autoindex is sometimes deliberate for one location, so the remediation is to narrow it rather than remove it — and Hostveil cannot tell which location you meant.",
 	"accounts.sudo-nopasswd":         "The grant comes from sudo -l, not from reading /etc/sudoers, so nothing says which file, line, or group rule to edit — there is nowhere for an edit to point.",

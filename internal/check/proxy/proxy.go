@@ -10,11 +10,14 @@
 // argument the ports domain makes about a natively installed database that a
 // Compose audit cannot see:
 //
-//   - nginx as a package, read from /etc/nginx, following include directives.
-//   - Traefik as a container, read from the Compose files the container domain
-//     already discovers. Its most dangerous setting is almost always on the
-//     service's command line rather than in a config file, because that is how
-//     every tutorial writes it.
+//   - nginx and Caddy as packages, read from /etc/nginx and /etc/caddy,
+//     following include and import directives.
+//   - Traefik and Caddy as containers, read from the Compose files the
+//     container domain already discovers. Traefik's most dangerous setting is
+//     almost always on the service's command line rather than in a config
+//     file, because that is how every tutorial writes it; a Caddy container's
+//     Caddyfile is read through its bind mount. What is read from Caddy, and
+//     why, is in caddy.go.
 //
 // # What is deliberately not audited
 //
@@ -51,6 +54,10 @@ import (
 type Checker struct {
 	// NginxRoot is the nginx configuration directory; overridable for tests.
 	NginxRoot string
+	// CaddyRoot is the packaged Caddy's configuration directory. Empty skips
+	// the packaged-Caddy half, which is what keeps a test that sets only
+	// NginxRoot from reading the /etc/caddy of whatever host runs it.
+	CaddyRoot string
 	// Discover finds Compose projects. nil means the real one — injected so a
 	// test can exercise the Traefik half without a Docker daemon.
 	Discover func(ctx context.Context, r platform.CommandRunner) ([]compose.Project, []string, error)
@@ -61,14 +68,14 @@ type Checker struct {
 }
 
 // New returns a proxy checker reading the standard locations.
-func New() *Checker { return &Checker{NginxRoot: "/etc/nginx"} }
+func New() *Checker { return &Checker{NginxRoot: "/etc/nginx", CaddyRoot: "/etc/caddy"} }
 
 // Source identifies the reverse-proxy domain.
 func (*Checker) Source() model.Source { return model.SourceProxy }
 
 // Available requires something that could be a reverse proxy.
 //
-// A host with neither an nginx configuration nor a reachable Docker daemon has
+// A host with no nginx or Caddy configuration and no reachable Docker daemon has
 // no proxy for this domain to have an opinion about, and the axis is
 // renormalized away rather than scored on an absence. That is the opposite of
 // the firewall domain, where absence *is* the finding — nobody is insecure for
@@ -77,13 +84,18 @@ func (c *Checker) Available(ctx context.Context, env platform.Env) (bool, string
 	if ok, why := platform.AuditableOS(); !ok {
 		return false, why
 	}
-	if fi, err := os.Stat(c.root()); err == nil && fi.IsDir() {
+	if isDir(c.root()) || (c.CaddyRoot != "" && isDir(c.CaddyRoot)) {
 		return true, ""
 	}
 	if ok, _ := platform.DockerReachable(ctx, env.Runner); ok {
 		return true, ""
 	}
-	return false, "no reverse proxy found — no " + c.root() + ", and no reachable Docker daemon to look for one in"
+	return false, "no reverse proxy found — no " + c.root() + " or /etc/caddy, and no reachable Docker daemon to look for one in"
+}
+
+func isDir(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && fi.IsDir()
 }
 
 func (c *Checker) root() string {
@@ -97,16 +109,32 @@ func (c *Checker) root() string {
 func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	var cov check.Coverage
 	var findings []model.Finding
+	// Directory listing is one finding however many proxies turn it on, so
+	// each surface reports the files and the finding is built once below.
+	var nginxListing, caddyListing []string
 
-	if fi, err := os.Stat(c.root()); err == nil && fi.IsDir() {
-		fs, unread := auditNginx(c.root())
+	if isDir(c.root()) {
+		fs, listing, unread := auditNginx(c.root())
 		findings = append(findings, fs...)
+		nginxListing = listing
 		cov.Covered(1)
 		if len(unread) > 0 {
 			cov.Missed(0, "could not read "+strings.Join(unread, ", ")+
 				" — directives there were not audited; re-run with sudo")
 		}
 		findings = append(findings, c.auditScanProtection(ctx, env.Runner, &cov)...)
+	}
+
+	if c.CaddyRoot != "" && isDir(c.CaddyRoot) {
+		fs, listing, gap, covered := auditHostCaddy(c.CaddyRoot)
+		findings = append(findings, fs...)
+		caddyListing = append(caddyListing, listing...)
+		if covered {
+			cov.Covered(1)
+		}
+		if gap != "" {
+			cov.Missed(0, gap)
+		}
 	}
 
 	if ok, why := platform.DockerReachable(ctx, env.Runner); ok {
@@ -116,7 +144,12 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			cov.Missed(0, "cannot enumerate Compose projects — a containerised proxy was not audited")
 		default:
 			cov.Covered(1)
-			findings = append(findings, auditCompose(projects)...)
+			fs, listing, gaps := auditCompose(projects)
+			findings = append(findings, fs...)
+			caddyListing = append(caddyListing, listing...)
+			for _, g := range gaps {
+				cov.Missed(0, g)
+			}
 			if len(unparsed) > 0 {
 				cov.Missed(0, "could not read "+strings.Join(unparsed, ", ")+
 					" — a proxy defined there was not audited")
@@ -132,6 +165,10 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		}
 	}
 
+	if len(nginxListing) > 0 || len(caddyListing) > 0 {
+		findings = append(findings, directoryListingFinding(nginxListing, caddyListing))
+	}
+
 	sort.Slice(findings, func(i, j int) bool { return findings[i].ID < findings[j].ID })
 	return findings, cov.Err()
 }
@@ -144,36 +181,36 @@ func (c *Checker) discover(ctx context.Context, r platform.CommandRunner) ([]com
 }
 
 // auditCompose looks for a containerised proxy serving its own control plane
-// without authentication.
-func auditCompose(projects []compose.Project) []model.Finding {
-	var out []model.Finding
+// without authentication, and for a containerised Caddy listing directories.
+// It returns the findings, the Caddyfiles that turn listing on, and what it
+// could not read.
+func auditCompose(projects []compose.Project) (out []model.Finding, listing, gaps []string) {
 	for _, p := range projects {
 		for _, name := range p.ServiceNames() {
 			svc := p.Services[name]
-			if !isTraefik(svc) {
-				continue
-			}
-			if where, ok := traefikInsecureAPI(svc); ok {
-				out = append(out, traefikFinding(p, name, svc, where))
+			switch {
+			case isTraefik(svc):
+				if where, ok := traefikInsecureAPI(svc); ok {
+					out = append(out, traefikFinding(p, name, svc, where))
+				}
+			case isCaddy(svc):
+				fs, browse, gap := auditContainerCaddy(p, name, svc)
+				out = append(out, fs...)
+				listing = append(listing, browse...)
+				if gap != "" {
+					gaps = append(gaps, gap)
+				}
 			}
 		}
 	}
-	return out
+	return out, listing, gaps
 }
 
 // isTraefik decides from the image reference. The name is not enough — a
 // service may be called anything — and the image is what actually determines
 // which program reads the flags below.
 func isTraefik(s compose.Service) bool {
-	img := strings.ToLower(s.Image)
-	if i := strings.IndexAny(img, ":@"); i >= 0 {
-		img = img[:i]
-	}
-	base := img
-	if i := strings.LastIndex(img, "/"); i >= 0 {
-		base = img[i+1:]
-	}
-	return base == "traefik"
+	return imageBase(s.Image) == "traefik"
 }
 
 // traefikInsecureAPI reports whether this service turns on the unauthenticated
@@ -240,9 +277,9 @@ func traefikFinding(p compose.Project, name string, svc compose.Service, where s
 		model.SeverityHigh, model.SourceProxy, model.RemediationManual, opts...)
 }
 
-// auditNginx reads the nginx configuration and returns findings plus the files
-// it could not read.
-func auditNginx(root string) ([]model.Finding, []string) {
+// auditNginx reads the nginx configuration and returns findings, the files
+// that turn directory listing on, and the files it could not read.
+func auditNginx(root string) ([]model.Finding, []string, []string) {
 	files, unread := nginxFiles(root)
 
 	weak := map[string][]string{}    // file -> the offending protocol names
@@ -268,16 +305,13 @@ func auditNginx(root string) ([]model.Finding, []string) {
 	if len(weak) > 0 {
 		out = append(out, weakTLSFinding(weak))
 	}
-	if len(listing) > 0 {
-		names := make([]string, 0, len(listing))
-		for f := range listing {
-			names = append(names, f)
-		}
-		sort.Strings(names)
-		out = append(out, autoindexFinding(names))
+	names := make([]string, 0, len(listing))
+	for f := range listing {
+		names = append(names, f)
 	}
+	sort.Strings(names)
 	sort.Strings(unread)
-	return out, unread
+	return out, names, unread
 }
 
 // deprecatedTLS is the set nothing should still be offering. TLS 1.0 and 1.1
@@ -375,17 +409,27 @@ func weakTLSFinding(weak map[string][]string) model.Finding {
 	)
 }
 
-func autoindexFinding(files []string) model.Finding {
+func directoryListingFinding(nginx, caddy []string) model.Finding {
+	var what, fix []string
+	if len(nginx) > 0 {
+		what = append(what, "`autoindex on` makes nginx")
+		fix = append(fix, "Remove `autoindex on;` (or set it to `off`) in "+strings.Join(nginx, ", ")+", then `nginx -t` and `systemctl reload nginx`.")
+	}
+	if len(caddy) > 0 {
+		what = append(what, "`file_server browse` makes Caddy")
+		fix = append(fix, "Remove `browse` from `file_server` in "+strings.Join(caddy, ", ")+", then `caddy validate` and `systemctl reload caddy` (or recreate the container).")
+	}
+	files := append(append([]string{}, nginx...), caddy...)
 	return model.NewFinding("proxy.directory-listing",
 		"The proxy lists the contents of directories it serves",
 		model.SeverityMedium, model.SourceProxy, model.RemediationManual,
 		model.WithDescription(
-			"`autoindex on` makes nginx generate a browsable listing for any directory with no index file. "+
+			strings.Join(what, ", and ")+" generate a browsable listing for any directory with no index file. "+
 				"Everything in the directory is then enumerable by anyone who can reach it — backups left beside the site, a stray .env, a database dump, the file somebody meant to delete. "+
 				"It is a disclosure of what exists rather than of one file, which is what makes it worth more than the single file anybody had in mind."),
 		model.WithHowToFix(
-			"Remove `autoindex on;` (or set it to `off`) in "+strings.Join(files, ", ")+", then `nginx -t` and `systemctl reload nginx`. "+
-				"If a directory really is meant to be browsable, keep it on for that `location` alone rather than for the server."),
+			strings.Join(fix, " ")+
+				" If a directory really is meant to be browsable, keep listing on for that path alone rather than for the whole site."),
 		model.WithEvidence("config", strings.Join(files, ", ")),
 	)
 }
