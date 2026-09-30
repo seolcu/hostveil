@@ -521,7 +521,7 @@
             <p>이 systemd가 구현하지 않은 속성은 아무 값도 보고되지 않으며, 값이 없다는 것은 보호가 꺼져 있다는 근거가 아닙니다. 그런 경우는 항목으로 만들지 않고 그대로 둡니다.</p>
 
             <h2 id="agent">AI 에이전트 런타임 <code>agent.</code></h2>
-            <p>셀프호스트 AI 에이전트인 <a href="https://docs.openclaw.ai/">OpenClaw</a>와 <a href="https://hermes-agent.nousresearch.com/docs/">Hermes Agent</a>는 네트워크 게이트웨이를 띄우고 API 키를 홈 디렉터리에 저장합니다. 설정이 잘못되면 최악의 경우 외부에서 그 게이트웨이에 접근해, 내 파일을 읽고 내 권한으로 명령을 실행하는 에이전트를 그대로 조종할 수 있습니다.</p>
+            <p>셀프호스트 AI 에이전트인 <a href="https://docs.openclaw.ai/">OpenClaw</a>, <a href="https://hermes-agent.nousresearch.com/docs/">Hermes Agent</a>, <a href="https://goose-docs.ai/">Goose</a>는 네트워크 게이트웨이를 띄우고 API 키를 홈 디렉터리에 저장합니다. 설정이 잘못되면 최악의 경우 외부에서 그 게이트웨이에 접근해, 내 파일을 읽고 내 권한으로 명령을 실행하는 에이전트를 그대로 조종할 수 있습니다.</p>
             <p>이 도메인은 해당 런타임이 실제로 설치되어 있지 않으면 <strong>아예 건너뜁니다</strong>. 에이전트를 쓴 적 없는 호스트는 이 항목으로 점수를 매기지 않습니다. Hostveil은 <code>/etc/passwd</code>에서 홈 디렉터리를 찾은 뒤 아래 표에 적힌 경로만 stat합니다. 홈 디렉터리 전체를 훑지 않습니다.</p>
             <p>두 프로젝트 모두 자체 설정 점검 도구(<code>openclaw security audit</code>)를 제공하며, 설정 항목 자체는 그쪽이 훨씬 촘촘합니다. Hostveil이 더하는 것은 그 도구들이 볼 수 없는 부분입니다. 게이트웨이가 <em>실제로</em> 외부에서 닿는 주소에서 대기 중인지, 그 앞에 방화벽이 있는지, 자격 증명 파일을 같은 호스트의 다른 계정이 읽을 수 있는지입니다.</p>
             <div class="docs-table-wrap">
@@ -531,7 +531,7 @@
                   <tr><td><code>agent.auth-disabled</code></td><td>외부에 노출된 게이트웨이가 인증 없이 요청을 받음</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>agent.gateway-exposed</code></td><td>게이트웨이가 네트워크에서 닿는 주소에 바인딩됨</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>agent.secret-exposed</code></td><td>자격 증명 파일 또는 디렉터리를 소유자 외에도 읽을 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.secret-exposed">Auto</a></td></tr>
-                  <tr><td><code>agent.exec-unrestricted</code></td><td>에이전트가 승인 절차 없이 셸 명령을 실행할 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.exec-unrestricted">Review</a></td></tr>
+                  <tr><td><code>agent.exec-unrestricted</code></td><td>에이전트가 승인 절차 없이 셸 명령을 실행할 수 있음. Goose는 <code>GOOSE_MODE</code>가 <code>auto</code>이거나 <em>아예 설정되지 않은</em> 경우이며, auto가 기본값이기 때문임</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.exec-unrestricted">Review</a></td></tr>
                   <tr><td><code>agent.elevated-enabled</code></td><td>호스트 수준의 권한 상승 실행이 활성화됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.elevated-enabled">Auto</a></td></tr>
                   <tr><td><code>agent.sandbox-off</code></td><td>에이전트 도구가 샌드박스 없이 호스트에서 직접 실행됨</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>agent.control-ui-insecure</code></td><td>제어 UI의 인증 또는 기기 확인이 꺼져 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.control-ui-insecure">Auto</a></td></tr>
@@ -541,7 +541,7 @@
               </table>
             </div>
             <p>설정 관련 항목은 이제 대부분 고칠 수 있습니다. OpenClaw 설정은 JSON5라 사용자가 직접 쓴 주석이 들어 있는데, Hostveil은 값 하나에 해당하는 바이트만 정확히 바꾸고 나머지 파일은 건드리지 않습니다. 자기가 쓴 결과도 다시 읽어, 지정한 키 외에 달라진 것이 있으면 저장을 거부합니다. 키 하나를 바꾼 변경은 한 줄 diff로 남고, 주석은 쓴 자리에 그대로 있습니다.</p>
-            <p>세 항목은 여전히 <strong>Manual</strong>이며, 이유는 각각 다릅니다. <code>agent.sandbox-off</code>는 <code>off</code>가 잘못됐다는 것은 알아도 샌드박스를 켜는 값이 무엇인지 모르며, 찍어서 넣은 값은 조치가 아닙니다. <code>agent.auth-disabled</code>는 키가 아예 없는 상태가 안전한 설정인데(OpenClaw는 이 값이 없으면 닫힌 쪽으로 동작합니다) Hostveil은 값을 바꿀 뿐 지우지는 않습니다. 노출된 게이트웨이를 다시 바인딩하면 원격으로 관리하던 에이전트와의 연결이 끊길 수 있다는 점도 있습니다. Hermes 설정은 전부 손대지 않습니다. 설정 파일, <code>.env</code>, systemd 유닛, <code>docker&nbsp;-e</code> 플래그 중 어디서 온 값인지 판별할 수 없기 때문입니다.</p>
+            <p>세 항목은 여전히 <strong>Manual</strong>이며, 이유는 각각 다릅니다. <code>agent.sandbox-off</code>는 <code>off</code>가 잘못됐다는 것은 알아도 샌드박스를 켜는 값이 무엇인지 모르며, 찍어서 넣은 값은 조치가 아닙니다. <code>agent.auth-disabled</code>는 키가 아예 없는 상태가 안전한 설정인데(OpenClaw는 이 값이 없으면 닫힌 쪽으로 동작합니다) Hostveil은 값을 바꿀 뿐 지우지는 않습니다. 노출된 게이트웨이를 다시 바인딩하면 원격으로 관리하던 에이전트와의 연결이 끊길 수 있다는 점도 있습니다. Hermes 설정은 전부 손대지 않습니다. 설정 파일, <code>.env</code>, systemd 유닛, <code>docker&nbsp;-e</code> 플래그 중 어디서 온 값인지 판별할 수 없기 때문입니다. Goose의 <code>GOOSE_MODE</code>도 같은 이유로 Manual입니다. 환경 변수가 파일보다 우선하고, 흔한 경우는 키가 아예 없어서 Hostveil이 새로 넣어야 하는 상황입니다. Goose 웹 인터페이스는 주소를 파일이 아니라 명령행 플래그로 받습니다. 그래서 노출 여부는 실제로 대기 중인 소켓만 보고 판단하며, 포트가 아니라 프로세스 이름으로 Goose의 것인지 가립니다.</p>
             <p>Auto로 분류되는 것은 권한 관련 두 항목뿐이며, 둘 다 접근 권한을 <em>줄이기만</em> 하는 <code>chmod</code>입니다. 체크포인트가 남으므로 <code>hostveil rollback</code>으로 이전 권한을 그대로 되돌릴 수 있습니다.</p>
 
             <h2 id="cve">이미지 CVE <code>cve.</code> <em>(선택)</em></h2>

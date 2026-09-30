@@ -331,6 +331,16 @@ package fix
 // nothing. The checker refuses to emit safe values for a non-JSON5 runtime
 // for exactly that reason.
 //
+// Goose reaches agent.exec-unrestricted through GOOSE_MODE and stays Manual
+// for the same reason and one more. A GOOSE_MODE in the environment wins over
+// ~/.config/goose/config.yaml, and nothing on disk says whether one is set
+// where Goose is started. And the host the rule is really about is the one
+// that never wrote the key — auto is the default — so the remedy is an
+// insert, which a replace-only editor deliberately does not do, into YAML,
+// which it does not read. The fix registered for OpenClaw's spelling of the
+// finding never reaches it: the checker declares Manual, and the more
+// cautious of the two kinds wins.
+//
 // # The kernel-hardening fixes, and why they stopped being declined
 //
 // Sysctl findings used to be on the list above because persisting a value
