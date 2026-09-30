@@ -135,13 +135,14 @@
               <li class="rm-item"><span class="rm-version" data-shipped="3.9.0">3.9.0</span> &mdash; service hardening: the units you installed yourself, read as systemd&rsquo;s own effective configuration rather than what a file says.</li>
               <li class="rm-item"><span class="rm-version" data-shipped="3.22.0">3.22.0</span> &mdash; a reverse-proxy domain: nginx read out of <code>/etc/nginx</code>, Traefik read out of the Compose files the container domain already discovers &mdash; the component in front of everything else hostveil checks, and the one nothing had looked at.</li>
               <li class="rm-item"><span class="rm-version" data-shipped="3.28.0">3.28.0</span> &mdash; Caddy in the reverse-proxy domain, packaged or in a container: an admin API reachable off loopback, which has no authentication and can replace the whole configuration, and <code>file_server browse</code>.</li>
+              <li class="rm-item"><span class="rm-version" data-shipped="3.29.0">3.29.0</span> &mdash; a third AI agent runtime, Goose: an approval mode that runs every tool call unasked (and is the default when nobody set one), a web interface listening off loopback, and API keys in a loosened plain-text fallback file.</li>
             </ol>
             <p>Everything between those releases &mdash; and there is a lot of it &mdash; is new findings, fixes and interface work inside the domains that already exist. That is the far more common kind of change, and it is what most releases in the <a href="changelog">changelog</a> are.</p>
 
             <h2>Next up</h2>
             <p>Low cost, same shape as what is already there &mdash; an entry in an existing registry, not a new domain or a new axis weight.</p>
             <ol class="rm-track ahead">
-              <li class="rm-item next"><strong>More self-hosted AI agent runtimes.</strong> The agent domain is built to name a runtime as data, not code &mdash; adding a third one is an entry in a registry, the same shape as OpenClaw and Hermes Agent are today.</li>
+              <li class="rm-item next"><strong>More self-hosted AI agent runtimes.</strong> The agent domain names a runtime as data, not code &mdash; OpenClaw, Hermes Agent and Goose today, and a fourth is another entry in the same registry, added when self-hosters ask for it.</li>
               <li class="rm-item next"><strong>More reverse proxies.</strong> The proxy domain reads nginx, Caddy and Traefik configuration today. Another proxy is the same shape of change &mdash; a reader for its configuration inside the existing domain &mdash; and is added when self-hosters ask for it.</li>
               <li class="rm-item next"><strong>Wider distro coverage for the measurement harness.</strong> <code>scripts/measure/seed.sh</code> seeds Debian, Fedora and Alpine today through one distribution seam; a distro that resolves through that seam is one that can be measured, not just claimed to work.</li>
             </ol>

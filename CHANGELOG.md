@@ -2,6 +2,26 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.29.0](https://github.com/seolcu/hostveil/compare/v3.28.0...v3.29.0) (2026-09-30)
+
+The AI agent domain now covers Goose, its third runtime after OpenClaw
+and Hermes Agent.
+
+### Features
+
+* **check:** audit Goose as an agent runtime. `GOOSE_MODE: auto`, which
+  approves every tool call (shell commands included) without asking, is
+  reported as `agent.exec-unrestricted`. So is a `GOOSE_MODE` that was
+  never set, because auto is Goose's default; the finding says when the
+  value came from the default. `goose web` listening off loopback is
+  reported as `agent.gateway-exposed`. Its address is a command-line flag
+  rather than configuration, so the listening socket is attributed by
+  process name, never by port. `~/.config/goose/secrets.yaml`, the plain
+  text file Goose keeps API keys in when there is no keyring, is read as
+  YAML and reported when it is readable beyond its owner. The mode
+  finding is Manual for Goose: an environment variable overrides the
+  file, and the usual remedy is adding a key that is not there.
+
 ## [3.28.0](https://github.com/seolcu/hostveil/compare/v3.27.0...v3.28.0) (2026-09-30)
 
 The reverse-proxy domain now reads Caddy, the third proxy it covers after
