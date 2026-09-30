@@ -7,6 +7,41 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.30.0](https://github.com/seolcu/hostveil/compare/v3.29.0...v3.30.0) (2026-09-30)
+
+이제 hostveil이 Proxmox VE 호스트를 독립된 영역으로 점검합니다. 로드맵의
+"검토 중" 목록에서 처음으로 출시된 항목입니다. 이를 위해 점수 축의
+가중치를 다시 나눴고, 방화벽 영역은 켜져 있는 Proxmox 방화벽을 방화벽이
+없는 것으로 잘못 보던 문제를 고쳤습니다.
+
+### 새 기능
+
+* **check:** Proxmox VE 호스트 영역을 추가했습니다. `/etc/pve`가 있는
+  호스트에서만 동작합니다. `proxmox.webui-open`은 8006번 웹 인터페이스가
+  어느 주소에서든 로그인을 받는 경우(패키지 기본값)를 보고합니다.
+  `proxmox.root-no-tfa`는 root@pam에 켜진 2단계 인증이 없는 경우를
+  보고합니다. 복구 키만 있는 경우는 인정하지 않고,
+  `/etc/pve/priv/tfa.cfg`를 읽지 못한 스캔은 추측하지 않고 점검하지
+  못했다고 알립니다. `proxmox.enterprise-repo-unsubscribed`는 활성 구독
+  없이 엔터프라이즈 저장소(PVE 또는 Ceph, `.list` 또는 deb822
+  `.sources`)가 켜진 경우를 보고합니다. 이때 `apt update`가 거부되어
+  Proxmox 자체 패키지는 업데이트가 끊기고, Debian 업데이트만 계속
+  들어옵니다. 세 항목 모두 Manual입니다. 새 축의 가중치는 6이며, 앞선 두
+  축을 마련할 때와 같은 여섯 축(컨테이너, SSH, 취약점, 노출된 서비스,
+  방화벽, AI 에이전트)에서 1점씩 가져왔습니다. 그래서 점수 계산 문서가
+  논증하는 동률은 그대로 유지됩니다. 모든 호스트의 점수가 조금씩 달라질
+  수 있습니다.
+
+### 버그 수정
+
+* **check:** 켜져 있는 Proxmox VE 방화벽은 INPUT 정책을 ACCEPT로 둔 채
+  자체 체인으로 걸러 냅니다. 그래서 방화벽 영역이 방화벽이 켜진
+  하이퍼바이저를 방화벽이 없다고 보고했습니다. 이제 `pve-firewall
+  status`에 직접 묻습니다. `cluster.fw`의 `policy_in: ACCEPT`는
+  `firewall.default-allow`로 보고합니다. Proxmox 호스트에서 방화벽이
+  없을 때의 안내는 데이터센터 방화벽을 가리키고, ufw 수정은 플랫폼 자체
+  방화벽 밑에서 ufw를 켜는 대신 제안하지 않습니다.
+
 ## [3.29.0](https://github.com/seolcu/hostveil/compare/v3.28.0...v3.29.0) (2026-09-30)
 
 AI 에이전트 영역이 이제 Goose도 봅니다. OpenClaw와 Hermes Agent에 이은

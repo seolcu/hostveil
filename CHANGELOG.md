@@ -2,6 +2,41 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.30.0](https://github.com/seolcu/hostveil/compare/v3.29.0...v3.30.0) (2026-09-30)
+
+hostveil now audits a Proxmox VE host as a domain of its own, the first
+item on the roadmap's "Under exploration" list to ship. The scoring
+axes were rebalanced to make room for it, and the firewall domain stops
+mistaking an enabled Proxmox firewall for no firewall at all.
+
+### Features
+
+* **check:** add a Proxmox VE host domain, run only on a host with
+  `/etc/pve`. `proxmox.webui-open` reports the web interface on 8006
+  accepting a login from any address, which is the package default.
+  `proxmox.root-no-tfa` reports root@pam with no enabled second factor;
+  recovery keys alone do not count, and a scan that cannot read
+  `/etc/pve/priv/tfa.cfg` says so instead of guessing.
+  `proxmox.enterprise-repo-unsubscribed` reports an enterprise
+  repository (PVE or Ceph, `.list` or deb822 `.sources`) enabled
+  without an active subscription: `apt update` is refused, Proxmox's
+  own packages stop updating, and Debian's keep arriving. All three are
+  Manual. The new axis is worth 6, taken one point each from the same
+  six axes that funded the last two (container, SSH, vulnerabilities,
+  exposed services, firewall, AI agents), so the ties the scoring page
+  argues for still hold. Every host's score may move slightly.
+
+### Bug Fixes
+
+* **check:** an enabled Proxmox VE firewall filters through its own
+  chains under an INPUT policy of ACCEPT, so the firewall domain
+  reported a firewalled hypervisor as having no firewall. It now asks
+  `pve-firewall status` directly. `policy_in: ACCEPT` in `cluster.fw` is
+  reported as `firewall.default-allow`. On a Proxmox host, the advice
+  for a missing firewall points at the datacenter firewall, and the
+  ufw fix declines rather than turning ufw on under the platform's own
+  firewall.
+
 ## [3.29.0](https://github.com/seolcu/hostveil/compare/v3.28.0...v3.29.0) (2026-09-30)
 
 The AI agent domain now covers Goose, its third runtime after OpenClaw
