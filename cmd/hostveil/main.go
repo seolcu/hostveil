@@ -126,6 +126,8 @@ func run(ctx context.Context, args []string) (code int) {
 		return cmdRollback(ctx, args)
 	case "history":
 		return cmdHistory(ctx, args)
+	case "fleet":
+		return cmdFleet(ctx, args)
 	case "diagnostics":
 		return cmdDiagnostics(ctx, args)
 	case "update":
@@ -196,6 +198,8 @@ Usage:
   hostveil rollback <id> [flags] Undo a previously applied fix
   hostveil history [--scans]     List applied fixes and their rollback IDs;
                                  --scans lists the score of every saved scan
+  hostveil fleet HOST...         Scan several hosts over SSH (each needs hostveil
+                                 installed) and list their scores side by side
   hostveil diagnostics [flags]   Collect version/OS/crash/scan info into one
                                  file to attach to a bug report by hand
   hostveil update [flags]        Update hostveil to the latest release
@@ -261,6 +265,14 @@ Rollback flags:
   --force         Restore even if the file changed after the fix was applied.
                   Rollback keeps no backup of its own, so it declines by
                   default rather than discard those edits.
+
+Fleet flags (fleet runs as you, never under sudo — it needs your SSH keys):
+  --sudo          Run each remote scan as "sudo -n hostveil scan" (needs
+                  passwordless sudo there); otherwise it runs as your login
+  --json          Print every host's report as JSON
+  --tui           Show the hosts side by side in the terminal UI
+  --parallel N    How many hosts to scan at once (default 4)
+  --timeout D     How long to wait for one host (default 10m)
 
 Diagnostics flags:
   --trace FILE    Attach a command trace produced with HOSTVEIL_DEBUG=1

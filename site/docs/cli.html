@@ -239,6 +239,29 @@ hostveil history --scans</code></pre></div>
             <div class="code-block"><pre><code>ssh -N -L 8787:127.0.0.1:8787 you@10.0.0.2</code></pre></div>
             <p>Leave that open, then open the printed URL on your own machine. Hostveil does not offer to bind the dashboard to a routable address instead: every route on it applies fixes or reads a scan of <code>/etc/shadow</code>, as root, and a forwarded port is the same access with the authentication already done.</p>
 
+            <h2 id="fleet">fleet</h2>
+            <p>Scan several hosts over SSH and lay their scores side by side. Each host needs hostveil installed; nothing is copied, installed or configured on it, and nothing runs as a service anywhere &mdash; one local hostveil runs <code>hostveil scan --json</code> on each host over SSH you already use, and reads the answers.</p>
+            <div class="code-block"><pre><code>hostveil fleet web1 db1 admin@nas.lan
+hostveil fleet --sudo --json web1 db1 &gt; fleet.json
+hostveil fleet --tui web1 db1</code></pre></div>
+            <p>Hosts are named exactly as you would name them to <code>ssh</code> &mdash; <code>user@host</code>, or an alias from <code>~/.ssh/config</code> &mdash; and the connection is non-interactive (<code>BatchMode=yes</code>), so a host that would ask for a password or a host-key confirmation is reported as unreachable rather than left waiting. A name beginning with <code>-</code> is refused before anything runs, because <code>ssh</code> would read it as an option.</p>
+            <p><code>fleet</code> is the one command that never re-runs itself under sudo: it uses <em>your</em> SSH keys and agent, which sudo would drop. Without <code>--sudo</code> each remote scan runs as the account you log in as, and the domains that need root say they were not fully checked &mdash; the table shows how many.</p>
+            <p>The table is worst first: hosts that could not be scanned (with the reason, and never a score), then the rest by score. The exit status follows <code>scan</code>&rsquo;s contract across the whole fleet: <code>1</code> if any host has an unfixed HIGH finding, otherwise <code>3</code> if any host could not be scanned or had a domain fail, otherwise <code>0</code>. Fixes are applied on each host itself, with its own preview and rollback; the fleet view, including <code>--tui</code>, is read-only on purpose.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--sudo</code></td><td>Run each remote scan as <code>sudo -n hostveil scan</code>, for full coverage. Needs passwordless sudo for hostveil on that host; a host that asks for a password is reported, not waited on.</td></tr>
+                  <tr><td><code>--json</code></td><td>Print every host&rsquo;s full report as JSON, in the order the hosts were named, with an <code>error</code> in place of the report for a host that could not be scanned.</td></tr>
+                  <tr><td><code>--tui</code></td><td>Show the result in the terminal UI: one row per host, and the selected host&rsquo;s standing findings beside it. <code>r</code> rescans.</td></tr>
+                  <tr><td><code>--parallel N</code></td><td>How many hosts to scan at once (default 4).</td></tr>
+                  <tr><td><code>--timeout D</code></td><td>How long to wait for one host (default <code>10m</code>, enough for a first Trivy run).</td></tr>
+                  <tr><td><code>--theme ID</code></td><td>Color theme for <code>--tui</code>.</td></tr>
+                  <tr><td><code>--no-color</code></td><td>Disable colored output.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
             <h2 id="diagnostics">diagnostics</h2>
             <p>Collect the pieces a bug report needs into one file. It never touches the network — there is no send step, only local collection you attach to an issue by hand.</p>
             <div class="code-block"><pre><code>hostveil diagnostics [flags]</code></pre></div>
