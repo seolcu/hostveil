@@ -12,6 +12,7 @@ import (
 	dockerdcheck "github.com/seolcu/hostveil/internal/check/dockerd"
 	filepermscheck "github.com/seolcu/hostveil/internal/check/fileperms"
 	firewallcheck "github.com/seolcu/hostveil/internal/check/firewall"
+	kubecheck "github.com/seolcu/hostveil/internal/check/kube"
 	portscheck "github.com/seolcu/hostveil/internal/check/ports"
 	proxmoxcheck "github.com/seolcu/hostveil/internal/check/proxmox"
 	proxycheck "github.com/seolcu/hostveil/internal/check/proxy"
@@ -68,6 +69,7 @@ func buildRegistry() *check.Registry {
 		systemdcheck.New(),
 		proxycheck.New(),
 		proxmoxcheck.New(),
+		kubecheck.New(),
 	)
 }
 

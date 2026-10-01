@@ -225,60 +225,16 @@ func (c *Checker) readUnit(ctx context.Context, env platform.Env) (hosts []strin
 	if err != nil {
 		return nil, false, false, "cannot inspect the " + c.Unit + " unit"
 	}
-	if state := showProperty(string(out), "LoadState"); state != "loaded" {
+	if state := platform.ShowProperty(string(out), "LoadState"); state != "loaded" {
 		return nil, false, false, "systemd has no " + c.Unit + " (LoadState=" + state + "), so the daemon's start-up flags could not be read"
 	}
-	for _, argv := range execStartArgv(string(out)) {
+	for _, argv := range platform.ExecStartArgv(string(out)) {
 		h, t, v := parseDaemonFlags(argv)
 		hosts = append(hosts, h...)
 		tls = tls || t
 		verify = verify || v
 	}
 	return hosts, tls, verify, ""
-}
-
-// showProperty reads one Key=Value line out of `systemctl show` output.
-// Records are keyed by name because systemd prints the properties in an order
-// of its own, not the order they were asked for.
-func showProperty(out, key string) string {
-	for _, line := range strings.Split(out, "\n") {
-		if k, v, ok := strings.Cut(line, "="); ok && k == key {
-			return strings.TrimSpace(v)
-		}
-	}
-	return ""
-}
-
-// execStartArgv extracts each argv list from `systemctl show --property=
-// ExecStart` output, which renders as:
-//
-//	ExecStart={ path=/usr/bin/dockerd ; argv[]=/usr/bin/dockerd -H fd:// ; ... }
-//
-// A unit may have several ExecStart entries — a drop-in that clears the
-// packaged one with a bare `ExecStart=` and adds its own is the standard way
-// to change the daemon's flags — so every argv list is returned.
-func execStartArgv(out string) []string {
-	var argvs []string
-	rest := out
-	for {
-		i := strings.Index(rest, "argv[]=")
-		if i < 0 {
-			return argvs
-		}
-		rest = rest[i+len("argv[]="):]
-		end := strings.Index(rest, " ; ")
-		if end < 0 {
-			// Last field before the closing brace.
-			if j := strings.Index(rest, " }"); j >= 0 {
-				end = j
-			} else {
-				argvs = append(argvs, rest)
-				return argvs
-			}
-		}
-		argvs = append(argvs, rest[:end])
-		rest = rest[end:]
-	}
 }
 
 // parseDaemonFlags reads the socket and TLS flags out of one dockerd argv.

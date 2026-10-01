@@ -26,6 +26,7 @@ const (
 	SourceSystemd
 	SourceProxy
 	SourceProxmox
+	SourceKube
 
 	sourceCount // sentinel, not a domain; keep last
 )
@@ -90,11 +91,11 @@ type sourceDef struct {
 // previous scan whose findings had all changed domain, which reads to a
 // user as "everything on this host is new and everything old is fixed".
 var sourceDefs = []sourceDef{
-	{SourceCompose, "compose", "Container", "container", "Container exposure", 12},
-	{SourceSSH, "ssh", "SSH", "ssh", "SSH hardening", 12},
-	{SourceFirewall, "firewall", "Firewall", "firewall", "Host firewall", 7},
+	{SourceCompose, "compose", "Container", "container", "Container exposure", 10},
+	{SourceSSH, "ssh", "SSH", "ssh", "SSH hardening", 11},
+	{SourceFirewall, "firewall", "Firewall", "firewall", "Host firewall", 6},
 	{SourceUpdates, "updates", "Updates", "updates", "Auto-updates", 7},
-	{SourceCVE, "cve", "CVEs", "cve", "Vulnerabilities", 8},
+	{SourceCVE, "cve", "CVEs", "cve", "Vulnerabilities", 7},
 	{SourcePorts, "ports", "Ports", "ports", "Exposed services", 6},
 	{SourceAccounts, "accounts", "Accounts", "accounts", "Account hygiene", 7},
 	{SourceFilePerms, "fileperms", "File perms", "fileperms", "File permissions", 5},
@@ -104,6 +105,7 @@ var sourceDefs = []sourceDef{
 	{SourceSystemd, "systemd", "Services", "systemd", "Service hardening", 6},
 	{SourceProxy, "proxy", "Proxy", "proxy", "Reverse proxy", 6},
 	{SourceProxmox, "proxmox", "Proxmox", "proxmox", "Proxmox VE host", 6},
+	{SourceKube, "kube", "Kubernetes", "kube", "Single-node Kubernetes", 5},
 }
 
 var sourceIndex = indexBy(sourceDefs, func(d sourceDef) Source { return d.source })
