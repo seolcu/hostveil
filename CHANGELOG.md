@@ -2,6 +2,30 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.32.0](https://github.com/seolcu/hostveil/compare/v3.31.0...v3.32.0) (2026-10-01)
+
+hostveil can now look at several hosts at once. `hostveil fleet` scans
+each one over SSH you already use and lays the scores side by side.
+That is the third "Under exploration" roadmap item to ship.
+
+### Features
+
+* **cmd:** add `hostveil fleet HOST...`. One local hostveil runs
+  `hostveil scan --json` on each host over SSH and shows them worst
+  first: hosts that could not be scanned (with the reason, never a
+  score), then the rest by score, with after-fixes, HIGH/MED/LOW and how
+  many domains did not fully run. Nothing is installed or configured on
+  the remote hosts beyond hostveil itself, and nothing runs as a
+  service. Hosts are named as you would name them to `ssh`, the
+  connection is non-interactive, and a name beginning with `-` is
+  refused before anything runs, because ssh would read it as an option.
+  `--sudo` runs each remote scan as `sudo -n hostveil scan` for full
+  coverage; `--json` prints every report; `--tui` opens a read-only
+  screen, since fixes are still applied on each host with its own
+  preview and rollback. The exit status is scan's contract across the
+  whole fleet. `fleet` is the one command that never re-runs itself
+  under sudo, because it needs your SSH keys and agent.
+
 ## [3.31.0](https://github.com/seolcu/hostveil/compare/v3.30.0...v3.31.0) (2026-10-01)
 
 hostveil now audits a single-node Kubernetes host, one box running one

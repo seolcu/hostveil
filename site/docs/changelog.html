@@ -133,6 +133,14 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.32.0"><a href="https://github.com/seolcu/hostveil/compare/v3.31.0...v3.32.0">3.32.0</a> <span class="changelog-date">2026-10-01</span></h2>
+          <p>hostveil can now look at several hosts at once. <code>hostveil fleet</code> scans each one over SSH you already use and lays the scores side by side. That is the third "Under exploration" roadmap item to ship.</p>
+          <h3>Features</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>cmd:</strong> add <code>hostveil fleet HOST...</code>. One local hostveil runs <code>hostveil scan --json</code> on each host over SSH and shows them worst first: hosts that could not be scanned (with the reason, never a score), then the rest by score, with after-fixes, HIGH/MED/LOW and how many domains did not fully run. Nothing is installed or configured on the remote hosts beyond hostveil itself, and nothing runs as a service. Hosts are named as you would name them to <code>ssh</code>, the connection is non-interactive, and a name beginning with <code>-</code> is refused before anything runs, because ssh would read it as an option. <code>--sudo</code> runs each remote scan as <code>sudo -n hostveil scan</code> for full coverage; <code>--json</code> prints every report; <code>--tui</code> opens a read-only screen, since fixes are still applied on each host with its own preview and rollback. The exit status is scan's contract across the whole fleet. <code>fleet</code> is the one command that never re-runs itself under sudo, because it needs your SSH keys and agent.</p>
+            </li>
+          </ul>
           <h2 id="v3.31.0"><a href="https://github.com/seolcu/hostveil/compare/v3.30.0...v3.31.0">3.31.0</a> <span class="changelog-date">2026-10-01</span></h2>
           <p>hostveil now audits a single-node Kubernetes host, one box running one k3s or k0s node, as a domain of its own. That is the second "Under exploration" roadmap item to ship. The scoring axes were rebalanced again to make room for it.</p>
           <h3>Features</h3>

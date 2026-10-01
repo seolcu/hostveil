@@ -14,6 +14,7 @@
               <li class="rm-item"><span class="rm-version" data-shipped="3.29.0">3.29.0</span>: 세 번째 AI 에이전트 런타임으로 Goose를 점검합니다. 모든 도구 호출을 묻지 않고 실행하는 승인 모드(아무도 설정하지 않았을 때의 기본값이기도 합니다), 루프백 밖에서 대기하는 웹 인터페이스, 권한이 느슨해진 평문 API 키 파일을 봅니다.</li>
               <li class="rm-item"><span class="rm-version" data-shipped="3.30.0">3.30.0</span>: Proxmox VE 호스트 강화를 새 영역으로 추가했습니다. 어느 주소에서든 로그인을 받는 8006번 웹 인터페이스, 2단계 인증이 없는 root@pam, 구독 없이 켜 둔 엔터프라이즈 저장소를 봅니다. 마지막 경우에는 Proxmox 자체 패키지만 조용히 업데이트가 끊깁니다. 같은 릴리스에서 방화벽 영역이 <code>pve-firewall</code>에 직접 묻게 되어, 켜져 있는 데이터센터 방화벽을 방화벽이 없는 것으로 읽지 않습니다.</li>
               <li class="rm-item"><span class="rm-version" data-shipped="3.31.0">3.31.0</span>: 단일 노드 쿠버네티스를 새 영역으로 추가했습니다. 박스 하나에서 도는 k3s나 k0s 노드를 대상으로, 모든 계정이 읽을 수 있는 클러스터 관리자 kubeconfig나 참여 토큰, API 서버나 kubelet에 켜 둔 익명 접근, 암호화되지 않은 Secret 저장을 봅니다. k3s 설정은 읽어 들이는 네 곳을 모두 풀어서 보므로, 대부분의 튜토리얼이 설치 명령에 붙이는 <code>K3S_KUBECONFIG_MODE=644</code>도 실제로 들어가는 자리에서 찾아냅니다.</li>
+              <li class="rm-item"><span class="rm-version" data-shipped="3.32.0">3.32.0</span>: 이미 SSH로 접속하는 호스트들을 한 화면에서 봅니다. <code>hostveil fleet web1 db1</code>은 본인의 SSH로 각 호스트에서 <code>hostveil scan --json</code>을 실행하고, 점수를 상태가 나쁜 순서로 터미널이나 JSON, 읽기 전용 TUI 화면에 나란히 보여 줍니다. 계정도 서버도 데이터베이스도 없고, 각 호스트에 hostveil 말고는 아무것도 설치하지 않습니다. 수정은 여전히 그 호스트에서 적용합니다.</li>
             </ol>
             <p>이 릴리스들 사이에 나온 나머지 변경은 대부분 기존 영역 안에서 발견 항목과 수정, 인터페이스를 늘린 것입니다. 이쪽이 훨씬 흔한 변화이고, <a href="changelog">변경 이력</a>의 대부분을 차지합니다.</p>
 
@@ -28,7 +29,6 @@
             <h2>탐색 중</h2>
             <p>규모가 더 크고, 아직 릴리스로 확정되지 않고 설계만 하는 단계입니다. 비슷한 기능 요청이 들어오면 먼저 찾아볼 자리로 적어 두는 것이지, 약속은 아닙니다.</p>
             <ol class="rm-track ahead">
-              <li class="rm-item exploring"><strong>이미 SSH로 접속하는 호스트들을 한 화면에서 보는 방법을 검토합니다.</strong> 계정도 서버도 데이터베이스도 새로 필요 없는, 여러 호스트 관리 요청에 대한 답입니다. 로컬 Hostveil 하나가 이미 신뢰하는 SSH로 각 호스트에서 <code>hostveil scan --json</code>을 실행해 결과를 가져오고, TUI나 대시보드에 점수를 나란히 보여주는 방식입니다. 새로 띄우는 서비스는 없습니다. 이 프로젝트가 넘지 않기로 한 선이 바로 그거니까요. 아래를 참고하세요.</li>
               <li class="rm-item exploring"><strong>영어·한국어 외의 언어를 검토합니다.</strong> 한국어 사이트는 자체 폰트 서브셋을 갖고 있고, 페이지에 쓰인 글리프가 전부 그 서브셋에 있는지 검사하는 테스트도 있습니다. 세 번째 언어를 넣으려면 번역 문자열 표만으로는 부족하고, 같은 수준의 엄격함이 필요합니다.</li>
             </ol>
 
