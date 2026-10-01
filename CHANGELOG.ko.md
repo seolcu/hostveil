@@ -7,6 +7,34 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.31.0](https://github.com/seolcu/hostveil/compare/v3.30.0...v3.31.0) (2026-10-01)
+
+이제 hostveil이 단일 노드 쿠버네티스 호스트, 즉 박스 하나에서 도는 k3s나
+k0s 노드를 독립된 영역으로 점검합니다. 로드맵의 "검토 중" 목록에서 두
+번째로 출시된 항목입니다. 이를 위해 점수 축의 가중치를 다시 나눴습니다.
+
+### 새 기능
+
+* **check:** 단일 노드 쿠버네티스 영역을 추가했습니다. k3s나 k0s가
+  설치된 곳에서만 동작합니다. k3s 설정은 읽어 들이는 모든 곳을 풀어서
+  보며, 마지막 값이 이깁니다. `config.yaml`, 이름 순서대로 읽는
+  `config.yaml.d` 드롭인(키가 `+`로 끝나면 이어 붙임), 설치 스크립트가
+  쓰는 환경 파일(systemd 또는 openrc), 그리고 systemd 유닛이나
+  `/etc/init.d/k3s`의 명령행입니다. 그래서 대부분의 튜토리얼이 설치
+  명령에 붙이는 `K3S_KUBECONFIG_MODE=644`도 실제로 들어가는 자리에서
+  찾아냅니다. `kube.kubeconfig-readable`은 호스트의 모든 계정이 읽을 수
+  있는 클러스터 관리자 kubeconfig(k3s의 `k3s.yaml`, k0s의 `admin.conf`)를
+  보고합니다. 그룹 읽기 권한은 의도된 선택이라 표시하지 않습니다.
+  `kube.token-readable`은 모든 계정이 읽을 수 있는 k3s 참여 토큰을,
+  `kube.anonymous-auth`는 API 서버나 kubelet에 명시적으로 설정된
+  `anonymous-auth=true`를, `kube.secrets-unencrypted`는 기본값대로 Secret을
+  암호화하지 않고 저장하는 k3s를 보고합니다. 네 항목 모두 Manual입니다.
+  명령행을 읽지 못하면 플래그가 없는 것으로 보지 않고 점검하지 못했다고
+  보고합니다. 새 축의 가중치는 5이며, 컨테이너가 2점(이런 호스트에서는
+  쿠버네티스가 Compose의 자리를 넘겨받습니다), SSH·취약점·호스트
+  방화벽이 1점씩 냈습니다. 모든 호스트의 점수가 조금씩 달라질 수
+  있습니다.
+
 ## [3.30.0](https://github.com/seolcu/hostveil/compare/v3.29.0...v3.30.0) (2026-09-30)
 
 이제 hostveil이 Proxmox VE 호스트를 독립된 영역으로 점검합니다. 로드맵의

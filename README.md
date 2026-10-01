@@ -379,11 +379,11 @@ graph TD
     v3 --> v4["3.9.0: Service hardening"]
     v4 --> v5["3.22.0: Reverse proxy"]
     v5 --> v6["3.30.0: Proxmox VE host"]
-    v6 -.-> n1["More agent runtimes"]
+    v6 --> v7["3.31.0: Single-node Kubernetes"]
+    v7 -.-> n1["More agent runtimes"]
     n1 -.-> n2["More reverse proxies"]
     n2 -.-> n3["Wider distro coverage"]
-    n3 -.-> e2(["Single-node k3s / k0s"])
-    e2 -.-> e3(["SSH fleet view"])
+    n3 -.-> e3(["SSH fleet view"])
     e3 -.-> e4(["More languages"])
 
     subgraph np["Not planned, on purpose"]
@@ -399,9 +399,9 @@ graph TD
     classDef notplanned fill:#101816,stroke:#516057,stroke-width:1px,stroke-dasharray:4 3,color:#9aa89f
     classDef npTitle fill:#07100f,stroke:#31413b,color:#9aa89f
 
-    class v1,v2,v3,v4,v5,v6 shipped
+    class v1,v2,v3,v4,v5,v6,v7 shipped
     class n1,n2,n3 next
-    class e2,e3,e4 exploring
+    class e3,e4 exploring
     class x1,x2,x3,x4 notplanned
     class np npTitle
 ```
