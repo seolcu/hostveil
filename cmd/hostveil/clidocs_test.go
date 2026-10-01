@@ -37,6 +37,7 @@ var docSection = map[string]string{
 	"cmdServe":       "serve",
 	"cmdTUI":         "tui",
 	"cmdHistory":     "history",
+	"cmdFleet":       "fleet",
 	"cmdDiagnostics": "diagnostics",
 	"cmdUpdate":      "update",
 	"cmdUninstall":   "uninstall",
@@ -284,7 +285,11 @@ func TestEverySubcommandIsClassifiedAndDocumented(t *testing.T) {
 	}
 
 	for name, handler := range dispatched {
-		if !needsRoot(name) {
+		if _, ok := runsAsInvokingUser[name]; ok {
+			if needsRoot(name) {
+				t.Errorf("%q is listed as running as the invoking user on purpose, and needsRoot elevates it", name)
+			}
+		} else if !needsRoot(name) {
 			t.Errorf("%q dispatches to %s and needsRoot says it does not need root; "+
 				"if that is right, add it to the print-only list in cli_test.go and say why here",
 				name, handler)
@@ -294,6 +299,15 @@ func TestEverySubcommandIsClassifiedAndDocumented(t *testing.T) {
 				"checked for it in either language", handler, name)
 		}
 	}
+}
+
+// runsAsInvokingUser are the commands that do real work and still must not
+// elevate, each with the reason. It is a list rather than an absence from
+// needsRoot so that leaving a new command out of needsRoot by accident still
+// fails the test above.
+var runsAsInvokingUser = map[string]string{
+	"fleet": "it reaches other hosts with the invoking user's SSH keys, agent and ~/.ssh/config, " +
+		"all of which sudo's env_reset drops — an elevated fleet scan would be root logging in with nothing to log in with",
 }
 
 // The version this binary is stamped with and the version the updater resolves
