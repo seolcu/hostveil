@@ -378,11 +378,11 @@ graph TD
     v3 --> v4["3.9.0: 서비스 강화"]
     v4 --> v5["3.22.0: 리버스 프록시"]
     v5 --> v6["3.30.0: Proxmox VE 호스트"]
-    v6 -.-> n1["에이전트 런타임 확대"]
+    v6 --> v7["3.31.0: 단일 노드 쿠버네티스"]
+    v7 -.-> n1["에이전트 런타임 확대"]
     n1 -.-> n2["리버스 프록시 확대"]
     n2 -.-> n3["배포판 커버리지 확대"]
-    n3 -.-> e2(["단일 노드 k3s·k0s"])
-    e2 -.-> e3(["SSH 플릿 뷰"])
+    n3 -.-> e3(["SSH 플릿 뷰"])
     e3 -.-> e4(["다국어 지원"])
 
     subgraph np["일부러 하지 않는 것"]
@@ -398,9 +398,9 @@ graph TD
     classDef notplanned fill:#101816,stroke:#516057,stroke-width:1px,stroke-dasharray:4 3,color:#9aa89f
     classDef npTitle fill:#07100f,stroke:#31413b,color:#9aa89f
 
-    class v1,v2,v3,v4,v5,v6 shipped
+    class v1,v2,v3,v4,v5,v6,v7 shipped
     class n1,n2,n3 next
-    class e2,e3,e4 exploring
+    class e3,e4 exploring
     class x1,x2,x3,x4 notplanned
     class np npTitle
 ```

@@ -2,6 +2,35 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.31.0](https://github.com/seolcu/hostveil/compare/v3.30.0...v3.31.0) (2026-10-01)
+
+hostveil now audits a single-node Kubernetes host, one box running one
+k3s or k0s node, as a domain of its own. That is the second
+"Under exploration" roadmap item to ship. The scoring axes were
+rebalanced again to make room for it.
+
+### Features
+
+* **check:** add a single-node Kubernetes domain, run only where k3s or
+  k0s is installed. k3s's settings are resolved across every place it
+  reads them from, last one winning: `config.yaml`, the
+  `config.yaml.d` drop-ins in name order (a key ending in `+` appends),
+  the install script's environment file (systemd or openrc), and the
+  command line in the systemd unit or `/etc/init.d/k3s`. That is how the
+  `K3S_KUBECONFIG_MODE=644` most tutorials put on the install command is
+  found where it actually lands. `kube.kubeconfig-readable` reports a
+  cluster-admin kubeconfig (k3s's `k3s.yaml`, k0s's `admin.conf`) that
+  every account on the host can read; a group-readable one is a
+  deliberate choice and is not flagged. `kube.token-readable` reports
+  k3s's join token readable by every account. `kube.anonymous-auth`
+  reports `anonymous-auth=true` set explicitly for the API server or the
+  kubelet. `kube.secrets-unencrypted` reports k3s storing Secrets
+  unencrypted, its default. All four are Manual. A command line that
+  could not be read is reported as not audited rather than as one with
+  no flags. The new axis is worth 5: Container gave 2 (Kubernetes takes
+  over from Compose on these hosts), and SSH, Vulnerabilities and Host
+  firewall gave one each. Every host's score may move slightly.
+
 ## [3.30.0](https://github.com/seolcu/hostveil/compare/v3.29.0...v3.30.0) (2026-09-30)
 
 hostveil now audits a Proxmox VE host as a domain of its own, the first
