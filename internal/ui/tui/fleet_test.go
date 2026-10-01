@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -21,7 +22,7 @@ func fleetFixture() model.Fleet {
 
 func loadedFleet(t *testing.T) *fleetModel {
 	t.Helper()
-	m := newFleetModel(nil, nil, []string{"web1", "db1", "nas"}, FleetOpts{Theme: theme.Default()})
+	m := newFleetModel(context.Background(), nil, []string{"web1", "db1", "nas"}, FleetOpts{Theme: theme.Default()})
 	m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
 	m.Update(fleetDoneMsg(fleetFixture()))
 	return m
@@ -52,7 +53,7 @@ func TestFleetScreenShowsTheSelectedHostsFindings(t *testing.T) {
 }
 
 func TestFleetScreenWhileScanning(t *testing.T) {
-	m := newFleetModel(nil, nil, []string{"a"}, FleetOpts{Theme: theme.Default()})
+	m := newFleetModel(context.Background(), nil, []string{"a"}, FleetOpts{Theme: theme.Default()})
 	if !strings.Contains(m.render(), "Scanning") {
 		t.Error("no progress note while scanning")
 	}
