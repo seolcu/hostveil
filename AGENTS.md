@@ -17,10 +17,11 @@ go test -race ./...         # what CI runs
 go test ./internal/check/ssh -run TestName        # single test
 go test ./internal/compose -run FuzzEdit -fuzz FuzzEdit   # fuzz targets: FuzzEdit, FuzzParse, FuzzParseTrivy, FuzzUnified, FuzzJSON5Edit
 scripts/bench.sh            # benchmarks (there is intentionally no Makefile)
+scripts/gate.sh             # the full local CI gate, step by step (-fast skips race and cross-compile)
 go run ./cmd/sitegen        # regenerate site/ — required whenever cmd/sitegen/ changes
 ```
 
-Full CI gate, run all of these before sending a change:
+Full CI gate, run all of these before sending a change — `scripts/gate.sh` runs every one of them and names each step that fails:
 
 ```bash
 go build ./... && go vet ./... && gofmt -l . && go mod tidy && go test -race ./...
@@ -32,6 +33,8 @@ go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12   # only if you touche
 find . -name '*.sh' -not -path './.git/*' -print0 | xargs -0 shellcheck   # only if you touched a shell script
 go run github.com/goreleaser/goreleaser/v2@latest check     # only if you touched .goreleaser.yaml
 ```
+
+Run it through the script rather than as a chain. `gofmt -l .` exits 0 whether or not it lists files, so the line above only gates on formatting when it is wrapped in `test -z "$(gofmt -l .)"` — and once it is, a chain stops there and prints nothing, so the race tests after it silently never run and the run looks clean. That is how a local gate passed and CI then failed the formatting of a file nobody had looked at.
 
 **A local govulncheck can pass on a toolchain whose standard library it never looked at.** It reads the version out of the Go that built it, and a distribution's patched build reports something like `go1.26.5-X:nodwarf5` — which does not parse as a release, so the standard library is quietly dropped from the scan and the run says *"No vulnerabilities found."* Fedora, Debian and RHEL all ship Go that way. This is not hypothetical: a local gate came back clean while CI failed the same commit on five standard-library vulnerabilities. Check with `go version`; if it carries a suffix, that clean result covers your dependencies and nothing else, and CI is the one that actually looked. The workflows pass `check-latest: true` to `setup-go` for the other half of the same problem — without it `go-version: "1.26"` means whatever 1.26.x the runner image cached, not the newest.
 
