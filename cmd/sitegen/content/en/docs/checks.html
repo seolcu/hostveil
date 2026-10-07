@@ -26,7 +26,7 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">140</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">65</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: deleting an account cannot be undone from a checkpoint, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">151</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">76</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">How the 183 findings resolve</p>
               <div class="ledger-bar">
@@ -36,13 +36,13 @@
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:36%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">65</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:42%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">76</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:23%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">43</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:17%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">32</span>
               </div>
             </div>
 
@@ -194,7 +194,7 @@
                 <tbody>
                   <tr><td><code>updates.disabled</code></td><td>Automatic security updates are not enabled (apt unattended-upgrades or dnf-automatic)</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>updates.pending-security</code></td><td>Security updates are available but not installed</td><td><span class="sev high">HIGH</span> / <span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
-                  <tr><td><code>updates.reboot-required</code></td><td>Installed updates need a reboot to take effect</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>updates.reboot-required</code></td><td>Installed updates need a reboot to take effect</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                   <tr><td><code>updates.process-accounting</code></td><td>Process accounting is not installed</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>updates.sysstat</code></td><td>System activity accounting is not installed</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>updates.auditd</code></td><td>The Linux audit daemon is not installed</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
@@ -233,11 +233,11 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>accounts.uid0</code></td><td>A non-root account has root's UID (0)</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.uid0</code></td><td>A non-root account has root's UID (0)</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                   <tr><td><code>accounts.emptypassword</code></td><td>A login account has an empty password</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                   <tr><td><code>accounts.sudo-nopasswd</code></td><td>A sudo rule lets an account run anything as root without being asked for a password</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>accounts.duplicate-uid</code></td><td>Multiple accounts share one UID</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>accounts.weak-password-hash</code></td><td>A login account uses a weak password hash</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.weak-password-hash</code></td><td>A login account uses a weak password hash</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>accounts.password-rounds</code></td><td>Password hashing rounds are not hardened</td><td><span class="sev low">LOW</span></td><td>Auto</td></tr>
                   <tr><td><code>accounts.default-umask</code></td><td>New files default to broad permissions</td><td><span class="sev low">LOW</span></td><td>Auto</td></tr>
                   <tr><td><code>accounts.local-banner</code></td><td>The local login warning does not discourage unauthorized access</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
@@ -410,19 +410,19 @@
                 <thead><tr><th>ID</th><th>What it means</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
                   <tr><td><code>systemd.no-new-privileges</code></td><td>The service can gain privileges through a setuid binary — the usual way a foothold inside a service becomes a foothold outside it</td><td><span class="sev low">LOW</span> / <span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
-                  <tr><td><code>systemd.protect-system</code></td><td>The service can write to <code>/usr</code>, <code>/boot</code> and <code>/etc</code>; one that can edit <code>/etc</code> owns every login on the host</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.protect-home</code></td><td>The service can read <code>/home</code>, <code>/root</code> and <code>/run/user</code> — everyone&rsquo;s SSH keys, cloud credentials and password databases</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.private-tmp</code></td><td>The service shares <code>/tmp</code> with every other process, which is the ground symlink races live on</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.private-devices</code></td><td>The service can access host devices</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.protect-kernel-tunables</code></td><td>The service can change kernel tunables</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-system</code></td><td>The service can write to <code>/usr</code>, <code>/boot</code> and <code>/etc</code>; one that can edit <code>/etc</code> owns every login on the host</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>systemd.protect-home</code></td><td>The service can read <code>/home</code>, <code>/root</code> and <code>/run/user</code> — everyone&rsquo;s SSH keys, cloud credentials and password databases</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>systemd.private-tmp</code></td><td>The service shares <code>/tmp</code> with every other process, which is the ground symlink races live on</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>systemd.private-devices</code></td><td>The service can access host devices</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>systemd.protect-kernel-tunables</code></td><td>The service can change kernel tunables</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>systemd.protect-kernel-modules</code></td><td>The service can alter kernel modules</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
-                  <tr><td><code>systemd.protect-control-groups</code></td><td>The service can alter control groups</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-control-groups</code></td><td>The service can alter control groups</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>systemd.protect-kernel-logs</code></td><td>The service can access kernel logs</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>systemd.protect-clock</code></td><td>The service can change system clocks</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>systemd.restrict-suid-sgid</code></td><td>The service can create setuid files</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
-                  <tr><td><code>systemd.restrict-namespaces</code></td><td>The service can create namespaces</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.restrict-namespaces</code></td><td>The service can create namespaces</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>systemd.lock-personality</code></td><td>The service can change execution personality</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
-                  <tr><td><code>systemd.memory-deny-write-execute</code></td><td>The service can create writable executable memory</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.memory-deny-write-execute</code></td><td>The service can create writable executable memory</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>

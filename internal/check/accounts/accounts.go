@@ -12,9 +12,11 @@ import (
 	"context"
 	"errors"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/model"
@@ -111,14 +113,27 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		}
 	}
 
+	// Read here rather than where the empty-password scan reads it, because
+	// the UID-0 question needs it too: an account locked and expired can no
+	// longer authenticate by any route — not a password, not a key, since
+	// sshd and PAM both refuse an expired account — so it is a UID-0 entry,
+	// not a second root anyone can use. That is the state the uid0 fix leaves
+	// behind, and a finding that survived it would say the fix did nothing.
+	// Unreadable shadow changes nothing here: every UID-0 account is reported,
+	// as before, and the coverage ledger below records the gap.
+	shadow, shadowErr := os.ReadFile(c.ShadowPath) // fixed system path
+	if shadowErr == nil {
+		rogueRoot = slices.DeleteFunc(rogueRoot, disabledAccounts(shadow, time.Now()))
+	}
+
 	var findings []model.Finding
 	if len(rogueRoot) > 0 {
 		sort.Strings(rogueRoot)
 		findings = append(findings, model.NewFinding(
 			"accounts.uid0", "Non-root account with root's UID (0)",
-			model.SeverityHigh, model.SourceAccounts, model.RemediationManual,
+			model.SeverityHigh, model.SourceAccounts, model.RemediationReview,
 			model.WithDescription("An account other than 'root' has UID 0, which gives it full root privileges under a different name. This is a common backdoor and almost never legitimate."),
-			model.WithHowToFix("Verify why "+strings.Join(rogueRoot, ", ")+" has UID 0. If it is not intentional, remove the account (`userdel`) or give it a normal, unique UID. Grant admin rights via sudo, not UID 0."),
+			model.WithHowToFix("Verify why "+strings.Join(rogueRoot, ", ")+" has UID 0. If it is not intentional, lock and expire it (`usermod --lock --expiredate 1 "+rogueRoot[0]+"`) so it can no longer log in, then remove it (`userdel`) or give it a normal, unique UID once nothing depends on it. Grant admin rights via sudo, not UID 0."),
 			model.WithEvidence("accounts", strings.Join(rogueRoot, ", ")),
 		))
 	}
@@ -191,8 +206,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	// scan reported full marks for account hygiene having never looked at a
 	// single password, which is the same lie that once produced a perfect CVE
 	// score on an unscanned host.
-	shadow, err := os.ReadFile(c.ShadowPath) // fixed system path
-	if err != nil {
+	if shadowErr != nil {
 		cov.Missed(1, "cannot read "+c.ShadowPath+
 			" — did not check for accounts with an empty password; re-run with sudo")
 	} else {
@@ -223,7 +237,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		}
 		if len(weakHashes) > 0 {
 			sort.Strings(weakHashes)
-			findings = append(findings, model.NewFinding("accounts.weak-password-hash", "A login account uses a weak password hash", model.SeverityMedium, model.SourceAccounts, model.RemediationManual,
+			findings = append(findings, model.NewFinding("accounts.weak-password-hash", "A login account uses a weak password hash", model.SeverityMedium, model.SourceAccounts, model.RemediationReview,
 				model.WithDescription("DES and MD5 password hashes are fast to crack with modern hardware and should not protect an interactive account."),
 				model.WithHowToFix("Reset the affected account passwords after configuring yescrypt or SHA-512 as the system password hashing method."),
 				model.WithEvidence("accounts", strings.Join(weakHashes, ", "))))
@@ -305,4 +319,24 @@ func hasCoreLimit(data []byte) bool {
 		}
 	}
 	return false
+}
+
+// disabledAccounts reports, for a shadow file, whether an account can no
+// longer authenticate at all: its password is locked (a leading '!') and its
+// expiry date (field 8, days since the epoch) has passed. Either alone is not
+// enough — a locked password still admits an SSH key, and an expired account
+// with a password is one `chage` away from working.
+func disabledAccounts(shadow []byte, now time.Time) func(string) bool {
+	today := now.Unix() / 86400
+	disabled := map[string]bool{}
+	for _, line := range strings.Split(string(shadow), "\n") {
+		fields := strings.Split(line, ":")
+		if len(fields) < 8 || !strings.HasPrefix(fields[1], "!") {
+			continue
+		}
+		if expire, err := strconv.ParseInt(strings.TrimSpace(fields[7]), 10, 64); err == nil && expire <= today {
+			disabled[fields[0]] = true
+		}
+	}
+	return func(name string) bool { return disabled[name] }
 }

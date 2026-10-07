@@ -67,6 +67,15 @@ package fix
 // the operator who presses it and finds the service broken rolls it back
 // exactly. The builders and their warnings are in compose_risky.go.
 //
+// The same reasoning took three host findings off the register, in
+// host_risky.go, all exec and so with no checkpoint: a reboot to load
+// installed updates, scheduled a minute out so it can be cancelled; locking
+// and expiring a second UID-0 account, with deletion as the irreversible
+// alternative; and expiring a password stored under a weak hash, which is
+// the one thing hostveil can do without inventing the credential. The UID-0
+// checker learned to stop reporting an account that is locked and expired,
+// because that is an account nobody can log in as.
+//
 // # Findings deliberately left without a fix
 //
 // These are fixable in principle and are demoted to Manual on purpose.
@@ -81,11 +90,6 @@ package fix
 //     ufw-docker rules means appending to /etc/ufw/after.rules and reloading
 //     ufw — firewall policy, so it fails the same recoverability criterion as
 //     firewall.inactive.
-//   - updates.reboot-required — the remediation is rebooting the host, which
-//     is an exec action with no checkpoint and takes every service on the box
-//     down with it. Only the operator knows when that downtime is acceptable,
-//     and a tool that reboots a server as part of "fix all safe" would be
-//     indefensible whatever the finding said.
 //   - fileperms.owner — the remediation is `chown root:root`, and hostveil
 //     cannot undo it. A checkpoint records a file's contents and its mode
 //     and has nowhere to put its previous owner, so this would be the only
@@ -146,16 +150,11 @@ package fix
 //     default-deny on a box reached over SSH can lock the operator out
 //     irrecoverably, and exec fixes have no checkpoint. Fixing the firewall
 //     resolves this finding as a side effect, which is the right order.
-//   - accounts.uid0 — the remediation is deleting an account or changing
-//     its UID, and hostveil cannot tell a backdoor from a deliberate
-//     second root that a recovery procedure depends on. `userdel` is not
-//     reversible from a checkpoint at all: the account entry, its group,
-//     and its mail spool go, and every file it owned is left orphaned by
-//     UID with nothing recorded that could give it back. (It leaves the
-//     home directory unless it is given -r, which is what the finding's
-//     how-to-fix recommends — this used to say otherwise.) Changing the
-//     UID instead orphans those same files, which the finding does not
-//     enumerate and could not restore.
+//   - accounts.duplicate-uid — the remediation is giving one of the
+//     accounts a new UID, which means re-owning every file it holds across
+//     the filesystem. That is not one action and not one checkpoint, and a
+//     partial migration leaves two accounts each owning half of what was
+//     theirs.
 //   - proxy.traefik-api-insecure — the remediation is deleting one flag, and
 //     it is exec-shaped rather than edit-shaped in the way that matters:
 //     Traefik reads it at start, so the change is not in force until the
@@ -372,10 +371,7 @@ package fix
 // the whole point: applying the second fix must not have to read what the
 // first wrote, and rolling one back must not take another's line with it.
 //
-// # The service-hardening domain, six registered and eight declined
-//
-// accounts.duplicate-uid requires migrating file ownership, while
-// accounts.weak-password-hash requires a human-chosen credential.
+// # The service-hardening domain, all fourteen registered
 //
 // The edit is trivial for every rule in this domain: a drop-in at
 // /etc/systemd/system/<unit>.d/50-hostveil.conf holding a [Service] section
@@ -397,10 +393,11 @@ package fix
 // execute is documented to break JIT runtimes — Node.js, Java, Mono,
 // LuaJIT — common in self-hosted app stacks. None of that is visible from
 // the unit — it depends on what the program does — so no amount of reading
-// gets hostveil to "unambiguous". Those eight stay declined.
-//
-// Named one by one rather than as systemd.*, which is what this said while
-// the domain was declined whole. A glob now would cover the six that are not.
+// gets hostveil to "unambiguous". Those eight used to stay declined. They
+// are registered now as IndividualOnly Review fixes whose Warnings name
+// exactly the workloads above (riskySystemdDirectives in systemd.go): the
+// person who knows whether this unit is a VPN or a JIT runtime reads that,
+// and presses the button or does not. No batch turns them on.
 //
 // The other six carry no such blind spot, and NoNewPrivileges was the first:
 // it closes the setuid path, and nothing about the unit hides whether a
@@ -610,6 +607,7 @@ func Default() *Registry {
 	registerAccounts(r)
 	registerCompose(r)
 	registerComposeRisky(r)
+	registerHostRisky(r)
 	registerFilePerms(r)
 	registerSSH(r)
 	registerUpdates(r)
