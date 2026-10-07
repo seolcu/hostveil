@@ -222,6 +222,14 @@ jobs:
           fi
           sshd -t
 
+      - name: individual-only fixes that need no daemon
+        run: |
+          set -eux
+          apt-get install -y -qq openssl >/dev/null
+          scripts/e2e/individual.sh accounts
+          scripts/e2e/individual.sh owner
+          scripts/e2e/individual.sh reboot-preview
+
       - name: domains that cannot run report Skipped, never clean
         run: |
           set -eux
@@ -381,6 +389,52 @@ jobs:
           # than run.
           test -d /var/lib/hostveil
           grep -q '/var/lib/hostveil' /tmp/un2.txt
+
+  # The fixes that no batch applies. `fix --all --review` — the path the
+  # roundtrip job above and scripts/measure/run.sh both take — skips every
+  # individual-only fix on purpose, so until this job they had only ever run
+  # against a fake CommandRunner. These scenarios need a Docker daemon and
+  # systemd as PID 1, which a job container does not have, so they run on the
+  # runner VM itself; it is discarded when the job ends, which is what makes
+  # editing /etc and restarting daemons here acceptable. Nothing in it touches
+  # the firewall, which would be the runner's own network.
+  individual-fixes:
+    runs-on: ubuntu-latest
+    env:
+      HOSTVEIL: /usr/local/bin/hostveil
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26"
+          check-latest: true
+
+      - name: Build
+        run: |
+          go build -o /tmp/hostveil ./cmd/hostveil
+          sudo install /tmp/hostveil /usr/local/bin/hostveil
+
+      - name: compose fixes that remove what a service set on purpose
+        run: sudo -E scripts/e2e/individual.sh compose
+
+      - name: Docker daemon fixes restart Docker and roll back
+        # Every scenario runs whatever happened to the one before it, so one
+        # failure does not hide the next.
+        if: ${{ !cancelled() }}
+        run: sudo -E scripts/e2e/individual.sh dockerd
+
+      - name: a Docker restart that fails puts the original daemon.json back
+        if: ${{ !cancelled() }}
+        run: sudo -E scripts/e2e/individual.sh dockerd-revert
+
+      - name: systemd drop-ins take effect and roll back
+        if: ${{ !cancelled() }}
+        run: sudo -E scripts/e2e/individual.sh systemd
+
+      - name: nginx fixes are checked by nginx before the reload
+        if: ${{ !cancelled() }}
+        run: sudo -E scripts/e2e/individual.sh nginx
 
   # hostveil publishes archives and packages for hosts that are not Debian,
   # and until now it had never been run on one. Both gaps are real: the CVE
