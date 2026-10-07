@@ -78,8 +78,8 @@ func TestAfterWriteRunsOnceTheEditIsWritten(t *testing.T) {
 	if got, _ := os.ReadFile(path); string(got) != "new\n" {
 		t.Errorf("file = %q, want the edit", got)
 	}
-	if !slices.Equal(runner.calls(), []string{"systemctl restart docker"}) {
-		t.Errorf("ran %v, want one restart after the write", runner.calls())
+	if !slices.Equal(runner.calls(), []string{"systemctl reset-failed docker", "systemctl restart docker"}) {
+		t.Errorf("ran %v, want one restart after the write, its failed state cleared first", runner.calls())
 	}
 
 	// Rolling back puts the old file in force the same way.
@@ -89,7 +89,7 @@ func TestAfterWriteRunsOnceTheEditIsWritten(t *testing.T) {
 	if got, _ := os.ReadFile(path); string(got) != "old\n" {
 		t.Errorf("after rollback file = %q, want the original", got)
 	}
-	if n := len(runner.calls()); n != 2 {
+	if n := len(runner.calls()); n != 4 {
 		t.Errorf("ran %v; the rollback must restart under the restored file", runner.calls())
 	}
 }
@@ -164,7 +164,10 @@ func TestARestartThatFailsOnlyUnderTheEditReportsNothingChanged(t *testing.T) {
 // flakyRestart fails while the file holds the edit and succeeds otherwise.
 type flakyRestart struct{ n int }
 
-func (r *flakyRestart) Run(context.Context, string, ...string) ([]byte, error) {
+func (r *flakyRestart) Run(_ context.Context, _ string, args ...string) ([]byte, error) {
+	if len(args) > 0 && args[0] == "reset-failed" {
+		return nil, nil
+	}
 	r.n++
 	if r.n == 1 {
 		return nil, errors.New("daemon refused the configuration")
@@ -217,7 +220,7 @@ func TestARollbackRunsTheDeclaredAfterRestore(t *testing.T) {
 	if _, err := e.Rollback(out.CheckpointID); err != nil {
 		t.Fatal(err)
 	}
-	if got := runner.calls(); !slices.Equal(got, []string{"systemctl reload docker", "systemctl restart docker"}) {
+	if got := runner.calls(); !slices.Equal(got, []string{"systemctl reset-failed docker", "systemctl reload docker", "systemctl reset-failed docker", "systemctl restart docker"}) {
 		t.Errorf("ran %v, want the reload on apply and the restart on rollback", got)
 	}
 }

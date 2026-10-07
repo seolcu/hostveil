@@ -292,7 +292,19 @@ func (e *Engine) runAfterWrite(ctx context.Context, a fix.Action) error {
 	return runEach(runCtx, e.runner, a.AfterWrite)
 }
 
+// runEach runs commands in order, stopping at the first that fails.
+//
+// Every unit a command starts has its failed state cleared first. systemd
+// counts starts against a limit — docker.service allows three a minute — and
+// past it refuses the next one outright, failed or not. Two hostveil paths hit
+// it on a real Docker (scripts/e2e/individual.sh): the retry after a restart
+// the new file broke, when the daemon's own Restart=always had already used up
+// the limit, which left Docker down — the one outcome that retry exists to
+// prevent; and an operator applying and rolling back daemon fixes within a
+// minute, whose next fix failed with nothing wrong in it. reset-failed also
+// clears the start counter, so each restart hostveil asks for is a real one.
 func runEach(ctx context.Context, r platform.CommandRunner, cmds [][]string) error {
+	resetFailedUnits(ctx, r, cmds)
 	for _, cmd := range cmds {
 		if len(cmd) == 0 {
 			continue
@@ -318,14 +330,6 @@ func (e *Engine) undoAfterFailedFollowUp(ctx context.Context, a fix.Action, id s
 		return fmt.Errorf("%w — and restoring the original %s failed too (%v); checkpoint %s still holds it, "+
 			"restore it with `hostveil rollback %s`", cause, a.Path, err, id, id)
 	}
-	// The failed start is what systemd counts against the unit's start
-	// limit, and a daemon that crash-loops on the bad file — dockerd has
-	// Restart=always — reaches it within seconds. Past it systemd refuses
-	// the next start outright, so the retry under the restored file failed
-	// too and left the daemon down: the one outcome this path exists to
-	// prevent, found on a real Docker by scripts/e2e/individual.sh. Clearing
-	// the failed state first is what lets the retry be a real attempt.
-	resetFailedUnits(ctx, e.runner, a.AfterWrite)
 	if err := e.runAfterWrite(ctx, a); err != nil {
 		_ = e.store.Discard(id)
 		return fmt.Errorf("%w — the original %s was restored, but running the commands again under it failed "+
