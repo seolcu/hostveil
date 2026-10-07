@@ -53,6 +53,20 @@ package fix
 // reason no longer holds here either. Both stay restricted to ufw; firewalld's
 // target flip has no registered fix yet.
 //
+// # Risky fixes, offered one at a time
+//
+// Twelve container findings used to sit in the register below, every one for
+// the same reason: the remediation removes or restricts something the author
+// may have set on purpose — privileged mode, a capability, host networking,
+// a Docker socket mount — and hostveil cannot tell a load-bearing setting
+// from a cargo-culted one. That reason is still true. What it no longer
+// decides is whether there is a button. A fix that might break a deployment
+// is Review rather than Auto, carries a Warning that names what it might
+// break, and is IndividualOnly so no batch — `fix --all --review` included —
+// applies it on nobody's behalf. Each is a file edit with a checkpoint, so
+// the operator who presses it and finds the service broken rolls it back
+// exactly. The builders and their warnings are in compose_risky.go.
+//
 // # Findings deliberately left without a fix
 //
 // These are fixable in principle and are demoted to Manual on purpose.
@@ -91,13 +105,6 @@ package fix
 //     per datastore, none of which the finding carries. Guessing a config
 //     path means writing a transformed file somewhere that is not the live
 //     config. The container-managed subset is already covered by ds018/019.
-//   - compose.ds016 — mounting the Docker socket is root-equivalent, and
-//     the only honest remediation is deleting the mount, which breaks
-//     Portainer, Traefik, and Watchtower, all of which legitimately need
-//     it. Adding :ro is not an alternative: the socket is an HTTP API, so a
-//     read-only mount still permits container creation and host mounts. A
-//     fix that improves the score while changing nothing is worse than no
-//     fix.
 //   - cve.<vulnerability-id> — no longer emitted at all, and must never
 //     become fixable if it returns. Trivy's fixed_version is the OS package
 //     version inside the image (`3.0.11-1~deb12u2`), not an image tag.
@@ -109,43 +116,6 @@ package fix
 //     a thing you can act on, and every CVE in an image shares the single
 //     remediation that cve.outdated-image now carries. The registry matches
 //     that ID exactly, so no cve.* glob can sweep the old shape back in.
-//   - compose.ds009 — the only remediation is setting `user:`, and the
-//     finding carries no evidence about which UID the image supports.
-//     Images that drop privileges in their own entrypoint fail to start
-//     when a UID is forced on them (postgres needs root to chown its data
-//     directory; nginx needs root to bind :80 before demoting itself), and
-//     an image with a baked-in USER already has the right answer that an
-//     override would clobber. Every candidate UID is a guess, so this is
-//     not even a Review: there is no pair of defensible alternatives, only
-//     a pair of equally arbitrary ones, and offering 1000:1000 next to
-//     65534:65534 would dress a coin flip as a choice.
-//   - compose.ds017 — adding `:ro` is the one mechanical remediation, and
-//     for a service that legitimately writes to the mount it breaks the
-//     service outright. The other remediation the finding names, mounting
-//     a narrower subdirectory, requires knowing which paths the service
-//     actually touches, which a static audit cannot learn. That leaves one
-//     alternative where Review requires two. Revisit if the checker can
-//     ever tell a written mount from a read one.
-//   - compose.ds001, compose.ds005, compose.dr001 — all three are
-//     removal-shaped: delete `privileged: true`, drop a capability from
-//     cap_add, delete `network_mode: host`. Each removes something the
-//     author added deliberately, and hostveil cannot tell a needless one
-//     from a load-bearing one. dr001 is the clearest: removing host
-//     networking without knowing which ports to publish in its place
-//     leaves the service unreachable, and the finding does not carry them.
-//   - compose.ds020, compose.ds021 — removal-shaped like the three above:
-//     delete `pid: host`, delete `ipc: host`. Both are settings nobody types
-//     by accident — a monitoring agent needs the host PID namespace, a pair
-//     of processes sharing memory needs the IPC one — and hostveil cannot
-//     tell that deployment from a cargo-culted one. Deleting the line breaks
-//     the legitimate case silently: the service starts fine and stops seeing
-//     what it existed to see.
-//   - compose.ds022 — the one mechanical remediation, `read_only: true`,
-//     breaks any image that writes inside its own filesystem, which is most
-//     of them (/tmp, /run, log directories). Making it work needs tmpfs
-//     mounts for exactly the paths the service writes, and a static audit
-//     cannot learn which paths those are. A fix that takes the service down
-//     to improve the score is worse than no fix.
 //   - compose.dr005 — moving a value into an env_file is a two-file change
 //     where Action carries one Path, and a move that does not delete the
 //     original improves nothing. More to the point, by the time the secret
@@ -405,9 +375,7 @@ package fix
 // # The service-hardening domain, six registered and eight declined
 //
 // accounts.duplicate-uid requires migrating file ownership, while
-// accounts.weak-password-hash requires a human-chosen credential. Compose
-// rules compose.ds023, compose.ds024, and compose.ds026 remove deliberately
-// selected isolation exceptions whose application requirements are unknown.
+// accounts.weak-password-hash requires a human-chosen credential.
 //
 // The edit is trivial for every rule in this domain: a drop-in at
 // /etc/systemd/system/<unit>.d/50-hostveil.conf holding a [Service] section
@@ -492,8 +460,9 @@ package fix
 // finding Fixed, and raise the score — while changing nothing an attacker
 // can see. The next scan asks `docker info`, gets the same answer as before,
 // and reports the finding again. A fix that improves the score without
-// improving the host is the objection already recorded for compose.ds016,
-// arriving by a different route.
+// improving the host is the objection that once kept a `:ro` on the Docker
+// socket mount out of the registry — a read-only socket is still the whole
+// API — arriving by a different route.
 //
 // Both halves of that objection are now answered, and neither answer is what
 // unblocks this domain — which is worth recording, because "the shared reason
@@ -583,7 +552,8 @@ package fix
 //     forgotten grant from a deliberate one. A service account holding this
 //     group is exactly as likely to be Portainer's agent, Watchtower, or a
 //     CI runner as an oversight, and nothing in the evidence says which.
-//     That is compose.ds001's objection, not accounts.emptypassword's.
+//     That is the objection the container removals in compose_risky.go
+//     carry in their Warnings, not accounts.emptypassword's.
 //   - dockerd.socket-world-writable — the only one of the seven that does not
 //     touch daemon.json, and so the only one whose reason had to be rewritten
 //     rather than re-pointed. The socket's mode is not durable state: dockerd
@@ -639,6 +609,7 @@ func Default() *Registry {
 	r := NewRegistry()
 	registerAccounts(r)
 	registerCompose(r)
+	registerComposeRisky(r)
 	registerFilePerms(r)
 	registerSSH(r)
 	registerUpdates(r)

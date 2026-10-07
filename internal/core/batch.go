@@ -109,6 +109,12 @@ func (e *Engine) applyOneLocked(ctx context.Context, f model.Finding, reviewed b
 	if !ok || len(fx.Actions) == 0 {
 		return model.FixOutcome{}, false, nil
 	}
+	// Asked of the fix rather than the finding: the finding's copy is set by
+	// classify, and a caller handing in a finding it built itself would skip
+	// the check the batch exists to make.
+	if fx.IndividualOnly {
+		return model.FixOutcome{}, false, nil
+	}
 	// An Auto fix is one action by definition (fix.Validate enforces it),
 	// and a batch that silently picked one of several would be choosing
 	// for the operator. A reviewed batch takes the first alternative

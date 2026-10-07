@@ -167,8 +167,8 @@ func TestAFindingKeepsTheReasonItsCheckerGave(t *testing.T) {
 // And a finding that said nothing still gets the registry's answer.
 func TestAFindingWithNoReasonStillGetsTheRegistrys(t *testing.T) {
 	e := New(Config{Fixes: fix.Default(), Store: history.NewStore(t.TempDir())})
-	f := model.NewFinding("compose.ds016", "docker socket", model.SeverityHigh, model.SourceCompose,
-		model.RemediationManual, model.WithService("portainer"))
+	f := model.NewFinding("compose.ds012", "no healthcheck", model.SeverityLow, model.SourceCompose,
+		model.RemediationManual, model.WithService("web"))
 
 	findings := []model.Finding{f}
 	e.classify(findings)
@@ -208,8 +208,8 @@ func TestClassifySetsBenefitAndSideEffectFromTheRecommendation(t *testing.T) {
 // A finding nothing can fix must not carry a stale or invented trade-off.
 func TestClassifyLeavesBenefitAndSideEffectEmptyWhenUnfixable(t *testing.T) {
 	e := New(Config{Fixes: fix.Default(), Store: history.NewStore(t.TempDir())})
-	f := model.NewFinding("compose.ds016", "docker socket", model.SeverityHigh, model.SourceCompose,
-		model.RemediationManual, model.WithService("portainer"))
+	f := model.NewFinding("compose.ds012", "no healthcheck", model.SeverityLow, model.SourceCompose,
+		model.RemediationManual, model.WithService("web"))
 
 	findings := []model.Finding{f}
 	e.classify(findings)

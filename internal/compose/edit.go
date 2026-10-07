@@ -33,6 +33,7 @@ type editKind int
 const (
 	editReplace editKind = iota // replace a scalar value in place on one line
 	editInsert                  // insert whole line(s) after an anchor line
+	editDelete                  // delete lines line..end inclusive
 )
 
 type edit struct {
@@ -40,6 +41,7 @@ type edit struct {
 	line int    // 1-based anchor line in the original source
 	col  int    // 1-based start column of the value (editReplace only)
 	text string // replacement token (editReplace) or lines to insert (editInsert)
+	end  int    // 1-based last line to delete (editDelete only)
 }
 
 // Load parses compose bytes into an editable Doc, preserving comments and
@@ -161,6 +163,12 @@ func (d *Doc) renderMinimal() ([]byte, bool) {
 				return nil, false
 			}
 			lines[idx] = l[:start] + e.text + l[end:]
+		case editDelete:
+			last := e.end - 1
+			if last < idx || last >= len(lines) {
+				return nil, false
+			}
+			lines = append(lines[:idx:idx], lines[last+1:]...)
 		case editInsert:
 			ins := strings.Split(e.text, "\n")
 			out := make([]string, 0, len(lines)+len(ins))
@@ -218,21 +226,27 @@ func (d *Doc) service(name string) *yaml.Node {
 // AddSecurityOpt appends opt to a service's security_opt list, creating
 // the list if needed. It is a no-op if opt is already present.
 func (d *Doc) AddSecurityOpt(service, opt string) error {
+	return d.addSeqItem(service, "security_opt", opt)
+}
+
+// addSeqItem appends item to service.<key>, creating the list if needed. It
+// is a no-op if an equivalent item is already present.
+func (d *Doc) addSeqItem(service, key, opt string) error {
 	svc := d.service(service)
 	if svc == nil {
 		return fmt.Errorf("service %q not found", service)
 	}
-	seq := mapGet(svc, "security_opt")
+	seq := mapGet(svc, key)
 	if seq == nil {
 		if indent, ok := mappingChildIndent(svc); ok {
 			d.recordInsertAfter(blockEndLine(svc),
-				strings.Repeat(" ", indent)+"security_opt:",
+				strings.Repeat(" ", indent)+key+":",
 				strings.Repeat(" ", indent+2)+"- "+opt)
 		} else {
 			d.minimalOff = true
 		}
 		seq = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
-		mapSet(svc, "security_opt", seq)
+		mapSet(svc, key, seq)
 		seq.Content = append(seq.Content, scalar(opt))
 		return nil
 	}
@@ -253,13 +267,33 @@ func (d *Doc) AddSecurityOpt(service, opt string) error {
 // SetScalar sets service.<key> to a scalar value, replacing any existing
 // value.
 func (d *Doc) SetScalar(service, key, value string) error {
+	return d.setTyped(service, key, value, "!!str")
+}
+
+// SetBool sets service.<key> to a YAML boolean. SetScalar would tag it as a
+// string, which the encoder then quotes, and compose rejects "true" where it
+// wants true.
+func (d *Doc) SetBool(service, key string, value bool) error {
+	v := "false"
+	if value {
+		v = "true"
+	}
+	return d.setTyped(service, key, v, "!!bool")
+}
+
+func (d *Doc) setTyped(service, key, value, tag string) error {
 	svc := d.service(service)
 	if svc == nil {
 		return fmt.Errorf("service %q not found", service)
 	}
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: tag, Value: value}
 	if v := mapGet(svc, key); v != nil {
-		d.recordReplace(v, renderRaw(value, v.Style))
-		mapSet(svc, key, scalar(value))
+		style := v.Style
+		if tag != "!!str" {
+			style = 0 // a quoted boolean is a string
+		}
+		d.recordReplace(v, renderRaw(value, style))
+		mapSet(svc, key, node)
 		return nil
 	}
 	if indent, ok := mappingChildIndent(svc); ok {
@@ -267,7 +301,7 @@ func (d *Doc) SetScalar(service, key, value string) error {
 	} else {
 		d.minimalOff = true
 	}
-	mapSet(svc, key, scalar(value))
+	mapSet(svc, key, node)
 	return nil
 }
 
@@ -305,6 +339,193 @@ func (d *Doc) BindPortLoopback(service, hostPort string) error {
 	return fmt.Errorf("port %s not found on service %q", hostPort, service)
 }
 
+// RemoveKey deletes service.<key> and everything under it. It is the shape
+// of every removal-type fix — privileged, network_mode, pid, ipc,
+// userns_mode — where the remediation is taking out a line the author put
+// there. A key that is not present is an error rather than a no-op, because
+// the fix was built from a finding that said it was.
+func (d *Doc) RemoveKey(service, key string) error {
+	svc := d.service(service)
+	if svc == nil {
+		return fmt.Errorf("service %q not found", service)
+	}
+	for i := 0; i+1 < len(svc.Content); i += 2 {
+		if svc.Content[i].Value != key {
+			continue
+		}
+		d.recordDelete(svc.Content[i].Line, blockEndLine(svc.Content[i+1]))
+		svc.Content = append(svc.Content[:i:i], svc.Content[i+2:]...)
+		return nil
+	}
+	return fmt.Errorf("service %q has no %s", service, key)
+}
+
+// RemoveSeqItem deletes the first item of service.<key> for which match
+// returns true. Removing the last item removes the key too, because an empty
+// block sequence renders as a null, which is not what the author wrote and
+// not what the encoder would write either.
+func (d *Doc) RemoveSeqItem(service, key string, match func(*yaml.Node) bool) error {
+	svc := d.service(service)
+	if svc == nil {
+		return fmt.Errorf("service %q not found", service)
+	}
+	seq := mapGet(svc, key)
+	if seq == nil || seq.Kind != yaml.SequenceNode {
+		return fmt.Errorf("service %q has no %s list", service, key)
+	}
+	for i, item := range seq.Content {
+		if !match(item) {
+			continue
+		}
+		if len(seq.Content) == 1 {
+			return d.RemoveKey(service, key)
+		}
+		d.recordDelete(item.Line, blockEndLine(item))
+		seq.Content = append(seq.Content[:i:i], seq.Content[i+1:]...)
+		return nil
+	}
+	return fmt.Errorf("no matching %s entry on service %q", key, service)
+}
+
+// RemoveSecurityOpt deletes opt from a service's security_opt list,
+// comparing the way the checker does: case-insensitively, spaces ignored.
+func (d *Doc) RemoveSecurityOpt(service, opt string) error {
+	return d.RemoveSeqItem(service, "security_opt", func(n *yaml.Node) bool {
+		return n.Kind == yaml.ScalarNode && strings.EqualFold(normalizeOpt(n.Value), normalizeOpt(opt))
+	})
+}
+
+// RemoveCapAdd deletes capability from a service's cap_add list. The CAP_
+// prefix is optional in compose, so it is optional here.
+func (d *Doc) RemoveCapAdd(service, capability string) error {
+	want := capName(capability)
+	return d.RemoveSeqItem(service, "cap_add", func(n *yaml.Node) bool {
+		return n.Kind == yaml.ScalarNode && capName(n.Value) == want
+	})
+}
+
+func capName(s string) string {
+	return strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(s)), "CAP_")
+}
+
+// RemoveVolume deletes the volume whose host source is source, in either the
+// short ("src:dst[:mode]") or the long (`source:`) form.
+func (d *Doc) RemoveVolume(service, source string) error {
+	want := strings.TrimSuffix(source, "/")
+	return d.RemoveSeqItem(service, "volumes", func(n *yaml.Node) bool {
+		return volumeSource(n) == want
+	})
+}
+
+// SetVolumeReadOnly makes the volume whose host source is source read-only:
+// `:ro` on the short form (replacing an explicit `rw`), `read_only: true` on
+// the long form.
+func (d *Doc) SetVolumeReadOnly(service, source string) error {
+	svc := d.service(service)
+	if svc == nil {
+		return fmt.Errorf("service %q not found", service)
+	}
+	vols := mapGet(svc, "volumes")
+	if vols == nil {
+		return fmt.Errorf("service %q has no volumes", service)
+	}
+	want := strings.TrimSuffix(source, "/")
+	for _, entry := range vols.Content {
+		if volumeSource(entry) != want {
+			continue
+		}
+		switch entry.Kind {
+		case yaml.ScalarNode:
+			rewritten := shortVolumeReadOnly(entry.Value)
+			d.recordReplace(entry, renderRaw(rewritten, entry.Style))
+			entry.Value = rewritten
+			return nil
+		case yaml.MappingNode:
+			// Same reasoning as BindPortLoopback's long form: the insertion
+			// point inside a flow-or-block mapping item is not worth guessing.
+			d.minimalOff = true
+			mapSet(entry, "read_only", &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: "true"})
+			return nil
+		}
+	}
+	return fmt.Errorf("no volume from %s on service %q", source, service)
+}
+
+// volumeSource is a volume entry's host side, trailing slash trimmed, or ""
+// for an entry it cannot read.
+func volumeSource(n *yaml.Node) string {
+	switch n.Kind {
+	case yaml.ScalarNode:
+		src, _, _ := strings.Cut(n.Value, ":")
+		return strings.TrimSuffix(src, "/")
+	case yaml.MappingNode:
+		if v := mapGet(n, "source"); v != nil {
+			return strings.TrimSuffix(v.Value, "/")
+		}
+	}
+	return ""
+}
+
+// shortVolumeReadOnly rewrites "src:dst" or "src:dst:opts" so its options
+// include ro and not rw.
+func shortVolumeReadOnly(v string) string {
+	parts := strings.SplitN(v, ":", 3)
+	if len(parts) < 3 {
+		return v + ":ro"
+	}
+	var opts []string
+	for _, o := range strings.Split(parts[2], ",") {
+		if o != "rw" && o != "ro" && o != "" {
+			opts = append(opts, o)
+		}
+	}
+	opts = append([]string{"ro"}, opts...)
+	return parts[0] + ":" + parts[1] + ":" + strings.Join(opts, ",")
+}
+
+// SetReadOnlyRootfs sets read_only: true and mounts a tmpfs at each of
+// tmpfs, the two halves of one change: a read-only root with nowhere to
+// write /tmp is the version that takes most images down.
+//
+// When neither key exists both are inserted as one edit, so the minimal
+// rendering keeps their order; anything else falls through to the
+// individual mutations and, if their text edits cannot be proven, the full
+// re-encode.
+func (d *Doc) SetReadOnlyRootfs(service string, tmpfs []string) error {
+	svc := d.service(service)
+	if svc == nil {
+		return fmt.Errorf("service %q not found", service)
+	}
+	if mapGet(svc, "read_only") == nil && mapGet(svc, "tmpfs") == nil && len(tmpfs) > 0 {
+		if indent, ok := mappingChildIndent(svc); ok {
+			pad := strings.Repeat(" ", indent)
+			lines := []string{pad + "read_only: true", pad + "tmpfs:"}
+			for _, p := range tmpfs {
+				lines = append(lines, pad+"  - "+p)
+			}
+			d.recordInsertAfter(blockEndLine(svc), lines...)
+		} else {
+			d.minimalOff = true
+		}
+		mapSet(svc, "read_only", &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: "true"})
+		seq := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		for _, p := range tmpfs {
+			seq.Content = append(seq.Content, scalar(p))
+		}
+		mapSet(svc, "tmpfs", seq)
+		return nil
+	}
+	if err := d.SetBool(service, "read_only", true); err != nil {
+		return err
+	}
+	for _, p := range tmpfs {
+		if err := d.addSeqItem(service, "tmpfs", p); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // recordReplace records an in-place replacement of node's scalar value. If the
 // node lacks source position (e.g. it was synthesized), minimal rendering is
 // disabled so the caller falls back to the full re-encode.
@@ -314,6 +535,16 @@ func (d *Doc) recordReplace(node *yaml.Node, newRaw string) {
 		return
 	}
 	d.edits = append(d.edits, edit{kind: editReplace, line: node.Line, col: node.Column, text: newRaw})
+}
+
+// recordDelete records the removal of source lines line..end. A node with no
+// source position cannot be located, so minimal rendering is disabled.
+func (d *Doc) recordDelete(line, end int) {
+	if line <= 0 || end < line {
+		d.minimalOff = true
+		return
+	}
+	d.edits = append(d.edits, edit{kind: editDelete, line: line, end: end})
 }
 
 // recordInsertAfter records line(s) to insert after a 1-based anchor line.

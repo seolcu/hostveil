@@ -325,7 +325,7 @@ func ruleHostPid(s compose.Service) (model.Finding, bool) {
 	if s.Pid != "host" {
 		return model.Finding{}, false
 	}
-	return f("ds020", "Container shares the host PID namespace", model.SeverityHigh, model.RemediationManual, s.Name,
+	return f("ds020", "Container shares the host PID namespace", model.SeverityHigh, model.RemediationReview, s.Name,
 		model.WithDescription("`pid: host` lets the container see and signal every process on the host. A compromised container can read other processes' command lines and environment — which often carry credentials — and kill arbitrary services."),
 		model.WithHowToFix("Remove `pid: host` unless the service is a monitoring agent that genuinely needs to observe host processes. If it only needs to see one other container, use `pid: \"service:NAME\"` instead."),
 	), true
@@ -335,7 +335,7 @@ func ruleHostIpc(s compose.Service) (model.Finding, bool) {
 	if s.Ipc != "host" {
 		return model.Finding{}, false
 	}
-	return f("ds021", "Container shares the host IPC namespace", model.SeverityMedium, model.RemediationManual, s.Name,
+	return f("ds021", "Container shares the host IPC namespace", model.SeverityMedium, model.RemediationReview, s.Name,
 		model.WithDescription("`ipc: host` shares the host's inter-process communication (shared memory, semaphores) with the container. A compromised container can read or tamper with shared memory used by host processes, including other containers' databases."),
 		model.WithHowToFix("Remove `ipc: host`. If two containers need to share memory with each other, use `ipc: \"service:NAME\"` to share between just those two instead of with the whole host."),
 	), true
@@ -466,16 +466,16 @@ func ruleWritableRootFS(s compose.Service) (model.Finding, bool) {
 	if s.ReadOnly {
 		return model.Finding{}, false
 	}
-	return f("ds022", "Container filesystem is writable", model.SeverityLow, model.RemediationManual, s.Name,
+	return f("ds022", "Container filesystem is writable", model.SeverityLow, model.RemediationReview, s.Name,
 		model.WithDescription("Without `read_only: true`, a compromised process can modify the container's own binaries and drop tools anywhere in its filesystem, making an intrusion easier to deepen and harder to spot."),
-		model.WithHowToFix("Add `read_only: true` and mount `tmpfs` for the paths the service writes to (commonly /tmp and /run). Which paths those are depends on the app, so Hostveil does not change this automatically."),
+		model.WithHowToFix("Add `read_only: true` and mount `tmpfs` for the paths the service writes to (commonly /tmp and /run). Which paths those are depends on the app, so Hostveil offers /tmp and /run and leaves the rest to you after watching the logs."),
 	), true
 }
 
 func ruleSeccompUnconfined(s compose.Service) (model.Finding, bool) {
 	for _, opt := range s.SecurityOpt {
 		if strings.EqualFold(strings.ReplaceAll(opt, " ", ""), "seccomp:unconfined") {
-			return f("ds023", "Container disables the seccomp syscall filter", model.SeverityHigh, model.RemediationManual, s.Name,
+			return f("ds023", "Container disables the seccomp syscall filter", model.SeverityHigh, model.RemediationReview, s.Name,
 				model.WithDescription("seccomp:unconfined removes Docker's default syscall denylist, exposing a compromised container to kernel interfaces that are normally blocked."),
 				model.WithHowToFix("Remove `seccomp:unconfined`, or replace it with a reviewed profile containing only the additional syscalls this application needs.")), true
 		}
@@ -486,7 +486,7 @@ func ruleSeccompUnconfined(s compose.Service) (model.Finding, bool) {
 func ruleAppArmorUnconfined(s compose.Service) (model.Finding, bool) {
 	for _, opt := range s.SecurityOpt {
 		if strings.EqualFold(strings.ReplaceAll(opt, " ", ""), "apparmor:unconfined") {
-			return f("ds024", "Container disables its AppArmor profile", model.SeverityMedium, model.RemediationManual, s.Name,
+			return f("ds024", "Container disables its AppArmor profile", model.SeverityMedium, model.RemediationReview, s.Name,
 				model.WithDescription("apparmor:unconfined removes a host-enforced boundary around the container process and widens what a compromise can read or execute."),
 				model.WithHowToFix("Remove `apparmor:unconfined`, or assign a reviewed application-specific AppArmor profile.")), true
 		}
@@ -496,7 +496,7 @@ func ruleAppArmorUnconfined(s compose.Service) (model.Finding, bool) {
 
 func ruleHostUserNamespace(s compose.Service) (model.Finding, bool) {
 	if strings.EqualFold(strings.TrimSpace(s.UsernsMode), "host") {
-		return f("ds026", "Container shares the host user namespace", model.SeverityMedium, model.RemediationManual, s.Name,
+		return f("ds026", "Container shares the host user namespace", model.SeverityMedium, model.RemediationReview, s.Name,
 			model.WithDescription("userns_mode: host disables user-namespace remapping for this service when the daemon uses it, making container root map directly to host root."),
 			model.WithHowToFix("Remove `userns_mode: host` after confirming the image works with the daemon's user-namespace mapping.")), true
 	}

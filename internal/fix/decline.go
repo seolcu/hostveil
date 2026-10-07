@@ -57,21 +57,9 @@ func DeclinedIDs() []string {
 // what the shared sentence had been hiding.
 var declineReasons = map[string]string{
 	// compose
-	"compose.dr001": "Removing host networking leaves the service unreachable unless the ports it needs are published in its place, and the finding does not carry them.",
 	"compose.dr004": "The remediation is about the env_file's permissions and whether it reached git and backups, so there is nothing in the compose file to edit.",
 	"compose.dr005": "Moving the value into an env_file is a two-file change one action cannot make, and a secret already in backups and git history needs rotating instead.",
-	"compose.ds001": "Deleting privileged: true removes something the author added deliberately, and Hostveil cannot tell a needless one from a load-bearing one.",
-	"compose.ds005": "Dropping a capability from cap_add removes something the author added deliberately, and Hostveil cannot tell a needless one from a load-bearing one.",
-	"compose.ds009": "Nothing in the finding says which UID the image supports, and forcing the wrong one stops an image that drops privileges in its own entrypoint.",
 	"compose.ds012": "The right healthcheck depends on what the service exposes, and a guessed probe marks a working container unhealthy and stalls whatever waits on it.",
-	"compose.ds016": "The only honest remediation deletes the mount, which breaks Portainer, Traefik, and Watchtower, and :ro changes nothing because the socket is an HTTP API.",
-	"compose.ds017": "Adding :ro breaks a service that legitimately writes to the mount, and a static audit cannot tell a written mount from a read one.",
-	"compose.ds020": "A monitoring agent legitimately needs the host PID namespace, and deleting pid: host breaks that case silently — the service starts and sees nothing.",
-	"compose.ds021": "Processes that share memory legitimately need ipc: host, and deleting the line breaks that case silently — the service starts and stops working.",
-	"compose.ds022": "read_only: true breaks any image that writes inside its own filesystem, and a static audit cannot learn which paths need tmpfs mounts instead.",
-	"compose.ds023": "Removing seccomp:unconfined can break software that requires a blocked syscall, and only the application owner can choose a narrower profile.",
-	"compose.ds024": "Removing apparmor:unconfined can prevent the service starting, and Hostveil cannot invent the application-specific profile it needs.",
-	"compose.ds026": "Removing host user-namespace mode can invalidate bind-mount ownership and stop the service, which needs an operator-planned migration.",
 
 	// firewall
 	"firewall.docker-bypass": "The compose file or docker run behind the container is not in the finding, and the other remediation rewrites ufw policy that can lock you out.",

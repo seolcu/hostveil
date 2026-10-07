@@ -75,6 +75,7 @@ func TestEditMissingServiceErrors(t *testing.T) {
 func FuzzEdit(f *testing.F) {
 	f.Add("services:\n  a:\n    image: x\n    ports:\n      - \"80:80\"\n")
 	f.Add("services:\n  a:\n    image: x\n    security_opt:\n      - seccomp:unconfined\n")
+	f.Add("services:\n  a:\n    image: x\n    privileged: true\n    cap_add: [SYS_ADMIN]\n    volumes:\n      - /etc:/e\n")
 	f.Fuzz(func(t *testing.T, yaml string) {
 		d, err := Load([]byte(yaml))
 		if err != nil {
@@ -86,6 +87,12 @@ func FuzzEdit(f *testing.F) {
 		_ = d.AddSecurityOpt("a", "no-new-privileges:true")
 		_ = d.SetScalar("a", "restart", "unless-stopped")
 		_ = d.BindPortLoopback("a", "80")
+		_ = d.RemoveKey("a", "privileged")
+		_ = d.RemoveCapAdd("a", "SYS_ADMIN")
+		_ = d.RemoveSecurityOpt("a", "seccomp:unconfined")
+		_ = d.SetVolumeReadOnly("a", "/etc")
+		_ = d.RemoveVolume("a", "/var/run/docker.sock")
+		_ = d.SetReadOnlyRootfs("a", []string{"/tmp"})
 		out, err := d.Bytes()
 		if err != nil {
 			return

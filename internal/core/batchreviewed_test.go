@@ -72,3 +72,44 @@ func contains(xs []string, want string) bool {
 	}
 	return false
 }
+
+// Accepting Review fixes in bulk is accepting the ones that are Review
+// because they cannot be checkpointed or have two right answers. It is not
+// accepting the ones that are Review because they can break a service that
+// set something on purpose — those are offered so that somebody who knows
+// the service reads the warning, and a batch is nobody reading.
+func TestTheReviewedBatchLeavesIndividualOnlyFixesAlone(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "docker-compose.yml")
+	orig := "services:\n  app:\n    image: myapp\n    privileged: true\n"
+	if err := os.WriteFile(path, []byte(orig), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	engine := fixEngine(t)
+	priv := model.NewFinding("compose.ds001", "priv", model.SeverityHigh, model.SourceCompose,
+		model.RemediationReview, model.WithService("app"), model.WithMetadata("file", path))
+
+	findings := []model.Finding{priv}
+	engine.classify(findings)
+	if findings[0].Remediation != model.RemediationReview || !findings[0].IndividualOnly {
+		t.Fatalf("classified as %v individual=%v, want Review and individual-only",
+			findings[0].Remediation, findings[0].IndividualOnly)
+	}
+
+	out := engine.ApplyBatchWithReviewed(context.Background(), findings)
+	if !contains(out.Skipped, "compose.ds001") || len(out.Applied) != 0 {
+		t.Errorf("the reviewed batch applied %v and skipped %v; it must skip an individual-only fix",
+			out.Applied, out.Skipped)
+	}
+	if got, _ := os.ReadFile(path); string(got) != orig {
+		t.Fatalf("the reviewed batch changed the file:\n%s", got)
+	}
+
+	// Asked for by name, the same fix applies.
+	if _, err := engine.ApplyFix(context.Background(), findings[0], 0); err != nil {
+		t.Fatalf("applying it on its own: %v", err)
+	}
+	if got, _ := os.ReadFile(path); strings.Contains(string(got), "privileged") {
+		t.Errorf("privileged is still in the file after applying the fix on its own:\n%s", got)
+	}
+}

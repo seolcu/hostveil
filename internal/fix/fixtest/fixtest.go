@@ -50,5 +50,7 @@ func Finding(id string) model.Finding {
 		model.WithEvidence("available", "ufw"),
 		model.WithEvidence("firewall", "ufw"),
 		model.WithEvidence("accounts", "alice"),
+		model.WithEvidence("capability", "SYS_ADMIN"),
+		model.WithEvidence("mount", "/var/run/docker.sock"),
 	)
 }

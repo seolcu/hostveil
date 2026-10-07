@@ -123,8 +123,8 @@ If Docker or Trivy is missing, those domains are skipped and the score is
 renormalized over the ones that ran, so a partial scan never comes back as a
 misleadingly perfect result.
 
-Hostveil can report **183 findings** across those domains, and **128 of them
-carry a fix** — 75 Hostveil will apply unattended, 53 only after you have read
+Hostveil can report **183 findings** across those domains, and **140 of them
+carry a fix** — 75 Hostveil will apply unattended, 65 only after you have read
 the diff. The rest are Manual on purpose, and each one is named in the register
 in [`internal/fix/register.go`](internal/fix/register.go) with the reason
 Hostveil will not touch it. Manual by decision, never Manual because nobody
