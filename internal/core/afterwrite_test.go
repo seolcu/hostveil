@@ -182,3 +182,34 @@ func TestThePreviewShowsWhatRunsAfterTheWrite(t *testing.T) {
 		t.Errorf("preview commands = %v", got)
 	}
 }
+
+// An action that declares its own AfterRestore has that run on rollback, not
+// its AfterWrite.
+func TestARollbackRunsTheDeclaredAfterRestore(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "daemon.json")
+	if err := os.WriteFile(path, []byte("old\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runner := &restartRunner{}
+	reg := fix.NewRegistry()
+	reg.Register("dockerd.test", func(model.Finding) (fix.Fix, error) {
+		return fix.Fix{Label: "x", Kind: model.RemediationReview, Actions: []fix.Action{{
+			Label: "x", Benefit: "b", Warning: "w", Kind: fix.ActionEdit, Path: path,
+			Transform:    func([]byte) ([]byte, error) { return []byte("new\n"), nil },
+			AfterWrite:   [][]string{{"systemctl", "reload", "docker"}},
+			AfterRestore: [][]string{{"systemctl", "restart", "docker"}},
+		}}}, nil
+	})
+	e := New(Config{Fixes: reg, Store: history.NewStore(t.TempDir()), Runner: runner})
+	f := model.NewFinding("dockerd.test", "t", model.SeverityLow, model.SourceDockerd, model.RemediationReview)
+	out, err := e.ApplyFix(context.Background(), f, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.Rollback(out.CheckpointID); err != nil {
+		t.Fatal(err)
+	}
+	if got := runner.calls(); !slices.Equal(got, []string{"systemctl reload docker", "systemctl restart docker"}) {
+		t.Errorf("ran %v, want the reload on apply and the restart on rollback", got)
+	}
+}

@@ -157,3 +157,23 @@ func TestGroupMemberRemovalNamesOneAccount(t *testing.T) {
 		t.Errorf("runs %v", got)
 	}
 }
+
+// Turning live-restore on is a reload; turning it back off is not, because a
+// reload leaves alone the keys the file no longer has. The rollback must
+// restart Docker, and the warning must say so.
+func TestLiveRestoreRollsBackWithARestart(t *testing.T) {
+	fx, err := buildDockerdLiveRestore(dockerdFinding("dockerd.live-restore", map[string]string{"daemon_json": "/etc/docker/daemon.json"}, nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := fx.Actions[0]
+	if !slices.Equal(a.AfterWrite[0], []string{"systemctl", "reload", "docker"}) {
+		t.Errorf("apply runs %v", a.AfterWrite)
+	}
+	if len(a.AfterRestore) != 1 || !slices.Equal(a.AfterRestore[0], []string{"systemctl", "restart", "docker"}) {
+		t.Errorf("rollback runs %v, want a restart", a.AfterRestore)
+	}
+	if !strings.Contains(a.Warning, "Rolling it back restarts Docker") {
+		t.Errorf("the warning does not say the rollback restarts Docker: %s", a.Warning)
+	}
+}

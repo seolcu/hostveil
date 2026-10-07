@@ -188,7 +188,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		// work. Computed before the write so the checkpoint is complete
 		// before anything on the host changes.
 		AppliedSHA256: map[string]string{a.Path: history.SHA256Hex(next)},
-		AfterRestore:  a.AfterWrite,
+		AfterRestore:  afterRestore(a),
 	}
 	if a.SafeRoot != "" {
 		cp.SafeRoots = map[string]string{a.Path: a.SafeRoot}
@@ -539,3 +539,13 @@ func countCommands(cmds [][]string) int {
 // differently between the two calls would mark a finding pending and score it
 // as though it were not. applyFix reads the action once and puts both the flag
 // and the sentence on the outcome.
+
+// afterRestore is what a rollback of a runs to put the restored file in
+// force: its own AfterRestore where it declares one, otherwise the same
+// commands that put the fix in force.
+func afterRestore(a fix.Action) [][]string {
+	if a.AfterRestore != nil {
+		return a.AfterRestore
+	}
+	return a.AfterWrite
+}
