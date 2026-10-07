@@ -73,12 +73,12 @@ var declineReasons = map[string]string{
 	"ports.exposed-datastore": "Binding a native datastore to loopback takes a config file, syntax, and path that differ per daemon and per distro, none of which the finding carries.",
 
 	// accounts
-	"kube.anonymous-auth":                  "It changes how the control plane starts, in whichever configuration layer set it, and takes effect only when the node every workload runs on restarts.",
-	"kube.secrets-unencrypted":             "Turning encryption on needs a restart of the control plane and a rewrite of every existing Secret, neither of which is a file edit.",
-	"proxmox.webui-open":                   "Which network is the management network is not written anywhere Hostveil can read, and a wrong guess locks you out of the hypervisor's interface; LISTEN_IP also breaks clusters across subnets.",
-	"proxmox.root-no-tfa":                  "A second factor is a device a person holds, and Hostveil must never enrol a credential on anyone's behalf.",
-	"accounts.sudo-nopasswd":               "The grant comes from sudo -l, not from reading /etc/sudoers, so nothing says which file, line, or group rule to edit — there is nowhere for an edit to point.",
-	"accounts.duplicate-uid":               "Changing a UID requires migrating every file it owns across filesystems, which cannot be represented or rolled back as one action.",
+	"kube.anonymous-auth":      "It changes how the control plane starts, in whichever configuration layer set it, and takes effect only when the node every workload runs on restarts.",
+	"kube.secrets-unencrypted": "Turning encryption on needs a restart of the control plane and a rewrite of every existing Secret, neither of which is a file edit.",
+	"proxmox.webui-open":       "Which network is the management network is not written anywhere Hostveil can read, and a wrong guess locks you out of the hypervisor's interface; LISTEN_IP also breaks clusters across subnets.",
+	"proxmox.root-no-tfa":      "A second factor is a device a person holds, and Hostveil must never enrol a credential on anyone's behalf.",
+	"accounts.sudo-nopasswd":   "The grant comes from sudo -l, not from reading /etc/sudoers, so nothing says which file, line, or group rule to edit — there is nowhere for an edit to point.",
+	"accounts.duplicate-uid":   "Changing a UID requires migrating every file it owns across filesystems, which cannot be represented or rolled back as one action.",
 
 	// fileperms
 
