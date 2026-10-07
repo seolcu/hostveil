@@ -151,6 +151,13 @@ type Action struct {
 	// one action.
 	Paths []string
 	Mode  func(current fs.FileMode) fs.FileMode
+	// ChownUID, on a mode action, also sets each path's owning user to this
+	// uid, leaving the group as it is. The prior owner goes in the checkpoint,
+	// so a rollback restores it with the mode. The group is deliberately not
+	// touched: the right group differs by distribution (/etc/shadow is
+	// root:shadow on Debian and root:root elsewhere), and the owner is the
+	// half of the finding that is wrong.
+	ChownUID *int
 }
 
 // VerifyPathToken is the placeholder an Action's VerifyCmd uses for the file

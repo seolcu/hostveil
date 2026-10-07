@@ -129,3 +129,34 @@ func ChownNoFollow(path string, uid, gid int) error {
 	}
 	return f.Chown(uid, gid)
 }
+
+// ChownNoFollowPath changes the owner of a regular file or directory through
+// a descriptor opened without following a symlink. It is ChownNoFollow for the
+// owner fix and its rollback, which act on system files and directories rather
+// than on an output file hostveil created; gid -1 leaves the group alone.
+func ChownNoFollowPath(path string, uid, gid int) error {
+	//nolint:gosec // G304: the descriptor is opened with O_NOFOLLOW
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	fi, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	if !fi.Mode().IsRegular() && !fi.IsDir() {
+		return fmt.Errorf("%s: not a regular file or directory", path)
+	}
+	return f.Chown(uid, gid)
+}
+
+// FileOwner reads the uid and gid out of a FileInfo, or reports false on a
+// platform whose FileInfo does not carry them.
+func FileOwner(fi os.FileInfo) (uid, gid int, ok bool) {
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, 0, false
+	}
+	return int(st.Uid), int(st.Gid), true
+}

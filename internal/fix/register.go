@@ -90,17 +90,6 @@ package fix
 // TestKnownUnregisteredFindings pins each one, so registering a fix means
 // deleting an assertion and arguing with the reason.
 //
-//   - fileperms.owner — the remediation is `chown root:root`, and hostveil
-//     cannot undo it. A checkpoint records a file's contents and its mode
-//     and has nowhere to put its previous owner, so this would be the only
-//     fix in the tool that changes something a rollback cannot put back.
-//     The right group is not guessable either: /etc/shadow is root:shadow
-//     on Debian and root:root on others, so a fix would have to pick one
-//     and would be wrong on the other half of hosts. And ownership landing
-//     on the wrong account is usually a symptom — a restore run as the
-//     wrong user, an archive extracted with its own uids — where chowning
-//     the files hostveil happens to know about fixes the visible part and
-//     leaves the rest. Revisit if BackedFile ever records uid/gid.
 //   - ports.exposed-datastore, ports.exposed-admin — these describe
 //     natively-installed daemons, not containers. Binding one to loopback
 //     means editing redis.conf's `bind`, or postgresql.conf's
@@ -154,11 +143,6 @@ package fix
 //   - proxmox.root-no-tfa — enrolling a second factor is a person holding a
 //     device, and writing tfa.cfg on their behalf would be hostveil inventing
 //     a credential.
-//   - proxmox.enterprise-repo-unsubscribed — two changes in sequence (turn
-//     the enterprise source off, add the no-subscription one for the right
-//     release), where Review means alternatives, and the first alone leaves
-//     the host with no Proxmox source at all, which is worse than the finding.
-//     A subscription key is the other remedy and is not hostveil's to enter.
 //   - kube.anonymous-auth and kube.secrets-unencrypted — both are a change
 //     to how the control plane starts, in whichever layer set them, and
 //     both need a restart of the node every workload runs on; encryption
@@ -270,6 +254,12 @@ package fix
 // Compose command list, with a recreate now or later. Caddy's admin address
 // goes back to localhost:2019 in a host Caddyfile, validated and reloaded; a
 // container reads it at start, often from CADDY_ADMIN, and stays Manual.
+//
+// proxmox.enterprise-repo-unsubscribed was declined as two changes in
+// sequence — disable one source, add another. It is one: the enterprise
+// source file rewritten to the no-subscription repository, same path on
+// download.proxmox.com and signed by the same key (proxmox.go). Two
+// enterprise files, PVE's and Ceph's, are still two edits and stay Manual.
 //
 // Hermes has no danger rules at all, and if it gains some they are not
 // covered by any of this: its bind and auth may come from the config, from
@@ -453,6 +443,7 @@ func Default() *Registry {
 	registerDockerd(r)
 	registerNetworkRisky(r)
 	registerProxyRisky(r)
+	registerProxmox(r)
 	registerFilePerms(r)
 	registerSSH(r)
 	registerUpdates(r)

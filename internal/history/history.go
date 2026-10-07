@@ -35,6 +35,10 @@ type BackedFile struct {
 	Root string      `json:"root,omitempty"`
 	Blob string      `json:"blob,omitempty"`
 	Mode os.FileMode `json:"mode"`
+	// Owner is the file's owner before a fix changed it, and is set only by
+	// a fix that did. Nil means the owner was not touched — every checkpoint
+	// written before this field existed — so a rollback leaves it alone.
+	Owner *Owner `json:"owner,omitempty"`
 	// BlobSHA256 is the hash of the backup itself, checked before the blob is
 	// written back over a live file.
 	//
@@ -352,9 +356,27 @@ func (s *Store) pruneCheckpoints() {
 // changing its bytes. The resulting checkpoint is Reversible — Files is
 // non-empty — but stores no blobs.
 func (s *Store) SaveModes(cp Checkpoint, modes map[string]os.FileMode) (Checkpoint, error) {
+	return s.SaveModesAndOwners(cp, modes, nil)
+}
+
+// Owner is a uid and gid pair as a checkpoint records it.
+type Owner struct {
+	UID int `json:"uid"`
+	GID int `json:"gid"`
+}
+
+// SaveModesAndOwners is SaveModes for a fix that also changes owners: owners
+// names the prior owner of each path whose owner the fix changes, and a
+// rollback puts it back. It is what used to be missing for fileperms.owner —
+// a checkpoint recorded contents and mode and had nowhere to put an owner.
+func (s *Store) SaveModesAndOwners(cp Checkpoint, modes map[string]os.FileMode, owners map[string]Owner) (Checkpoint, error) {
 	files := make([]BackedFile, 0, len(modes))
 	for path, mode := range modes {
-		files = append(files, BackedFile{Path: path, Root: cp.SafeRoots[path], Mode: mode})
+		bf := BackedFile{Path: path, Root: cp.SafeRoots[path], Mode: mode}
+		if o, ok := owners[path]; ok {
+			bf.Owner = &o
+		}
+		files = append(files, bf)
 	}
 	return s.saveBlobless(cp, files)
 }
@@ -811,6 +833,12 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 		if chmodErr != nil && !errors.Is(chmodErr, fs.ErrNotExist) {
 			failed, errs = append(failed, bf.Path), append(errs, chmodErr)
 			continue
+		}
+		if bf.Owner != nil {
+			if err := platform.ChownNoFollowPath(bf.Path, bf.Owner.UID, bf.Owner.GID); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				failed, errs = append(failed, bf.Path), append(errs, err)
+				continue
+			}
 		}
 		restored = append(restored, bf.Path)
 	}

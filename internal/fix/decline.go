@@ -77,12 +77,10 @@ var declineReasons = map[string]string{
 	"kube.secrets-unencrypted":             "Turning encryption on needs a restart of the control plane and a rewrite of every existing Secret, neither of which is a file edit.",
 	"proxmox.webui-open":                   "Which network is the management network is not written anywhere Hostveil can read, and a wrong guess locks you out of the hypervisor's interface; LISTEN_IP also breaks clusters across subnets.",
 	"proxmox.root-no-tfa":                  "A second factor is a device a person holds, and Hostveil must never enrol a credential on anyone's behalf.",
-	"proxmox.enterprise-repo-unsubscribed": "The remedy is two changes in sequence, and disabling the enterprise source alone leaves the host with no Proxmox updates at all; the other remedy is a subscription key.",
 	"accounts.sudo-nopasswd":               "The grant comes from sudo -l, not from reading /etc/sudoers, so nothing says which file, line, or group rule to edit — there is nowhere for an edit to point.",
 	"accounts.duplicate-uid":               "Changing a UID requires migrating every file it owns across filesystems, which cannot be represented or rolled back as one action.",
 
 	// fileperms
-	"fileperms.owner": "A checkpoint records a file's contents and mode but not its previous owner, so chown would be the one change rollback could not put back.",
 
 	// agent
 

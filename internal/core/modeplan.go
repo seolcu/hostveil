@@ -16,6 +16,10 @@ import (
 type modeChange struct {
 	path     string
 	from, to fs.FileMode
+	// owner is set when the action changes the owner: the uid and gid the
+	// file has now, and the uid it will have.
+	owner           bool
+	uid, gid, toUID int
 }
 
 // planModes stats every path and computes its new mode, purely. It reports
@@ -49,8 +53,18 @@ func planModes(a fix.Action) ([]modeChange, error) {
 		}
 		cur := fi.Mode()
 		next := a.Mode(cur)
-		if next != cur {
-			changes = append(changes, modeChange{path: p, from: cur, to: next})
+		c := modeChange{path: p, from: cur, to: next}
+		if a.ChownUID != nil {
+			uid, gid, ok := platform.FileOwner(fi)
+			if !ok {
+				return nil, fmt.Errorf("%s: cannot read its owner", p)
+			}
+			if uid != *a.ChownUID {
+				c.owner, c.uid, c.gid, c.toUID = true, uid, gid, *a.ChownUID
+			}
+		}
+		if next != cur || c.owner {
+			changes = append(changes, c)
 		}
 	}
 	return changes, nil
@@ -83,8 +97,13 @@ func modeTable(changes []modeChange) string {
 	}
 	var b strings.Builder
 	for _, c := range changes {
-		fmt.Fprintf(&b, "%s  %#o → %#o\n",
-			c.path+strings.Repeat(" ", width-textwidth.Of(c.path)), c.from.Perm(), c.to.Perm())
+		pad := c.path + strings.Repeat(" ", width-textwidth.Of(c.path))
+		if c.from != c.to {
+			fmt.Fprintf(&b, "%s  %#o → %#o\n", pad, c.from.Perm(), c.to.Perm())
+		}
+		if c.owner {
+			fmt.Fprintf(&b, "%s  owner uid %d → %d\n", pad, c.uid, c.toUID)
+		}
 	}
 	return b.String()
 }
