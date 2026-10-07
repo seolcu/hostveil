@@ -151,23 +151,23 @@
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">183</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">128</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">53</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, Docker 소켓 마운트를 떼면 그것을 필요로 하는 도구가 망가집니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
+            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">183</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">140</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">65</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 계정 삭제는 체크포인트로 되돌릴 수 없고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">183개 발견 항목의 처리 방식</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Auto</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:43%"></div></div>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:41%"></div></div>
                 <span class="ledger-bar-value" data-counted="findings.auto">75</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:30%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">53</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:36%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">65</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:27%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">55</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:23%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">43</span>
               </div>
             </div>
 
@@ -275,24 +275,24 @@
               <table>
                 <thead><tr><th>ID</th><th>무엇을 표시하는지</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>compose.ds016</code></td><td>Docker 소켓이 컨테이너에 마운트됨</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds016</code></td><td>Docker 소켓이 컨테이너에 마운트됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-compose.ds016">Review</a></td></tr>
                   <tr><td><code>compose.ds018</code></td><td>데이터 저장소가 모든 인터페이스에 노출됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-compose.ds018">Auto</a></td></tr>
-                  <tr><td><code>compose.ds001</code></td><td>컨테이너가 특권 모드로 실행됨</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds001</code></td><td>컨테이너가 특권 모드로 실행됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-compose.ds001">Review</a></td></tr>
                   <tr><td><code>compose.ds019</code></td><td>관리자 패널이 모든 인터페이스에 노출됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-compose.ds019">Auto</a></td></tr>
-                  <tr><td><code>compose.dr001</code></td><td>컨테이너가 호스트 네트워킹 모드를 사용함</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds017</code></td><td>민감한 호스트 경로가 읽기-쓰기로 마운트됨</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds005</code></td><td>위험한 리눅스 capability를 추가함</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds020</code></td><td>호스트 PID 네임스페이스를 공유함</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.dr001</code></td><td>컨테이너가 호스트 네트워킹 모드를 사용함</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-compose.dr001">Review</a></td></tr>
+                  <tr><td><code>compose.ds017</code></td><td>민감한 호스트 경로가 읽기-쓰기로 마운트됨</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-compose.ds017">Review</a></td></tr>
+                  <tr><td><code>compose.ds005</code></td><td>위험한 리눅스 capability를 추가함</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-compose.ds005">Review</a></td></tr>
+                  <tr><td><code>compose.ds020</code></td><td>호스트 PID 네임스페이스를 공유함</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-compose.ds020">Review</a></td></tr>
                   <tr><td><code>compose.dr005</code></td><td>환경 변수에 하드코딩된 비밀값</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
                   <tr><td><code>compose.ds006</code></td><td>no-new-privileges 강화 설정 누락</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-compose.ds006">Auto</a></td></tr>
-                  <tr><td><code>compose.ds021</code></td><td>호스트 IPC 네임스페이스를 공유함</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds009</code></td><td>컨테이너가 root로 실행됨</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds021</code></td><td>호스트 IPC 네임스페이스를 공유함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-compose.ds021">Review</a></td></tr>
+                  <tr><td><code>compose.ds009</code></td><td>컨테이너가 root로 실행됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-compose.ds009">Review</a></td></tr>
                   <tr><td><code>compose.dr002</code></td><td>포트가 모든 인터페이스에 게시됨</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-compose.dr002">Auto</a></td></tr>
                   <tr><td><code>compose.ds008</code></td><td>재시작 정책이 설정되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-compose.ds008">Auto</a></td></tr>
-                  <tr><td><code>compose.ds022</code></td><td>컨테이너 파일시스템이 쓰기 가능함</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds023</code></td><td>seccomp 필터가 꺼져 있음</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds024</code></td><td>AppArmor 격리가 꺼져 있음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.ds026</code></td><td>호스트 사용자 네임스페이스를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.ds022</code></td><td>컨테이너 파일시스템이 쓰기 가능함</td><td><span class="sev low">LOW</span></td><td><a href="#fix-compose.ds022">Review</a></td></tr>
+                  <tr><td><code>compose.ds023</code></td><td>seccomp 필터가 꺼져 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-compose.ds023">Review</a></td></tr>
+                  <tr><td><code>compose.ds024</code></td><td>AppArmor 격리가 꺼져 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-compose.ds024">Review</a></td></tr>
+                  <tr><td><code>compose.ds026</code></td><td>호스트 사용자 네임스페이스를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-compose.ds026">Review</a></td></tr>
                   <tr><td><code>compose.ds010</code></td><td>메모리 제한이 설정되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-compose.ds010">Review</a></td></tr>
                   <tr><td><code>compose.ds012</code></td><td>헬스체크가 정의되지 않음</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
                   <tr><td><code>compose.dr004</code></td><td>env_file에서 비밀값을 불러옴</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
@@ -605,11 +605,29 @@
             <p>위 표에서 Fix 열에 <code>Auto</code> 또는 <code>Review</code>가 적힌 항목은 모두 <code>internal/fix</code>에 등록된 fix를 갖고 있고, 아래는 그 fix가 실제로 하는 일입니다. 현재 빌드에서 바로 생성하므로 코드가 하지 않는 일을 적어 둘 수 없습니다. <code>Review</code> 항목 중 대안이 둘 이상인 것은 제공하는 모든 대안을 나열하며, 첫 번째가 <code>fix --all --review</code>를 포함해 어디서나 먼저 선택되는 대안입니다. 항목별 설명 문구는 아직 한국어로 새로 쓰지 않아 원문 그대로 영어로 보여 줍니다.</p>
                       <h3>컨테이너</h3>
           <dl class="fix-actions">
+            <dt id="fix-compose.dr001"><code>compose.dr001</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Delete <code>network_mode: host</code></p>
+              <p class="fix-benefit" lang="en">✓ The container gets its own network namespace again, so it can no longer bind any port on the host or reach services that listen only on the host's loopback.</p>
+              <p class="fix-warning" lang="en">⚠ With host networking gone, whatever port the service listens on is no longer reachable from outside the container until you publish it under <code>ports:</code> — hostveil cannot tell which ports those are. Services that discover devices on the LAN (Home Assistant, Plex/Jellyfin DLNA) also lose that. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
             <dt id="fix-compose.dr002"><code>compose.dr002</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Bind published port to 127.0.0.1</p>
               <p class="fix-benefit" lang="en">✓ Once recreated, the service stops being reachable from the network at all — only processes on this host can reach it, closing off whatever guessing or scanning the open port currently invites.</p>
               <p class="fix-warning" lang="en">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+            <dt id="fix-compose.ds001"><code>compose.ds001</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Delete <code>privileged: true</code></p>
+              <p class="fix-benefit" lang="en">✓ A compromise of this container stops being a compromise of the host: it loses direct access to every device and almost every kernel capability root has.</p>
+              <p class="fix-warning" lang="en">⚠ If the service really does need host devices or kernel access — a VPN client, a hardware monitor, Docker-in-Docker — it will fail to start or quietly lose that function. Check its logs after recreating it, and if it needs one specific capability, grant just that with cap_add. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+            <dt id="fix-compose.ds005"><code>compose.ds005</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Remove SYS_ADMIN from cap_add</p>
+              <p class="fix-benefit" lang="en">✓ Takes away a capability that can be escalated into a container escape, so a compromise of this service stays inside it.</p>
+              <p class="fix-warning" lang="en">⚠ Services add capabilities on purpose: NET_ADMIN for a VPN or a firewall container, SYS_ADMIN for FUSE mounts, SYS_PTRACE for a debugger. If this one needs SYS_ADMIN, it will fail the operation that uses it once recreated. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds006"><code>compose.ds006</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -622,6 +640,21 @@
               <p lang="en">Set restart: unless-stopped</p>
               <p class="fix-benefit" lang="en">✓ The service comes back on its own after a crash, an OOM kill, or a host reboot instead of silently staying down until someone notices.</p>
               <p class="fix-warning" lang="en">⚠ This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+            <dt id="fix-compose.ds009"><code>compose.ds009</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p lang="en">Run app as 1000:1000 — the first regular user, which most images that support a non-root user are built for (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ A process that escapes this container lands on the host as an unprivileged UID instead of root.</p>
+              <p class="fix-warning" lang="en">⚠ Images that start as root to set up and then drop privileges themselves — postgres chowning its data directory, nginx binding port 80 — fail to start when a user is forced on them, and files already on a volume stay owned by whoever wrote them. Check the image's documentation for the UID it expects. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+                </li>
+                <li>
+              <p lang="en">Run app as 65534:65534 — nobody, for a service that writes nothing it needs to own</p>
+              <p class="fix-benefit" lang="en">✓ A process that escapes this container lands on the host as an unprivileged UID instead of root.</p>
+              <p class="fix-warning" lang="en">⚠ Images that start as root to set up and then drop privileges themselves — postgres chowning its data directory, nginx binding port 80 — fail to start when a user is forced on them, and files already on a volume stay owned by whoever wrote them. Check the image's documentation for the UID it expects. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+                </li>
+              </ul>
             </dd>
             <dt id="fix-compose.ds010"><code>compose.ds010</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -643,6 +676,18 @@
                 </li>
               </ul>
             </dd>
+            <dt id="fix-compose.ds016"><code>compose.ds016</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Remove the /var/run/docker.sock volume</p>
+              <p class="fix-benefit" lang="en">✓ The container loses the Docker API, which is root on the host for anything that can reach it — so compromising this service stops meaning compromising the machine.</p>
+              <p class="fix-warning" lang="en">⚠ Portainer, Traefik's Docker provider, Watchtower and similar tools exist to talk to that API and stop working without it. If this is one of them, a socket proxy that allows only the calls it needs is the way to keep it working. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+            <dt id="fix-compose.ds017"><code>compose.ds017</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Add <code>:ro</code> to the /var/run/docker.sock mount</p>
+              <p class="fix-benefit" lang="en">✓ A compromise of this container can still read /var/run/docker.sock but can no longer plant SSH keys, cron jobs or anything else there to persist on the host.</p>
+              <p class="fix-warning" lang="en">⚠ If the service writes under that mount — a backup tool restoring files, a config manager — those writes start failing with a read-only filesystem error. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
             <dt id="fix-compose.ds018"><code>compose.ds018</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Bind published port to 127.0.0.1</p>
@@ -654,6 +699,42 @@
               <p lang="en">Bind published port to 127.0.0.1</p>
               <p class="fix-benefit" lang="en">✓ Once recreated, the service stops being reachable from the network at all — only processes on this host can reach it, closing off whatever guessing or scanning the open port currently invites.</p>
               <p class="fix-warning" lang="en">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+            <dt id="fix-compose.ds020"><code>compose.ds020</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Delete <code>pid: host</code></p>
+              <p class="fix-benefit" lang="en">✓ The container stops seeing every process on the host, along with the credentials their command lines and environments tend to carry, and loses the ability to signal them.</p>
+              <p class="fix-warning" lang="en">⚠ A monitoring agent (node-exporter, netdata, a security scanner) uses this to observe the host; without it, it starts fine and reports only on itself. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+            <dt id="fix-compose.ds021"><code>compose.ds021</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Delete <code>ipc: host</code></p>
+              <p class="fix-benefit" lang="en">✓ The container can no longer read or tamper with shared memory that host processes and other containers use.</p>
+              <p class="fix-warning" lang="en">⚠ If the service shares memory with a process on the host on purpose, that sharing stops; if it only needs to share with one other container, <code>ipc: "service:NAME"</code> is the narrower setting. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+            <dt id="fix-compose.ds022"><code>compose.ds022</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set read_only: true with tmpfs at /tmp and /run</p>
+              <p class="fix-benefit" lang="en">✓ A process that breaks in can no longer replace the container's own binaries or leave tools behind in its filesystem; anything it writes outside the tmpfs mounts fails, and what it writes inside them is gone at the next restart.</p>
+              <p class="fix-warning" lang="en">⚠ Many images write somewhere other than /tmp and /run — a cache directory, a PID file, logs — and fail to start, or fail later, on a read-only root. Watch the logs after recreating it; each path it complains about needs a tmpfs or a volume. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+            <dt id="fix-compose.ds023"><code>compose.ds023</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Remove <code>seccomp:unconfined</code> from security_opt</p>
+              <p class="fix-benefit" lang="en">✓ Docker's default syscall filter applies again, blocking the kernel interfaces a container escape usually goes through.</p>
+              <p class="fix-warning" lang="en">⚠ Someone disabled the filter for a reason — usually one syscall an application needs, such as a browser sandbox or a FUSE mount. That call will now fail with EPERM; if it does, a profile allowing just that syscall is the narrow fix. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+            <dt id="fix-compose.ds024"><code>compose.ds024</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Remove <code>apparmor:unconfined</code> from security_opt</p>
+              <p class="fix-benefit" lang="en">✓ Docker's default AppArmor profile confines the container again, putting back a host-enforced limit on what a compromise inside it can read and execute.</p>
+              <p class="fix-warning" lang="en">⚠ If the service mounts filesystems or writes under /proc or /sys, the default profile will deny it and the service will fail where it does that. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+            </dd>
+            <dt id="fix-compose.ds026"><code>compose.ds026</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Delete <code>userns_mode: host</code></p>
+              <p class="fix-benefit" lang="en">✓ Root inside the container maps to an unprivileged host UID again, so a container escape no longer lands as host root.</p>
+              <p class="fix-warning" lang="en">⚠ Files on bind mounts that were written as host root become unreadable to the remapped root, which can stop a database or anything else that owns its data directory from starting. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
           </dl>
           <h3>SSH</h3>

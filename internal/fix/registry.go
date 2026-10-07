@@ -179,6 +179,19 @@ type Fix struct {
 	Label     string
 	Kind      model.RemediationKind
 	Actions   []Action
+
+	// IndividualOnly keeps the fix out of every batch, the reviewed one
+	// included: it is applied only when an operator picks this finding and
+	// presses its button.
+	//
+	// `fix --all --review` applies the first alternative of every Review fix
+	// without asking, which is defensible for a fix that is Review because it
+	// cannot be checkpointed or because it has two right answers. It is not
+	// defensible for one that is Review because it can break a deployment
+	// that set something on purpose — removing a Docker socket mount stops
+	// Portainer — where the whole point of offering it is that somebody who
+	// knows the service reads the Warning first. A batch is nobody reading.
+	IndividualOnly bool
 }
 
 // EffectiveKind is Kind with the exec floor applied: an Auto fix that runs
@@ -285,8 +298,19 @@ func matchPattern(pattern, id string) bool {
 }
 
 // Validate checks a Fix's shape against its kind: Auto has exactly one
-// action, Review has two or more independent alternatives, and every edit
-// action has a Transform.
+// action, Review has at least one, and every edit action has a Transform.
+//
+// Review used to require two or more independent alternatives, and that rule
+// is what left most of the declined register without a fix: a change with one
+// mechanical remediation that might break a legitimate deployment — deleting
+// `privileged: true`, adding `:ro` — had no shape it was allowed to take. It
+// was neither Auto (unsafe unattended) nor Review (only one alternative), so it
+// became Manual, and the operator was told what to type instead of being
+// offered the button. A risky fix is now offered as a Review with one action,
+// and the condition is that it says what the risk is: a lone Review action
+// must carry a Warning, because the Warning is the whole reason it is not Auto.
+// Review is never part of an unattended `fix --all`, so the operator always
+// reads it before it runs.
 //
 // core.Engine.buildFix runs it on every fix it resolves, so a registration
 // whose shape contradicts its kind demotes the finding to Manual instead of
@@ -308,8 +332,11 @@ func Validate(fx Fix) error {
 			return fmt.Errorf("auto fix %q must have exactly 1 action, has %d", fx.FindingID, len(fx.Actions))
 		}
 	case model.RemediationReview:
-		if len(fx.Actions) < 2 {
-			return fmt.Errorf("review fix %q must have >= 2 alternatives, has %d", fx.FindingID, len(fx.Actions))
+		switch {
+		case len(fx.Actions) == 0:
+			return fmt.Errorf("review fix %q has no actions", fx.FindingID)
+		case len(fx.Actions) == 1 && fx.Actions[0].Warning == "":
+			return fmt.Errorf("review fix %q has a single action with no Warning; a lone Review action is offered because it is risky, so it must say how", fx.FindingID)
 		}
 	default:
 		return fmt.Errorf("fix %q has non-fixable kind %v", fx.FindingID, fx.Kind)

@@ -69,9 +69,9 @@ func TestRootLoginIsReviewWithAlternatives(t *testing.T) {
 }
 
 func TestUnregisteredFindingHasNoFix(t *testing.T) {
-	_, ok, _ := Default().Build(representative("compose.ds001")) // privileged: Manual, no fix
+	_, ok, _ := Default().Build(representative("compose.ds012")) // healthcheck: Manual, no fix
 	if ok {
-		t.Error("ds001 should have no registered fix")
+		t.Error("ds012 should have no registered fix")
 	}
 }
 
@@ -86,7 +86,6 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		"updates.reboot-required": "rebooting is exec with no checkpoint and takes every service down; only the operator knows when that is acceptable",
 		"ports.exposed-datastore": "the remediation is a bind-address edit in a daemon config whose path and syntax the finding does not carry",
 		"ports.exposed-admin":     "same as ports.exposed-datastore",
-		"compose.ds016":           "the only honest remediation deletes a mount that Portainer/Traefik/Watchtower legitimately need; :ro is a placebo",
 		// The checker no longer emits per-CVE findings at all — they were
 		// aggregated into cve.outdated-image / cve.unpatched-image. The pin
 		// stays as a guard: a cve.* glob would make this shape fixable again
@@ -95,17 +94,6 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		// nothing and passed vacuously.
 		"cve.cve-2021-1234":   "Trivy's fixed_version is an OS package version, not an image tag — see issue #473",
 		"cve.unpatched-image": "collects exactly the vulnerabilities with no published fix; there is nothing to update to",
-		"compose.ds009":       "the finding carries no evidence about which UID the image supports, and every candidate is a guess",
-		"compose.ds017":       ":ro is the only computable remediation, and Review requires two alternatives",
-		"compose.ds001":       "removal-shaped: hostveil cannot tell a needless privileged flag from a load-bearing one",
-		"compose.ds005":       "removal-shaped: same, for cap_add",
-		"compose.dr001":       "removing host networking without knowing which ports to publish leaves the service unreachable",
-		"compose.ds020":       "removal-shaped: a monitoring agent legitimately needs the host PID namespace, and hostveil cannot tell that from a cargo-culted one",
-		"compose.ds021":       "removal-shaped: deliberate host-IPC sharing breaks silently when the line is deleted",
-		"compose.ds022":       "read_only: true breaks any image that writes to its own filesystem, and the audit cannot infer the tmpfs mounts that would make it safe",
-		"compose.ds023":       "removing a seccomp exception can break a workload that needs the syscall",
-		"compose.ds024":       "hostveil cannot invent an application-specific AppArmor profile",
-		"compose.ds026":       "changing user namespace mode can invalidate bind-mount ownership",
 		"compose.dr005":       "a two-file change where Action carries one Path, and the real remediation is rotating the leaked secret",
 
 		// The agent.* config-key findings that internal/json5 did NOT

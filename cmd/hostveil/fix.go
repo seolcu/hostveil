@@ -134,7 +134,7 @@ func fixAll(ctx context.Context, yes, review bool) int {
 	engine := newEngine()
 	report := engine.Scan(ctx, nil)
 
-	var auto, reviewed []model.Finding
+	var auto, reviewed, individual []model.Finding
 	for _, f := range report.Findings {
 		// Fixed, not !Active: this is the batch's own question — has hostveil
 		// already applied something here — and for a pending fix it has. It
@@ -147,11 +147,18 @@ func fixAll(ctx context.Context, yes, review bool) int {
 		case model.RemediationAuto:
 			auto = append(auto, f)
 		case model.RemediationReview:
-			if review {
+			switch {
+			case f.IndividualOnly:
+				individual = append(individual, f)
+			case review:
 				reviewed = append(reviewed, f)
 			}
 		}
 	}
+	// Printed whatever happens next, including when there is nothing to
+	// batch: an operator who ran --review and saw "nothing to fix" while
+	// these were standing would reasonably conclude there was no fix.
+	defer printIndividual(individual)
 	if len(auto)+len(reviewed) == 0 {
 		if review {
 			fmt.Println("Nothing Hostveil can fix. Manual findings are explained by `hostveil explain <id>`.")
@@ -216,6 +223,24 @@ func fixAll(ctx context.Context, yes, review bool) int {
 		return 1
 	}
 	return 0
+}
+
+// printIndividual lists the fixes no batch applies, with the command that
+// applies each one. They are offered, and the operator has to ask for them by
+// name, because each can break a service that set something on purpose.
+func printIndividual(fs []model.Finding) {
+	if len(fs) == 0 {
+		return
+	}
+	fmt.Printf("\n%d fixes can break a service that relies on what they change, so no batch applies them.\n", len(fs))
+	fmt.Println("Read each one's warning, then apply it on its own:")
+	for _, f := range fs {
+		cmd := "hostveil fix " + f.ID
+		if f.Service != "" {
+			cmd += " --service " + f.Service
+		}
+		fmt.Printf("  • %s — %s\n", cmd, f.Title)
+	}
 }
 
 func findFinding(r model.Report, id, service string) (model.Finding, bool) {

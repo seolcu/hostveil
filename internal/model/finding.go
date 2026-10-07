@@ -68,6 +68,12 @@ type Finding struct {
 	// screen for yet.
 	FixBenefit    string `json:"fix_benefit,omitempty"`
 	FixSideEffect string `json:"fix_side_effect,omitempty"`
+
+	// IndividualOnly is fix.Fix.IndividualOnly carried to the finding, set by
+	// Engine.classify: the fix exists and is offered, but no batch applies it,
+	// including `fix --all --review`. A UI uses it to say so rather than let a
+	// reviewed batch look as though it skipped something by mistake.
+	IndividualOnly bool `json:"individual_only,omitempty"`
 }
 
 // FindingOption customizes optional fields of a Finding.

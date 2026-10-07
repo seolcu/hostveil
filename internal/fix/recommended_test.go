@@ -38,6 +38,10 @@ var recommendedFirst = map[string]struct{ label, why string }{
 		label: "deny",
 		why:   "the rule table's first safe value; ask is the same door with a prompt on it",
 	},
+	"compose.ds009": {
+		label: "1000:1000",
+		why:   "an image built to run without root is far more often built for the first regular user than for nobody",
+	},
 	"proxy.no-scan-jail": {
 		label: "fail2ban's own default",
 		why:   "a batch applying this with nobody watching should not also be the one picking the longer, harder-to-notice-and-undo ban",
