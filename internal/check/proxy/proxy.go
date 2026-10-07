@@ -42,6 +42,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/check"
@@ -272,9 +273,15 @@ func traefikFinding(p compose.Project, name string, svc compose.Service, where s
 	if p.Name != "" {
 		opts = append(opts, model.WithEvidence("project", p.Name))
 	}
+	kind := model.RemediationReview
+	if !strings.HasPrefix(where, "command: ") || p.File == "" {
+		kind = model.RemediationManual
+		opts = append(opts, model.WithWhyNoFix("Hostveil removes the flag from a Compose `command:` list; this one is set "+
+			"through the environment or outside a Compose file it can edit."))
+	}
 	return model.NewFinding("proxy.traefik-api-insecure",
 		"The reverse proxy's dashboard is served with no authentication",
-		model.SeverityHigh, model.SourceProxy, model.RemediationManual, opts...)
+		model.SeverityHigh, model.SourceProxy, kind, opts...)
 }
 
 // auditNginx reads the nginx configuration and returns findings, the files
@@ -394,9 +401,10 @@ func weakTLSFinding(weak map[string][]string) model.Finding {
 			}
 		}
 	}
+	kind, why := singleFileFix(files, "ssl_protocols")
 	return model.NewFinding("proxy.tls-deprecated-protocols",
 		"The proxy still offers TLS versions nothing should accept",
-		model.SeverityMedium, model.SourceProxy, model.RemediationManual,
+		model.SeverityMedium, model.SourceProxy, kind, model.WithWhyNoFix(why),
 		model.WithDescription(
 			"An `ssl_protocols` line here enables "+strings.Join(protos, ", ")+". "+
 				"RFC 8996 deprecated TLS 1.0 and 1.1 in 2021 and every current browser refuses them, so offering them serves no client that could not already connect — "+
@@ -420,9 +428,13 @@ func directoryListingFinding(nginx, caddy []string) model.Finding {
 		fix = append(fix, "Remove `browse` from `file_server` in "+strings.Join(caddy, ", ")+", then `caddy validate` and `systemctl reload caddy` (or recreate the container).")
 	}
 	files := append(append([]string{}, nginx...), caddy...)
+	kind, why := singleFileFix(nginx, "autoindex")
+	if len(caddy) > 0 {
+		kind, why = model.RemediationManual, "Hostveil edits nginx's autoindex but not Caddy's file_server, which may be served from inside a container it cannot reload."
+	}
 	return model.NewFinding("proxy.directory-listing",
 		"The proxy lists the contents of directories it serves",
-		model.SeverityMedium, model.SourceProxy, model.RemediationManual,
+		model.SeverityMedium, model.SourceProxy, kind, model.WithWhyNoFix(why),
 		model.WithDescription(
 			strings.Join(what, ", and ")+" generate a browsable listing for any directory with no index file. "+
 				"Everything in the directory is then enumerable by anyone who can reach it — backups left beside the site, a stray .env, a database dump, the file somebody meant to delete. "+
@@ -491,4 +503,16 @@ func nginxFiles(root string) ([]string, []string) {
 	}
 	sort.Strings(out)
 	return out, unread
+}
+
+// singleFileFix is the remediation for an nginx finding spread over files.
+// A fix edits one file and then reloads, so a directive in one file is
+// Review and the same directive in several is Manual: editing one of them
+// would leave the others in force while the re-check named only those.
+func singleFileFix(files []string, directive string) (model.RemediationKind, string) {
+	if len(files) == 1 {
+		return model.RemediationReview, ""
+	}
+	return model.RemediationManual, "`" + directive + "` is set in " + strconv.Itoa(len(files)) +
+		" files, and a fix edits one file at a time; changing one would leave the others in force."
 }

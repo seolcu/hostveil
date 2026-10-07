@@ -125,11 +125,6 @@ package fix
 //     original improves nothing. More to the point, by the time the secret
 //     is found it has already leaked into backups and git history, so the
 //     real remediation is rotating it, which hostveil cannot do.
-//   - agent.gateway-exposed — rebinding a gateway to loopback can cut an
-//     operator off from the agent they administer remotely, which is
-//     firewall.inactive's recoverability criterion. The other agent config
-//     keys are fixable now; see "The agent config keys" below for what
-//     changed and for the two that are declined for their own reasons.
 //   - compose.ds012 — the remediation is a healthcheck, and the right one
 //     depends entirely on what the service exposes: an HTTP path, a CLI
 //     probe, a port to open. A static audit cannot learn any of them, and a
@@ -149,42 +144,6 @@ package fix
 //     the filesystem. That is not one action and not one checkpoint, and a
 //     partial migration leaves two accounts each owning half of what was
 //     theirs.
-//   - proxy.traefik-api-insecure — the remediation is deleting one flag, and
-//     it is exec-shaped rather than edit-shaped in the way that matters:
-//     Traefik reads it at start, so the change is not in force until the
-//     container is recreated, and recreating the container that fronts every
-//     other service on the host is not a thing to do while nobody is
-//     watching. The honest fix is also not just a deletion — an operator who
-//     wanted the dashboard still wants it, through a router with
-//     authentication, and hostveil cannot invent which hostname or which
-//     middleware. Deleting the flag alone takes the dashboard away without
-//     saying so.
-//   - proxy.admin-api-exposed — the edit is small and the outcome is not
-//     knowable from here. Moving Caddy's admin API back to loopback, or
-//     turning it off, cuts whatever was calling it: a deploy script, a
-//     configuration manager, a sidecar that reloads certificates. Nothing in
-//     a Caddyfile records who that is, and a proxy that stops accepting its
-//     own updates goes on serving until something needs to change and then
-//     cannot. For a container the setting is as often CADDY_ADMIN in the
-//     Compose file as an option in the Caddyfile, and it is not in force
-//     until the container fronting every other service is recreated — the
-//     proxy.traefik-api-insecure argument again.
-//   - proxy.tls-deprecated-protocols — the line to write is unambiguous and
-//     the file to write it in is not. nginx resolves ssl_protocols by the
-//     usual inheritance: a value in `http` covers every server that does not
-//     set its own, and a server block that sets one wins for that vhost.
-//     hostveil sees which files name the directive, not which block each
-//     occurrence sits in, so it cannot tell an edit that fixes the host from
-//     one that fixes a single vhost and leaves the rest — and the finding
-//     would clear either way. This is persistSysctl's rule about writing the
-//     file that does not decide the value, in a configuration language whose
-//     precedence hostveil does not model.
-//   - proxy.directory-listing — the same shape and a sharper version of it:
-//     `autoindex on` is sometimes deliberate for one location, and the
-//     remediation is to narrow it rather than to remove it. A fix that
-//     deleted the directive would break a directory somebody meant to be
-//     browsable, and one that turned it off at the server level would change
-//     a vhost hostveil never looked inside.
 //   - proxmox.webui-open — the edit is a few lines in /etc/default/pveproxy
 //     and the values are the operator's alone: which network is the
 //     management network is not in any file hostveil reads, and a guess that
@@ -291,20 +250,26 @@ package fix
 // agent.ssrf-private-network each have exactly one correct value, are one
 // mechanical file edit, and cannot sever anyone's access to the host.
 //
-// Two stayed declined, and the JSON5 editor is why the real reasons are now
-// visible rather than hidden behind the shared one:
+// The other three are registered now too, as IndividualOnly Review fixes
+// through the same editor. agent.sandbox-off was declined because nothing
+// here named a mode that turns the sandbox on; OpenClaw's sandbox reference
+// does — non-main and all — and the rule table carries them as its safe
+// values. agent.gateway-exposed and agent.auth-disabled share one edit,
+// gateway.bind to loopback, offered only where the config file sets the bind
+// itself: off the network, no authentication is the single-user default the
+// runtime treats as legitimate, so rebinding answers both. That the edit can
+// cut off a remote operator is what each Warning says. A gateway whose bind
+// comes from a default, an environment variable or its own flags has no line
+// to change, and the checker says so in that finding's WhyNoFix.
 //
-//   - agent.sandbox-off — hostveil knows `off` is wrong and does not know
-//     what turns the sandbox on. No value in this repository, in the rule
-//     table or in the finding's own how-to-fix, names a mode. Writing a
-//     guessed enum into somebody's agent config is the invented mapping the
-//     per-CVE fixes are declined for, arriving by another route, so the rule
-//     carries no safe value and the finding stays Manual.
-//   - agent.auth-disabled — same shape, plus one thing the editor cannot
-//     express. OpenClaw fails closed when gateway.auth.mode is unset, so the
-//     safe posture is an *absent* key, and internal/json5 replaces values
-//     and deliberately neither creates nor deletes them. Setting some other
-//     mode instead would require knowing which modes exist.
+// The four proxy findings moved out of the register the same way
+// (proxy_risky.go). The nginx pair edits the one file the checker names and
+// runs `nginx -t` and a reload through AfterWrite; a directive spread over
+// several files is still Manual, because one edit would leave the others in
+// force, and the checker's WhyNoFix says so. Traefik's flag comes out of a
+// Compose command list, with a recreate now or later. Caddy's admin address
+// goes back to localhost:2019 in a host Caddyfile, validated and reloaded; a
+// container reads it at start, often from CADDY_ADMIN, and stays Manual.
 //
 // Hermes has no danger rules at all, and if it gains some they are not
 // covered by any of this: its bind and auth may come from the config, from
@@ -487,6 +452,7 @@ func Default() *Registry {
 	registerHostRisky(r)
 	registerDockerd(r)
 	registerNetworkRisky(r)
+	registerProxyRisky(r)
 	registerFilePerms(r)
 	registerSSH(r)
 	registerUpdates(r)

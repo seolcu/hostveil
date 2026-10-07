@@ -70,8 +70,9 @@ func TestCaddyAdminOnEveryInterfaceIsFound(t *testing.T) {
 	if f.Evidence["address"] != "0.0.0.0:2019" {
 		t.Errorf("address evidence = %q", f.Evidence["address"])
 	}
-	if f.Remediation != model.RemediationManual {
-		t.Errorf("remediation = %v, want Manual", f.Remediation)
+	// A host Caddyfile is one line and a reload, so it is offered.
+	if f.Remediation != model.RemediationReview {
+		t.Errorf("remediation = %v, want Review", f.Remediation)
 	}
 }
 

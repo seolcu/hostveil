@@ -37,6 +37,41 @@ func registerAgent(r *Registry) {
 	} {
 		r.Register(id, buildAgentConfigKey)
 	}
+	r.Register("agent.sandbox-off", riskyAgentKey(
+		"Sandboxed tools run in a container, so OpenClaw needs Docker on this host and pulls a sandbox image the "+
+			"first time; tools that relied on reaching the host's own files, network or devices stop being able "+
+			"to. \"all\" also moves your own direct chat into the sandbox.",
+		""))
+	gateway := "Once the gateway restarts it listens on loopback only, so every client that reached it over the " +
+		"network — your laptop, a phone app, another machine's integration — loses it until you reach it over " +
+		"an SSH tunnel or a tailnet."
+	r.Register("agent.gateway-exposed", riskyAgentKey(gateway, "a restart of the OpenClaw gateway"))
+	r.Register("agent.auth-disabled", riskyAgentKey(gateway+" Without network exposure, no authentication is the "+
+		"single-user default OpenClaw treats as legitimate, which is what clears this finding.",
+		"a restart of the OpenClaw gateway"))
+}
+
+// riskyAgentKey wraps buildAgentConfigKey for the agent findings that were
+// declined for what the edit can cut off rather than for not knowing what to
+// write. The edit is the same json5 one; what this adds is the Warning, the
+// note that the gateway reads its config at start, and IndividualOnly.
+func riskyAgentKey(warning, takesEffectOn string) Builder {
+	return func(f model.Finding) (Fix, error) {
+		fx, err := buildAgentConfigKey(f)
+		if err != nil {
+			return Fix{}, err
+		}
+		for i := range fx.Actions {
+			fx.Actions[i].Warning = warning + " The edit has a checkpoint and rolls back exactly."
+			fx.Actions[i].TakesEffectOn = takesEffectOn
+		}
+		if fx.Actions[0].Benefit == "" {
+			fx.Actions[0].Benefit = agentBenefit[f.ID]
+		}
+		fx.Kind = model.RemediationReview
+		fx.IndividualOnly = true
+		return fx, nil
+	}
 }
 
 // agentBenefit and agentAltBenefit name what each config-key fix actually
@@ -55,6 +90,17 @@ var agentBenefit = map[string]string{
 	"agent.ssrf-private-network": "Stops the agent's own tool calls reaching internal or private " +
 		"network addresses on the operator's behalf — closes the classic SSRF pivot from \"the agent " +
 		"fetched a URL\" to \"the agent probed the internal network.\"",
+}
+
+func init() {
+	agentBenefit["agent.sandbox-off"] = "Every session except your own direct chat runs its tools in a container, " +
+		"so a prompt injected through a group, a channel or a message from a stranger reaches a sandbox instead " +
+		"of your real filesystem."
+	agentBenefit["agent.gateway-exposed"] = "Nothing on the network can drive the agent any more; only processes " +
+		"on this host, and you through a tunnel, can reach it."
+	agentBenefit["agent.auth-disabled"] = agentBenefit["agent.gateway-exposed"]
+	agentAltBenefit["agent.sandbox-off"] = "Every session, your own included, runs its tools in a container — the " +
+		"strongest setting, at the cost of your direct chat losing the host too."
 }
 
 var agentAltBenefit = map[string]string{

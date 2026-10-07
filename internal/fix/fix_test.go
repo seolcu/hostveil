@@ -99,9 +99,6 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		// JSON5 config deleted the operator's comments — and what is left
 		// here is what that obstacle was hiding, which is different for each
 		// of the three.
-		"agent.gateway-exposed": "rebinding a gateway to loopback can cut the operator off from the agent they administer remotely",
-		"agent.auth-disabled":   "nothing in hostveil knows which auth mode to write, and the safe posture is an absent key, which the editor deliberately cannot produce",
-		"agent.sandbox-off":     "hostveil knows `off` is wrong and does not know what turns the sandbox on; writing a guessed enum is the invented mapping the CVE fixes are declined for",
 
 		// sysctl.* was on this list and is not any more. The reason it gave
 		// — that the drop-in does not exist and an edit action cannot create

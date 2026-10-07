@@ -341,6 +341,26 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 	// rides in the evidence rather than in the level.
 	sev := model.SeverityHigh
 
+	// The bind can be rewritten only where hostveil can edit it: a JSON5
+	// config that sets the key itself, with no environment override on top.
+	// Anywhere else — a default, an env var, a listener seen but not
+	// configured — there is no line to change, and the finding says so.
+	rebind := []model.FindingOption{}
+	rebindable := s.cfgKnown && s.in.rt.Format == FormatJSON5 && bindExposed &&
+		lookupString(s.cfg, gw.BindKey) == bind && len(gw.LoopbackOnly) > 0
+	if rebindable {
+		rebind = append(rebind,
+			model.WithEvidence("config", s.in.path(s.in.rt.Config)),
+			model.WithEvidence("root", s.in.user.Home),
+			model.WithEvidence("set", assignment(gw.BindKey, gw.LoopbackOnly[0])))
+	} else {
+		rebind = append(rebind, model.WithWhyNoFix("Hostveil can rebind a gateway only in a config file that sets the bind itself; this one's address comes from a default, an environment variable or the process's own flags."))
+	}
+	gatewayKind := model.RemediationManual
+	if rebindable {
+		gatewayKind = model.RemediationReview
+	}
+
 	opts := []model.FindingOption{
 		model.WithService(s.in.subject()),
 		model.WithDescription("The " + s.in.rt.Display + " gateway is bound to an address reachable from the network. The gateway drives an agent that can read files and run commands, so anyone who can reach this port — and get past whatever authentication is configured — is operating the agent on this host."),
@@ -357,9 +377,10 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 			opts = append(opts, model.WithEvidence("process", listener.Proc))
 		}
 	}
+	opts = append(opts, rebind...)
 	out := []model.Finding{model.NewFinding("agent.gateway-exposed",
 		s.in.rt.Display+" gateway is reachable from the network",
-		sev, model.SourceAgent, model.RemediationManual, opts...)}
+		sev, model.SourceAgent, gatewayKind, opts...)}
 
 	// Authentication is only judged once the gateway is actually exposed.
 	// Every one of these runtimes treats "no auth on loopback" as a
@@ -380,14 +401,15 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 			}
 			out = append(out, model.NewFinding("agent.auth-disabled",
 				s.in.rt.Display+" gateway accepts requests with no authentication",
-				model.SeverityHigh, model.SourceAgent, model.RemediationManual,
-				model.WithService(s.in.subject()),
-				model.WithDescription("The gateway is reachable from the network and requires no credential to talk to. Anyone who can reach the port can drive the agent: read the files it can read, run the commands it can run, and use the API keys it holds."),
-				model.WithHowToFix("Set the gateway's authentication mode to a token or password with a long random value, and bind the gateway to loopback as well — authentication is the second line, not the first."),
-				model.WithEvidence("setting", gw.AuthKey),
-				model.WithEvidence("value", shown),
-				model.WithEvidence("port", strconv.Itoa(port)),
-			))
+				model.SeverityHigh, model.SourceAgent, gatewayKind,
+				append(rebind,
+					model.WithService(s.in.subject()),
+					model.WithDescription("The gateway is reachable from the network and requires no credential to talk to. Anyone who can reach the port can drive the agent: read the files it can read, run the commands it can run, and use the API keys it holds."),
+					model.WithHowToFix("Set the gateway's authentication mode to a token or password with a long random value, and bind the gateway to loopback as well — authentication is the second line, not the first."),
+					model.WithEvidence("setting", gw.AuthKey),
+					model.WithEvidence("value", shown),
+					model.WithEvidence("port", strconv.Itoa(port)),
+				)...))
 		}
 	}
 	return out
