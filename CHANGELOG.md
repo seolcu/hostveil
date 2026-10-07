@@ -2,6 +2,36 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.33.1](https://github.com/seolcu/hostveil/compare/v3.33.0...v3.33.1) (2026-10-07)
+
+3.33.0's fixes that restart what they edit had only ever run against a fake
+command runner. A new end-to-end job now applies them on a real host, with
+a real Docker, systemd and nginx, and it found three ways they could leave a
+host in a state the fix did not describe. All three are fixed.
+
+### Bug Fixes
+
+* **fix:** rolling back `dockerd.live-restore` left the daemon running with
+  live-restore on. Docker's reload applies the keys `daemon.json` has and
+  leaves the rest as they are, so reloading after the key was removed changed
+  nothing, while the rollback reported success. The rollback now restarts
+  Docker. live-restore is still on at that moment, so containers keep running
+  through it.
+* **fix:** a fix whose restart failed could leave Docker down. hostveil put
+  the original `daemon.json` back and restarted again, but Docker's own
+  automatic restarts had already used up systemd's start limit, so the retry
+  was refused. The same limit also failed a correct fix applied soon after
+  another. hostveil now clears a unit's failed state before every restart it
+  runs.
+* **fix:** the nginx and Caddy fixes failed, and were undone, on a host where
+  the service is installed but stopped. They now reload a running service and
+  leave a stopped one stopped, with its configuration fixed for when it
+  starts.
+* **site:** the checks page's "what each fix actually does" section labelled
+  25 fixes Auto, among them most of the SSH ones, while the table above it
+  and the tool itself showed Review. The section and the table now come from
+  the same source.
+
 ## [3.33.0](https://github.com/seolcu/hostveil/compare/v3.32.0...v3.33.0) (2026-10-07)
 
 Most findings that used to stop at "here is what to type" now have a

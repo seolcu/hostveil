@@ -133,6 +133,23 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.33.1"><a href="https://github.com/seolcu/hostveil/compare/v3.33.0...v3.33.1">3.33.1</a> <span class="changelog-date">2026-10-07</span></h2>
+          <p>3.33.0's fixes that restart what they edit had only ever run against a fake command runner. A new end-to-end job now applies them on a real host, with a real Docker, systemd and nginx, and it found three ways they could leave a host in a state the fix did not describe. All three are fixed.</p>
+          <h3>Bug Fixes</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>fix:</strong> rolling back <code>dockerd.live-restore</code> left the daemon running with live-restore on. Docker's reload applies the keys <code>daemon.json</code> has and leaves the rest as they are, so reloading after the key was removed changed nothing, while the rollback reported success. The rollback now restarts Docker. live-restore is still on at that moment, so containers keep running through it.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> a fix whose restart failed could leave Docker down. hostveil put the original <code>daemon.json</code> back and restarted again, but Docker's own automatic restarts had already used up systemd's start limit, so the retry was refused. The same limit also failed a correct fix applied soon after another. hostveil now clears a unit's failed state before every restart it runs.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> the nginx and Caddy fixes failed, and were undone, on a host where the service is installed but stopped. They now reload a running service and leave a stopped one stopped, with its configuration fixed for when it starts.</p>
+            </li>
+            <li>
+              <p><strong>site:</strong> the checks page's "what each fix actually does" section labelled 25 fixes Auto, among them most of the SSH ones, while the table above it and the tool itself showed Review. The section and the table now come from the same source.</p>
+            </li>
+          </ul>
           <h2 id="v3.33.0"><a href="https://github.com/seolcu/hostveil/compare/v3.32.0...v3.33.0">3.33.0</a> <span class="changelog-date">2026-10-07</span></h2>
           <p>Most findings that used to stop at "here is what to type" now have a button. A fix that can break a service which set something on purpose is no longer declined to Manual. It is offered as Review, with a warning saying what it can break, and only ever applied when you pick it: no batch applies it, <code>fix --all --review</code> included. Findings that carry a fix went from 128 to 175 of 183. The 8 left are ones with no action hostveil could take for you: an unpatched CVE, a leaked secret to rotate, a second factor to enrol.</p>
           <h3>Features</h3>
