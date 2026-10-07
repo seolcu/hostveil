@@ -78,6 +78,11 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		return nil, err
 	}
 
+	// Read once: whether ufw already refuses a port decides whether a
+	// datastore listening on it is reachable at all, and whether hostveil
+	// can close it with a rule.
+	ufw := firewall.ReadUFW(ctx, env.Runner)
+
 	var findings []model.Finding
 	generic := map[int]platform.Listener{} // exposed, non-sensitive; deduped by port
 	seenDS := map[int]bool{}               // avoid duplicate findings for v4+v6 of same port
@@ -92,7 +97,10 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 				continue
 			}
 			seenDS[l.Port] = true
-			findings = append(findings, exposedFinding(l, "ports.exposed-datastore",
+			if ufw.Blocks(l.Port) && l.Proc != dockerProxy {
+				continue
+			}
+			findings = append(findings, exposedFinding(l, ufw, "ports.exposed-datastore",
 				"Datastore reachable from the network: "+datastorePorts[l.Port],
 				"A database listening on a non-loopback address is reachable from every network this host is on. Datastores rarely need to accept remote connections directly; exposing one invites credential-stuffing and data theft.",
 				model.SeverityHigh))
@@ -101,7 +109,10 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 				continue
 			}
 			seenDS[l.Port] = true
-			findings = append(findings, exposedFinding(l, "ports.exposed-admin",
+			if ufw.Blocks(l.Port) && l.Proc != dockerProxy {
+				continue
+			}
+			findings = append(findings, exposedFinding(l, ufw, "ports.exposed-admin",
 				"Admin panel reachable from the network: "+adminPorts[l.Port],
 				"A management UI listening on a non-loopback address lets anyone who can reach this host attempt to log in and control your services. Bind it to localhost and reach it over an SSH tunnel or VPN.",
 				model.SeverityHigh))
@@ -171,7 +182,12 @@ func regexpLine(text, expression string) bool {
 	return re.MatchString(text)
 }
 
-func exposedFinding(l platform.Listener, id, title, desc string, sev model.Severity) model.Finding {
+// dockerProxy is the process Docker publishes a port through. Its traffic is
+// accepted by Docker's own iptables rules before ufw sees it, so a ufw rule
+// neither shields it nor closes it.
+const dockerProxy = "docker-proxy"
+
+func exposedFinding(l platform.Listener, ufw firewall.UFWView, id, title, desc string, sev model.Severity) model.Finding {
 	opts := []model.FindingOption{
 		// Attribute the finding to this specific listener so two different
 		// exposed datastores (e.g. Redis and Postgres) get distinct Keys and
@@ -185,7 +201,21 @@ func exposedFinding(l platform.Listener, id, title, desc string, sev model.Sever
 	if l.Proc != "" {
 		opts = append(opts, model.WithEvidence("process", l.Proc))
 	}
-	return model.NewFinding(id, title, sev, model.SourcePorts, model.RemediationReview, opts...)
+	// The remediation that fits every product on the list is a firewall
+	// rule: binding to loopback is a different file and syntax for each.
+	// It needs ufw running, and it does nothing for a port Docker publishes.
+	kind := model.RemediationReview
+	switch {
+	case l.Proc == dockerProxy:
+		kind = model.RemediationManual
+		opts = append(opts, model.WithWhyNoFix("Docker publishes this port and accepts its traffic before ufw sees it; bind it to 127.0.0.1 in the Compose file instead (compose.ds018/ds019)."))
+	case !ufw.Active:
+		kind = model.RemediationManual
+		opts = append(opts, model.WithWhyNoFix("Hostveil closes this with a ufw rule, and ufw is not running here; enable it first (firewall.inactive), or bind the service to 127.0.0.1 in its own config."))
+	default:
+		opts = append(opts, model.WithMetadata("ufw_rules", strconv.FormatBool(ufw.HasRules)))
+	}
+	return model.NewFinding(id, title, sev, model.SourcePorts, kind, opts...)
 }
 
 // listenerSubject identifies a listener for the finding's Service field:

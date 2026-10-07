@@ -90,14 +90,6 @@ package fix
 // TestKnownUnregisteredFindings pins each one, so registering a fix means
 // deleting an assertion and arguing with the reason.
 //
-//   - ports.exposed-datastore, ports.exposed-admin — these describe
-//     natively-installed daemons, not containers. Binding one to loopback
-//     means editing redis.conf's `bind`, or postgresql.conf's
-//     `listen_addresses` plus a matching pg_hba.conf rule, or mongod.conf's
-//     `net.bindIp` — a different file, syntax, and distro-dependent path
-//     per datastore, none of which the finding carries. Guessing a config
-//     path means writing a transformed file somewhere that is not the live
-//     config. The container-managed subset is already covered by ds018/019.
 //   - cve.<vulnerability-id> — no longer emitted at all, and must never
 //     become fixable if it returns. Trivy's fixed_version is the OS package
 //     version inside the image (`3.0.11-1~deb12u2`), not an image tag.
@@ -143,10 +135,6 @@ package fix
 //   - proxmox.root-no-tfa — enrolling a second factor is a person holding a
 //     device, and writing tfa.cfg on their behalf would be hostveil inventing
 //     a credential.
-//   - kube.anonymous-auth and kube.secrets-unencrypted — both are a change
-//     to how the control plane starts, in whichever layer set them, and
-//     both need a restart of the node every workload runs on; encryption
-//     also needs existing Secrets rewritten afterwards.
 //   - accounts.sudo-nopasswd — the blocker is not the lockout risk alone;
 //     accounts.emptypassword carries a comparable one and is registered
 //     below, disclosed through a Warning instead of declined. What actually
@@ -260,6 +248,16 @@ package fix
 // source file rewritten to the no-subscription repository, same path on
 // download.proxmox.com and signed by the same key (proxmox.go). Two
 // enterprise files, PVE's and Ceph's, are still two edits and stay Manual.
+//
+// The last four went the same way. ports.exposed-datastore and
+// ports.exposed-admin were declined because binding each product to loopback
+// is a different file and syntax per product; a ufw rule placed ahead of the
+// others closes any of them, and the ports checker now reads ufw's rules the
+// way ufw applies them, so a port ufw refuses is not reported reachable. A
+// port Docker publishes, or a host without ufw running, stays Manual with the
+// reason. kube.anonymous-auth and kube.secrets-unencrypted write a drop-in in
+// config.yaml.d — read after config.yaml, outranked only by the command line,
+// which the checker declines for — and restart k3s through AfterWrite.
 //
 // Hermes has no danger rules at all, and if it gains some they are not
 // covered by any of this: its bind and auth may come from the config, from
@@ -444,6 +442,7 @@ func Default() *Registry {
 	registerNetworkRisky(r)
 	registerProxyRisky(r)
 	registerProxmox(r)
+	registerKube(r)
 	registerFilePerms(r)
 	registerSSH(r)
 	registerUpdates(r)

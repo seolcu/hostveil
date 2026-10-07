@@ -111,6 +111,10 @@ type k3sConfig struct {
 
 	secretsEncryption     bool
 	secretsEncryptionFrom string
+
+	// cmdlineFrom names where the command line was read: the systemd unit
+	// or the openrc script, which is also how k3s is restarted.
+	cmdlineFrom string
 }
 
 func (c *Checker) auditK3s(ctx context.Context, env platform.Env, cov *check.Coverage) []model.Finding {
@@ -144,12 +148,15 @@ func (c *Checker) auditK3s(ctx context.Context, env platform.Env, cov *check.Cov
 		}
 	}
 	if f := anonymousFinding("k3s", cfg.apiserverArgs, cfg.kubeletArgs, cfg.argsFrom); f != nil {
+		k3sFixable(f, cfg, "kube-apiserver-arg", "kubelet-arg")
 		out = append(out, *f)
 	}
 	if !cfg.secretsEncryption && cfg.role != "" {
 		// Only judged when the command line was read: the flag can be set
 		// there alone, and "not in any file" is not "not set".
-		out = append(out, secretsFinding())
+		f := secretsFinding()
+		k3sFixable(&f, cfg, "secrets-encryption")
+		out = append(out, f)
 	}
 	return out
 }
@@ -206,6 +213,7 @@ func (c *Checker) k3sEffective(ctx context.Context, env platform.Env) (k3sConfig
 	if gap != "" {
 		gaps = append(gaps, gap)
 	} else {
+		cfg.cmdlineFrom = from
 		cfg.applyFlags(argv, from)
 	}
 	return cfg, gaps
@@ -417,6 +425,7 @@ func (c *Checker) auditK0s(_ context.Context, _ platform.Env, cov *check.Coverag
 		args = append(args, k+"="+scalar(v))
 	}
 	if f := anonymousFinding("k0s", args, nil, map[string]string{"kube-apiserver-arg": k0sConfig + " (spec.api.extraArgs)"}); f != nil {
+		f.WhyNoFix = "k0s takes this from spec.api.extraArgs in its own cluster config, which Hostveil does not edit."
 		out = append(out, *f)
 	}
 	return out
@@ -520,6 +529,43 @@ func anonymousFinding(dist string, apiserver, kubelet []string, from map[string]
 	return &f
 }
 
+// k3sDropInDir is where a hostveil drop-in goes: read after config.yaml and
+// in name order with the others, so a 99- name is applied last among files.
+// Only the command line outranks it.
+const k3sDropInDir = k3sEtc + "/config.yaml.d"
+
+// k3sFixable turns a k3s finding Review when a file hostveil writes would
+// decide the setting, and records how to restart k3s. When the command line
+// sets one of keys, the command line wins over every file, so a drop-in would
+// change nothing and the finding says so instead.
+func k3sFixable(f *model.Finding, cfg k3sConfig, keys ...string) {
+	for _, k := range keys {
+		from := cfg.argsFrom[k]
+		if k == "secrets-encryption" {
+			from = cfg.secretsEncryptionFrom
+		}
+		if from == "the k3s.service command line" || from == k3sOpenRC {
+			f.Remediation = model.RemediationManual
+			f.WhyNoFix = "This is set on the k3s command line (" + from + "), which wins over every config file, so a file Hostveil writes would change nothing."
+			return
+		}
+	}
+	if cfg.role == "" {
+		f.Remediation = model.RemediationManual
+		f.WhyNoFix = "Hostveil could not read how k3s is started, so it cannot tell whether a config file it writes would be overridden."
+		return
+	}
+	f.Remediation = model.RemediationReview
+	if f.Metadata == nil {
+		f.Metadata = map[string]string{}
+	}
+	f.Metadata["k3s_dropin_dir"] = k3sDropInDir
+	f.Metadata["k3s_restart"] = "systemd"
+	if cfg.cmdlineFrom == k3sOpenRC {
+		f.Metadata["k3s_restart"] = "openrc"
+	}
+}
+
 func secretsFinding() model.Finding {
 	return model.NewFinding("kube.secrets-unencrypted",
 		"Kubernetes Secrets are stored unencrypted",
@@ -531,14 +577,19 @@ func secretsFinding() model.Finding {
 
 func strconvOct(m os.FileMode) string { return strconv.FormatUint(uint64(m.Perm()), 8) }
 
+// hasArg reports whether the effective value of a component flag is value.
+// A flag given twice takes its last value — that is how the component parses
+// it, and it is how a k3s `+` drop-in turns an earlier setting off — so the
+// last occurrence decides, not any occurrence.
 func hasArg(args []string, name, value string) bool {
+	found := false
 	for _, a := range args {
 		k, v, _ := strings.Cut(strings.TrimPrefix(a, "--"), "=")
-		if k == name && strings.EqualFold(strings.TrimSpace(v), value) {
-			return true
+		if k == name {
+			found = strings.EqualFold(strings.TrimSpace(v), value)
 		}
 	}
-	return false
+	return found
 }
 
 func merge(have, add []string, appendTo bool) []string {

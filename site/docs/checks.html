@@ -150,7 +150,7 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">171</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">96</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">175</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">100</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">How the 183 findings resolve</p>
               <div class="ledger-bar">
@@ -160,13 +160,13 @@
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:52%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">96</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:55%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">100</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:7%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">12</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:4%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">8</span>
               </div>
             </div>
 
@@ -340,8 +340,8 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>ports.exposed-datastore</code></td><td>A datastore (Postgres, MySQL, Redis, MongoDB, …) is reachable from the network</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>ports.exposed-admin</code></td><td>An admin/management UI (e.g. Portainer) is reachable from the network</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>ports.exposed-datastore</code></td><td>A datastore (Postgres, MySQL, Redis, MongoDB, …) is reachable from the network</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-ports.exposed-datastore">Review</a></td></tr>
+                  <tr><td><code>ports.exposed-admin</code></td><td>An admin/management UI (e.g. Portainer) is reachable from the network</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-ports.exposed-admin">Review</a></td></tr>
                   <tr><td><code>ports.exposed</code></td><td>Other services listen on a non-loopback address and no host firewall is active</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
                   <tr><td><code>ports.redis-bind</code></td><td>Redis is configured to listen beyond loopback</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ports.redis-bind">Review</a></td></tr>
                   <tr><td><code>ports.redis-protected-mode</code></td><td>Redis protected mode is disabled</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-ports.redis-protected-mode">Auto</a></td></tr>
@@ -412,8 +412,8 @@
                 <tbody>
                   <tr><td><code>kube.kubeconfig-readable</code></td><td>The cluster-admin kubeconfig (<code>/etc/rancher/k3s/k3s.yaml</code>, or k0s&rsquo;s <code>admin.conf</code>) is readable by every account &mdash; which makes every local user root, through a privileged pod. Group-readable is <code>write-kubeconfig-group</code> doing its job and is not flagged</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-kube.kubeconfig-readable">Review</a></td></tr>
                   <tr><td><code>kube.token-readable</code></td><td>k3s&rsquo;s <code>token</code> or <code>node-token</code>, which lets a machine join the cluster, is readable by every account</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-kube.token-readable">Review</a></td></tr>
-                  <tr><td><code>kube.anonymous-auth</code></td><td><code>anonymous-auth=true</code> is set explicitly for the API server or the kubelet. Both distributions default it off; anonymous requests are still authorised by RBAC, which is why it is not higher</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>kube.secrets-unencrypted</code></td><td>k3s stores Secrets unencrypted in its datastore &mdash; the default, and the first item in the k3s CIS hardening guide</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>kube.anonymous-auth</code></td><td><code>anonymous-auth=true</code> is set explicitly for the API server or the kubelet. Both distributions default it off; anonymous requests are still authorised by RBAC, which is why it is not higher</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-kube.anonymous-auth">Review</a></td></tr>
+                  <tr><td><code>kube.secrets-unencrypted</code></td><td>k3s stores Secrets unencrypted in its datastore &mdash; the default, and the first item in the k3s CIS hardening guide</td><td><span class="sev low">LOW</span></td><td><a href="#fix-kube.secrets-unencrypted">Review</a></td></tr>
                 </tbody>
               </table>
             </div>
@@ -1008,6 +1008,18 @@
           </dl>
           <h3>Ports</h3>
           <dl class="fix-actions">
+            <dt id="fix-ports.exposed-admin"><code>ports.exposed-admin</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Deny 6379/tcp ahead of every other ufw rule</p>
+              <p class="fix-benefit" lang="en">✓ app stops being reachable from any other machine, while everything on this host keeps reaching it as before.</p>
+              <p class="fix-warning" lang="en">⚠ Every remote client of app is cut off — an application server on another machine, a replica, a backup job, your own desktop client — including ones a subnet allow rule used to let in. There is no checkpoint: undo it with <code>ufw delete deny 6379/tcp</code>. Binding the service to 127.0.0.1 in its own configuration is the cleaner long-term fix.</p>
+            </dd>
+            <dt id="fix-ports.exposed-datastore"><code>ports.exposed-datastore</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Deny 6379/tcp ahead of every other ufw rule</p>
+              <p class="fix-benefit" lang="en">✓ app stops being reachable from any other machine, while everything on this host keeps reaching it as before.</p>
+              <p class="fix-warning" lang="en">⚠ Every remote client of app is cut off — an application server on another machine, a replica, a backup job, your own desktop client — including ones a subnet allow rule used to let in. There is no checkpoint: undo it with <code>ufw delete deny 6379/tcp</code>. Binding the service to 127.0.0.1 in its own configuration is the cleaner long-term fix.</p>
+            </dd>
             <dt id="fix-ports.redis-bind"><code>ports.redis-bind</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Bind Redis to loopback</p>
@@ -1750,11 +1762,23 @@
           </dl>
           <h3>Kubernetes</h3>
           <dl class="fix-actions">
+            <dt id="fix-kube.anonymous-auth"><code>kube.anonymous-auth</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Write /etc/rancher/k3s/config.yaml.d/99-hostveil-anonymous-auth.yaml and restart k3s</p>
+              <p class="fix-benefit" lang="en">✓ Requests with no credential are refused instead of reaching RBAC as system:anonymous, so a stray binding for anonymous users stops being the whole cluster.</p>
+              <p class="fix-warning" lang="en">⚠ Anything that talks to the API server or the kubelet without credentials — a monitoring scrape, a health check against a path other than /livez, /readyz or /healthz — starts getting 401s. The drop-in is a new file with a checkpoint; rolling it back deletes it and restarts k3s. Restarting k3s makes the API unavailable for the seconds it takes to start; running pods keep running. If k3s will not start with the new file, Hostveil removes it and starts k3s again.</p>
+            </dd>
             <dt id="fix-kube.kubeconfig-readable"><code>kube.kubeconfig-readable</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">chmod /var/run/docker.sock to 0600</p>
               <p class="fix-benefit" lang="en">✓ Local accounts and services lose the cluster-admin credentials, and with them the privileged pod that is root on this host.</p>
               <p class="fix-warning" lang="en">⚠ kubectl stops working for anyone who used this file without sudo — give them a kubeconfig of their own. k3s writes this file again at every start from its write-kubeconfig-mode setting, so this lasts until k3s restarts. Make it permanent by setting <code>write-kubeconfig-mode: "0600"</code> where the current mode is set, command: --api.insecure=true. The old mode is checkpointed.</p>
+            </dd>
+            <dt id="fix-kube.secrets-unencrypted"><code>kube.secrets-unencrypted</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Write /etc/rancher/k3s/config.yaml.d/99-hostveil-secrets-encryption.yaml and restart k3s</p>
+              <p class="fix-benefit" lang="en">✓ Secrets written from now on are encrypted in the datastore, so a copied /var/lib/rancher/k3s or a shipped snapshot no longer hands over every password the cluster holds.</p>
+              <p class="fix-warning" lang="en">⚠ Secrets written before this stay unencrypted until they are rewritten: run <code>k3s secrets-encrypt rotate-keys</code> once k3s is back. Do not roll this back once Secrets have been written encrypted — switching encryption off that way leaves them unreadable; use <code>k3s secrets-encrypt disable</code> and re-encrypt instead. The drop-in is a new file with a checkpoint. Restarting k3s makes the API unavailable for the seconds it takes to start; running pods keep running. If k3s will not start with the new file, Hostveil removes it and starts k3s again.</p>
             </dd>
             <dt id="fix-kube.token-readable"><code>kube.token-readable</code> <span class="fix-kind review">Review</span></dt>
             <dd>
