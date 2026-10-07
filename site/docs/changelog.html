@@ -133,6 +133,47 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.33.0"><a href="https://github.com/seolcu/hostveil/compare/v3.32.0...v3.33.0">3.33.0</a> <span class="changelog-date">2026-10-07</span></h2>
+          <p>Most findings that used to stop at "here is what to type" now have a button. A fix that can break a service which set something on purpose is no longer declined to Manual. It is offered as Review, with a warning saying what it can break, and only ever applied when you pick it: no batch applies it, <code>fix --all --review</code> included. Findings that carry a fix went from 128 to 175 of 183. The 8 left are ones with no action hostveil could take for you: an unpatched CVE, a leaked secret to rotate, a second factor to enrol.</p>
+          <h3>Features</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>fix:</strong> a Review fix may have a single action, as long as it carries a warning, and a fix may be marked individual-only so no batch applies it. <code>fix --all</code> lists those separately, with the command that applies each one on its own.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> an edit can now restart what reads it (<code>AfterWrite</code>). If the restart fails, hostveil puts the original file back and restarts again, so a daemon that refuses the new config comes back under the old one instead of staying down. A rollback restarts it too. Every preview lists the commands that will run after the write.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> container findings: remove <code>privileged</code>, a dangerous capability, host network, PID, IPC and user namespace, <code>seccomp:unconfined</code>, <code>apparmor:unconfined</code> and a Docker socket mount; mount a sensitive path read-only; a read-only root filesystem with tmpfs for <code>/tmp</code> and <code>/run</code>; run as a non-root user. The compose editor gained removals, kept to a one-line diff where it can prove the result.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> the eight systemd protections that can break a service (<code>PrivateTmp</code>, <code>ProtectHome</code>, <code>ProtectSystem</code>, <code>PrivateDevices</code>, <code>ProtectKernelTunables</code>, <code>ProtectControlGroups</code>, <code>RestrictNamespaces</code>, <code>MemoryDenyWriteExecute</code>), each as the same reversible drop-in.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> schedule the reboot a pending kernel update needs (<code>shutdown -r +1</code>, cancellable); lock and expire a second UID-0 account, or delete it; expire a password stored under a weak hash. The account checker no longer reports a UID-0 account that is both locked and expired.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> all seven Docker daemon findings, restarting Docker as part of the fix: <code>no-new-privileges</code>, <code>userns-remap</code> and <code>live-restore</code> in <code>daemon.json</code> (edited one key at a time, formatting kept), the TCP API taken off <code>hosts</code> or the unit's <code>ExecStart</code>, client certificates required, the socket mode, and docker-group membership.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> the ufw-docker rules for published ports that bypass ufw; owner-only env_files; k3s's join token and admin kubeconfig.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> OpenClaw's sandbox (<code>non-main</code> or <code>all</code>, the values its own documentation gives) and a gateway bound off loopback; nginx's old TLS versions and directory listing, checked with <code>nginx -t</code> before the reload; Traefik's insecure dashboard; Caddy's admin API.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> give a system file back to root. Checkpoints now record the previous owner, so a rollback restores it. Only the owning user is changed; the group is left alone because it differs by distribution.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> switch an unsubscribed Proxmox host's enterprise repository to the no-subscription one, rewriting the one file in place.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> close an exposed datastore or admin panel with a ufw rule ahead of the others. The ports checker now reads ufw's rules the way ufw applies them, and no longer reports a port ufw refuses as reachable.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> k3s's anonymous auth and Secrets encryption, through a <code>config.yaml.d</code> drop-in and a k3s restart. Anonymous auth now counts as on only when the last value given is <code>true</code>.</p>
+            </li>
+          </ul>
           <h2 id="v3.32.0"><a href="https://github.com/seolcu/hostveil/compare/v3.31.0...v3.32.0">3.32.0</a> <span class="changelog-date">2026-10-01</span></h2>
           <p>hostveil can now look at several hosts at once. <code>hostveil fleet</code> scans each one over SSH you already use and lays the scores side by side. That is the third "Under exploration" roadmap item to ship.</p>
           <h3>Features</h3>
