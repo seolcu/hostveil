@@ -25,7 +25,13 @@ func registerProxyRisky(r *Registry) {
 // nginxReload validates the whole live configuration, which is the only way
 // to validate an included fragment, and then reloads. A failure at either
 // step brings the original file back.
-var nginxReload = [][]string{{"nginx", "-t"}, {"systemctl", "reload", "nginx"}}
+//
+// try-reload-or-restart rather than reload: on a host where nginx is installed
+// and stopped, reload fails and the fix would be undone for nothing, while
+// reload-or-restart would start a service somebody stopped. This reloads a
+// running nginx and leaves a stopped one stopped, with the file fixed for when
+// it starts.
+var nginxReload = [][]string{{"nginx", "-t"}, {"systemctl", "try-reload-or-restart", "nginx"}}
 
 const proxyRevertNote = "If the proxy refuses the new configuration, Hostveil puts the original file back and reloads again. " +
 	"The edit has a checkpoint and rolls back exactly."
@@ -164,7 +170,7 @@ func buildCaddyAdminLoopback(f model.Finding) (Fix, error) {
 			},
 			AfterWrite: [][]string{
 				{"caddy", "validate", "--config", p, "--adapter", "caddyfile"},
-				{"systemctl", "reload", "caddy"},
+				{"systemctl", "try-reload-or-restart", "caddy"},
 			},
 		}}}, nil
 }

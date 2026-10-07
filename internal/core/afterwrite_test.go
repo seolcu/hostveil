@@ -113,7 +113,15 @@ func TestAFailedRestartPutsTheOriginalBack(t *testing.T) {
 	if got, _ := os.ReadFile(path); string(got) != "old\n" {
 		t.Errorf("file = %q; the original must be restored when the restart fails", got)
 	}
-	if n := len(runner.calls()); n != 2 {
+	// Two restarts: the one that failed under the edit, and the retry under
+	// the restored file (with systemd's failed state cleared between them).
+	restarts := 0
+	for _, c := range runner.calls() {
+		if c == "systemctl restart docker" {
+			restarts++
+		}
+	}
+	if restarts != 2 {
 		t.Errorf("ran %v; the restart must be retried under the restored file", runner.calls())
 	}
 	if !strings.Contains(err.Error(), "may be down") {
@@ -213,3 +221,56 @@ func TestARollbackRunsTheDeclaredAfterRestore(t *testing.T) {
 		t.Errorf("ran %v, want the reload on apply and the restart on rollback", got)
 	}
 }
+
+// A failed restart counts against systemd's start limit, and a crash-looping
+// daemon reaches it in seconds; past it the retry under the restored file is
+// refused. The retry must clear the failed state first.
+func TestTheRetryClearsSystemdsFailedState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "daemon.json")
+	if err := os.WriteFile(path, []byte("old\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runner := &resetAwareRunner{}
+	reg := fix.NewRegistry()
+	reg.Register("dockerd.test", func(model.Finding) (fix.Fix, error) {
+		return fix.Fix{Label: "x", Kind: model.RemediationReview, Actions: []fix.Action{{
+			Label: "x", Benefit: "b", Warning: "w", Kind: fix.ActionEdit, Path: path,
+			Transform:  func([]byte) ([]byte, error) { return []byte("new\n"), nil },
+			AfterWrite: [][]string{{"systemctl", "restart", "docker"}},
+		}}}, nil
+	})
+	e := New(Config{Fixes: reg, Store: history.NewStore(t.TempDir()), Runner: runner})
+	f := model.NewFinding("dockerd.test", "t", model.SeverityLow, model.SourceDockerd, model.RemediationReview)
+	_, err := e.ApplyFix(context.Background(), f, 0)
+	if err == nil || !strings.Contains(err.Error(), "nothing changed") {
+		t.Fatalf("err = %v; with the start limit cleared the retry must succeed", err)
+	}
+	if !slices.Contains(runner.ran, "systemctl reset-failed docker") {
+		t.Errorf("ran %v; the retry did not clear the failed state first", runner.ran)
+	}
+}
+
+// resetAwareRunner fails the first restart, then refuses every restart until
+// reset-failed has run — systemd's start limit, in miniature.
+type resetAwareRunner struct {
+	ran      []string
+	failed   bool
+	limitHit bool
+}
+
+func (r *resetAwareRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
+	cmd := strings.Join(append([]string{name}, args...), " ")
+	r.ran = append(r.ran, cmd)
+	switch {
+	case cmd == "systemctl reset-failed docker":
+		r.limitHit = false
+	case cmd == "systemctl restart docker" && !r.failed:
+		r.failed, r.limitHit = true, true
+		return nil, errors.New("Job for docker.service failed")
+	case cmd == "systemctl restart docker" && r.limitHit:
+		return nil, errors.New("start request repeated too quickly")
+	}
+	return nil, nil
+}
+
+func (r *resetAwareRunner) LookPath(name string) (string, error) { return "/usr/bin/" + name, nil }

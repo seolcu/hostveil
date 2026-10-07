@@ -318,6 +318,14 @@ func (e *Engine) undoAfterFailedFollowUp(ctx context.Context, a fix.Action, id s
 		return fmt.Errorf("%w — and restoring the original %s failed too (%v); checkpoint %s still holds it, "+
 			"restore it with `hostveil rollback %s`", cause, a.Path, err, id, id)
 	}
+	// The failed start is what systemd counts against the unit's start
+	// limit, and a daemon that crash-loops on the bad file — dockerd has
+	// Restart=always — reaches it within seconds. Past it systemd refuses
+	// the next start outright, so the retry under the restored file failed
+	// too and left the daemon down: the one outcome this path exists to
+	// prevent, found on a real Docker by scripts/e2e/individual.sh. Clearing
+	// the failed state first is what lets the retry be a real attempt.
+	resetFailedUnits(ctx, e.runner, a.AfterWrite)
 	if err := e.runAfterWrite(ctx, a); err != nil {
 		_ = e.store.Discard(id)
 		return fmt.Errorf("%w — the original %s was restored, but running the commands again under it failed "+
@@ -548,4 +556,20 @@ func afterRestore(a fix.Action) [][]string {
 		return a.AfterRestore
 	}
 	return a.AfterWrite
+}
+
+// resetFailedUnits clears systemd's failed state, and with it the start-limit
+// counter, for every unit a set of commands starts or restarts. Errors are
+// ignored: on a host without systemd, or for a unit that never failed, there
+// is nothing to clear, and the retry that follows reports anything real.
+func resetFailedUnits(ctx context.Context, r platform.CommandRunner, cmds [][]string) {
+	for _, cmd := range cmds {
+		if len(cmd) < 3 || cmd[0] != "systemctl" {
+			continue
+		}
+		switch cmd[1] {
+		case "restart", "start", "reload", "try-reload-or-restart", "reload-or-restart", "try-restart":
+			_, _ = r.Run(ctx, "systemctl", append([]string{"reset-failed"}, cmd[2:]...)...)
+		}
+	}
 }
