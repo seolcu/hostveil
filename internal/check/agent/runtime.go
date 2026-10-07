@@ -182,7 +182,10 @@ func runtimes() []Runtime {
 				// Unset is deliberately absent: OpenClaw fails closed when
 				// gateway.auth.mode is unset, so an absent key is not "open".
 				AuthDisabled: []string{"none"},
-				ProcNames:    []string{"openclaw", "node"},
+				// The gateway's process is "openclaw-gateway", which the kernel
+				// truncates to fifteen characters in what ss reports — observed
+				// on a real gateway by scripts/e2e/individual.sh.
+				ProcNames: []string{"openclaw", "openclaw-gatewa", "node"},
 			},
 			Danger: []DangerRule{
 				{
