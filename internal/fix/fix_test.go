@@ -81,40 +81,33 @@ func TestUnregisteredFindingHasNoFix(t *testing.T) {
 // assertion here, which is the point: the decision should be argued with,
 // not quietly reversed.
 func TestKnownUnregisteredFindings(t *testing.T) {
-	declined := map[string]string{
-		// The checker no longer emits per-CVE findings at all — they were
-		// aggregated into cve.outdated-image / cve.unpatched-image. The pin
-		// stays as a guard: a cve.* glob would make this shape fixable again
-		// if anyone reintroduced it. The lowercased form is what vulnFinding
-		// used to build; the mixed-case entry that lived here before matched
-		// nothing and passed vacuously.
-		"cve.cve-2021-1234":   "Trivy's fixed_version is an OS package version, not an image tag — see issue #473",
-		"cve.unpatched-image": "collects exactly the vulnerabilities with no published fix; there is nothing to update to",
-		"compose.dr005":       "a two-file change where Action carries one Path, and the real remediation is rotating the leaked secret",
-
-		// The agent.* config-key findings that internal/json5 did NOT
-		// unblock. The editor removed one shared obstacle — re-encoding a
-		// JSON5 config deleted the operator's comments — and what is left
-		// here is what that obstacle was hiding, which is different for each
-		// of the three.
-
-		// sysctl.* was on this list and is not any more. The reason it gave
-		// — that the drop-in does not exist and an edit action cannot create
-		// a file — stopped being true when Action grew CreateIfMissing, and
-		// the reason outlived it here by one release. If a fix is registered
-		// for something this map names, the loop below fails; nothing catches
-		// a stale *comment*, so it is written down as history rather than
-		// deleted, and register.go carries the argument.
-
-		"compose.ds012":          "the right healthcheck depends on what the service exposes; a guessed one marks a working container unhealthy and stalls everything waiting on it",
-		"ports.exposed":          "the aggregate says N services are exposed; the per-service findings carry the fixable detail, and a firewall is firewall.inactive's fix rather than this one's",
-		"accounts.duplicate-uid": "UID migration spans every file the account owns and is not one reversible action",
-		"accounts.sudo-nopasswd": "the grant comes from sudo -l, not from reading /etc/sudoers, so nothing says which file, line, or group rule to edit",
-	}
+	// The list is declineReasons, the one users read through WhyNoFix. A
+	// copy of it here was a third place to edit for every fix registered,
+	// and register.go's argument for each is already pinned to it by
+	// internal/docs.
 	r := Default()
-	for id, why := range declined {
+	for _, id := range DeclinedIDs() {
 		if r.Has(id) {
-			t.Errorf("%s has a registered fix, but is documented as deliberately unfixed: %s", id, why)
+			t.Errorf("%s has a registered fix, but is declined with the reason %q", id, WhyNoFix(id))
+		}
+	}
+}
+
+// Every entry in checkerDeclaresReview must name a registered fix; one that
+// does not is a stale entry quietly claiming a checker's caution for nothing.
+func TestCheckerDeclaresReviewNamesRegisteredFixes(t *testing.T) {
+	r := Default()
+	for id := range checkerDeclaresReview {
+		if !r.Has(id) {
+			t.Errorf("checkerDeclaresReview names %s, which has no registered fix", id)
+		}
+		fx, ok, err := r.Build(representative(id))
+		if err != nil || !ok {
+			t.Errorf("%s: build ok=%v err=%v", id, ok, err)
+			continue
+		}
+		if fx.EffectiveKind() != model.RemediationReview {
+			t.Errorf("%s is floored to Review but the registry reports %v", id, fx.EffectiveKind())
 		}
 	}
 }

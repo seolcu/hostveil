@@ -51,56 +51,18 @@ func docsPage(t *testing.T, lang, slug string) string {
 	return string(b)
 }
 
-// checkerAsksForMore records the findings whose documented kind is
-// deliberately stricter than the shape of the registered fix, and why.
+// checkerAsksForMore records the findings whose documented kind is stricter
+// than the registry can show from a representative finding, and why.
 //
-// The kind a user sees is the stricter of two sources (see Engine.classify),
-// and only one of them is reachable from here: the registry can be built,
-// the checker cannot without a live host. So the invariant this file can
-// enforce is one-sided — the column may never be *less* cautious than the
-// registry's shape — and every place it is more cautious is the checker
-// asking for a human, which belongs in writing.
-//
-// The SSH entries are all directives that can end the operator's own
-// session. The edit is reversible on disk and rolling it back needs the
-// access it just removed, which is criterion 2 of the Auto standard in
-// internal/fix/register.go, not criterion 1.
-//
-// The agent entry is there for a different reason, and it is the one case
-// where the registry's shape is not a constant. That fix reads the safe
-// values out of the finding, so how many independent alternatives it has
-// depends on which config keys tripped: tools.exec.security has two (deny,
-// ask) and tools.exec.ask has one. fixtest builds a finding carrying neither,
-// so the registry shapes the fix Auto here while a host where the security
-// key tripped hands the operator a choice. Review is what that operator is
-// shown, so Review is what the column says.
+// It used to hold every fix a checker always declares Review for. Those now
+// live in fix.checkerDeclaresReview, which the registry applies, so the
+// registry reports the kind a user is shown and this list does not have to
+// repeat it. What is left is the case the registry cannot settle on its own:
+// agent.exec-unrestricted reads its safe values out of the finding, so how
+// many alternatives it has — and so whether it is Review — depends on which
+// config key tripped, and fixtest builds a finding carrying neither.
 var checkerAsksForMore = map[string]string{
-	"ssh.passwordauth":               "disabling passwords locks out anyone whose key is not already working",
-	"ssh.gatewayports":               "a published tunnel may be the only route to a service, including the operator's",
-	"ssh.hostbasedauth":              "the trusting host may be how the operator gets in",
-	"ssh.kbdinteractive":             "PAM one-time codes run through the same mechanism, so this can disable 2FA logins",
-	"ssh.permituserenvironment":      "login automation may depend on the supplied environment",
-	"ssh.permittunnel":               "the host may intentionally provide an SSH VPN",
-	"ssh.allowtcpforwarding":         "applications may depend on SSH tunnels",
-	"ssh.maxsessions":                "multiplexed workflows may require several sessions",
-	"ssh.allowagentforwarding":       "administrative hops may depend on agent forwarding",
-	"accounts.local-banner":          "login warning wording needs organizational approval",
-	"accounts.remote-banner":         "login warning wording needs organizational approval",
-	"fileperms.compiler":             "development hosts legitimately need unprivileged compiler access",
-	"ports.redis-bind":               "remote Redis clients may be intentional",
-	"ports.redis-disable-config":     "administration workflows may require CONFIG",
-	"sysctl.module-dccp":             "the host may use DCCP",
-	"sysctl.module-sctp":             "the host may use SCTP",
-	"sysctl.module-rds":              "the host may use RDS",
-	"sysctl.module-tipc":             "the host may use TIPC",
-	"sysctl.module-usbstorage":       "the host may need USB storage",
-	"agent.exec-unrestricted":        "deny and ask are both correct and the operator picks, so the checker declares Review whenever tools.exec.security is what tripped",
-	"systemd.no-new-privileges":      "a service that deliberately escalates stops coming back, and it stops at the next restart rather than now — the drop-in is one edit, which is Auto's shape and nothing more",
-	"systemd.protect-clock":          "only time-sync daemons legitimately need this off, and it stops at the next restart rather than now — the drop-in is one edit, which is Auto's shape and nothing more",
-	"systemd.lock-personality":       "needing an alternate execution personality is rare, and it stops at the next restart rather than now — the drop-in is one edit, which is Auto's shape and nothing more",
-	"systemd.restrict-suid-sgid":     "only a service that itself creates setuid/setgid files needs this off, and it stops at the next restart rather than now — the drop-in is one edit, which is Auto's shape and nothing more",
-	"systemd.protect-kernel-logs":    "only a service that reads kernel logs directly needs this off, and it stops at the next restart rather than now — the drop-in is one edit, which is Auto's shape and nothing more",
-	"systemd.protect-kernel-modules": "only a service that loads kernel modules at runtime needs this off, and it stops at the next restart rather than now — the drop-in is one edit, which is Auto's shape and nothing more",
+	"agent.exec-unrestricted": "deny and ask are both correct and the operator picks, so the checker declares Review whenever tools.exec.security is what tripped",
 }
 
 // TestDocumentedFixKindsMatchTheRegistry is the guard for the failure that

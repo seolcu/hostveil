@@ -49,26 +49,13 @@ func counts(t *testing.T) map[string]int {
 	registry := fix.Default()
 
 	var fixable, auto, review int
-	// These checkers deliberately demand Review even though the registered
-	// fix has Auto's one-action shape. Counts are user-facing classifications,
-	// so resolve the same caution floor Engine.classify applies instead of
-	// publishing the registry shape as though it were the screen value.
+	// The registry reports the kind a user is shown (fix.checkerDeclaresReview
+	// floors the fixes whose checker always asks for Review), except where the
+	// kind depends on the finding itself.
 	checkerReview := map[string]bool{
-		"ssh.passwordauth": true, "ssh.gatewayports": true,
-		"ssh.hostbasedauth": true, "ssh.kbdinteractive": true,
-		"ssh.permituserenvironment": true, "ssh.permittunnel": true,
-		"ssh.allowtcpforwarding": true, "ssh.maxsessions": true,
-		"ssh.allowagentforwarding": true,
-		"accounts.local-banner":    true, "accounts.remote-banner": true,
-		"sysctl.module-dccp": true, "sysctl.module-sctp": true,
-		"sysctl.module-rds": true, "sysctl.module-tipc": true,
-		"sysctl.module-usbstorage": true,
-		"fileperms.compiler":       true,
-		"ports.redis-bind":         true, "ports.redis-disable-config": true,
-		"agent.exec-unrestricted": true, "systemd.no-new-privileges": true,
-		"systemd.protect-clock": true, "systemd.lock-personality": true,
-		"systemd.restrict-suid-sgid": true, "systemd.protect-kernel-logs": true,
-		"systemd.protect-kernel-modules": true,
+		// The one fix whose kind depends on the finding; see
+		// fix.checkerDeclaresReview for why it cannot be floored there.
+		"agent.exec-unrestricted": true,
 	}
 	for _, id := range ids {
 		fx, ok, err := registry.Build(fixtest.Finding(id))
