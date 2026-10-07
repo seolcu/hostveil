@@ -233,9 +233,12 @@ func (r rule) finding(u unit) model.Finding {
 	if runAs == "" {
 		runAs = "root (no User= set)"
 	}
+	// Every rule in this domain now has a registered fix, so a rule that
+	// declares nothing is Review: each is a drop-in that changes what the
+	// service can reach, and none is safe to turn on unattended.
 	kind := r.remediation
 	if kind == model.RemediationUnset {
-		kind = model.RemediationManual
+		kind = model.RemediationReview
 	}
 	return model.NewFinding(r.id, r.title, r.severityFor(u), model.SourceSystemd,
 		kind,

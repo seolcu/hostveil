@@ -65,7 +65,6 @@ var declineReasons = map[string]string{
 	"firewall.docker-bypass": "The compose file or docker run behind the container is not in the finding, and the other remediation rewrites ufw policy that can lock you out.",
 
 	// updates
-	"updates.reboot-required": "The remediation is a reboot: no checkpoint, every service on the box down, and only you know when that downtime is acceptable.",
 
 	// cve
 	"cve.unpatched-image": "Re-pulling the tag is the only action Hostveil has here, and no rebuild of the image carries a patch upstream has not published.",
@@ -88,9 +87,7 @@ var declineReasons = map[string]string{
 	"proxmox.enterprise-repo-unsubscribed": "The remedy is two changes in sequence, and disabling the enterprise source alone leaves the host with no Proxmox updates at all; the other remedy is a subscription key.",
 	"proxy.directory-listing":              "autoindex is sometimes deliberate for one location, so the remediation is to narrow it rather than remove it — and Hostveil cannot tell which location you meant.",
 	"accounts.sudo-nopasswd":               "The grant comes from sudo -l, not from reading /etc/sudoers, so nothing says which file, line, or group rule to edit — there is nowhere for an edit to point.",
-	"accounts.uid0":                        "userdel orphans every file the account owns with no checkpoint to undo it, and Hostveil cannot tell a backdoor from a deliberate second root.",
 	"accounts.duplicate-uid":               "Changing a UID requires migrating every file it owns across filesystems, which cannot be represented or rolled back as one action.",
-	"accounts.weak-password-hash":          "Fixing the hash requires choosing and entering a new password; Hostveil must never generate or handle that credential.",
 
 	// fileperms
 	"fileperms.owner": "A checkpoint records a file's contents and mode but not its previous owner, so chown would be the one change rollback could not put back.",
@@ -110,12 +107,4 @@ var declineReasons = map[string]string{
 	"dockerd.userns-remap":          "Remapping rewrites the ownership of every bind mount on the host, and enabling it means adding a key to daemon.json that Hostveil can only rewrite, not create.",
 
 	// systemd
-	"systemd.private-tmp":               "PrivateTmp=yes breaks two services that hand each other files through /tmp, which the unit does not show, and the failure surfaces at the next restart.",
-	"systemd.protect-home":              "ProtectHome=yes breaks anything whose data lives in a home directory, which the unit does not show, and the failure surfaces only at the next restart.",
-	"systemd.protect-system":            "ProtectSystem=full breaks a service that writes under /usr, which the unit does not show, and the failure surfaces only at the next restart.",
-	"systemd.private-devices":           "PrivateDevices=yes can hide devices the application requires, which the effective unit properties do not reveal.",
-	"systemd.protect-kernel-tunables":   "The service may deliberately manage network or kernel settings, and enabling this protection can stop it at restart.",
-	"systemd.protect-control-groups":    "Container and resource managers may need cgroup access, which cannot be inferred safely from the unit.",
-	"systemd.restrict-namespaces":       "Container runtimes and sandboxes require namespaces, and the unit does not state which namespace types are load-bearing.",
-	"systemd.memory-deny-write-execute": "JIT runtimes require writable executable memory, and enabling this protection can stop them at restart.",
 }

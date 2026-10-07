@@ -96,9 +96,9 @@ func TestUnhardenedOperatorUnitIsFlagged(t *testing.T) {
 	// the path and contents of, so internal/fix writes it.
 	for want, kind := range map[string]model.RemediationKind{
 		"systemd.no-new-privileges": model.RemediationReview,
-		"systemd.protect-system":    model.RemediationManual,
-		"systemd.protect-home":      model.RemediationManual,
-		"systemd.private-tmp":       model.RemediationManual,
+		"systemd.protect-system":    model.RemediationReview,
+		"systemd.protect-home":      model.RemediationReview,
+		"systemd.private-tmp":       model.RemediationReview,
 	} {
 		f, ok := find(fs, want, "gitea.service")
 		if !ok {

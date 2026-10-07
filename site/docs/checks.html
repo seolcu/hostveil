@@ -150,7 +150,7 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">140</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">65</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: deleting an account cannot be undone from a checkpoint, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">151</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">76</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">How the 183 findings resolve</p>
               <div class="ledger-bar">
@@ -160,13 +160,13 @@
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:36%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">65</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:42%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">76</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:23%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">43</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:17%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">32</span>
               </div>
             </div>
 
@@ -318,7 +318,7 @@
                 <tbody>
                   <tr><td><code>updates.disabled</code></td><td>Automatic security updates are not enabled (apt unattended-upgrades or dnf-automatic)</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.disabled">Review</a></td></tr>
                   <tr><td><code>updates.pending-security</code></td><td>Security updates are available but not installed</td><td><span class="sev high">HIGH</span> / <span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.pending-security">Review</a></td></tr>
-                  <tr><td><code>updates.reboot-required</code></td><td>Installed updates need a reboot to take effect</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>updates.reboot-required</code></td><td>Installed updates need a reboot to take effect</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-updates.reboot-required">Review</a></td></tr>
                   <tr><td><code>updates.process-accounting</code></td><td>Process accounting is not installed</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.process-accounting">Review</a></td></tr>
                   <tr><td><code>updates.sysstat</code></td><td>System activity accounting is not installed</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.sysstat">Review</a></td></tr>
                   <tr><td><code>updates.auditd</code></td><td>The Linux audit daemon is not installed</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.auditd">Review</a></td></tr>
@@ -357,11 +357,11 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>accounts.uid0</code></td><td>A non-root account has root's UID (0)</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.uid0</code></td><td>A non-root account has root's UID (0)</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-accounts.uid0">Review</a></td></tr>
                   <tr><td><code>accounts.emptypassword</code></td><td>A login account has an empty password</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-accounts.emptypassword">Review</a></td></tr>
                   <tr><td><code>accounts.sudo-nopasswd</code></td><td>A sudo rule lets an account run anything as root without being asked for a password</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>accounts.duplicate-uid</code></td><td>Multiple accounts share one UID</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>accounts.weak-password-hash</code></td><td>A login account uses a weak password hash</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>accounts.weak-password-hash</code></td><td>A login account uses a weak password hash</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-accounts.weak-password-hash">Review</a></td></tr>
                   <tr><td><code>accounts.password-rounds</code></td><td>Password hashing rounds are not hardened</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.password-rounds">Auto</a></td></tr>
                   <tr><td><code>accounts.default-umask</code></td><td>New files default to broad permissions</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.default-umask">Auto</a></td></tr>
                   <tr><td><code>accounts.local-banner</code></td><td>The local login warning does not discourage unauthorized access</td><td><span class="sev low">LOW</span></td><td><a href="#fix-accounts.local-banner">Review</a></td></tr>
@@ -534,19 +534,19 @@
                 <thead><tr><th>ID</th><th>What it means</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
                   <tr><td><code>systemd.no-new-privileges</code></td><td>The service can gain privileges through a setuid binary — the usual way a foothold inside a service becomes a foothold outside it</td><td><span class="sev low">LOW</span> / <span class="sev medium">MEDIUM</span></td><td><a href="#fix-systemd.no-new-privileges">Review</a></td></tr>
-                  <tr><td><code>systemd.protect-system</code></td><td>The service can write to <code>/usr</code>, <code>/boot</code> and <code>/etc</code>; one that can edit <code>/etc</code> owns every login on the host</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.protect-home</code></td><td>The service can read <code>/home</code>, <code>/root</code> and <code>/run/user</code> — everyone&rsquo;s SSH keys, cloud credentials and password databases</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.private-tmp</code></td><td>The service shares <code>/tmp</code> with every other process, which is the ground symlink races live on</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.private-devices</code></td><td>The service can access host devices</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>systemd.protect-kernel-tunables</code></td><td>The service can change kernel tunables</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-system</code></td><td>The service can write to <code>/usr</code>, <code>/boot</code> and <code>/etc</code>; one that can edit <code>/etc</code> owns every login on the host</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td><a href="#fix-systemd.protect-system">Review</a></td></tr>
+                  <tr><td><code>systemd.protect-home</code></td><td>The service can read <code>/home</code>, <code>/root</code> and <code>/run/user</code> — everyone&rsquo;s SSH keys, cloud credentials and password databases</td><td><span class="sev medium">MEDIUM</span> / <span class="sev low">LOW</span></td><td><a href="#fix-systemd.protect-home">Review</a></td></tr>
+                  <tr><td><code>systemd.private-tmp</code></td><td>The service shares <code>/tmp</code> with every other process, which is the ground symlink races live on</td><td><span class="sev low">LOW</span></td><td><a href="#fix-systemd.private-tmp">Review</a></td></tr>
+                  <tr><td><code>systemd.private-devices</code></td><td>The service can access host devices</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-systemd.private-devices">Review</a></td></tr>
+                  <tr><td><code>systemd.protect-kernel-tunables</code></td><td>The service can change kernel tunables</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-systemd.protect-kernel-tunables">Review</a></td></tr>
                   <tr><td><code>systemd.protect-kernel-modules</code></td><td>The service can alter kernel modules</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-systemd.protect-kernel-modules">Review</a></td></tr>
-                  <tr><td><code>systemd.protect-control-groups</code></td><td>The service can alter control groups</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.protect-control-groups</code></td><td>The service can alter control groups</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-systemd.protect-control-groups">Review</a></td></tr>
                   <tr><td><code>systemd.protect-kernel-logs</code></td><td>The service can access kernel logs</td><td><span class="sev low">LOW</span></td><td><a href="#fix-systemd.protect-kernel-logs">Review</a></td></tr>
                   <tr><td><code>systemd.protect-clock</code></td><td>The service can change system clocks</td><td><span class="sev low">LOW</span></td><td><a href="#fix-systemd.protect-clock">Review</a></td></tr>
                   <tr><td><code>systemd.restrict-suid-sgid</code></td><td>The service can create setuid files</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-systemd.restrict-suid-sgid">Review</a></td></tr>
-                  <tr><td><code>systemd.restrict-namespaces</code></td><td>The service can create namespaces</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.restrict-namespaces</code></td><td>The service can create namespaces</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-systemd.restrict-namespaces">Review</a></td></tr>
                   <tr><td><code>systemd.lock-personality</code></td><td>The service can change execution personality</td><td><span class="sev low">LOW</span></td><td><a href="#fix-systemd.lock-personality">Review</a></td></tr>
-                  <tr><td><code>systemd.memory-deny-write-execute</code></td><td>The service can create writable executable memory</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>systemd.memory-deny-write-execute</code></td><td>The service can create writable executable memory</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-systemd.memory-deny-write-execute">Review</a></td></tr>
                 </tbody>
               </table>
             </div>
@@ -952,6 +952,12 @@
               <p class="fix-benefit" lang="en">✓ Installs a kernel-level audit trail of security-relevant actions — file access, privilege changes — that survives a process exiting or an application log being cleared.</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
             </dd>
+            <dt id="fix-updates.reboot-required"><code>updates.reboot-required</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Reboot in one minute (<code>shutdown -r +1</code>)</p>
+              <p class="fix-benefit" lang="en">✓ The host starts running the patched kernel and libraries it already has on disk, which is the only way the vulnerabilities those updates fixed actually stop applying to it.</p>
+              <p class="fix-warning" lang="en">⚠ Every service on this host goes down until the machine is back, and this session is disconnected. Services without a restart policy, and anything started by hand, stay down after the boot. If the new kernel fails to boot, getting the machine back needs console access. Run <code>shutdown -c</code> within the minute to cancel. There is no checkpoint: a reboot cannot be rolled back.</p>
+            </dd>
             <dt id="fix-updates.rkhunter"><code>updates.rkhunter</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Install and enable auditd</p>
@@ -1048,6 +1054,27 @@
               <p lang="en">Append the standard access warning</p>
               <p class="fix-benefit" lang="en">✓ Puts a legal notice in front of anyone who logs into this host, local or remote, which several jurisdictions require before monitoring or logging a session can be used as evidence against an intruder.</p>
               <p class="fix-warning" lang="en">⚠ Have counsel or the system owner approve login-banner wording for this organization.</p>
+            </dd>
+            <dt id="fix-accounts.uid0"><code>accounts.uid0</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p lang="en">Lock and expire alice (<code>usermod --lock --expiredate 1</code>) (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ The account can no longer log in by any route — password, SSH key or su — so a backdoor planted under it stops working, while the entry, its files and its history stay in place for you to investigate.</p>
+              <p class="fix-warning" lang="en">⚠ If something on this host deliberately logs in as alice — a recovery procedure, a monitoring agent, a second admin name for root — it stops working. There is no checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this. To reverse it: <code>usermod --unlock --expiredate '' alice</code>.</p>
+                </li>
+                <li>
+              <p lang="en">Delete alice (<code>userdel</code>), keeping its home directory</p>
+              <p class="fix-benefit" lang="en">✓ Removes the second root entirely, so nothing about it can be re-enabled later by someone who knows it is there.</p>
+              <p class="fix-warning" lang="en">⚠ This cannot be undone: the account entry, its group and its mail spool are gone, and every file it owned is left owned by UID 0 with nothing recording that it was alice's. Prefer locking first if you have not yet worked out how the account got there. There is no checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this.</p>
+                </li>
+              </ul>
+            </dd>
+            <dt id="fix-accounts.weak-password-hash"><code>accounts.weak-password-hash</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Expire alice's password (<code>passwd --expire</code>)</p>
+              <p class="fix-benefit" lang="en">✓ At the next login alice has to set a new password, which is stored with the system's current hashing method instead of the DES or MD5 hash that is cheap to crack today.</p>
+              <p class="fix-warning" lang="en">⚠ The next login as alice stops at a password change. An account that only logs in non-interactively (a script using a password over SSH, an FTP account) fails instead of prompting. The weak hash stays in /etc/shadow until the change happens, and the new one is only strong if the system's ENCRYPT_METHOD is SHA512 or yescrypt. There is no checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this.</p>
             </dd>
           </dl>
           <h3>File perms</h3>
@@ -1474,17 +1501,47 @@
               <p class="fix-benefit" lang="en">✓ Stops the unit switching to an alternate execution personality, closing an old technique for bypassing ASLR.</p>
               <p class="fix-warning" lang="en">⚠ Needing an alternate execution personality is rare outside emulation and compatibility layers. An ordinary service is unaffected; one that needs one fails at the next restart.</p>
             </dd>
+            <dt id="fix-systemd.memory-deny-write-execute"><code>systemd.memory-deny-write-execute</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set MemoryDenyWriteExecute=yes for app</p>
+              <p class="fix-benefit" lang="en">✓ Stops the service creating memory that is both writable and executable, which is how injected code usually gets to run.</p>
+              <p class="fix-warning" lang="en">⚠ JIT runtimes — Node.js, Java, .NET, PHP with JIT, LuaJIT, browsers — need exactly that memory and crash or refuse to start after the restart. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
+            </dd>
             <dt id="fix-systemd.no-new-privileges"><code>systemd.no-new-privileges</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Set NoNewPrivileges=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Closes the setuid escalation path out of this unit — a compromised process cannot gain more privilege than the service already had, the same protection compose.ds006 gives a container.</p>
               <p class="fix-warning" lang="en">⚠ Closes the setuid path out of this service. A service that deliberately escalates — anything calling a setuid helper — stops working, and it stops at the next restart rather than now.</p>
             </dd>
+            <dt id="fix-systemd.private-devices"><code>systemd.private-devices</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set PrivateDevices=yes for app</p>
+              <p class="fix-benefit" lang="en">✓ Gives the service a minimal /dev with no physical devices, so a compromise of it cannot reach disks, GPUs or other device nodes directly.</p>
+              <p class="fix-warning" lang="en">⚠ A service that uses hardware — GPU transcoding, a USB or serial device, a TUN interface for a VPN — loses it after the restart. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
+            </dd>
+            <dt id="fix-systemd.private-tmp"><code>systemd.private-tmp</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set PrivateTmp=yes for app</p>
+              <p class="fix-benefit" lang="en">✓ Gives the service a /tmp of its own, so another local process can no longer race it with a predictable temporary file name.</p>
+              <p class="fix-warning" lang="en">⚠ Two services that hand each other files through /tmp stop seeing each other's files, and anything this service left in /tmp is not there after the restart. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
+            </dd>
             <dt id="fix-systemd.protect-clock"><code>systemd.protect-clock</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Set ProtectClock=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Stops the unit changing the system or hardware clock, closing off a way a compromised service could hide its tracks by tampering with timestamps or break time-based authentication.</p>
               <p class="fix-warning" lang="en">⚠ Only time-sync daemons (chronyd, ntpd, systemd-timesyncd) legitimately need to change the system or hardware clock. A service that is not one of those stops being able to, at the next restart.</p>
+            </dd>
+            <dt id="fix-systemd.protect-control-groups"><code>systemd.protect-control-groups</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set ProtectControlGroups=yes for app</p>
+              <p class="fix-benefit" lang="en">✓ Makes the cgroup tree read-only for the service, so a compromise of it cannot loosen the limits that isolate other workloads.</p>
+              <p class="fix-warning" lang="en">⚠ Container runtimes and anything that creates or manages cgroups itself (Docker, containerd, Kubernetes, LXC) stop working after the restart. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
+            </dd>
+            <dt id="fix-systemd.protect-home"><code>systemd.protect-home</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set ProtectHome=yes for app</p>
+              <p class="fix-benefit" lang="en">✓ Hides /home, /root and /run/user from the service, so a compromise of it cannot read anyone's SSH keys or cloud credentials.</p>
+              <p class="fix-warning" lang="en">⚠ A service whose data or configuration lives in a home directory — a media server pointed at ~/Videos, a sync client — cannot reach it after the restart and fails or comes up empty. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
             </dd>
             <dt id="fix-systemd.protect-kernel-logs"><code>systemd.protect-kernel-logs</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -1497,6 +1554,24 @@
               <p lang="en">Set ProtectKernelModules=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Stops the unit loading or removing kernel modules itself, closing a direct path to running arbitrary code in kernel space from what should be an ordinary service.</p>
               <p class="fix-warning" lang="en">⚠ Only a service that loads or removes kernel modules itself at runtime — rather than modules already loaded at boot — needs this off.</p>
+            </dd>
+            <dt id="fix-systemd.protect-kernel-tunables"><code>systemd.protect-kernel-tunables</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set ProtectKernelTunables=yes for app</p>
+              <p class="fix-benefit" lang="en">✓ Makes /proc/sys and /sys read-only for the service, so a compromise of it cannot change kernel networking or security settings.</p>
+              <p class="fix-warning" lang="en">⚠ A service that manages kernel settings on purpose — a VPN enabling IP forwarding, a network manager, a container runtime — cannot after the restart. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
+            </dd>
+            <dt id="fix-systemd.protect-system"><code>systemd.protect-system</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set ProtectSystem=full for app</p>
+              <p class="fix-benefit" lang="en">✓ Mounts /usr, /boot and /etc read-only for this service alone, so a compromise of it cannot replace a binary or edit a login file.</p>
+              <p class="fix-warning" lang="en">⚠ A service that writes its own configuration under /etc or updates files under /usr — a package manager, a self-updating agent — fails when it tries. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
+            </dd>
+            <dt id="fix-systemd.restrict-namespaces"><code>systemd.restrict-namespaces</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set RestrictNamespaces=yes for app</p>
+              <p class="fix-benefit" lang="en">✓ Stops the service creating namespaces, removing kernel attack surface that most daemons never use.</p>
+              <p class="fix-warning" lang="en">⚠ Container runtimes, sandboxes, browsers and anything else that isolates its children with namespaces fail to start them after the restart. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
             </dd>
             <dt id="fix-systemd.restrict-suid-sgid"><code>systemd.restrict-suid-sgid</code> <span class="fix-kind">Auto</span></dt>
             <dd>

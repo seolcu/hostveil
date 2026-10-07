@@ -38,6 +38,10 @@ var recommendedFirst = map[string]struct{ label, why string }{
 		label: "deny",
 		why:   "the rule table's first safe value; ask is the same door with a prompt on it",
 	},
+	"accounts.uid0": {
+		label: "Lock and expire",
+		why:   "locking keeps the evidence and can be reversed with usermod; deleting the account cannot be undone and orphans its files",
+	},
 	"compose.ds009": {
 		label: "1000:1000",
 		why:   "an image built to run without root is far more often built for the first regular user than for nobody",

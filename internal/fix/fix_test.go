@@ -83,7 +83,6 @@ func TestUnregisteredFindingHasNoFix(t *testing.T) {
 func TestKnownUnregisteredFindings(t *testing.T) {
 	declined := map[string]string{
 		"firewall.docker-bypass":  "republishing to loopback means editing an unknown compose file and recreating the container; the ufw-docker alternative is firewall policy with no rollback",
-		"updates.reboot-required": "rebooting is exec with no checkpoint and takes every service down; only the operator knows when that is acceptable",
 		"ports.exposed-datastore": "the remediation is a bind-address edit in a daemon config whose path and syntax the finding does not carry",
 		"ports.exposed-admin":     "same as ports.exposed-datastore",
 		// The checker no longer emits per-CVE findings at all — they were
@@ -126,19 +125,12 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		"dockerd.userns-remap":          "same, and it rewrites the ownership of every bind mount on the host",
 		"dockerd.live-restore":          "reload is exec with no checkpoint, and write-then-apply is sequential steps rather than Review's independent alternatives",
 
-		"fileperms.owner":                   "chown has no checkpoint — a rollback records contents and mode and has nowhere to put the previous owner; and the right group differs by distribution",
-		"compose.ds012":                     "the right healthcheck depends on what the service exposes; a guessed one marks a working container unhealthy and stalls everything waiting on it",
-		"compose.dr004":                     "the remediation is about the env_file's permissions and whether it is in git and backups — nothing in the compose file to edit",
-		"ports.exposed":                     "the aggregate says N services are exposed; the per-service findings carry the fixable detail, and a firewall is firewall.inactive's fix rather than this one's",
-		"accounts.uid0":                     "userdel is exec, irreversible, and takes the home directory with it; hostveil cannot tell a backdoor from a deliberate second root",
-		"accounts.duplicate-uid":            "UID migration spans every file the account owns and is not one reversible action",
-		"accounts.weak-password-hash":       "a password reset requires a human-chosen credential",
-		"accounts.sudo-nopasswd":            "the grant comes from sudo -l, not from reading /etc/sudoers, so nothing says which file, line, or group rule to edit",
-		"systemd.private-devices":           "device access may be load-bearing",
-		"systemd.protect-kernel-tunables":   "network managers may require kernel tunables",
-		"systemd.protect-control-groups":    "container managers may require cgroup access",
-		"systemd.restrict-namespaces":       "container runtimes require namespaces",
-		"systemd.memory-deny-write-execute": "JIT runtimes require writable executable memory",
+		"fileperms.owner":        "chown has no checkpoint — a rollback records contents and mode and has nowhere to put the previous owner; and the right group differs by distribution",
+		"compose.ds012":          "the right healthcheck depends on what the service exposes; a guessed one marks a working container unhealthy and stalls everything waiting on it",
+		"compose.dr004":          "the remediation is about the env_file's permissions and whether it is in git and backups — nothing in the compose file to edit",
+		"ports.exposed":          "the aggregate says N services are exposed; the per-service findings carry the fixable detail, and a firewall is firewall.inactive's fix rather than this one's",
+		"accounts.duplicate-uid": "UID migration spans every file the account owns and is not one reversible action",
+		"accounts.sudo-nopasswd": "the grant comes from sudo -l, not from reading /etc/sudoers, so nothing says which file, line, or group rule to edit",
 	}
 	r := Default()
 	for id, why := range declined {

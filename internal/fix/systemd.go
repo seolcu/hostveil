@@ -41,6 +41,63 @@ func registerSystemd(r *Registry) {
 	r.Register("systemd.restrict-suid-sgid", buildSystemdRestrictSUIDSGID)
 	r.Register("systemd.protect-kernel-logs", buildSystemdProtectKernelLogs)
 	r.Register("systemd.protect-kernel-modules", buildSystemdProtectKernelModules)
+
+	for _, d := range riskySystemdDirectives {
+		r.Register(d.id, d.build)
+	}
+}
+
+// riskySystemdDirectives are the eight protections that were declined because
+// each breaks a kind of service the unit does not reveal. That is still true,
+// and it is what the Warning on each one now says instead of the register.
+// They are IndividualOnly: `fix --all --review` would otherwise turn every one
+// of them on for every unit on the host at once, and the person who knows
+// whether this unit is a container runtime or a JIT is the one who has to
+// press it.
+var riskySystemdDirectives = []riskyDirective{
+	{"systemd.private-tmp", "PrivateTmp", "yes",
+		"Gives the service a /tmp of its own, so another local process can no longer race it with a predictable temporary file name.",
+		"Two services that hand each other files through /tmp stop seeing each other's files, and anything this service left in /tmp is not there after the restart."},
+	{"systemd.protect-home", "ProtectHome", "yes",
+		"Hides /home, /root and /run/user from the service, so a compromise of it cannot read anyone's SSH keys or cloud credentials.",
+		"A service whose data or configuration lives in a home directory — a media server pointed at ~/Videos, a sync client — cannot reach it after the restart and fails or comes up empty."},
+	{"systemd.protect-system", "ProtectSystem", "full",
+		"Mounts /usr, /boot and /etc read-only for this service alone, so a compromise of it cannot replace a binary or edit a login file.",
+		"A service that writes its own configuration under /etc or updates files under /usr — a package manager, a self-updating agent — fails when it tries."},
+	{"systemd.private-devices", "PrivateDevices", "yes",
+		"Gives the service a minimal /dev with no physical devices, so a compromise of it cannot reach disks, GPUs or other device nodes directly.",
+		"A service that uses hardware — GPU transcoding, a USB or serial device, a TUN interface for a VPN — loses it after the restart."},
+	{"systemd.protect-kernel-tunables", "ProtectKernelTunables", "yes",
+		"Makes /proc/sys and /sys read-only for the service, so a compromise of it cannot change kernel networking or security settings.",
+		"A service that manages kernel settings on purpose — a VPN enabling IP forwarding, a network manager, a container runtime — cannot after the restart."},
+	{"systemd.protect-control-groups", "ProtectControlGroups", "yes",
+		"Makes the cgroup tree read-only for the service, so a compromise of it cannot loosen the limits that isolate other workloads.",
+		"Container runtimes and anything that creates or manages cgroups itself (Docker, containerd, Kubernetes, LXC) stop working after the restart."},
+	{"systemd.restrict-namespaces", "RestrictNamespaces", "yes",
+		"Stops the service creating namespaces, removing kernel attack surface that most daemons never use.",
+		"Container runtimes, sandboxes, browsers and anything else that isolates its children with namespaces fail to start them after the restart."},
+	{"systemd.memory-deny-write-execute", "MemoryDenyWriteExecute", "yes",
+		"Stops the service creating memory that is both writable and executable, which is how injected code usually gets to run.",
+		"JIT runtimes — Node.js, Java, .NET, PHP with JIT, LuaJIT, browsers — need exactly that memory and crash or refuse to start after the restart."},
+}
+
+type riskyDirective struct {
+	id, key, value, benefit, warning string
+}
+
+// systemdRollbackNote is the reassurance half of each risky Warning: the
+// drop-in is a file hostveil created, so undoing it is deleting it.
+const systemdRollbackNote = "The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching."
+
+func (d riskyDirective) build(f model.Finding) (Fix, error) {
+	fx, err := systemdDropIn(f, d.key, d.value, d.benefit, d.warning+" "+systemdRollbackNote)
+	// Declared Review here rather than left to the checker: the shape is
+	// Auto's, one edit, but the reason these were declined is exactly the
+	// one Auto excludes, and a registry that says Auto about them is a
+	// registry the docs and every other reader of it would believe.
+	fx.Kind = model.RemediationReview
+	fx.IndividualOnly = true
+	return fx, err
 }
 
 // serviceDirective matches an existing assignment of the directive's key
