@@ -76,20 +76,20 @@ package fix
 // checker learned to stop reporting an account that is locked and expired,
 // because that is an account nobody can log in as.
 //
+// network_risky.go took four more. firewall.docker-bypass installs the
+// ufw-docker block in after.rules and reloads ufw through AfterWrite, which
+// restores the file and reloads again if ufw refuses it. compose.dr004 and
+// kube.token-readable are subtractive chmods with checkpoints; the token's
+// Warning says it still needs rotating. kube.kubeconfig-readable is the same
+// chmod, durable on k0s and lasting until the next start on k3s, which its
+// Warning says along with where the persistent setting lives.
+//
 // # Findings deliberately left without a fix
 //
 // These are fixable in principle and are demoted to Manual on purpose.
 // TestKnownUnregisteredFindings pins each one, so registering a fix means
 // deleting an assertion and arguing with the reason.
 //
-//   - firewall.docker-bypass — the two remediations are unrelated and only
-//     the operator can choose. Republishing the port to loopback means
-//     editing whichever Compose file or `docker run` invocation started the
-//     container, then recreating it, which takes the service down and is not
-//     a file edit hostveil can locate from the finding. Installing the
-//     ufw-docker rules means appending to /etc/ufw/after.rules and reloading
-//     ufw — firewall policy, so it fails the same recoverability criterion as
-//     firewall.inactive.
 //   - fileperms.owner — the remediation is `chown root:root`, and hostveil
 //     cannot undo it. A checkpoint records a file's contents and its mode
 //     and has nowhere to put its previous owner, so this would be the only
@@ -138,12 +138,6 @@ package fix
 //     `condition: service_healthy` then never starts. The finding's own
 //     how-to-fix says this cannot be filled in automatically; this is the
 //     registry agreeing with it.
-//   - compose.dr004 — the finding is not that a value is wrong but that
-//     credentials live in an env_file, and the remediation is to check that
-//     file's permissions and that it is out of version control and backups.
-//     One of those is a fact about a path the finding does not carry, and
-//     the other two are about systems hostveil cannot see. There is nothing
-//     in the compose file to edit.
 //   - ports.exposed — the aggregate finding, which fires only when no
 //     firewall is active at all. Its remediation is firewall.inactive's,
 //     and it is declined for firewall.inactive's reason: enabling
@@ -206,17 +200,6 @@ package fix
 //     release), where Review means alternatives, and the first alone leaves
 //     the host with no Proxmox source at all, which is worse than the finding.
 //     A subscription key is the other remedy and is not hostveil's to enter.
-//   - kube.kubeconfig-readable — a chmod would pass its re-check and be
-//     undone at the next restart, because k3s rewrites the file at start
-//     with whatever write-kubeconfig-mode says; the remedy is that setting,
-//     which may live in config.yaml, a drop-in, k3s.service.env or the
-//     unit's own command line, and changing it only takes effect when the
-//     node restarts. k0s's own copy is the same file with a different
-//     owner, and loosening it was deliberate enough that re-tightening it
-//     unattended would break whatever relies on it.
-//   - kube.token-readable — tightening the mode is half of it; the token
-//     has been readable, so the other half is rotating it, which is a
-//     cluster operation hostveil does not perform.
 //   - kube.anonymous-auth and kube.secrets-unencrypted — both are a change
 //     to how the control plane starts, in whichever layer set them, and
 //     both need a restart of the node every workload runs on; encryption
@@ -503,6 +486,7 @@ func Default() *Registry {
 	registerComposeRisky(r)
 	registerHostRisky(r)
 	registerDockerd(r)
+	registerNetworkRisky(r)
 	registerFilePerms(r)
 	registerSSH(r)
 	registerUpdates(r)

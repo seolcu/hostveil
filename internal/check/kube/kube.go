@@ -464,7 +464,7 @@ func kubeconfigFinding(cfg k3sConfig) func(os.FileMode) model.Finding {
 		}
 		return model.NewFinding("kube.kubeconfig-readable",
 			"The cluster-admin kubeconfig is readable by every account",
-			model.SeverityMedium, model.SourceKube, model.RemediationManual, opts...)
+			model.SeverityMedium, model.SourceKube, model.RemediationReview, opts...)
 	}
 }
 
@@ -472,7 +472,7 @@ func k0sKubeconfigFinding() func(os.FileMode) model.Finding {
 	return func(mode os.FileMode) model.Finding {
 		return model.NewFinding("kube.kubeconfig-readable",
 			"The cluster-admin kubeconfig is readable by every account",
-			model.SeverityMedium, model.SourceKube, model.RemediationManual,
+			model.SeverityMedium, model.SourceKube, model.RemediationReview,
 			model.WithDescription("k0s's admin kubeconfig is readable by every account on this host. It holds cluster-admin credentials, so any local user can do anything in the cluster, including run a privileged pod that mounts the host's filesystem — root on this machine. k0s writes it 0640 itself, so this was loosened after the fact."),
 			model.WithHowToFix("`chmod 0640 "+k0sAdminConf+"`, and give anyone who needs kubectl a kubeconfig of their own (`k0s kubeconfig create <user>`) rather than a copy of this one."),
 			model.WithEvidence("mode", "0"+strconvOct(mode)),
@@ -484,7 +484,7 @@ func tokenFinding(p string) func(os.FileMode) model.Finding {
 	return func(mode os.FileMode) model.Finding {
 		return model.NewFinding("kube.token-readable",
 			"The k3s join token is readable by every account",
-			model.SeverityMedium, model.SourceKube, model.RemediationManual,
+			model.SeverityMedium, model.SourceKube, model.RemediationReview,
 			model.WithDescription("The token that lets a machine join this cluster is readable by every account on the host. A node that joins is trusted with the workloads scheduled onto it and the secrets they mount, and a server token joins as another control-plane node — so a local user can hand the cluster to a machine of their choosing."),
 			model.WithHowToFix("`chmod 0600 "+p+"`, then rotate the token (`k3s token rotate`) since it has been readable: anything that copied it can still use it."),
 			model.WithEvidence("mode", "0"+strconvOct(mode)),

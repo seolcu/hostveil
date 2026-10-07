@@ -53,6 +53,8 @@ func Finding(id string) model.Finding {
 		model.WithEvidence("capability", "SYS_ADMIN"),
 		model.WithEvidence("mount", "/var/run/docker.sock"),
 		model.WithEvidence("path", "/var/run/docker.sock"),
+		model.WithEvidence("env_files", ".env"),
+		model.WithEvidence("published", "8080/tcp (web)"),
 		model.WithEvidence("group", "docker"),
 		model.WithEvidence("members", "ci-runner"),
 		model.WithMetadata("daemon_json", "/etc/docker/daemon.json"),
