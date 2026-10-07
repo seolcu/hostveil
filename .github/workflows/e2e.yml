@@ -436,6 +436,54 @@ jobs:
         if: ${{ !cancelled() }}
         run: sudo -E scripts/e2e/individual.sh nginx
 
+  # The firewall fixes, on a VM of their own: they enable ufw with a
+  # default-deny inbound policy, which would change what every scenario after
+  # them could reach. The runner talks to GitHub outbound only, so denying
+  # inbound does not cut the job off.
+  individual-fixes-ufw:
+    runs-on: ubuntu-latest
+    env:
+      HOSTVEIL: /usr/local/bin/hostveil
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26"
+          check-latest: true
+
+      - name: Build
+        run: |
+          go build -o /tmp/hostveil ./cmd/hostveil
+          sudo install /tmp/hostveil /usr/local/bin/hostveil
+
+      - name: ufw fixes enable, close and route around Docker, and roll back
+        run: sudo -E scripts/e2e/individual.sh ufw
+
+  # k3s's control-plane fixes, against a real single-node k3s: the check is
+  # what an unauthenticated request to the API server actually gets, not what
+  # a config file says. Its own VM, because k3s brings its own containerd and
+  # iptables rules.
+  individual-fixes-k3s:
+    runs-on: ubuntu-latest
+    env:
+      HOSTVEIL: /usr/local/bin/hostveil
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26"
+          check-latest: true
+
+      - name: Build
+        run: |
+          go build -o /tmp/hostveil ./cmd/hostveil
+          sudo install /tmp/hostveil /usr/local/bin/hostveil
+
+      - name: k3s fixes restart the control plane and change what it accepts
+        run: sudo -E scripts/e2e/individual.sh k3s
+
   # hostveil publishes archives and packages for hosts that are not Debian,
   # and until now it had never been run on one. Both gaps are real: the CVE
   # and container domains sit behind a daemon, the updates domain branches on

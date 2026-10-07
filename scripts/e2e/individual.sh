@@ -12,6 +12,8 @@
 #   scripts/e2e/individual.sh systemd        # needs systemd as PID 1
 #   scripts/e2e/individual.sh nginx          # installs nginx; needs systemd
 #   scripts/e2e/individual.sh reboot-preview # never reboots
+#   scripts/e2e/individual.sh ufw            # enables ufw; needs Docker and sshd
+#   scripts/e2e/individual.sh k3s            # installs k3s
 #
 # Why it exists: these fixes are excluded from every batch on purpose, so
 # `fix --all --review` — the E2E job's and the measurement harness's path —
@@ -308,7 +310,121 @@ NGINX
     systemctl reload nginx
 }
 
-# --- reboot ------------------------------------------------------------------
+# --- ufw -----------------------------------------------------------------------
+
+# A listener the ports checker reads as a datastore: anything on 6379 is
+# Redis to it, and a plain HTTP server is the cheapest thing that listens.
+start_listener() {
+    python3 -m http.server 6379 --bind 0.0.0.0 >/dev/null 2>&1 &
+    LISTENER=$!
+    for _ in $(seq 1 20); do
+        ss -ltn | grep -q ':6379 ' && return 0
+        sleep 0.5
+    done
+    fail "the test listener on 6379 did not come up"
+}
+
+scenario_ufw() {
+    DIAGNOSE=ufw
+    command -v ufw >/dev/null || { apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ufw >/dev/null; }
+    # The firewall fix allows the port sshd is listening on before it denies
+    # the rest, so there has to be an sshd for it to find.
+    if ! ss -ltnp | grep -q sshd; then
+        DEBIAN_FRONTEND=noninteractive apt-get install -y -qq openssh-server >/dev/null
+        systemctl start ssh
+    fi
+    ufw --force reset >/dev/null
+
+    step "firewall.inactive: enable ufw, allowing SSH first"
+    expect_count 1 firewall.inactive
+    apply firewall.inactive
+    ufw status | grep -q 'Status: active' || fail "ufw is not active after the fix"
+    ufw status | grep -qE '^22/tcp +ALLOW' || fail "the SSH port was not allowed before the policy changed"
+    expect_count 0 firewall.inactive
+
+    step "ports.exposed-datastore: close an allowed port ahead of the allow"
+    ufw allow 6379/tcp >/dev/null
+    start_listener
+    local svc
+    [[ $(count ports.exposed-datastore) -ge 1 ]] || fail "ports.exposed-datastore is not reported on an allowed 6379"
+    svc=$(jq -r '[.findings[] | select(.id == "ports.exposed-datastore")][0].service' /tmp/hv-scan.json)
+    apply ports.exposed-datastore "$svc"
+    ufw status | awk '/6379\/tcp/ {print $2; exit}' | grep -q DENY || fail "the deny for 6379 is not ahead of the allow"
+    expect_count 0 ports.exposed-datastore
+    kill "$LISTENER" 2>/dev/null || true
+    ufw delete deny 6379/tcp >/dev/null || true
+    ufw delete allow 6379/tcp >/dev/null || true
+
+    step "firewall.docker-bypass: the ufw-docker rules, then roll them back"
+    docker rm -f hv-web >/dev/null 2>&1 || true
+    docker run -d --name hv-web -p 8088:80 busybox:1.36 httpd -f -p 80 >/dev/null
+    local before
+    before=$(sha256sum /etc/ufw/after.rules | cut -d' ' -f1)
+    expect_count 1 firewall.docker-bypass
+    apply firewall.docker-bypass
+    iptables -S DOCKER-USER | grep -q ufw-user-forward || fail "DOCKER-USER does not send traffic through ufw after the fix"
+    expect_count 0 firewall.docker-bypass
+    rollback_latest firewall.docker-bypass
+    [[ $(sha256sum /etc/ufw/after.rules | cut -d' ' -f1) == "$before" ]] || fail "after.rules is not back byte for byte"
+    if iptables -S DOCKER-USER | grep -q ufw-user-forward; then
+        fail "the rollback restored after.rules but DOCKER-USER still sends traffic through ufw"
+    fi
+    expect_count 1 firewall.docker-bypass
+
+    docker rm -f hv-web >/dev/null 2>&1 || true
+    ufw --force reset >/dev/null
+}
+
+# --- k3s -----------------------------------------------------------------------
+
+k3s_ready() {
+    for _ in $(seq 1 90); do
+        k3s kubectl get --raw /readyz >/dev/null 2>&1 && return 0
+        sleep 2
+    done
+    fail "k3s did not become ready"
+}
+
+# The status an unauthenticated request for /version gets: 200 while anonymous
+# requests are let through to RBAC, 401 once they are refused.
+anonymous_status() {
+    curl -sk -o /dev/null -w '%{http_code}' https://127.0.0.1:6443/version
+}
+
+scenario_k3s() {
+    DIAGNOSE=k3s
+    mkdir -p /etc/rancher/k3s
+    printf 'kube-apiserver-arg:\n  - anonymous-auth=true\n' >/etc/rancher/k3s/config.yaml
+    if ! command -v k3s >/dev/null; then
+        curl -sfL https://get.k3s.io |
+            INSTALL_K3S_EXEC="server --disable traefik --disable metrics-server" sh - >/dev/null
+    fi
+    k3s_ready
+
+    step "kube.anonymous-auth: refuse unauthenticated requests, then roll back"
+    [[ $(anonymous_status) == 200 ]] || fail "the seeded cluster does not let anonymous requests through ($(anonymous_status))"
+    expect_count 1 kube.anonymous-auth
+    apply kube.anonymous-auth
+    k3s_ready
+    [[ $(anonymous_status) == 401 ]] || fail "anonymous requests still get $(anonymous_status) after the fix"
+    expect_count 0 kube.anonymous-auth
+    rollback_latest kube.anonymous-auth
+    k3s_ready
+    [[ $(anonymous_status) == 200 ]] || fail "anonymous requests get $(anonymous_status) after rolling back"
+    expect_count 1 kube.anonymous-auth
+
+    # Not rolled back: once Secrets have been written encrypted, switching
+    # encryption off by removing the setting leaves them unreadable, and the
+    # fix's own Warning says not to. What is checked is that it is on.
+    step "kube.secrets-unencrypted: encrypt Secrets at rest"
+    expect_count 1 kube.secrets-unencrypted
+    apply kube.secrets-unencrypted
+    k3s_ready
+    k3s secrets-encrypt status | grep -qi 'Encryption Status: Enabled' || fail "k3s does not report secrets encryption enabled"
+    expect_count 0 kube.secrets-unencrypted
+}
+
+# --- reboot ----------------------------------------------------------------------
 
 # Never applied: it would take the host down. What is checked is what the
 # operator is shown before saying yes.
@@ -331,6 +447,8 @@ dockerd-revert) scenario_dockerd_revert ;;
 systemd) scenario_systemd ;;
 nginx) scenario_nginx ;;
 reboot-preview) scenario_reboot_preview ;;
+ufw) scenario_ufw ;;
+k3s) scenario_k3s ;;
 *)
     sed -n '2,20p' "$0"
     exit 2
