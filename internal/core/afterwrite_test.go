@@ -13,6 +13,7 @@ import (
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"
+	"github.com/seolcu/hostveil/internal/platform"
 )
 
 // restartRunner records every command and fails the restart while failing is
@@ -277,3 +278,63 @@ func (r *resetAwareRunner) Run(_ context.Context, name string, args ...string) (
 }
 
 func (r *resetAwareRunner) LookPath(name string) (string, error) { return "/usr/bin/" + name, nil }
+
+func irreversibleEngine(t *testing.T, path string, runner platform.CommandRunner) (*Engine, model.Finding) {
+	t.Helper()
+	reg := fix.NewRegistry()
+	reg.Register("kube.test", func(model.Finding) (fix.Fix, error) {
+		return fix.Fix{Label: "x", Kind: model.RemediationReview, Actions: []fix.Action{{
+			Label: "x", Benefit: "b", Warning: "w", Kind: fix.ActionEdit, Path: path, CreateIfMissing: true,
+			Transform:    func([]byte) ([]byte, error) { return []byte("secrets-encryption: true\n"), nil },
+			AfterWrite:   [][]string{{"k3s", "secrets-encrypt", "enable"}, {"systemctl", "restart", "k3s"}, {"k3s", "secrets-encrypt", "rotate-keys"}},
+			Irreversible: true,
+		}}}, nil
+	})
+	e := New(Config{Fixes: reg, Store: history.NewStore(t.TempDir()), Runner: runner})
+	return e, model.NewFinding("kube.test", "t", model.SeverityLow, model.SourceKube, model.RemediationReview)
+}
+
+// An irreversible edit is recorded and cannot be rolled back.
+func TestAnIrreversibleEditHasNoRollback(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "99-hostveil.yaml")
+	e, f := irreversibleEngine(t, path, &restartRunner{})
+	out, err := e.ApplyFix(context.Background(), f, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cps, _ := e.ListCheckpoints()
+	if len(cps) != 1 || cps[0].Reversible {
+		t.Fatalf("checkpoints = %+v; want one record that is not reversible", cps)
+	}
+	if _, err := e.Rollback(out.CheckpointID); err == nil {
+		t.Error("an irreversible edit was rolled back")
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("the file must stay: %v", err)
+	}
+}
+
+// A step that fails is reported where it stopped, and nothing is undone.
+func TestAnIrreversibleEditIsNotUndoneWhenAStepFails(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "99-hostveil.yaml")
+	runner := &restartRunner{failing: true}
+	e, f := irreversibleEngine(t, path, runner)
+	_, err := e.ApplyFix(context.Background(), f, 0)
+	if err == nil {
+		t.Fatal("a failed step must fail the fix")
+	}
+	if got, _ := os.ReadFile(path); string(got) != "secrets-encryption: true\n" {
+		t.Errorf("file = %q; it must be kept, not restored", got)
+	}
+	// restartRunner fails every command, so the very first step stopped it:
+	// nothing is done and all three are left.
+	for _, want := range []string{"written and kept", "Already done: nothing", "`k3s secrets-encrypt enable`, then", "rotate-keys"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error does not say %q: %v", want, err)
+		}
+	}
+	cps, _ := e.ListCheckpoints()
+	if len(cps) != 1 {
+		t.Errorf("the change is on the host and must stay in history; checkpoints = %d", len(cps))
+	}
+}

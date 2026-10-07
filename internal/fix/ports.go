@@ -55,11 +55,14 @@ func buildUFWDenyPort(f model.Finding) (Fix, error) {
 		return Fix{}, fmt.Errorf("finding %s names no port", f.ID)
 	}
 	rule := port + "/tcp"
-	cmd := []string{"ufw", "prepend", "deny", rule}
-	if f.Metadata["ufw_rules"] == "false" {
-		// prepend needs a rule to go in front of.
-		cmd = []string{"ufw", "deny", rule}
-	}
+	// The allow goes first. ufw treats a deny with the same match as an
+	// allow already in the ruleset as a duplicate — "Skipping inserting
+	// existing rule", exit 0 — so prepending alone did nothing on exactly the
+	// host this finding fires on, one with that port allowed, while the fix
+	// reported success. Found on a real ufw by scripts/e2e/individual.sh.
+	// Deleting a rule that is not there is also exit 0, and prepend works on
+	// an empty ruleset, so the pair is safe whatever the ruleset held.
+	cmds := [][]string{{"ufw", "delete", "allow", rule}, {"ufw", "prepend", "deny", rule}}
 	what := f.Service
 	if what == "" {
 		what = "port " + port
@@ -71,9 +74,11 @@ func buildUFWDenyPort(f model.Finding) (Fix, error) {
 				"reaching it as before.",
 			Warning: "Every remote client of " + what + " is cut off — an application server on another machine, a " +
 				"replica, a backup job, your own desktop client — including ones a subnet allow rule used to let " +
-				"in. There is no checkpoint: undo it with `ufw delete deny " + rule + "`. Binding the service to " +
-				"127.0.0.1 in its own configuration is the cleaner long-term fix.",
+				"in. An existing `allow " + rule + "` is deleted first, because ufw will not put a deny for the same " +
+				"port ahead of it. There is no checkpoint: undo it with `ufw delete deny " + rule + "`, and " +
+				"`ufw allow " + rule + "` if you had that rule. Binding the service to 127.0.0.1 in its own " +
+				"configuration is the cleaner long-term fix.",
 			Kind:     ActionExec,
-			Commands: [][]string{cmd},
+			Commands: cmds,
 		}}}, nil
 }

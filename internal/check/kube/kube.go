@@ -151,9 +151,21 @@ func (c *Checker) auditK3s(ctx context.Context, env platform.Env, cov *check.Cov
 		k3sFixable(f, cfg, "kube-apiserver-arg", "kubelet-arg")
 		out = append(out, *f)
 	}
-	if !cfg.secretsEncryption && cfg.role != "" {
-		// Only judged when the command line was read: the flag can be set
-		// there alone, and "not in any file" is not "not set".
+	// k3s answers whether Secrets are encrypted, and its answer wins over the
+	// configuration's. The setting alone does not turn encryption on for a
+	// cluster that already exists — that takes `k3s secrets-encrypt enable`
+	// and a key rotation — so a host carrying `secrets-encryption: true` can
+	// still store every Secret in plain base64, and reading the setting
+	// reported it fixed. That is what 3.33.0's fix left behind, and what
+	// scripts/e2e/individual.sh found on a real cluster. Without an answer
+	// (no k3s binary, not root, server down) the configuration is all there is.
+	encrypted, known := k3sSecretsEncrypted(ctx, env.Runner)
+	if !known {
+		encrypted = cfg.secretsEncryption
+	}
+	if !encrypted && (known || cfg.role != "") {
+		// From the configuration, only judged when the command line was read:
+		// the flag can be set there alone, and "not in any file" is not "not set".
 		f := secretsFinding()
 		k3sFixable(&f, cfg, "secrets-encryption")
 		out = append(out, f)
@@ -637,4 +649,26 @@ func truthy(s string) bool {
 		return true
 	}
 	return false
+}
+
+// k3sSecretsEncrypted asks k3s itself. known is false when it could not say.
+func k3sSecretsEncrypted(ctx context.Context, r platform.CommandRunner) (encrypted, known bool) {
+	if !platform.Has(r, "k3s") {
+		return false, false
+	}
+	out, err := r.Run(ctx, "k3s", "secrets-encrypt", "status")
+	if err != nil {
+		return false, false
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "Encryption Status:"); ok {
+			switch strings.ToLower(strings.TrimSpace(v)) {
+			case "enabled":
+				return true, true
+			case "disabled":
+				return false, true
+			}
+		}
+	}
+	return false, false
 }

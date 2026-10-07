@@ -1530,8 +1530,16 @@ func (m *appModel) previewRows() []string {
 		// — "there is no rollback checkpoint" — and saying only the alarming
 		// half leaves the operator to infer the safe half from its absence.
 		out = append(out, "")
-		out = append(out, indentRows([]string{s.safe.Render(
-			m.gl.Of(glyph.OK) + " Hostveil backs the file up before writing, and h undoes this.")}, bodyInset)...)
+		if a.Irreversible {
+			// The edit is recorded and there is no undo; saying otherwise on
+			// the screen where the decision is made is the one place it
+			// would do the most harm.
+			out = append(out, indentRows([]string{lipgloss.NewStyle().Foreground(s.cHigh).Render(
+				m.gl.Of(glyph.Warning) + " This cannot be undone from history.")}, bodyInset)...)
+		} else {
+			out = append(out, indentRows([]string{s.safe.Render(
+				m.gl.Of(glyph.OK) + " Hostveil backs the file up before writing, and h undoes this.")}, bodyInset)...)
+		}
 	case "exec":
 		out = append(out, indentRows([]string{s.dim.Render("These commands will run:")}, bodyInset)...)
 		for _, cmd := range a.Commands {

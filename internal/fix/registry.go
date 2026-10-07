@@ -144,6 +144,18 @@ type Action struct {
 	// to prevent — and it took a real Docker to show it.
 	AfterRestore [][]string
 
+	// Irreversible marks an edit whose effect outlives the file: the history
+	// records it, but there is no rollback, and a failed AfterWrite is
+	// reported where it stopped rather than undone.
+	//
+	// k3s Secrets encryption is the case. Once a key rotation has rewritten
+	// Secrets encrypted, removing the setting and restarting — what a rollback
+	// or the restore-after-failure path would do — leaves the cluster unable
+	// to read them. For an edit like that, "put the old file back" is not the
+	// safe direction, and offering it as a rollback would offer the one action
+	// the fix's own Warning tells the operator not to take.
+	Irreversible bool
+
 	// Exec: one or more commands (argv, no shell) run in order as a single
 	// atomic action — e.g. "allow SSH" then "enable firewall".
 	Commands [][]string

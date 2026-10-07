@@ -20,8 +20,8 @@ To                         Action      From
 
 func TestUFWBlocksFollowsFirstMatchThenDefault(t *testing.T) {
 	v := parseUFWStatus(ufwVerbose)
-	if !v.Active || !v.HasRules {
-		t.Fatalf("active=%v rules=%v", v.Active, v.HasRules)
+	if !v.Active {
+		t.Fatal("ufw reads as inactive")
 	}
 	for port, want := range map[int]bool{
 		6379:  true,  // denied in both families

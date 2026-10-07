@@ -894,7 +894,7 @@
             <dd>
               <p lang="en">Add the ufw-docker rules to /etc/ufw/after.rules and reload ufw</p>
               <p class="fix-benefit" lang="en">✓ Published container ports stop bypassing the firewall: from outside the private ranges they are reachable only where a <code>ufw route allow</code> rule says so, which is what <code>ufw status</code> already claims.</p>
-              <p class="fix-warning" lang="en">⚠ Every port a container publishes stops being reachable from the internet the moment ufw reloads — 8080/tcp (web) included — until you allow it with <code>ufw route allow proto tcp from any to any port &lt;container port&gt;</code>. Traffic from 10/8, 172.16/12 and 192.168/16 is still let through. If ufw refuses the rules, Hostveil puts the original file back and reloads again. The edit has a checkpoint, and rolling it back reloads ufw.</p>
+              <p class="fix-warning" lang="en">⚠ Every port a container publishes stops being reachable from the internet the moment ufw reloads — 8080/tcp (web) included — until you allow it with <code>ufw route allow proto tcp from any to any port &lt;container port&gt;</code>. Traffic from 10/8, 172.16/12 and 192.168/16 is still let through. If ufw refuses the rules, Hostveil puts the original file back and reloads again. The edit has a checkpoint; rolling it back reloads ufw and empties the DOCKER-USER chain, which a reload alone leaves as it is.</p>
             </dd>
             <dt id="fix-firewall.inactive"><code>firewall.inactive</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -1013,13 +1013,13 @@
             <dd>
               <p lang="en">Deny 6379/tcp ahead of every other ufw rule</p>
               <p class="fix-benefit" lang="en">✓ app stops being reachable from any other machine, while everything on this host keeps reaching it as before.</p>
-              <p class="fix-warning" lang="en">⚠ Every remote client of app is cut off — an application server on another machine, a replica, a backup job, your own desktop client — including ones a subnet allow rule used to let in. There is no checkpoint: undo it with <code>ufw delete deny 6379/tcp</code>. Binding the service to 127.0.0.1 in its own configuration is the cleaner long-term fix.</p>
+              <p class="fix-warning" lang="en">⚠ Every remote client of app is cut off — an application server on another machine, a replica, a backup job, your own desktop client — including ones a subnet allow rule used to let in. An existing <code>allow 6379/tcp</code> is deleted first, because ufw will not put a deny for the same port ahead of it. There is no checkpoint: undo it with <code>ufw delete deny 6379/tcp</code>, and <code>ufw allow 6379/tcp</code> if you had that rule. Binding the service to 127.0.0.1 in its own configuration is the cleaner long-term fix.</p>
             </dd>
             <dt id="fix-ports.exposed-datastore"><code>ports.exposed-datastore</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Deny 6379/tcp ahead of every other ufw rule</p>
               <p class="fix-benefit" lang="en">✓ app stops being reachable from any other machine, while everything on this host keeps reaching it as before.</p>
-              <p class="fix-warning" lang="en">⚠ Every remote client of app is cut off — an application server on another machine, a replica, a backup job, your own desktop client — including ones a subnet allow rule used to let in. There is no checkpoint: undo it with <code>ufw delete deny 6379/tcp</code>. Binding the service to 127.0.0.1 in its own configuration is the cleaner long-term fix.</p>
+              <p class="fix-warning" lang="en">⚠ Every remote client of app is cut off — an application server on another machine, a replica, a backup job, your own desktop client — including ones a subnet allow rule used to let in. An existing <code>allow 6379/tcp</code> is deleted first, because ufw will not put a deny for the same port ahead of it. There is no checkpoint: undo it with <code>ufw delete deny 6379/tcp</code>, and <code>ufw allow 6379/tcp</code> if you had that rule. Binding the service to 127.0.0.1 in its own configuration is the cleaner long-term fix.</p>
             </dd>
             <dt id="fix-ports.redis-bind"><code>ports.redis-bind</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -1778,9 +1778,9 @@
             </dd>
             <dt id="fix-kube.secrets-unencrypted"><code>kube.secrets-unencrypted</code> <span class="fix-kind review">Review</span></dt>
             <dd>
-              <p lang="en">Write /etc/rancher/k3s/config.yaml.d/99-hostveil-secrets-encryption.yaml and restart k3s</p>
-              <p class="fix-benefit" lang="en">✓ Secrets written from now on are encrypted in the datastore, so a copied /var/lib/rancher/k3s or a shipped snapshot no longer hands over every password the cluster holds.</p>
-              <p class="fix-warning" lang="en">⚠ Secrets written before this stay unencrypted until they are rewritten: run <code>k3s secrets-encrypt rotate-keys</code> once k3s is back. Do not roll this back once Secrets have been written encrypted — switching encryption off that way leaves them unreadable; use <code>k3s secrets-encrypt disable</code> and re-encrypt instead. The drop-in is a new file with a checkpoint. Restarting k3s makes the API unavailable for the seconds it takes to start; running pods keep running. If k3s will not start with the new file, Hostveil removes it and starts k3s again.</p>
+              <p lang="en">Write /etc/rancher/k3s/config.yaml.d/99-hostveil-secrets-encryption.yaml, enable encryption, rotate the keys, and restart k3s</p>
+              <p class="fix-benefit" lang="en">✓ Every Secret in the datastore is encrypted, the ones already there included, so a copied /var/lib/rancher/k3s or a shipped snapshot no longer hands over every password the cluster holds.</p>
+              <p class="fix-warning" lang="en">⚠ This cannot be rolled back: once Secrets are rewritten encrypted, removing the setting leaves them unreadable, so the way back is <code>k3s secrets-encrypt disable</code> and a rotation, by hand. It restarts k3s twice, which makes the API unavailable for the seconds each takes, and rewrites every Secret; running pods keep running. If a step fails, Hostveil stops there and says which, rather than undoing the earlier ones.</p>
             </dd>
             <dt id="fix-kube.token-readable"><code>kube.token-readable</code> <span class="fix-kind review">Review</span></dt>
             <dd>

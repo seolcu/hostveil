@@ -31,6 +31,10 @@ type ActionPreview struct {
 	// Commands is what an exec action runs, or for an edit, what runs after
 	// the write to put it in force (fix.Action.AfterWrite).
 	Commands [][]string `json:"commands,omitempty"`
+	// Irreversible is fix.Action.Irreversible: an edit that is recorded but
+	// cannot be rolled back. Every UI that tells an operator a file edit can
+	// be undone must not say so about this one.
+	Irreversible bool `json:"irreversible,omitempty"`
 }
 
 // FixOutcome is the result of applying a fix action.
