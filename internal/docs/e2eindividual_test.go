@@ -16,8 +16,15 @@ import (
 // every finding ID the script mentions must be one the registry can fix.
 func TestTheIndividualFixE2ENamesRealFixes(t *testing.T) {
 	script := readRepoFile(t, filepath.Join("scripts", "e2e", "individual.sh"))
-	ids := regexp.MustCompile(`\b(?:`+strings.Join(sourceNames(), "|")+`)\.[a-z0-9][a-z0-9-]*[a-z0-9]\b`).
-		FindAllString(script, -1)
+	re := regexp.MustCompile(`\b(?:` + strings.Join(sourceNames(), "|") + `)\.[a-z0-9][a-z0-9-]*[a-z0-9]\b`)
+	var ids []string
+	for _, loc := range re.FindAllStringIndex(script, -1) {
+		// Part of a host name — download.proxmox.com — not a finding ID.
+		if loc[0] > 0 && strings.ContainsRune("./", rune(script[loc[0]-1])) {
+			continue
+		}
+		ids = append(ids, script[loc[0]:loc[1]])
+	}
 	if len(ids) < 10 {
 		t.Fatalf("only %d finding IDs found in the script; the extraction is broken", len(ids))
 	}
