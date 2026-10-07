@@ -40,7 +40,6 @@ func buildRedisDirective(key, line, label, benefit string) Builder {
 	}
 }
 
-
 // buildUFWDenyPort closes one exposed port with a ufw rule placed ahead of
 // every other, so an earlier allow cannot win. It is the remediation that
 // fits all seventeen products on the ports lists at once; binding each to
