@@ -133,6 +133,17 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.33.3"><a href="https://github.com/seolcu/hostveil/compare/v3.33.2...v3.33.3">3.33.3</a> <span class="changelog-date">2026-10-07</span></h2>
+          <p>The last of the fixes 3.33.0 opened up now run against the real programs they change too: Caddy, Traefik, OpenClaw, and the Proxmox package repositories. One more rollback that could not do its job turned up, and is fixed.</p>
+          <h3>Bug Fixes</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>fix:</strong> rolling back the fix that moves Caddy's admin API to loopback failed. Reloading the restored Caddyfile sends it to the admin address that file names, which is the exposed one again, while the running Caddy has listened on loopback since the fix and refused the request. The rollback now sends the restored file to where the API actually is.</p>
+            </li>
+            <li>
+              <p><strong>check:</strong> the OpenClaw gateway's process is now named as <code>ss</code> reports it (<code>openclaw-gatewa</code>, truncated by the kernel), so an exposed gateway's evidence names the right process.</p>
+            </li>
+          </ul>
           <h2 id="v3.33.2"><a href="https://github.com/seolcu/hostveil/compare/v3.33.1...v3.33.2">3.33.2</a> <span class="changelog-date">2026-10-07</span></h2>
           <p>The real-host tests now cover the firewall and k3s fixes too, and found three more that reported success while leaving the host otherwise. All three are fixed.</p>
           <h3>Bug Fixes</h3>
