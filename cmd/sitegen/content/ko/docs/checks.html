@@ -26,7 +26,7 @@
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">183</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">151</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">76</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 유출된 비밀값은 그것을 발급한 쪽에서 바꿔야 하고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
+            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">183</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">158</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">83</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 유출된 비밀값은 그것을 발급한 쪽에서 바꿔야 하고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">183개 발견 항목의 처리 방식</p>
               <div class="ledger-bar">
@@ -36,13 +36,13 @@
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:42%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">76</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:45%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">83</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:17%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">32</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:14%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">25</span>
               </div>
             </div>
 
@@ -388,13 +388,13 @@
               <table>
                 <thead><tr><th>ID</th><th>의미</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>dockerd.api-unauthenticated</code></td><td>Docker API가 TLS 클라이언트 검증 없이 TCP로 제공됩니다. 포트에 닿는 누구에게나 인증 없는 root입니다</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.socket-world-writable</code></td><td>모든 로컬 계정이 Docker 소켓에 접속할 수 있고, 따라서 root가 될 수 있습니다</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.api-tls-unverified</code></td><td>API가 암호화되어 있지만 아무 클라이언트나 받습니다. <code>tlsverify</code> 없는 TLS는 서버를 인증할 뿐 호출자를 인증하지 않습니다</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.group-members</code></td><td>root 외의 계정이 소켓 그룹을 갖고 있습니다. 비밀번호 확인도 감사 기록도 없는 root 동등 권한입니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.no-new-privileges</code></td><td>컨테이너가 여전히 setuid 바이너리로 권한을 얻을 수 있습니다</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.userns-remap</code></td><td>사용자 네임스페이스가 재매핑되지 않아 컨테이너 root가 곧 호스트 root입니다</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.live-restore</code></td><td>데몬을 재시작하면 모든 컨테이너가 멈춥니다. 그래서 데몬 업데이트가 미뤄집니다</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.api-unauthenticated</code></td><td>Docker API가 TLS 클라이언트 검증 없이 TCP로 제공됩니다. 포트에 닿는 누구에게나 인증 없는 root입니다</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
+                  <tr><td><code>dockerd.socket-world-writable</code></td><td>모든 로컬 계정이 Docker 소켓에 접속할 수 있고, 따라서 root가 될 수 있습니다</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
+                  <tr><td><code>dockerd.api-tls-unverified</code></td><td>API가 암호화되어 있지만 아무 클라이언트나 받습니다. <code>tlsverify</code> 없는 TLS는 서버를 인증할 뿐 호출자를 인증하지 않습니다</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
+                  <tr><td><code>dockerd.group-members</code></td><td>root 외의 계정이 소켓 그룹을 갖고 있습니다. 비밀번호 확인도 감사 기록도 없는 root 동등 권한입니다</td><td><span class="sev medium">MEDIUM</span> / <span class="sev high">HIGH</span></td><td>Review</td></tr>
+                  <tr><td><code>dockerd.no-new-privileges</code></td><td>컨테이너가 여전히 setuid 바이너리로 권한을 얻을 수 있습니다</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>dockerd.userns-remap</code></td><td>사용자 네임스페이스가 재매핑되지 않아 컨테이너 root가 곧 호스트 root입니다</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>dockerd.live-restore</code></td><td>데몬을 재시작하면 모든 컨테이너가 멈춥니다. 그래서 데몬 업데이트가 미뤄집니다</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>

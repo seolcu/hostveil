@@ -97,6 +97,11 @@ type Checkpoint struct {
 	// SafeRoots records descriptor roots for paths controlled by another
 	// account. Older checkpoints omit it and retain their legacy behaviour.
 	SafeRoots map[string]string `json:"safe_roots,omitempty"`
+	// AfterRestore is the fix's AfterWrite, kept so a rollback can put the
+	// restored file into force the same way the fix put the edited one in:
+	// restoring daemon.json under a daemon that is still running from the
+	// edited one changes nothing until something restarts it.
+	AfterRestore [][]string `json:"after_restore,omitempty"`
 }
 
 // Reversible reports whether the checkpoint can be rolled back (i.e. it

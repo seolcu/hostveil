@@ -1517,6 +1517,14 @@ func (m *appModel) previewRows() []string {
 	switch a.Type {
 	case "edit", "mode":
 		out = append(out, indentRows(s.diffRows(a.Diff), bodyInset)...)
+		if len(a.Commands) > 0 {
+			out = append(out, "")
+			out = append(out, indentRows([]string{s.dim.Render("Then these commands run:")}, bodyInset)...)
+			for _, cmd := range a.Commands {
+				out = append(out, indentRows([]string{s.dim.Render(truncate("$ "+strings.Join(cmd, " "),
+					max(textwidth.MinWrap, m.width-bodyInset-stepInset)))}, bodyInset+stepInset)...)
+			}
+		}
 		// The reassurance belongs on the screen where the decision is made.
 		// An exec action already says the opposite here, through its warning
 		// — "there is no rollback checkpoint" — and saying only the alarming

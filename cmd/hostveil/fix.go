@@ -300,6 +300,13 @@ func printPreview(f model.Finding, p model.FixPreview, idx int) {
 	switch a.Type {
 	case "edit", "mode":
 		fmt.Printf("\n%s\n", a.Diff)
+		if len(a.Commands) > 0 {
+			fmt.Println("Then these commands run:")
+			for _, cmd := range a.Commands {
+				fmt.Printf("  $ %s\n", strings.Join(cmd, " "))
+			}
+			fmt.Println()
+		}
 	case "exec":
 		fmt.Println("\nThe following commands will run:")
 		for _, cmd := range a.Commands {

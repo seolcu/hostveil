@@ -188,6 +188,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		// work. Computed before the write so the checkpoint is complete
 		// before anything on the host changes.
 		AppliedSHA256: map[string]string{a.Path: history.SHA256Hex(next)},
+		AfterRestore:  a.AfterWrite,
 	}
 	if a.SafeRoot != "" {
 		cp.SafeRoots = map[string]string{a.Path: a.SafeRoot}
@@ -272,7 +273,61 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		return model.FixOutcome{}, err
 	}
 
+	if err := e.runAfterWrite(ctx, a); err != nil {
+		return model.FixOutcome{}, e.undoAfterFailedFollowUp(ctx, a, saved.ID, err)
+	}
+
 	return model.FixOutcome{Diff: d, CheckpointID: saved.ID, RestartHint: f.Service}, nil
+}
+
+// runAfterWrite runs an edit's follow-up commands, stopping at the first that
+// fails.
+func (e *Engine) runAfterWrite(ctx context.Context, a fix.Action) error {
+	runCtx := ctx
+	if a.Timeout > 0 {
+		var cancel context.CancelFunc
+		runCtx, cancel = context.WithTimeout(ctx, a.Timeout)
+		defer cancel()
+	}
+	return runEach(runCtx, e.runner, a.AfterWrite)
+}
+
+func runEach(ctx context.Context, r platform.CommandRunner, cmds [][]string) error {
+	for _, cmd := range cmds {
+		if len(cmd) == 0 {
+			continue
+		}
+		if _, err := r.Run(ctx, cmd[0], cmd[1:]...); err != nil {
+			return fmt.Errorf("command %v failed: %w", cmd, err)
+		}
+	}
+	return nil
+}
+
+// undoAfterFailedFollowUp handles an edit that landed and whose restart did
+// not. The likeliest reason is the edit itself — a daemon refusing the new
+// file — so the original goes back and the commands run again, which brings
+// the service back under the configuration it was running before. The
+// checkpoint then describes a change that is no longer on the host, so it is
+// discarded the way a failed write's is.
+//
+// Every way this can go further wrong is named in the error rather than
+// hidden, because the state it describes is one the operator has to act on.
+func (e *Engine) undoAfterFailedFollowUp(ctx context.Context, a fix.Action, id string, cause error) error {
+	if _, err := e.store.Rollback(id); err != nil {
+		return fmt.Errorf("%w — and restoring the original %s failed too (%v); checkpoint %s still holds it, "+
+			"restore it with `hostveil rollback %s`", cause, a.Path, err, id, id)
+	}
+	if err := e.runAfterWrite(ctx, a); err != nil {
+		_ = e.store.Discard(id)
+		return fmt.Errorf("%w — the original %s was restored, but running the commands again under it failed "+
+			"as well (%v), so the service may be down", cause, a.Path, err)
+	}
+	if err := e.store.Discard(id); err != nil {
+		return fmt.Errorf("%w — the original %s was restored and the service restarted under it, "+
+			"but checkpoint %s could not be discarded: %v", cause, a.Path, id, err)
+	}
+	return fmt.Errorf("%w — nothing changed: the original %s was restored and the service restarted under it", cause, a.Path)
 }
 
 // runEditValidator checks that the bytes an edit action produced are something the

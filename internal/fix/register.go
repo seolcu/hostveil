@@ -435,79 +435,29 @@ package fix
 // a checker that reads what the fix wrote, and this one deliberately does
 // not.
 //
-// # The Docker daemon domain, declined whole
+// # The Docker daemon domain, all seven registered
 //
-// dockerd.* has no registered fix at all — not one finding, and not because
-// nobody has looked. The two blockers that would ordinarily explain it are
-// both gone, which is why the real reason has to be written down.
+// dockerd.* was declined whole for one structural reason and two missing
+// tools. The structural reason: the checker reads the *running* daemon
+// through `docker info`, and a fix edits a file the daemon reads only at
+// start, so a written-but-not-restarted fix improved nothing an attacker
+// could see. The tools: no editor could add a key to daemon.json without
+// re-encoding it, and nothing could drop one `-H tcp://` from a unit's
+// command line.
 //
-// Action.CreateIfMissing handles the absent /etc/docker/daemon.json, exactly
-// as it does for the sysctl drop-in. And `dockerd --validate --config-file`
-// is a genuine `sshd -t` analogue: it rejects malformed JSON and unknown
-// directives, accepts an empty file — so runEditValidator's control run on the
-// original passes for a create-if-missing action — and needs no running
-// daemon. A VerifyCmd here would work.
-//
-// The reason is structural, and it is the one thing this domain does that
-// no other does: the checker reads the daemon's *running* state, while a fix
-// would edit a file the running daemon will not read again until it
-// restarts. `systemctl restart docker` stops every container on the host.
-//
-// So an applied fix would write the file, take a checkpoint, mark the
-// finding Fixed, and raise the score — while changing nothing an attacker
-// can see. The next scan asks `docker info`, gets the same answer as before,
-// and reports the finding again. A fix that improves the score without
-// improving the host is the objection that once kept a `:ro` on the Docker
-// socket mount out of the registry — a read-only socket is still the whole
-// API — arriving by a different route.
-//
-// Both halves of that objection are now answered, and neither answer is what
-// unblocks this domain — which is worth recording, because "the shared reason
-// went away" reads like "these are registerable now" and they are not.
-//
-// The message was answered first: Action.TakesEffectOn and model.VerifyPending
-// mean hostveil can write the file and say plainly that the change reaches the
-// host at the next daemon restart, instead of re-checking `docker info` and
-// calling the finding gone.
-//
-// The score is answered now too. model.Finding.Pending keeps a fix charged
-// until it is in force, so an applied-and-waiting fix no longer moves the
-// number — the objection this paragraph used to record, that registering these
-// would improve the score without improving the host, no longer follows from
-// registering them.
-//
-// What that leaves is one blocker doing nearly all the work, and it is the one
-// that arrived last: daemon.json. internal/json5 replaces the value at a key
-// path that ALREADY EXISTS and neither creates nor deletes, so it cannot add
-// `"no-new-privileges": true` to a file that does not carry the key — which is
-// every host that has not already set it, i.e. every host with this finding —
-// and it cannot remove the `tcp://` endpoint the two API findings are about.
-// Editing daemon.json any other way means re-encoding through encoding/json
-// and reordering the operator's keys, which is precisely the damage
-// internal/json5 was written to prevent. That covers five of the seven, and
-// the remaining two never rested on the score at all: group-members is exec
-// and may remove the operator's own account, and the API pair fails
-// firewall.inactive's recoverability criterion whatever edits the file.
-//
-// dockerd.socket-world-writable is the one whose recorded reason genuinely
-// falls, and it still is not a registration. Its objection was that the honest
-// remediation is a unit drop-in "which needs a restart to apply", and that is
-// now a thing a fix can say rather than a thing that stops it. Three pieces of
-// new work stand where the old reason stood, none of them removed by this
-// change: the checker declares RemediationManual, so resolvedKind floors it
-// there whatever the registry offers; the dockerd checker does not read
-// DropInPaths, so nothing here knows which drop-in wins for docker.socket, and
-// writing 50-hostveil.conf without that would repeat exactly the failure
-// persistSysctl exists to avoid; and restarting docker.socket under a running
-// docker.service is not the clean operation it looks like.
-//
-// That middle one used to be true of the systemd domain as well, which made it
-// an odd thing to decline dockerd over: systemd.no-new-privileges wrote
-// 50-hostveil.conf with no resolution at all. It resolves now — the checker
-// asks systemd which drop-ins it loaded and picks a name that sorts after all
-// of them, or refuses when none would — so the reason is a statement about
-// what the dockerd checker reads rather than about what this project is
-// willing to do.
+// Action.AfterWrite answers the first: the restart is part of the action, and
+// a daemon that refuses the new file is given the old one back and started
+// again, so a fix that reports success is one in force. setJSONKey
+// (daemonjson.go) answers the second for daemon.json — locate the value's
+// bytes, replace or insert, and refuse anything that does not parse back to
+// the original with exactly one key changed — and a drop-in that overrides
+// ExecStart answers it for the unit. Each fix's Warning carries what used to
+// be its reason here: the API pair can sever a remote operator's channel;
+// group-members cannot tell Portainer's agent from a forgotten grant;
+// userns-remap hides every existing container and image. All seven are
+// IndividualOnly, because restarting Docker is an outage the operator
+// schedules. The two daemon defaults that need a full restart also offer to
+// write the file and leave the restart to the operator, with TakesEffectOn.
 //
 // One thing Pending does not do, so that nobody reads it as more than it is:
 // it corrects the score between an apply and the next scan, and nothing more.
@@ -519,62 +469,6 @@ package fix
 // scripts/measure/run.sh has a separate phase for after the services are
 // restarted. Closing it would mean the compose checker reading containers, and
 // that is a different change.
-//
-// The asymmetry with SSH is what makes this consistent rather than
-// arbitrary. The ssh checker reads sshd_config, which is the same artifact
-// the ssh fix edits, so the Fixed mark is honest and the restart is a hint.
-// Here the artifact and the oracle are two different objects, and only one
-// of them is what the domain reports on.
-//
-// Each finding also has its own reason on top of that shared one:
-//
-//   - dockerd.api-unauthenticated and dockerd.api-tls-unverified — removing
-//     the TCP endpoint severs the exact channel a remote operator may be
-//     administering the host through: DOCKER_HOST, a Portainer agent, a CI
-//     runner. That is firewall.inactive's recoverability criterion, and it
-//     is not the only one. The edit itself has no clean shape either: the
-//     endpoint lives in a `hosts` array entry in daemon.json, or in an
-//     `-H tcp://…` token among several on the unit's ExecStart= line, and
-//     removing either is a deletion. internal/json5 replaces an existing
-//     value; it does not remove an array entry. And there is no editor
-//     anywhere in this project for surgically dropping one flag from a
-//     multi-flag command line the way it edits a key's value. Recoverability
-//     alone would only argue for Review, the way accounts.emptypassword's
-//     comparable risk does; this pair fails on shape as well.
-//   - dockerd.group-members — `gpasswd -d` is exec, so never Auto. What
-//     actually blocks it is not recoverability — removing docker-group
-//     membership only takes away Docker admin capability, not SSH or host
-//     access, and is trivially reversible with the `usermod -aG docker` the
-//     operator already knows — it is that the finding cannot distinguish a
-//     forgotten grant from a deliberate one. A service account holding this
-//     group is exactly as likely to be Portainer's agent, Watchtower, or a
-//     CI runner as an oversight, and nothing in the evidence says which.
-//     That is the objection the container removals in compose_risky.go
-//     carry in their Warnings, not accounts.emptypassword's.
-//   - dockerd.socket-world-writable — the only one of the seven that does not
-//     touch daemon.json, and so the only one whose reason had to be rewritten
-//     rather than re-pointed. The socket's mode is not durable state: dockerd
-//     recreates the socket from the systemd docker.socket unit on every
-//     start, so a chmod is undone at the next restart and the honest
-//     remediation is a unit drop-in. "Which needs a restart to apply" used to
-//     end that sentence and no longer ends anything — Action.TakesEffectOn
-//     says exactly that. What stands in its place is precedence: systemd
-//     merges drop-ins in lexical order and nothing here resolves which one
-//     sets SocketMode, so hostveil would be writing a file it cannot show
-//     wins. That is persistSysctl's rule, which this domain has not yet had
-//     to face because it has never written anything. The checker also
-//     declares RemediationManual, so resolvedKind floors it there until that
-//     moves too.
-//   - dockerd.live-restore — the one setting `systemctl reload docker` picks
-//     up without bouncing containers, which is what makes it look fixable.
-//     Its shape objection has weakened: "write it, then apply it" is one
-//     action and a TakesEffectOn now, not two sequential steps pretending to
-//     be alternatives. The editor is what stops it, as above.
-//   - dockerd.no-new-privileges and dockerd.userns-remap — the shared reason
-//     alone, which is now the editor. Both are also daemon defaults that take
-//     effect only for containers started after a restart — describable, since
-//     3.17 — and userns-remap additionally rewrites the ownership of every
-//     bind mount on the host, which is not.
 //
 // # The one CVE finding that does have a fix
 //
@@ -608,6 +502,7 @@ func Default() *Registry {
 	registerCompose(r)
 	registerComposeRisky(r)
 	registerHostRisky(r)
+	registerDockerd(r)
 	registerFilePerms(r)
 	registerSSH(r)
 	registerUpdates(r)

@@ -23,11 +23,13 @@ type ActionPreview struct {
 	// Benefit is copied from fix.Action.Benefit: what this action gets the
 	// operator, rendered beside Warning in every UI's preview screen so the
 	// payoff and the risk are read together.
-	Benefit  string     `json:"benefit,omitempty"`
-	Warning  string     `json:"warning,omitempty"`
-	Type     string     `json:"type"` // "edit" | "exec"
-	Path     string     `json:"path,omitempty"`
-	Diff     string     `json:"diff,omitempty"`
+	Benefit string `json:"benefit,omitempty"`
+	Warning string `json:"warning,omitempty"`
+	Type    string `json:"type"` // "edit" | "exec"
+	Path    string `json:"path,omitempty"`
+	Diff    string `json:"diff,omitempty"`
+	// Commands is what an exec action runs, or for an edit, what runs after
+	// the write to put it in force (fix.Action.AfterWrite).
 	Commands [][]string `json:"commands,omitempty"`
 }
 

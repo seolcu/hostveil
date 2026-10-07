@@ -52,6 +52,7 @@ func (e *Engine) PreviewFix(f model.Finding) (model.FixPreview, error) {
 				return model.FixPreview{}, err
 			}
 			ap.Diff = d
+			ap.Commands = a.AfterWrite
 		case fix.ActionExec:
 			ap.Type = "exec"
 			ap.Commands = a.Commands

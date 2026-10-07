@@ -871,6 +871,10 @@ function altPicker(p, chosen, onpick) {
 // An unrecognised action type must never render as an empty box beside a
 // live Apply button — that reads as "this fix changes nothing".
 function actionBody(a) {
+  // An edit that restarts something afterwards shows both halves: the diff
+  // is what changes, the commands are what puts it in force.
+  if (a.type === "edit" && a.commands && a.commands.length)
+    return el("div", {}, diffPre(a.diff), el("p", { class: "muted" }, "Then these commands run:"), cmdList(a.commands));
   if (a.type === "edit" || a.type === "mode") return diffPre(a.diff);
   if (a.type === "exec") return cmdList(a.commands);
   return el("pre", { class: "diff" }, `(no preview available for action type ${a.type})`);
