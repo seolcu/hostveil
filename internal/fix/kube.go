@@ -3,6 +3,7 @@ package fix
 import (
 	"fmt"
 	"path"
+	"time"
 
 	"github.com/seolcu/hostveil/internal/model"
 )
@@ -82,12 +83,20 @@ func buildK3sSecretsEncryption(f model.Finding) (Fix, error) {
 	restart := fx.Actions[0].AfterWrite[0]
 	a := &fx.Actions[0]
 	a.Label = "Write " + a.Path + ", enable encryption, rotate the keys, and restart k3s"
+	// The restart returns when the unit reports ready, which is before the
+	// server will take a key rotation: rotate-keys straight after it failed on
+	// a real cluster with "runtime core not ready". Waiting for the node is a
+	// command, not a sleep, so it is as long as it needs and no longer.
+	waitReady := []string{"k3s", "kubectl", "wait", "--for=condition=Ready", "node", "--all", "--timeout=180s"}
 	a.AfterWrite = [][]string{
 		{"k3s", "secrets-encrypt", "enable"},
 		restart,
+		waitReady,
 		{"k3s", "secrets-encrypt", "rotate-keys"},
 		restart,
+		waitReady,
 	}
+	a.Timeout = 10 * time.Minute
 	a.Irreversible = true
 	// Set whole rather than through k3sDropIn's: that one ends by promising
 	// to remove the file if k3s will not start, which this fix does not do.

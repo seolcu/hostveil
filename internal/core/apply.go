@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -284,9 +285,20 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	if err := e.runAfterWrite(ctx, a); err != nil {
 		if a.Irreversible {
 			// Not undone: see fix.Action.Irreversible. The file stays, the
-			// record stays, and the operator is told exactly where it stopped.
-			return model.FixOutcome{}, fmt.Errorf("%w — %s was written and kept, and is recorded in `hostveil history`; "+
-				"the commands after it stopped here, so finish them by hand: %s", err, a.Path, commandList(a.AfterWrite))
+			// record stays, and the operator is told exactly where it stopped
+			// — what already ran, and what is left, starting with the step
+			// that failed.
+			var stop *stoppedAt
+			left := a.AfterWrite
+			ran := "nothing"
+			if errors.As(err, &stop) {
+				left = a.AfterWrite[stop.index:]
+				if stop.index > 0 {
+					ran = commandList(a.AfterWrite[:stop.index])
+				}
+			}
+			return model.FixOutcome{}, fmt.Errorf("%w — %s was written and kept, and is recorded in `hostveil history`. "+
+				"Already done: %s. Still to do, by hand: %s", err, a.Path, ran, commandList(left))
 		}
 		return model.FixOutcome{}, e.undoAfterFailedFollowUp(ctx, a, saved.ID, err)
 	}
@@ -319,16 +331,26 @@ func (e *Engine) runAfterWrite(ctx context.Context, a fix.Action) error {
 // clears the start counter, so each restart hostveil asks for is a real one.
 func runEach(ctx context.Context, r platform.CommandRunner, cmds [][]string) error {
 	resetFailedUnits(ctx, r, cmds)
-	for _, cmd := range cmds {
+	for i, cmd := range cmds {
 		if len(cmd) == 0 {
 			continue
 		}
 		if _, err := r.Run(ctx, cmd[0], cmd[1:]...); err != nil {
-			return fmt.Errorf("command %v failed: %w", cmd, err)
+			return &stoppedAt{index: i, err: fmt.Errorf("command %v failed: %w", cmd, err)}
 		}
 	}
 	return nil
 }
+
+// stoppedAt is a runEach failure that remembers which command it stopped at,
+// so an irreversible fix can say what ran and what is left.
+type stoppedAt struct {
+	index int
+	err   error
+}
+
+func (s *stoppedAt) Error() string { return s.err.Error() }
+func (s *stoppedAt) Unwrap() error { return s.err }
 
 // undoAfterFailedFollowUp handles an edit that landed and whose restart did
 // not. The likeliest reason is the edit itself — a daemon refusing the new

@@ -893,7 +893,7 @@
             <dd>
               <p lang="en">Add the ufw-docker rules to /etc/ufw/after.rules and reload ufw</p>
               <p class="fix-benefit" lang="en">✓ Published container ports stop bypassing the firewall: from outside the private ranges they are reachable only where a <code>ufw route allow</code> rule says so, which is what <code>ufw status</code> already claims.</p>
-              <p class="fix-warning" lang="en">⚠ Every port a container publishes stops being reachable from the internet the moment ufw reloads — 8080/tcp (web) included — until you allow it with <code>ufw route allow proto tcp from any to any port &lt;container port&gt;</code>. Traffic from 10/8, 172.16/12 and 192.168/16 is still let through. If ufw refuses the rules, Hostveil puts the original file back and reloads again. The edit has a checkpoint, and rolling it back reloads ufw.</p>
+              <p class="fix-warning" lang="en">⚠ Every port a container publishes stops being reachable from the internet the moment ufw reloads — 8080/tcp (web) included — until you allow it with <code>ufw route allow proto tcp from any to any port &lt;container port&gt;</code>. Traffic from 10/8, 172.16/12 and 192.168/16 is still let through. If ufw refuses the rules, Hostveil puts the original file back and reloads again. The edit has a checkpoint; rolling it back reloads ufw and empties the DOCKER-USER chain, which a reload alone leaves as it is.</p>
             </dd>
             <dt id="fix-firewall.inactive"><code>firewall.inactive</code> <span class="fix-kind review">Review</span></dt>
             <dd>

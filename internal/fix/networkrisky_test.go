@@ -67,3 +67,17 @@ func TestKubeconfigModeFollowsTheDistribution(t *testing.T) {
 		}
 	}
 }
+
+// ufw reload leaves Docker's DOCKER-USER chain as it is, so restoring
+// after.rules alone left the block in force; the rollback empties the chain.
+func TestUFWDockerRollbackEmptiesDockerUser(t *testing.T) {
+	fx, err := buildUFWDocker(model.NewFinding("firewall.docker-bypass", "t", model.SeverityHigh, model.SourceFirewall,
+		model.RemediationReview, model.WithEvidence("published", "8080/tcp")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := fx.Actions[0].AfterRestore
+	if len(got) != 2 || !slices.Equal(got[1], []string{"iptables", "-F", "DOCKER-USER"}) {
+		t.Errorf("rollback runs %v", got)
+	}
+}

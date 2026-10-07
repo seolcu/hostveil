@@ -71,7 +71,8 @@ func buildUFWDocker(f model.Finding) (Fix, error) {
 				"reloads — " + published + " included — until you allow it with " +
 				"`ufw route allow proto tcp from any to any port <container port>`. Traffic from 10/8, " +
 				"172.16/12 and 192.168/16 is still let through. If ufw refuses the rules, Hostveil puts the " +
-				"original file back and reloads again. The edit has a checkpoint, and rolling it back reloads ufw.",
+				"original file back and reloads again. The edit has a checkpoint; rolling it back reloads ufw and empties " +
+				"the DOCKER-USER chain, which a reload alone leaves as it is.",
 			Kind: ActionEdit, Path: ufwAfterRules,
 			Transform: func(in []byte) ([]byte, error) {
 				if strings.Contains(string(in), ufwDockerBegin) {
@@ -84,6 +85,12 @@ func buildUFWDocker(f model.Finding) (Fix, error) {
 				return []byte(out + "\n" + ufwDockerBlock), nil
 			},
 			AfterWrite: [][]string{{"ufw", "reload"}},
+			// ufw reload rebuilds ufw's own chains and leaves DOCKER-USER, which
+			// is Docker's, as it is: on a real ufw the rollback restored
+			// after.rules while every published port still went through the
+			// block. The finding fires only on an unfiltered DOCKER-USER, so
+			// what is in it now is this block, and emptying it is the restore.
+			AfterRestore: [][]string{{"ufw", "reload"}, {"iptables", "-F", "DOCKER-USER"}},
 		}},
 	}, nil
 }

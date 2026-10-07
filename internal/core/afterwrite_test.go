@@ -326,7 +326,9 @@ func TestAnIrreversibleEditIsNotUndoneWhenAStepFails(t *testing.T) {
 	if got, _ := os.ReadFile(path); string(got) != "secrets-encryption: true\n" {
 		t.Errorf("file = %q; it must be kept, not restored", got)
 	}
-	for _, want := range []string{"written and kept", "rotate-keys"} {
+	// restartRunner fails every command, so the very first step stopped it:
+	// nothing is done and all three are left.
+	for _, want := range []string{"written and kept", "Already done: nothing", "`k3s secrets-encrypt enable`, then", "rotate-keys"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error does not say %q: %v", want, err)
 		}
