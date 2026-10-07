@@ -26,7 +26,7 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">171</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">96</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">175</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">100</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">How the 183 findings resolve</p>
               <div class="ledger-bar">
@@ -36,13 +36,13 @@
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:52%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">96</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:55%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">100</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:7%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">12</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:4%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">8</span>
               </div>
             </div>
 
@@ -216,8 +216,8 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>ports.exposed-datastore</code></td><td>A datastore (Postgres, MySQL, Redis, MongoDB, …) is reachable from the network</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>ports.exposed-admin</code></td><td>An admin/management UI (e.g. Portainer) is reachable from the network</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>ports.exposed-datastore</code></td><td>A datastore (Postgres, MySQL, Redis, MongoDB, …) is reachable from the network</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
+                  <tr><td><code>ports.exposed-admin</code></td><td>An admin/management UI (e.g. Portainer) is reachable from the network</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                   <tr><td><code>ports.exposed</code></td><td>Other services listen on a non-loopback address and no host firewall is active</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
                   <tr><td><code>ports.redis-bind</code></td><td>Redis is configured to listen beyond loopback</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>ports.redis-protected-mode</code></td><td>Redis protected mode is disabled</td><td><span class="sev medium">MEDIUM</span></td><td>Auto</td></tr>
@@ -288,8 +288,8 @@
                 <tbody>
                   <tr><td><code>kube.kubeconfig-readable</code></td><td>The cluster-admin kubeconfig (<code>/etc/rancher/k3s/k3s.yaml</code>, or k0s&rsquo;s <code>admin.conf</code>) is readable by every account &mdash; which makes every local user root, through a privileged pod. Group-readable is <code>write-kubeconfig-group</code> doing its job and is not flagged</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>kube.token-readable</code></td><td>k3s&rsquo;s <code>token</code> or <code>node-token</code>, which lets a machine join the cluster, is readable by every account</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
-                  <tr><td><code>kube.anonymous-auth</code></td><td><code>anonymous-auth=true</code> is set explicitly for the API server or the kubelet. Both distributions default it off; anonymous requests are still authorised by RBAC, which is why it is not higher</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>kube.secrets-unencrypted</code></td><td>k3s stores Secrets unencrypted in its datastore &mdash; the default, and the first item in the k3s CIS hardening guide</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>kube.anonymous-auth</code></td><td><code>anonymous-auth=true</code> is set explicitly for the API server or the kubelet. Both distributions default it off; anonymous requests are still authorised by RBAC, which is why it is not higher</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>kube.secrets-unencrypted</code></td><td>k3s stores Secrets unencrypted in its datastore &mdash; the default, and the first item in the k3s CIS hardening guide</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>

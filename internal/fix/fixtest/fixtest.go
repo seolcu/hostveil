@@ -58,6 +58,8 @@ func Finding(id string) model.Finding {
 		model.WithEvidence("sources", "/etc/apt/sources.list.d/pve-enterprise.list"),
 		model.WithEvidence("set-in", "command: --api.insecure=true"),
 		model.WithMetadata("caddy_host", "true"),
+		model.WithMetadata("k3s_dropin_dir", "/etc/rancher/k3s/config.yaml.d"),
+		model.WithMetadata("ufw_rules", "true"),
 		model.WithEvidence("published", "8080/tcp (web)"),
 		model.WithEvidence("group", "docker"),
 		model.WithEvidence("members", "ci-runner"),

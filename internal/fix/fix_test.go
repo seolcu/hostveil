@@ -82,8 +82,6 @@ func TestUnregisteredFindingHasNoFix(t *testing.T) {
 // not quietly reversed.
 func TestKnownUnregisteredFindings(t *testing.T) {
 	declined := map[string]string{
-		"ports.exposed-datastore": "the remediation is a bind-address edit in a daemon config whose path and syntax the finding does not carry",
-		"ports.exposed-admin":     "same as ports.exposed-datastore",
 		// The checker no longer emits per-CVE findings at all — they were
 		// aggregated into cve.outdated-image / cve.unpatched-image. The pin
 		// stays as a guard: a cve.* glob would make this shape fixable again

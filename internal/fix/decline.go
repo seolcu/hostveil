@@ -68,17 +68,13 @@ var declineReasons = map[string]string{
 	"cve.unpatched-image": "Re-pulling the tag is the only action Hostveil has here, and no rebuild of the image carries a patch upstream has not published.",
 
 	// ports
-	"ports.exposed":           "The remediation is enabling a firewall, which can lock you out of a host reached over SSH; fixing the firewall clears this finding as a side effect.",
-	"ports.exposed-admin":     "Binding a natively-installed daemon to loopback takes a config path and syntax that vary by distro, and guessing one means editing a file that is not live.",
-	"ports.exposed-datastore": "Binding a native datastore to loopback takes a config file, syntax, and path that differ per daemon and per distro, none of which the finding carries.",
+	"ports.exposed": "The remediation is enabling a firewall, which can lock you out of a host reached over SSH; fixing the firewall clears this finding as a side effect.",
 
 	// accounts
-	"kube.anonymous-auth":      "It changes how the control plane starts, in whichever configuration layer set it, and takes effect only when the node every workload runs on restarts.",
-	"kube.secrets-unencrypted": "Turning encryption on needs a restart of the control plane and a rewrite of every existing Secret, neither of which is a file edit.",
-	"proxmox.webui-open":       "Which network is the management network is not written anywhere Hostveil can read, and a wrong guess locks you out of the hypervisor's interface; LISTEN_IP also breaks clusters across subnets.",
-	"proxmox.root-no-tfa":      "A second factor is a device a person holds, and Hostveil must never enrol a credential on anyone's behalf.",
-	"accounts.sudo-nopasswd":   "The grant comes from sudo -l, not from reading /etc/sudoers, so nothing says which file, line, or group rule to edit — there is nowhere for an edit to point.",
-	"accounts.duplicate-uid":   "Changing a UID requires migrating every file it owns across filesystems, which cannot be represented or rolled back as one action.",
+	"proxmox.webui-open":     "Which network is the management network is not written anywhere Hostveil can read, and a wrong guess locks you out of the hypervisor's interface; LISTEN_IP also breaks clusters across subnets.",
+	"proxmox.root-no-tfa":    "A second factor is a device a person holds, and Hostveil must never enrol a credential on anyone's behalf.",
+	"accounts.sudo-nopasswd": "The grant comes from sudo -l, not from reading /etc/sudoers, so nothing says which file, line, or group rule to edit — there is nowhere for an edit to point.",
+	"accounts.duplicate-uid": "Changing a UID requires migrating every file it owns across filesystems, which cannot be represented or rolled back as one action.",
 
 	// fileperms
 
