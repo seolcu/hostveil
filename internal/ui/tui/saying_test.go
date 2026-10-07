@@ -137,3 +137,22 @@ func TestThePreviewPromisesNoBackupForACommand(t *testing.T) {
 		t.Errorf("the preview does not say the command cannot be undone:\n%s", got)
 	}
 }
+
+// An irreversible edit writes a file and still cannot be undone, so the edit
+// case's reassurance must not appear for it.
+func TestThePreviewPromisesNoUndoForAnIrreversibleEdit(t *testing.T) {
+	m := &appModel{mode: modePreview, width: 96, height: 34, selected: map[string]bool{}}
+	m.preview = model.FixPreview{
+		FindingID: "kube.secrets-unencrypted", Label: "Encrypt Kubernetes Secrets at rest", Kind: model.RemediationReview,
+		Actions: []model.ActionPreview{{Index: 0, Label: "Write the drop-in and rotate the keys", Type: "edit",
+			Path: "/etc/rancher/k3s/config.yaml.d/99-hostveil-secrets-encryption.yaml", Irreversible: true,
+			Diff: "--- a\n+++ b\n@@ -0,0 +1 @@\n+secrets-encryption: true\n"}},
+	}
+	got := plain(m.View().Content)
+	if strings.Contains(got, "backs the file up") {
+		t.Errorf("the preview promises an undo for an edit that has none:\n%s", got)
+	}
+	if !strings.Contains(got, "cannot be undone") {
+		t.Errorf("the preview does not say the edit cannot be undone:\n%s", got)
+	}
+}

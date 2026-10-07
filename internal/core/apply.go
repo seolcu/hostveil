@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/seolcu/hostveil/internal/diff"
@@ -198,6 +199,13 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	// file is not the same as restoring its absence, and a host left with a
 	// zero-byte drop-in would look configured while configuring nothing.
 	save := func() (history.Checkpoint, error) {
+		// An irreversible edit is recorded, never backed up: a checkpoint with
+		// no files lists as "not reversible" and cannot be rolled back.
+		if a.Irreversible {
+			cp.Commands = a.AfterWrite
+			cp.AfterRestore = nil
+			return e.store.Save(cp, nil)
+		}
 		if creating {
 			return e.store.SaveCreations(cp, []string{a.Path})
 		}
@@ -274,6 +282,12 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	}
 
 	if err := e.runAfterWrite(ctx, a); err != nil {
+		if a.Irreversible {
+			// Not undone: see fix.Action.Irreversible. The file stays, the
+			// record stays, and the operator is told exactly where it stopped.
+			return model.FixOutcome{}, fmt.Errorf("%w — %s was written and kept, and is recorded in `hostveil history`; "+
+				"the commands after it stopped here, so finish them by hand: %s", err, a.Path, commandList(a.AfterWrite))
+		}
 		return model.FixOutcome{}, e.undoAfterFailedFollowUp(ctx, a, saved.ID, err)
 	}
 
@@ -576,4 +590,13 @@ func resetFailedUnits(ctx context.Context, r platform.CommandRunner, cmds [][]st
 			_, _ = r.Run(ctx, "systemctl", append([]string{"reset-failed"}, cmd[2:]...)...)
 		}
 	}
+}
+
+// commandList renders commands the way an operator would type them.
+func commandList(cmds [][]string) string {
+	parts := make([]string, 0, len(cmds))
+	for _, c := range cmds {
+		parts = append(parts, "`"+strings.Join(c, " ")+"`")
+	}
+	return strings.Join(parts, ", then ")
 }

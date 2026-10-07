@@ -53,6 +53,7 @@ func (e *Engine) PreviewFix(f model.Finding) (model.FixPreview, error) {
 			}
 			ap.Diff = d
 			ap.Commands = a.AfterWrite
+			ap.Irreversible = a.Irreversible
 		case fix.ActionExec:
 			ap.Type = "exec"
 			ap.Commands = a.Commands

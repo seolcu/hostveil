@@ -16,9 +16,6 @@ type UFWView struct {
 	// could not be read — in every one of those cases nothing here can say a
 	// port is blocked.
 	Active bool
-	// HasRules reports whether any rule is listed. `ufw prepend` needs one
-	// to prepend to; on an empty ruleset the fix uses a plain `ufw deny`.
-	HasRules bool
 
 	defaultDeny bool
 	rules       []ufwRule
@@ -92,7 +89,6 @@ func parseUFWStatus(out string) UFWView {
 		if dir != "" && dir != "in" {
 			continue // FWD and OUT rules do not decide inbound traffic
 		}
-		v.HasRules = true
 		v6 := strings.Contains(to, "(v6)") || strings.Contains(cols[2], "(v6)")
 		match, ok := portMatcher(strings.TrimSpace(strings.Replace(to, "(v6)", "", 1)))
 		if !ok {

@@ -212,8 +212,6 @@ func exposedFinding(l platform.Listener, ufw firewall.UFWView, id, title, desc s
 	case !ufw.Active:
 		kind = model.RemediationManual
 		opts = append(opts, model.WithWhyNoFix("Hostveil closes this with a ufw rule, and ufw is not running here; enable it first (firewall.inactive), or bind the service to 127.0.0.1 in its own config."))
-	default:
-		opts = append(opts, model.WithMetadata("ufw_rules", strconv.FormatBool(ufw.HasRules)))
 	}
 	return model.NewFinding(id, title, sev, model.SourcePorts, kind, opts...)
 }

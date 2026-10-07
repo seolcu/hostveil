@@ -289,3 +289,28 @@ func TestK0s(t *testing.T) {
 		t.Errorf("k0s at its own defaults, with no config file, flagged: %v", fs)
 	}
 }
+
+// k3s's own answer about encryption wins over the configuration. The setting
+// alone does not encrypt an existing cluster, which is the state 3.33.0's fix
+// left behind; reading only the setting called that fixed.
+func TestSecretsEncryptionIsWhatK3sSays(t *testing.T) {
+	status := func(s string) *checktest.Runner {
+		return unit("server").Script("Encryption Status: "+s+"\nCurrent Rotation Stage: start\n", "k3s", "secrets-encrypt", "status")
+	}
+	for name, tc := range map[string]struct {
+		config, status string
+		want           bool
+	}{
+		"set but not in force":        {"secrets-encryption: true\n", "Disabled", true},
+		"enabled without the setting": {"write-kubeconfig-mode: \"0600\"\n", "Enabled", false},
+		"enabled and set":             {"secrets-encryption: true\n", "Enabled", false},
+		"neither set nor enabled":     {"write-kubeconfig-mode: \"0600\"\n", "Disabled", true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := host(t, with(stock(), map[string]file{"etc/rancher/k3s/config.yaml": {tc.config, 0o600}}))
+			if got := has(scan(t, root, status(tc.status).Env()), "kube.secrets-unencrypted") != nil; got != tc.want {
+				t.Errorf("finding = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

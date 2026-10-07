@@ -49,8 +49,11 @@ func TestTheUFWDenyClosesTheDatastoreFinding(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatal(ok, err)
 	}
-	if got := fx.Actions[0].Commands[0]; !slices.Equal(got, []string{"ufw", "prepend", "deny", "5432/tcp"}) {
-		t.Errorf("runs %v", got)
+	// The allow comes out first: ufw skips a deny that matches an existing
+	// allow as a duplicate, exit 0, and the port stays open.
+	want := [][]string{{"ufw", "delete", "allow", "5432/tcp"}, {"ufw", "prepend", "deny", "5432/tcp"}}
+	if got := fx.Actions[0].Commands; len(got) != 2 || !slices.Equal(got[0], want[0]) || !slices.Equal(got[1], want[1]) {
+		t.Errorf("runs %v, want %v", got, want)
 	}
 
 	after := `Status: active
