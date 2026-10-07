@@ -199,9 +199,14 @@ scenario_dockerd_revert() {
     mkdir -p /etc/systemd/system/docker.service.d
     printf '[Service]\nExecStart=\nExecStart=/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock --no-new-privileges=false\n' \
         >/etc/systemd/system/docker.service.d/50-e2e-conflict.conf
+    # The scenario before this one restarted Docker several times inside a
+    # minute, which is docker.service's start limit; clear it so the seed's
+    # own restarts are not what fails.
     systemctl daemon-reload
+    systemctl reset-failed docker
     systemctl restart docker
     printf '{\n  "log-level": "info"\n}\n' >"$DAEMON_JSON"
+    systemctl reset-failed docker
     systemctl restart docker
     local before
     before=$(sha256sum "$DAEMON_JSON" | cut -d' ' -f1)
@@ -221,6 +226,7 @@ scenario_dockerd_revert() {
         fail "history gained a checkpoint for a change that was undone"
     rm -f /etc/systemd/system/docker.service.d/50-e2e-conflict.conf
     systemctl daemon-reload
+    systemctl reset-failed docker
     systemctl restart docker
 }
 
