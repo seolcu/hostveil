@@ -2,6 +2,66 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.33.0](https://github.com/seolcu/hostveil/compare/v3.32.0...v3.33.0) (2026-10-07)
+
+Most findings that used to stop at "here is what to type" now have a
+button. A fix that can break a service which set something on purpose is
+no longer declined to Manual. It is offered as Review, with a warning
+saying what it can break, and only ever applied when you pick it: no
+batch applies it, `fix --all --review` included. Findings that carry a
+fix went from 128 to 175 of 183. The 8 left are ones with no action
+hostveil could take for you: an unpatched CVE, a leaked secret to
+rotate, a second factor to enrol.
+
+### Features
+
+* **fix:** a Review fix may have a single action, as long as it carries a
+  warning, and a fix may be marked individual-only so no batch applies
+  it. `fix --all` lists those separately, with the command that applies
+  each one on its own.
+* **fix:** an edit can now restart what reads it (`AfterWrite`). If the
+  restart fails, hostveil puts the original file back and restarts again,
+  so a daemon that refuses the new config comes back under the old one
+  instead of staying down. A rollback restarts it too. Every preview lists
+  the commands that will run after the write.
+* **fix:** container findings: remove `privileged`, a dangerous
+  capability, host network, PID, IPC and user namespace,
+  `seccomp:unconfined`, `apparmor:unconfined` and a Docker socket mount;
+  mount a sensitive path read-only; a read-only root filesystem with tmpfs
+  for `/tmp` and `/run`; run as a non-root user. The compose editor gained
+  removals, kept to a one-line diff where it can prove the result.
+* **fix:** the eight systemd protections that can break a service
+  (`PrivateTmp`, `ProtectHome`, `ProtectSystem`, `PrivateDevices`,
+  `ProtectKernelTunables`, `ProtectControlGroups`, `RestrictNamespaces`,
+  `MemoryDenyWriteExecute`), each as the same reversible drop-in.
+* **fix:** schedule the reboot a pending kernel update needs
+  (`shutdown -r +1`, cancellable); lock and expire a second UID-0 account,
+  or delete it; expire a password stored under a weak hash. The account
+  checker no longer reports a UID-0 account that is both locked and
+  expired.
+* **fix:** all seven Docker daemon findings, restarting Docker as part of
+  the fix: `no-new-privileges`, `userns-remap` and `live-restore` in
+  `daemon.json` (edited one key at a time, formatting kept), the TCP API
+  taken off `hosts` or the unit's `ExecStart`, client certificates
+  required, the socket mode, and docker-group membership.
+* **fix:** the ufw-docker rules for published ports that bypass ufw;
+  owner-only env_files; k3s's join token and admin kubeconfig.
+* **fix:** OpenClaw's sandbox (`non-main` or `all`, the values its own
+  documentation gives) and a gateway bound off loopback; nginx's old TLS
+  versions and directory listing, checked with `nginx -t` before the
+  reload; Traefik's insecure dashboard; Caddy's admin API.
+* **fix:** give a system file back to root. Checkpoints now record the
+  previous owner, so a rollback restores it. Only the owning user is
+  changed; the group is left alone because it differs by distribution.
+* **fix:** switch an unsubscribed Proxmox host's enterprise repository to
+  the no-subscription one, rewriting the one file in place.
+* **fix:** close an exposed datastore or admin panel with a ufw rule
+  ahead of the others. The ports checker now reads ufw's rules the way ufw
+  applies them, and no longer reports a port ufw refuses as reachable.
+* **fix:** k3s's anonymous auth and Secrets encryption, through a
+  `config.yaml.d` drop-in and a k3s restart. Anonymous auth now counts as
+  on only when the last value given is `true`.
+
 ## [3.32.0](https://github.com/seolcu/hostveil/compare/v3.31.0...v3.32.0) (2026-10-01)
 
 hostveil can now look at several hosts at once. `hostveil fleet` scans

@@ -134,6 +134,47 @@
 
             <p>각 버전의 릴리스 아카이브, 체크섬, SBOM, 서명된 빌드 프로버넌스는 <a href="https://github.com/seolcu/hostveil/releases">릴리스 페이지</a>에 있습니다. 업그레이드는 <code>hostveil update</code>로 합니다.</p>
 
+          <h2 id="v3.33.0"><a href="https://github.com/seolcu/hostveil/compare/v3.32.0...v3.33.0">3.33.0</a> <span class="changelog-date">2026-10-07</span></h2>
+          <p>"이렇게 입력하세요"라는 안내로 끝나던 발견 항목 대부분에 이제 수정 버튼이 생겼습니다. 일부러 설정한 무언가를 깨뜨릴 수 있는 수정도 더는 Manual로 미루지 않습니다. 무엇이 깨질 수 있는지 경고를 붙여 Review로 제공하고, 직접 골랐을 때만 적용합니다. <code>fix --all --review</code>를 포함해 어떤 일괄 적용도 이 수정을 실행하지 않습니다. 수정이 붙은 항목은 183개 중 128개에서 175개로 늘었습니다. 남은 8개는 hostveil이 대신할 수 있는 동작이 없는 항목입니다. 패치가 아직 없는 CVE, 바꿔야 할 유출된 비밀값, 등록해야 할 2단계 인증 기기 같은 것들입니다.</p>
+          <h3>새 기능</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>fix:</strong> Review 수정이 동작 하나만 가질 수 있게 되었습니다. 대신 그 동작에는 경고가 반드시 붙습니다. 수정을 "개별 실행 전용"으로 표시할 수도 있고, 그렇게 표시한 수정은 일괄 적용에서 빠집니다. <code>fix --all</code>은 이런 수정을 따로 모아 하나씩 적용하는 명령과 함께 보여 줍니다.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> 설정 파일을 고친 뒤 그 파일을 읽는 서비스를 재시작할 수 있게 되었습니다(<code>AfterWrite</code>). 재시작에 실패하면 원래 파일을 되돌리고 다시 재시작합니다. 새 설정을 거부한 데몬이 꺼진 채로 남지 않고 이전 설정으로 돌아옵니다. 롤백할 때도 다시 재시작하며, 미리보기에는 파일을 쓴 뒤 실행할 명령이 표시됩니다.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> 컨테이너 항목을 고칠 수 있습니다. <code>privileged</code>, 위험한 capability, 호스트 네트워크·PID·IPC·사용자 네임스페이스 공유, <code>seccomp:unconfined</code>, <code>apparmor:unconfined</code>, Docker 소켓 마운트를 제거합니다. 민감한 경로는 읽기 전용으로 마운트하고, 루트 파일시스템은 <code>/tmp</code>와 <code>/run</code>에 tmpfs를 둔 채 읽기 전용으로 바꾸며, root가 아닌 사용자로 실행하게 합니다. compose 편집기에는 삭제 기능을 더했고, 결과를 검증할 수 있을 때는 한 줄짜리 diff로 유지합니다.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> 서비스를 깨뜨릴 수 있어 막아 두었던 systemd 보호 옵션 8개를 고칠 수 있습니다(<code>PrivateTmp</code>, <code>ProtectHome</code>, <code>ProtectSystem</code>, <code>PrivateDevices</code>, <code>ProtectKernelTunables</code>, <code>ProtectControlGroups</code>, <code>RestrictNamespaces</code>, <code>MemoryDenyWriteExecute</code>). 모두 되돌릴 수 있는 drop-in 파일로 적용합니다.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> 커널 업데이트 적용에 필요한 재부팅을 예약합니다 (<code>shutdown -r +1</code>, 취소 가능). root 외의 UID 0 계정은 잠그고 만료시키거나 삭제할 수 있고, 약한 해시로 저장된 비밀번호는 다음 로그인 때 바꾸도록 만료시킵니다. 계정 검사기는 잠기고 만료된 UID 0 계정을 더는 보고하지 않습니다.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> Docker 데몬 항목 7개를 모두 고칠 수 있고, 수정 과정에서 Docker를 재시작합니다. <code>daemon.json</code>의 <code>no-new-privileges</code>, <code>userns-remap</code>, <code>live-restore</code>를 설정하고(키 하나씩, 서식 유지), TCP API를 <code>hosts</code>나 유닛의 <code>ExecStart</code>에서 빼고, 클라이언트 인증서를 요구하고, 소켓 권한과 docker 그룹 구성원을 정리합니다.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> ufw를 우회하는 게시 포트에 ufw-docker 규칙을 적용합니다. env_file은 소유자만 읽게 하고, k3s 조인 토큰과 관리자 kubeconfig의 권한도 좁힙니다.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> OpenClaw 샌드박스를 켭니다. 값은 공식 문서에 나온 <code>non-main</code>과 <code>all</code> 중에서 고릅니다. loopback 밖에 바인드된 게이트웨이도 고칩니다. nginx의 오래된 TLS 버전과 디렉터리 목록은 <code>nginx -t</code>로 확인한 뒤 reload하고, Traefik의 무인증 대시보드와 Caddy 관리 API도 고칩니다.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> 시스템 파일의 소유자를 root로 되돌립니다. 체크포인트가 이전 소유자를 기록하므로 롤백하면 원래대로 돌아갑니다. 그룹은 배포판마다 다르므로 소유 사용자만 바꿉니다.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> 구독이 없는 Proxmox 호스트의 엔터프라이즈 저장소를 no-subscription 저장소로 바꿉니다. 파일 하나를 제자리에서 다시 씁니다.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> 외부에 열린 DB와 관리 패널을 다른 규칙보다 앞선 ufw 규칙으로 막습니다. 포트 검사기는 ufw 규칙을 ufw가 적용하는 순서대로 읽고, ufw가 막는 포트를 더는 외부에서 접근 가능하다고 보고하지 않습니다.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> k3s의 익명 인증과 Secret 암호화를 <code>config.yaml.d</code> drop-in과 k3s 재시작으로 고칩니다. 익명 인증은 마지막으로 지정한 값이 <code>true</code>일 때만 켜진 것으로 판단합니다.</p>
+            </li>
+          </ul>
           <h2 id="v3.32.0"><a href="https://github.com/seolcu/hostveil/compare/v3.31.0...v3.32.0">3.32.0</a> <span class="changelog-date">2026-10-01</span></h2>
           <p>이제 hostveil이 여러 호스트를 한 번에 볼 수 있습니다. <code>hostveil fleet</code>은 이미 쓰고 있는 SSH로 각 호스트를 스캔해 점수를 나란히 보여 줍니다. 로드맵의 "검토 중" 목록에서 세 번째로 출시된 항목입니다.</p>
           <h3>새 기능</h3>
