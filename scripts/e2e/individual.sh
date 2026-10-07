@@ -23,8 +23,16 @@ set -euo pipefail
 export HOSTVEIL_NO_SUDO=1
 HV=${HOSTVEIL:-hostveil}
 
+# DIAGNOSE names a unit whose state is worth printing when a scenario fails;
+# a daemon left down says why in its own journal, not in ours.
+DIAGNOSE=""
+
 fail() {
     printf 'FAIL %s\n' "$*" >&2
+    if [[ -n $DIAGNOSE ]] && command -v systemctl >/dev/null; then
+        systemctl status "$DIAGNOSE" --no-pager -l 2>&1 | tail -15 >&2 || true
+        journalctl -u "$DIAGNOSE" -n 30 --no-pager 2>&1 >&2 || true
+    fi
     exit 1
 }
 
@@ -156,6 +164,7 @@ scenario_compose() {
 DAEMON_JSON=/etc/docker/daemon.json
 
 scenario_dockerd() {
+    DIAGNOSE=docker
     step "dockerd.live-restore: set and reload"
     local before=""
     [[ -f $DAEMON_JSON ]] && before=$(cat "$DAEMON_JSON")
@@ -185,6 +194,7 @@ scenario_dockerd() {
 # the unit that collides with the key the fix adds, so the restart fails for a
 # reason that is about the edit.
 scenario_dockerd_revert() {
+    DIAGNOSE=docker
     step "dockerd: a restart that fails puts the original daemon.json back"
     mkdir -p /etc/systemd/system/docker.service.d
     printf '[Service]\nExecStart=\nExecStart=/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock --no-new-privileges=false\n' \
@@ -268,8 +278,11 @@ server {
     }
 }
 NGINX
+    DIAGNOSE=nginx
     nginx -t
-    systemctl reload nginx
+    # Running, so the fixes' reload is the path under test; an installed but
+    # stopped nginx is left stopped by them, which is a different case.
+    systemctl restart nginx
     local before
     before=$(sha256sum "$site" | cut -d' ' -f1)
     for id in proxy.tls-deprecated-protocols proxy.directory-listing; do
