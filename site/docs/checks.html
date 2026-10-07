@@ -744,13 +744,13 @@
           </dl>
           <h3>SSH</h3>
           <dl class="fix-actions">
-            <dt id="fix-ssh.allowagentforwarding"><code>ssh.allowagentforwarding</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-ssh.allowagentforwarding"><code>ssh.allowagentforwarding</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Disable SSH agent forwarding</p>
               <p class="fix-benefit" lang="en">✓ Stops a compromised host from riding a forwarded SSH agent to authenticate elsewhere as the user, using credentials that were never actually stored here.</p>
               <p class="fix-warning" lang="en">⚠ Existing workflows that hop through this host using a forwarded agent will stop working.</p>
             </dd>
-            <dt id="fix-ssh.allowtcpforwarding"><code>ssh.allowtcpforwarding</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-ssh.allowtcpforwarding"><code>ssh.allowtcpforwarding</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Disable SSH TCP forwarding</p>
               <p class="fix-benefit" lang="en">✓ Closes SSH's local, remote, and dynamic port forwarding — a common pivot and tunnel-out vector for anyone who gets a session on this host.</p>
@@ -777,13 +777,13 @@
               <p lang="en">Use SHA-256 host-key fingerprints</p>
               <p class="fix-benefit" lang="en">✓ Uses a stronger hash for the host-key fingerprint shown to users and tooling verifying this server's identity.</p>
             </dd>
-            <dt id="fix-ssh.gatewayports"><code>ssh.gatewayports</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-ssh.gatewayports"><code>ssh.gatewayports</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Bind remote-forwarded ports to loopback only</p>
               <p class="fix-benefit" lang="en">✓ Stops an <code>ssh -R</code> remote-forwarded port becoming reachable from other machines, closing a route around whatever this host's own firewall is doing.</p>
               <p class="fix-warning" lang="en">⚠ If you rely on <code>ssh -R</code> tunnels being reachable from other machines, this closes them to loopback.</p>
             </dd>
-            <dt id="fix-ssh.hostbasedauth"><code>ssh.hostbasedauth</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-ssh.hostbasedauth"><code>ssh.hostbasedauth</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Disable host-based authentication</p>
               <p class="fix-benefit" lang="en">✓ Removes a trust-based login path that bypasses per-user keys entirely.</p>
@@ -794,7 +794,7 @@
               <p lang="en">Ignore legacy rhosts trust files</p>
               <p class="fix-benefit" lang="en">✓ Ignores legacy .rhosts trust files, closing a decades-old authentication bypass that has no place on a hardened host.</p>
             </dd>
-            <dt id="fix-ssh.kbdinteractive"><code>ssh.kbdinteractive</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-ssh.kbdinteractive"><code>ssh.kbdinteractive</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Disable keyboard-interactive authentication</p>
               <p class="fix-benefit" lang="en">✓ Closes the same password-equivalent prompt path PasswordAuthentication closes, for the keyboard-interactive method some clients use instead.</p>
@@ -815,25 +815,25 @@
               <p lang="en">Lower MaxAuthTries to 3</p>
               <p class="fix-benefit" lang="en">✓ Throttles how many credential guesses a single SSH connection gets before it is dropped, slowing a brute-force attempt against this host specifically.</p>
             </dd>
-            <dt id="fix-ssh.maxsessions"><code>ssh.maxsessions</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-ssh.maxsessions"><code>ssh.maxsessions</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Limit multiplexed SSH sessions</p>
               <p class="fix-benefit" lang="en">✓ Caps multiplexed sessions per connection, limiting how much one compromised or stolen connection can do at once.</p>
               <p class="fix-warning" lang="en">⚠ Clients opening more than two sessions over one SSH connection will be refused.</p>
             </dd>
-            <dt id="fix-ssh.passwordauth"><code>ssh.passwordauth</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-ssh.passwordauth"><code>ssh.passwordauth</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Disable password authentication</p>
               <p class="fix-benefit" lang="en">✓ Removes password-guessing as an SSH attack surface entirely — only a held key gets in from here on.</p>
               <p class="fix-warning" lang="en">⚠ Make sure key-based login works BEFORE applying this, or you may lock yourself out of SSH.</p>
             </dd>
-            <dt id="fix-ssh.permittunnel"><code>ssh.permittunnel</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-ssh.permittunnel"><code>ssh.permittunnel</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Disable SSH tun/tap tunnels</p>
               <p class="fix-benefit" lang="en">✓ Disables SSH's own VPN-like tun/tap tunneling, removing a route around whatever network controls this host is behind.</p>
               <p class="fix-warning" lang="en">⚠ Existing SSH VPN or tun/tap workflows will stop working.</p>
             </dd>
-            <dt id="fix-ssh.permituserenvironment"><code>ssh.permituserenvironment</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-ssh.permituserenvironment"><code>ssh.permituserenvironment</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Disable user-supplied SSH environments</p>
               <p class="fix-benefit" lang="en">✓ Stops a user's ~/.ssh/environment overriding the server process's own environment — a known way to hijack LD_PRELOAD or similar into a login session.</p>
@@ -1020,13 +1020,13 @@
               <p class="fix-benefit" lang="en">✓ app stops being reachable from any other machine, while everything on this host keeps reaching it as before.</p>
               <p class="fix-warning" lang="en">⚠ Every remote client of app is cut off — an application server on another machine, a replica, a backup job, your own desktop client — including ones a subnet allow rule used to let in. There is no checkpoint: undo it with <code>ufw delete deny 6379/tcp</code>. Binding the service to 127.0.0.1 in its own configuration is the cleaner long-term fix.</p>
             </dd>
-            <dt id="fix-ports.redis-bind"><code>ports.redis-bind</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-ports.redis-bind"><code>ports.redis-bind</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Bind Redis to loopback</p>
               <p class="fix-benefit" lang="en">✓ Redis ships with no authentication by default; binding it to loopback means the only way to reach it is already being on this host — closes it to the network entirely.</p>
               <p class="fix-warning" lang="en">⚠ Restarting Redis can interrupt clients; validate this setting first.</p>
             </dd>
-            <dt id="fix-ports.redis-disable-config"><code>ports.redis-disable-config</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-ports.redis-disable-config"><code>ports.redis-disable-config</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Disable the Redis CONFIG command</p>
               <p class="fix-benefit" lang="en">✓ Removes remote CONFIG SET/GET, closing the well-known Redis-to-remote-code-execution chain that writes a webshell or SSH key to disk via CONFIG SET dir/dbfilename.</p>
@@ -1057,7 +1057,7 @@
               <p class="fix-benefit" lang="en">✓ Closes the one account whose password prompt currently succeeds for anyone who tries it, including a stranger who has never touched this host before.</p>
               <p class="fix-warning" lang="en">⚠ If alice is your only way to reach this machine locally (console, su) and it has no other credential, locking it removes that access. Confirm you have another route in — an SSH key, a different sudo-capable account — before applying. The remote SSH path is already closed by ssh.emptypasswords; this only closes the local one.</p>
             </dd>
-            <dt id="fix-accounts.local-banner"><code>accounts.local-banner</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-accounts.local-banner"><code>accounts.local-banner</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Append the standard access warning</p>
               <p class="fix-benefit" lang="en">✓ Puts a legal notice in front of anyone who logs into this host, local or remote, which several jurisdictions require before monitoring or logging a session can be used as evidence against an intruder.</p>
@@ -1073,7 +1073,7 @@
               <p lang="en">Harden password hashing rounds</p>
               <p class="fix-benefit" lang="en">✓ Raises the SHA-512 rounds used to hash new or changed passwords, slowing an offline dictionary or brute-force attempt against a stolen /etc/shadow by roughly the same factor.</p>
             </dd>
-            <dt id="fix-accounts.remote-banner"><code>accounts.remote-banner</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-accounts.remote-banner"><code>accounts.remote-banner</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Append the standard access warning</p>
               <p class="fix-benefit" lang="en">✓ Puts a legal notice in front of anyone who logs into this host, local or remote, which several jurisdictions require before monitoring or logging a session can be used as evidence against an intruder.</p>
@@ -1113,10 +1113,11 @@
               <p lang="en">Tighten /etc/shadow to 0640</p>
               <p class="fix-benefit" lang="en">✓ Keeps control of who is blocked from scheduling future one-off commands to root alone.</p>
             </dd>
-            <dt id="fix-fileperms.compiler"><code>fileperms.compiler</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-fileperms.compiler"><code>fileperms.compiler</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
               <p class="fix-benefit" lang="en">✓ Removes the system compiler from every local account's reach by default, taking away a convenient way to build exploit code from a local foothold.</p>
+              <p class="fix-warning" lang="en">⚠ Development hosts legitimately need unprivileged compiler access.</p>
             </dd>
             <dt id="fix-fileperms.cron"><code>fileperms.cron</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -1376,31 +1377,31 @@
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-log-martians.conf</p>
               <p class="fix-benefit" lang="en">✓ Logs packets carrying an impossible source or destination address, giving visibility into spoofing or misconfiguration attempts that would otherwise pass silently.</p>
             </dd>
-            <dt id="fix-sysctl.module-dccp"><code>sysctl.module-dccp</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-sysctl.module-dccp"><code>sysctl.module-dccp</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
               <p class="fix-benefit" lang="en">✓ Removes the kernel's ability to load the DCCP module at all — a rarely-used protocol on an ordinary self-hosted server, and one that has shown up repeatedly as a local attack vector when left loadable.</p>
               <p class="fix-warning" lang="en">⚠ Confirm this host does not use dccp before applying.</p>
             </dd>
-            <dt id="fix-sysctl.module-rds"><code>sysctl.module-rds</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-sysctl.module-rds"><code>sysctl.module-rds</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
               <p class="fix-benefit" lang="en">✓ Removes the kernel's ability to load the RDS module at all — the same reasoning as DCCP: rarely used here, and a repeat source of local kernel bugs when loadable.</p>
               <p class="fix-warning" lang="en">⚠ Confirm this host does not use dccp before applying.</p>
             </dd>
-            <dt id="fix-sysctl.module-sctp"><code>sysctl.module-sctp</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-sysctl.module-sctp"><code>sysctl.module-sctp</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
               <p class="fix-benefit" lang="en">✓ Removes the kernel's ability to load the SCTP module at all — the same reasoning as DCCP: rarely used here, and a repeat source of local kernel bugs when loadable.</p>
               <p class="fix-warning" lang="en">⚠ Confirm this host does not use dccp before applying.</p>
             </dd>
-            <dt id="fix-sysctl.module-tipc"><code>sysctl.module-tipc</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-sysctl.module-tipc"><code>sysctl.module-tipc</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
               <p class="fix-benefit" lang="en">✓ Removes the kernel's ability to load the TIPC module at all — the same reasoning as DCCP: rarely used here, and a repeat source of local kernel bugs when loadable.</p>
               <p class="fix-warning" lang="en">⚠ Confirm this host does not use dccp before applying.</p>
             </dd>
-            <dt id="fix-sysctl.module-usbstorage"><code>sysctl.module-usbstorage</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-sysctl.module-usbstorage"><code>sysctl.module-usbstorage</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Persist a modprobe install block</p>
               <p class="fix-benefit" lang="en">✓ Removes the kernel's ability to load the USB mass-storage driver, closing a common way to pull data off or introduce malware onto a physically-accessible server via a USB drive.</p>
@@ -1615,7 +1616,7 @@
           </dl>
           <h3>Services</h3>
           <dl class="fix-actions">
-            <dt id="fix-systemd.lock-personality"><code>systemd.lock-personality</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-systemd.lock-personality"><code>systemd.lock-personality</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Set LockPersonality=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Stops the unit switching to an alternate execution personality, closing an old technique for bypassing ASLR.</p>
@@ -1627,7 +1628,7 @@
               <p class="fix-benefit" lang="en">✓ Stops the service creating memory that is both writable and executable, which is how injected code usually gets to run.</p>
               <p class="fix-warning" lang="en">⚠ JIT runtimes — Node.js, Java, .NET, PHP with JIT, LuaJIT, browsers — need exactly that memory and crash or refuse to start after the restart. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
             </dd>
-            <dt id="fix-systemd.no-new-privileges"><code>systemd.no-new-privileges</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-systemd.no-new-privileges"><code>systemd.no-new-privileges</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Set NoNewPrivileges=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Closes the setuid escalation path out of this unit — a compromised process cannot gain more privilege than the service already had, the same protection compose.ds006 gives a container.</p>
@@ -1645,7 +1646,7 @@
               <p class="fix-benefit" lang="en">✓ Gives the service a /tmp of its own, so another local process can no longer race it with a predictable temporary file name.</p>
               <p class="fix-warning" lang="en">⚠ Two services that hand each other files through /tmp stop seeing each other's files, and anything this service left in /tmp is not there after the restart. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
             </dd>
-            <dt id="fix-systemd.protect-clock"><code>systemd.protect-clock</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-systemd.protect-clock"><code>systemd.protect-clock</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Set ProtectClock=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Stops the unit changing the system or hardware clock, closing off a way a compromised service could hide its tracks by tampering with timestamps or break time-based authentication.</p>
@@ -1663,13 +1664,13 @@
               <p class="fix-benefit" lang="en">✓ Hides /home, /root and /run/user from the service, so a compromise of it cannot read anyone's SSH keys or cloud credentials.</p>
               <p class="fix-warning" lang="en">⚠ A service whose data or configuration lives in a home directory — a media server pointed at ~/Videos, a sync client — cannot reach it after the restart and fails or comes up empty. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
             </dd>
-            <dt id="fix-systemd.protect-kernel-logs"><code>systemd.protect-kernel-logs</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-systemd.protect-kernel-logs"><code>systemd.protect-kernel-logs</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Set ProtectKernelLogs=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Stops the unit reading /dev/kmsg directly, closing an information-leak path that can hand an attacker kernel addresses useful for a further exploit.</p>
               <p class="fix-warning" lang="en">⚠ Only a service that reads kernel logs directly — a diagnostics tool, an agent reading /dev/kmsg — needs this off. Most services never touch it.</p>
             </dd>
-            <dt id="fix-systemd.protect-kernel-modules"><code>systemd.protect-kernel-modules</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-systemd.protect-kernel-modules"><code>systemd.protect-kernel-modules</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Set ProtectKernelModules=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Stops the unit loading or removing kernel modules itself, closing a direct path to running arbitrary code in kernel space from what should be an ordinary service.</p>
@@ -1693,7 +1694,7 @@
               <p class="fix-benefit" lang="en">✓ Stops the service creating namespaces, removing kernel attack surface that most daemons never use.</p>
               <p class="fix-warning" lang="en">⚠ Container runtimes, sandboxes, browsers and anything else that isolates its children with namespaces fail to start them after the restart. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
             </dd>
-            <dt id="fix-systemd.restrict-suid-sgid"><code>systemd.restrict-suid-sgid</code> <span class="fix-kind">Auto</span></dt>
+            <dt id="fix-systemd.restrict-suid-sgid"><code>systemd.restrict-suid-sgid</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Set RestrictSUIDSGID=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Stops the unit creating new setuid or setgid files, closing a persistence and privilege-escalation path a compromised service could otherwise leave behind for later.</p>

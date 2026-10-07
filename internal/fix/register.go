@@ -452,5 +452,6 @@ func Default() *Registry {
 	registerSysctl(r)
 	registerSystemd(r)
 	registerProxy(r)
+	r.floorReview()
 	return r
 }
