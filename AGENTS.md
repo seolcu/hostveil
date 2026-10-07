@@ -27,7 +27,7 @@ Full CI gate, run all of these before sending a change — `scripts/gate.sh` run
 go build ./... && go vet ./... && gofmt -l . && go mod tidy && go test -race ./...
 golangci-lint run ./...
 go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
-go run ./cmd/sitegen && git diff --exit-code site/
+go run ./cmd/sitegen && git diff --exit-code site/ cmd/sitegen/content/ README.md README.ko.md
 (cd scripts && sha256sum -c install.sh.sha256)   # regenerate the .sha256 if install.sh changed
 go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12   # only if you touched .github/workflows/
 find . -name '*.sh' -not -path './.git/*' -print0 | xargs -0 shellcheck   # only if you touched a shell script
@@ -130,7 +130,7 @@ git checkout main && git pull
 go build ./... && go vet ./... && gofmt -l . && go mod tidy && go test -race ./...
 golangci-lint run ./...   # the released binary — see the note above
 go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
-go run ./cmd/sitegen && git diff --exit-code site/
+go run ./cmd/sitegen && git diff --exit-code site/ cmd/sitegen/content/ README.md README.ko.md
 
 git log --oneline "$(git describe --tags --abbrev=0)"..main   # what is going in
 ```
@@ -186,6 +186,8 @@ itself: run it locally against the *merged* result, not against each branch —
 `go run ./cmd/sitegen && git diff --exit-code site/`. What CI gives that a
 local run does not is the attestation, and that is attached at release time by
 the workflow either way.
+
+**Land a pull request before starting the next one that touches the same files.** Merges are squashed, so a branch stacked on another carries commits main will never have; after the base merges, move the branch with `git rebase --onto origin/main <the base branch's old tip>` — the old tip, not the base branch's name, which after its own rebase points somewhere else. Eight stacked pull requests went through that once, with two conflicts, both in lists that are now generated.
 
 **Version numbers come from pull request titles.** Merges to main are squashed and the title becomes the commit subject, which is the only record of what a change was when the release is cut. The title must be conventional: `feat(site): …`, `fix(model): …`. Put the component in the *scope*, never the type — `site:` and `check/cve:` parse as types with no bump rule, so the change reads as a patch and drops out of the changelog.
 
@@ -243,6 +245,12 @@ Flow: `cmd/hostveil/app.go` builds the one engine (all fifteen checkers + `fix.D
 ## Website
 
 `site/**/*.html` is **generated — never hand-edit it.** Source of truth is `cmd/sitegen/`: `pages.json` (metadata, **plain text** — the generator HTML-escapes it, so write `Fixing & rollback`), `templates/*.tmpl`, `content/{en,ko}/` (raw HTML fragments). Regenerate with `go run ./cmd/sitegen` and commit the output; CI fails if `site/` drifts. CSS/JS and `site/assets/` are *not* generated — edit directly, with the one exception below.
+
+### The checks page counts itself
+
+The checks table's Fix column, every `data-counted` findings figure on that page, the bar widths under them and the counts sentence in both READMEs (between `<!-- hostveil:counts -->` markers) are computed, not typed. `go run ./cmd/sitegen` works them out from `fix.Default()` and writes them back into `cmd/sitegen/content/*/docs/checks.html` and the READMEs as well as into `site/` — `cmd/sitegen/counts.go`. After registering or declining a fix, that one command is the whole of the docs work; what is left for a person is the row itself when a finding is new, and the decline reason when a fix is withdrawn, because both are sentences someone has to mean. It used to be ten hand edits per fix, every one of them caught by a test and none of them made by one.
+
+The registry can report the kind a user is shown because `fix.checkerDeclaresReview` floors to Review the fixes whose checker always asks for one. A checker whose declaration depends on the finding cannot be floored there; `agent.exec-unrestricted` is the one, and `dependsOnFinding` in `counts.go` says what the table shows for it.
 
 ### The Korean pages carry a font
 

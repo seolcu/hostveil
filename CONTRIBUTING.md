@@ -35,7 +35,7 @@ Run the same gate CI does:
 ```bash
 go build ./... && go vet ./... && gofmt -l . && go mod tidy && go test -race ./...
 go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
-go run ./cmd/sitegen && git diff --exit-code site/
+go run ./cmd/sitegen && git diff --exit-code site/ cmd/sitegen/content/ README.md README.ko.md
 ```
 
 `golangci-lint` has to be the released binary, not `go run`: the published

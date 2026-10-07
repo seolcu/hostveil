@@ -75,7 +75,9 @@ lint() {
 }
 
 site_clean() {
-    go run ./cmd/sitegen >/dev/null && git diff --exit-code --stat site/
+    # sitegen also writes the computed counts into its source and the READMEs.
+    go run ./cmd/sitegen >/dev/null &&
+        git diff --exit-code --stat site/ cmd/sitegen/content/ README.md README.ko.md
 }
 
 install_sum() {
