@@ -484,6 +484,78 @@ jobs:
       - name: k3s fixes restart the control plane and change what it accepts
         run: sudo -E scripts/e2e/individual.sh k3s
 
+  # The proxy and agent fixes, against the real programs: Caddy's admin API
+  # and Traefik's dashboard are checked by whether they still answer, and the
+  # OpenClaw edit by what OpenClaw itself reads back from the file.
+  individual-fixes-proxies:
+    runs-on: ubuntu-latest
+    env:
+      HOSTVEIL: /usr/local/bin/hostveil
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26"
+          check-latest: true
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Build
+        run: |
+          go build -o /tmp/hostveil ./cmd/hostveil
+          sudo install /tmp/hostveil /usr/local/bin/hostveil
+
+      # PATH is passed through because sudo's secure_path would otherwise drop
+      # the node that setup-node installed, and OpenClaw needs it.
+      - name: Caddy's admin API moves to loopback and back
+        run: sudo -E env "PATH=$PATH" scripts/e2e/individual.sh caddy
+
+      - name: Traefik's dashboard stops answering and comes back on rollback
+        if: ${{ !cancelled() }}
+        run: sudo -E env "PATH=$PATH" scripts/e2e/individual.sh traefik
+
+      - name: OpenClaw reads the edited config the way the fix says
+        if: ${{ !cancelled() }}
+        run: sudo -E env "PATH=$PATH" scripts/e2e/individual.sh openclaw
+
+  # Proxmox VE cannot be installed on a runner, and the fix does not need it
+  # to be: it rewrites an apt source, so apt against the real Proxmox
+  # repositories is the test, in both formats the two supported releases use.
+  individual-fixes-proxmox:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["debian:12", "debian:13"]
+    container:
+      image: ${{ matrix.image }}
+    env:
+      HOSTVEIL_ASSUME_HOST: "1"
+    steps:
+      - name: Install what the job needs inside the container
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git ca-certificates curl jq >/dev/null
+
+      - uses: actions/checkout@v7
+
+      - name: Trust the checkout inside the container
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26"
+          check-latest: true
+
+      - name: Build
+        run: go build -o /usr/local/bin/hostveil ./cmd/hostveil
+
+      - name: the rewritten source is one apt can use
+        run: scripts/e2e/individual.sh proxmox
+
   # hostveil publishes archives and packages for hosts that are not Debian,
   # and until now it had never been run on one. Both gaps are real: the CVE
   # and container domains sit behind a daemon, the updates domain branches on

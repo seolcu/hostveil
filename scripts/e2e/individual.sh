@@ -14,6 +14,10 @@
 #   scripts/e2e/individual.sh reboot-preview # never reboots
 #   scripts/e2e/individual.sh ufw            # enables ufw; needs Docker and sshd
 #   scripts/e2e/individual.sh k3s            # installs k3s
+#   scripts/e2e/individual.sh caddy          # installs Caddy; needs systemd
+#   scripts/e2e/individual.sh traefik        # needs a Docker daemon
+#   scripts/e2e/individual.sh openclaw       # installs OpenClaw from npm
+#   scripts/e2e/individual.sh proxmox        # Debian 12 or 13; fakes /etc/pve, uses the real repositories
 #
 # Why it exists: these fixes are excluded from every batch on purpose, so
 # `fix --all --review` — the E2E job's and the measurement harness's path —
@@ -434,7 +438,188 @@ scenario_k3s() {
         fail "the encryption fix is listed as reversible"
 }
 
-# --- reboot ----------------------------------------------------------------------
+# --- Caddy ---------------------------------------------------------------------
+
+scenario_caddy() {
+    DIAGNOSE=caddy
+    command -v caddy >/dev/null || { apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq caddy >/dev/null; }
+    cat >/etc/caddy/Caddyfile <<'CADDY'
+{
+	admin 0.0.0.0:2019
+}
+
+:8090 {
+	respond "ok"
+}
+CADDY
+    systemctl restart caddy
+    local ip before
+    ip=$(hostname -I | awk '{print $1}')
+    before=$(sha256sum /etc/caddy/Caddyfile | cut -d' ' -f1)
+    sleep 1
+    curl -sf "http://$ip:2019/config/" >/dev/null || fail "the seeded admin API does not answer on $ip"
+
+    step "proxy.admin-api-exposed: move Caddy's admin API back to loopback"
+    expect_count 1 proxy.admin-api-exposed
+    apply proxy.admin-api-exposed
+    sleep 1
+    if curl -sf "http://$ip:2019/config/" >/dev/null; then
+        fail "the admin API still answers on $ip after the fix"
+    fi
+    curl -sf http://127.0.0.1:2019/config/ >/dev/null || fail "the admin API does not answer on loopback after the fix"
+    curl -sf http://127.0.0.1:8090/ | grep -q ok || fail "the site Caddy serves stopped answering"
+    expect_count 0 proxy.admin-api-exposed
+
+    rollback_latest proxy.admin-api-exposed
+    sleep 1
+    [[ $(sha256sum /etc/caddy/Caddyfile | cut -d' ' -f1) == "$before" ]] || fail "rollback did not restore the Caddyfile byte for byte"
+    curl -sf "http://$ip:2019/config/" >/dev/null || fail "the admin API is not back on $ip after rolling back"
+    expect_count 1 proxy.admin-api-exposed
+}
+
+# --- Traefik -------------------------------------------------------------------
+
+TRAEFIK_DIR=/srv/hv-traefik
+
+scenario_traefik() {
+    mkdir -p "$TRAEFIK_DIR"
+    cat >"$TRAEFIK_DIR/compose.yaml" <<'YAML'
+services:
+  traefik:
+    image: traefik:v3.1
+    command:
+      - --api.insecure=true
+      - --entrypoints.web.address=:80
+    ports:
+      - "127.0.0.1:8081:8080"
+YAML
+    docker compose -f "$TRAEFIK_DIR/compose.yaml" up -d --quiet-pull
+    local before svc
+    before=$(sha256sum "$TRAEFIK_DIR/compose.yaml" | cut -d' ' -f1)
+    for _ in $(seq 1 30); do curl -sf http://127.0.0.1:8081/api/overview >/dev/null && break; sleep 1; done
+    curl -sf http://127.0.0.1:8081/api/overview >/dev/null || fail "the seeded dashboard API does not answer"
+
+    step "proxy.traefik-api-insecure: drop the flag and recreate Traefik"
+    [[ $(count proxy.traefik-api-insecure) -ge 1 ]] || fail "proxy.traefik-api-insecure is not reported"
+    svc=$(jq -r '[.findings[] | select(.id == "proxy.traefik-api-insecure")][0].service' /tmp/hv-scan.json)
+    apply proxy.traefik-api-insecure "$svc" 0
+    sleep 3
+    if curl -sf http://127.0.0.1:8081/api/overview >/dev/null; then
+        fail "the dashboard API still answers without authentication after the fix"
+    fi
+    expect_count 0 proxy.traefik-api-insecure
+
+    rollback_latest proxy.traefik-api-insecure
+    [[ $(sha256sum "$TRAEFIK_DIR/compose.yaml" | cut -d' ' -f1) == "$before" ]] || fail "rollback did not restore compose.yaml byte for byte"
+    for _ in $(seq 1 30); do curl -sf http://127.0.0.1:8081/api/overview >/dev/null && break; sleep 1; done
+    curl -sf http://127.0.0.1:8081/api/overview >/dev/null || fail "the rollback did not recreate Traefik with its dashboard"
+    docker compose -f "$TRAEFIK_DIR/compose.yaml" down -t 1 >/dev/null 2>&1 || true
+}
+
+# --- OpenClaw ------------------------------------------------------------------
+
+OC_USER=${SUDO_USER:-runner}
+
+oc() { runuser -u "$OC_USER" -- openclaw "$@"; }
+
+scenario_openclaw() {
+    command -v openclaw >/dev/null || npm install -g --silent openclaw@latest >/dev/null 2>&1 || fail "npm could not install openclaw"
+    local home cfg
+    home=$(getent passwd "$OC_USER" | cut -d: -f6)
+    cfg=$home/.openclaw/openclaw.json
+    install -d -m 0700 -o "$OC_USER" "$home/.openclaw"
+    cat >"$cfg" <<'JSON5'
+{
+  // seeded by hostveil's e2e; this comment must survive every edit
+  "gateway": {"bind": "lan", "auth": {"mode": "none"}},
+  "agents": {"defaults": {"sandbox": {"mode": "off"}}},
+}
+JSON5
+    chown "$OC_USER" "$cfg"
+    chmod 0600 "$cfg"
+    [[ $(oc config get gateway.bind 2>/dev/null) == *lan* ]] || { oc config get gateway.bind || true; fail "OpenClaw does not read the seeded config"; }
+
+    local svc
+    step "agent.sandbox-off: turn the sandbox on, the way OpenClaw reads it"
+    expect_count 1 agent.sandbox-off
+    svc=$(jq -r '[.findings[] | select(.id == "agent.sandbox-off")][0].service' /tmp/hv-scan.json)
+    apply agent.sandbox-off "$svc" 0
+    [[ $(oc config get agents.defaults.sandbox.mode 2>/dev/null) == *non-main* ]] || fail "OpenClaw does not read sandbox mode non-main after the fix"
+    grep -q 'this comment must survive' "$cfg" || fail "the edit dropped the operator's comment"
+    expect_count 0 agent.sandbox-off
+
+    step "agent.gateway-exposed: bind the gateway to loopback"
+    expect_count 1 agent.gateway-exposed
+    svc=$(jq -r '[.findings[] | select(.id == "agent.gateway-exposed")][0].service' /tmp/hv-scan.json)
+    apply agent.gateway-exposed "$svc" 0
+    [[ $(oc config get gateway.bind 2>/dev/null) == *loopback* ]] || fail "OpenClaw does not read gateway.bind loopback after the fix"
+    expect_count 0 agent.gateway-exposed
+    expect_count 0 agent.auth-disabled
+
+    rollback_latest agent.gateway-exposed
+    rollback_latest agent.sandbox-off
+    [[ $(oc config get gateway.bind 2>/dev/null) == *lan* ]] || fail "OpenClaw does not read the original bind after rolling back"
+    expect_count 1 agent.gateway-exposed
+}
+
+# What OpenClaw binds to when gateway.bind is not set. hostveil assumes
+# loopback; one published guide says 0.0.0.0. Observed and printed here, not
+# asserted, until the answer is known.
+observe_openclaw_default_bind() {
+    local home
+    home=$(getent passwd "$OC_USER" | cut -d: -f6)
+    printf '{\n  "gateway": {"auth": {"mode": "token", "token": "e2e-observe-only-0123456789"}},\n}\n' >"$home/.openclaw/openclaw.json"
+    chown "$OC_USER" "$home/.openclaw/openclaw.json"
+    (runuser -u "$OC_USER" -- timeout 40 openclaw gateway >/tmp/oc-gateway.log 2>&1 &)
+    sleep 25
+    printf '\n== observed: listeners of the OpenClaw gateway with gateway.bind unset\n'
+    ss -ltnp | grep -E 'openclaw|node|18789' || echo "(nothing listening)"
+    tail -20 /tmp/oc-gateway.log || true
+}
+
+# --- Proxmox -------------------------------------------------------------------
+
+# Not a Proxmox host: there is no installing one on a CI runner. What the fix
+# does is rewrite an apt source, so what is checked is that apt, against the
+# real Proxmox repositories, refuses the enterprise source and accepts the one
+# the fix writes. /etc/pve and pvesubscription are faked so the checker runs.
+scenario_proxmox() {
+    local codename src
+    codename=$(sed -n 's/^VERSION_CODENAME=//p' /etc/os-release)
+    mkdir -p /etc/pve
+    printf '#!/bin/sh\necho "status: notfound"\n' >/usr/local/bin/pvesubscription
+    chmod +x /usr/local/bin/pvesubscription
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl ca-certificates jq >/dev/null
+    case $codename in
+    bookworm)
+        curl -fsSL "https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg" -o /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
+        src=/etc/apt/sources.list.d/pve-enterprise.list
+        echo "deb https://enterprise.proxmox.com/debian/pve bookworm pve-enterprise" >"$src"
+        ;;
+    trixie)
+        curl -fsSL "https://enterprise.proxmox.com/debian/proxmox-archive-keyring-trixie.gpg" -o /usr/share/keyrings/proxmox-archive-keyring.gpg
+        src=/etc/apt/sources.list.d/pve-enterprise.sources
+        printf 'Types: deb\nURIs: https://enterprise.proxmox.com/debian/pve\nSuites: trixie\nComponents: pve-enterprise\nSigned-By: /usr/share/keyrings/proxmox-archive-keyring.gpg\n' >"$src"
+        ;;
+    *) fail "no Proxmox release for $codename" ;;
+    esac
+    if apt-get update >/tmp/apt-before.log 2>&1 &&
+        ! grep -qE '401|Unauthorized' /tmp/apt-before.log; then
+        cat /tmp/apt-before.log
+        fail "the enterprise repository answered without a subscription; the seed is not the case the fix is for"
+    fi
+
+    step "proxmox.enterprise-repo-unsubscribed: switch to no-subscription ($codename)"
+    expect_count 1 proxmox.enterprise-repo-unsubscribed
+    apply proxmox.enterprise-repo-unsubscribed
+    grep -q 'download.proxmox.com' "$src" || fail "the source does not point at download.proxmox.com"
+    apt-get update >/tmp/apt-after.log 2>&1 || { cat /tmp/apt-after.log; fail "apt update fails with the rewritten source"; }
+    grep -qE 'download.proxmox.com.*(InRelease|Release)' /tmp/apt-after.log || { cat /tmp/apt-after.log; fail "apt did not fetch the no-subscription repository"; }
+    apt-cache policy | grep -q 'download.proxmox.com/debian/pve' || fail "apt does not list the no-subscription repository"
+    expect_count 0 proxmox.enterprise-repo-unsubscribed
+}
+
+# --- reboot --------------------------------------------------------------------
 
 # Never applied: it would take the host down. What is checked is what the
 # operator is shown before saying yes.
@@ -459,6 +644,10 @@ nginx) scenario_nginx ;;
 reboot-preview) scenario_reboot_preview ;;
 ufw) scenario_ufw ;;
 k3s) scenario_k3s ;;
+caddy) scenario_caddy ;;
+traefik) scenario_traefik ;;
+openclaw) scenario_openclaw && observe_openclaw_default_bind ;;
+proxmox) scenario_proxmox ;;
 *)
     sed -n '2,20p' "$0"
     exit 2
