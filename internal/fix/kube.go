@@ -88,10 +88,16 @@ func buildK3sSecretsEncryption(f model.Finding) (Fix, error) {
 	// a real cluster with "runtime core not ready". Waiting for the node is a
 	// command, not a sleep, so it is as long as it needs and no longer.
 	waitReady := []string{"k3s", "kubectl", "wait", "--for=condition=Ready", "node", "--all", "--timeout=180s"}
+	// A Ready node is not enough either: rotate-keys reads the encryption
+	// hash k3s annotates the node with after it starts, and refused with
+	// "missing annotation on node" until it appeared.
+	waitHash := []string{"k3s", "kubectl", "wait", "node", "--all", "--timeout=180s",
+		`--for=jsonpath={.metadata.annotations.k3s\.io/encryption-config-hash}`}
 	a.AfterWrite = [][]string{
 		{"k3s", "secrets-encrypt", "enable"},
 		restart,
 		waitReady,
+		waitHash,
 		{"k3s", "secrets-encrypt", "rotate-keys"},
 		restart,
 		waitReady,
