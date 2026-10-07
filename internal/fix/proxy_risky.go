@@ -172,5 +172,15 @@ func buildCaddyAdminLoopback(f model.Finding) (Fix, error) {
 				{"caddy", "validate", "--config", p, "--adapter", "caddyfile"},
 				{"systemctl", "try-reload-or-restart", "caddy"},
 			},
+			// A reload sends the new config to the admin address the new
+			// config names. After the rollback that is the exposed one again,
+			// while the running Caddy listens on loopback since the fix, and
+			// it refuses the request: "host not allowed: 0.0.0.0:2019", found
+			// on a real Caddy by scripts/e2e/individual.sh. The rollback
+			// sends the restored file to where the API is now.
+			AfterRestore: [][]string{
+				{"caddy", "validate", "--config", p, "--adapter", "caddyfile"},
+				{"caddy", "reload", "--config", p, "--adapter", "caddyfile", "--address", "localhost:2019", "--force"},
+			},
 		}}}, nil
 }

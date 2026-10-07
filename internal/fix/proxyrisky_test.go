@@ -106,3 +106,18 @@ func TestTraefikFlagLeavesTheRestOfTheCommand(t *testing.T) {
 		t.Errorf("recreate argv %v", got)
 	}
 }
+
+// A reload goes to the admin address in the file being loaded, which after a
+// rollback is the exposed one the running Caddy no longer listens on. The
+// rollback must address the API where the fix put it.
+func TestCaddyRollbackReloadsThroughLoopback(t *testing.T) {
+	fx, err := buildCaddyAdminLoopback(proxyFinding("proxy.admin-api-exposed",
+		map[string]string{"config": "/etc/caddy/Caddyfile"}, map[string]string{"caddy_host": "true"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := fx.Actions[0].AfterRestore
+	if len(r) != 2 || !slices.Contains(r[1], "--address") || !slices.Contains(r[1], "localhost:2019") {
+		t.Errorf("rollback runs %v; it must reload through localhost:2019", r)
+	}
+}
