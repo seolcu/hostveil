@@ -57,12 +57,10 @@ func DeclinedIDs() []string {
 // what the shared sentence had been hiding.
 var declineReasons = map[string]string{
 	// compose
-	"compose.dr004": "The remediation is about the env_file's permissions and whether it reached git and backups, so there is nothing in the compose file to edit.",
 	"compose.dr005": "Moving the value into an env_file is a two-file change one action cannot make, and a secret already in backups and git history needs rotating instead.",
 	"compose.ds012": "The right healthcheck depends on what the service exposes, and a guessed probe marks a working container unhealthy and stalls whatever waits on it.",
 
 	// firewall
-	"firewall.docker-bypass": "The compose file or docker run behind the container is not in the finding, and the other remediation rewrites ufw policy that can lock you out.",
 
 	// updates
 
@@ -78,8 +76,6 @@ var declineReasons = map[string]string{
 	"proxy.traefik-api-insecure":           "Traefik reads this at start, so the container fronting every other service must be recreated — and keeping the dashboard needs a router and middleware Hostveil cannot pick.",
 	"proxy.admin-api-exposed":              "Moving the admin API to loopback cuts off whatever calls it, and nothing in the Caddyfile says who that is; a container must also be recreated before the change is in force.",
 	"proxy.tls-deprecated-protocols":       "nginx inherits ssl_protocols from http into every server that does not set its own, and Hostveil sees which files name the directive rather than which block each one sits in.",
-	"kube.kubeconfig-readable":             "k3s rewrites the file at start from write-kubeconfig-mode, so a chmod lasts until the next restart; the setting itself may live in any of four places.",
-	"kube.token-readable":                  "The token has already been readable, so the real remedy includes rotating it, which is a cluster operation Hostveil does not perform.",
 	"kube.anonymous-auth":                  "It changes how the control plane starts, in whichever configuration layer set it, and takes effect only when the node every workload runs on restarts.",
 	"kube.secrets-unencrypted":             "Turning encryption on needs a restart of the control plane and a rewrite of every existing Secret, neither of which is a file edit.",
 	"proxmox.webui-open":                   "Which network is the management network is not written anywhere Hostveil can read, and a wrong guess locks you out of the hypervisor's interface; LISTEN_IP also breaks clusters across subnets.",

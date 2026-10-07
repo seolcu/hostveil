@@ -26,7 +26,7 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">158</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">83</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">162</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">87</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">How the 183 findings resolve</p>
               <div class="ledger-bar">
@@ -36,13 +36,13 @@
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:45%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">83</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:48%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">87</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:14%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">25</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:11%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">21</span>
               </div>
             </div>
 
@@ -170,7 +170,7 @@
                   <tr><td><code>compose.ds026</code></td><td>Host user namespace is used</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>compose.ds010</code></td><td>No memory limit set</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>compose.ds012</code></td><td>No healthcheck defined</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.dr004</code></td><td>Loads secrets from an env_file</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.dr004</code></td><td>Loads secrets from an env_file</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>
@@ -182,7 +182,7 @@
                 <tbody>
                   <tr><td><code>firewall.inactive</code></td><td>No active host firewall (ufw, firewalld, the Proxmox VE firewall, nftables, or iptables)</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                   <tr><td><code>firewall.default-allow</code></td><td>A firewall is running but its default inbound policy accepts everything</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
-                  <tr><td><code>firewall.docker-bypass</code></td><td>Published container ports are reachable despite an active ufw</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>firewall.docker-bypass</code></td><td>Published container ports are reachable despite an active ufw</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>
@@ -286,8 +286,8 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>kube.kubeconfig-readable</code></td><td>The cluster-admin kubeconfig (<code>/etc/rancher/k3s/k3s.yaml</code>, or k0s&rsquo;s <code>admin.conf</code>) is readable by every account &mdash; which makes every local user root, through a privileged pod. Group-readable is <code>write-kubeconfig-group</code> doing its job and is not flagged</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>kube.token-readable</code></td><td>k3s&rsquo;s <code>token</code> or <code>node-token</code>, which lets a machine join the cluster, is readable by every account</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>kube.kubeconfig-readable</code></td><td>The cluster-admin kubeconfig (<code>/etc/rancher/k3s/k3s.yaml</code>, or k0s&rsquo;s <code>admin.conf</code>) is readable by every account &mdash; which makes every local user root, through a privileged pod. Group-readable is <code>write-kubeconfig-group</code> doing its job and is not flagged</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>kube.token-readable</code></td><td>k3s&rsquo;s <code>token</code> or <code>node-token</code>, which lets a machine join the cluster, is readable by every account</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>kube.anonymous-auth</code></td><td><code>anonymous-auth=true</code> is set explicitly for the API server or the kubelet. Both distributions default it off; anonymous requests are still authorised by RBAC, which is why it is not higher</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>kube.secrets-unencrypted</code></td><td>k3s stores Secrets unencrypted in its datastore &mdash; the default, and the first item in the k3s CIS hardening guide</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
                 </tbody>

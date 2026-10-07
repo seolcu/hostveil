@@ -523,9 +523,10 @@ func ruleEnvFile(s compose.Service) (model.Finding, bool) {
 	if len(s.EnvFile) == 0 {
 		return model.Finding{}, false
 	}
-	return f("dr004", "Service loads secrets from an env_file", model.SeverityLow, model.RemediationManual, s.Name,
+	return f("dr004", "Service loads secrets from an env_file", model.SeverityLow, model.RemediationReview, s.Name,
 		model.WithDescription("Env files often hold credentials. Make sure the file is not world-readable and is excluded from version control and backups that leave the host."),
-		model.WithHowToFix("Verify the env_file has 0600 permissions and is listed in .gitignore. This one needs a human eye, so Hostveil does not change it automatically."),
+		model.WithHowToFix("Make the env_file readable only by its owner (`chmod 0600`) and keep it out of version control and off-host backups."),
+		model.WithEvidence("env_files", strings.Join(s.EnvFile, model.PathListSeparator)),
 	), true
 }
 

@@ -26,7 +26,7 @@
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">183</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">158</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">83</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 유출된 비밀값은 그것을 발급한 쪽에서 바꿔야 하고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
+            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">183</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">162</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">87</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 유출된 비밀값은 그것을 발급한 쪽에서 바꿔야 하고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">183개 발견 항목의 처리 방식</p>
               <div class="ledger-bar">
@@ -36,13 +36,13 @@
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:45%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">83</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:48%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">87</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:14%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">25</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:11%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">21</span>
               </div>
             </div>
 
@@ -170,7 +170,7 @@
                   <tr><td><code>compose.ds026</code></td><td>호스트 사용자 네임스페이스를 사용함</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>compose.ds010</code></td><td>메모리 제한이 설정되지 않음</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                   <tr><td><code>compose.ds012</code></td><td>헬스체크가 정의되지 않음</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
-                  <tr><td><code>compose.dr004</code></td><td>env_file에서 비밀값을 불러옴</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>compose.dr004</code></td><td>env_file에서 비밀값을 불러옴</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>
@@ -182,7 +182,7 @@
                 <tbody>
                   <tr><td><code>firewall.inactive</code></td><td>활성화된 호스트 방화벽이 없음 (ufw, firewalld, Proxmox VE 방화벽, nftables, 또는 iptables)</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                   <tr><td><code>firewall.default-allow</code></td><td>방화벽이 켜져 있지만 기본 인바운드 정책이 전부 허용</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
-                  <tr><td><code>firewall.docker-bypass</code></td><td>ufw가 켜져 있는데도 publish된 컨테이너 포트가 외부에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>firewall.docker-bypass</code></td><td>ufw가 켜져 있는데도 publish된 컨테이너 포트가 외부에서 접근 가능</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>
@@ -286,8 +286,8 @@
               <table>
                 <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
                 <tbody>
-                  <tr><td><code>kube.kubeconfig-readable</code></td><td>클러스터 관리자 kubeconfig(<code>/etc/rancher/k3s/k3s.yaml</code> 또는 k0s의 <code>admin.conf</code>)를 모든 계정이 읽을 수 있음. 특권 파드를 거치면 모든 로컬 사용자가 root가 됨. 그룹 읽기 권한은 <code>write-kubeconfig-group</code>의 의도된 동작이라 표시하지 않음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>kube.token-readable</code></td><td>기계를 클러스터에 참여시키는 k3s의 <code>token</code>이나 <code>node-token</code>을 모든 계정이 읽을 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>kube.kubeconfig-readable</code></td><td>클러스터 관리자 kubeconfig(<code>/etc/rancher/k3s/k3s.yaml</code> 또는 k0s의 <code>admin.conf</code>)를 모든 계정이 읽을 수 있음. 특권 파드를 거치면 모든 로컬 사용자가 root가 됨. 그룹 읽기 권한은 <code>write-kubeconfig-group</code>의 의도된 동작이라 표시하지 않음</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>kube.token-readable</code></td><td>기계를 클러스터에 참여시키는 k3s의 <code>token</code>이나 <code>node-token</code>을 모든 계정이 읽을 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>kube.anonymous-auth</code></td><td>API 서버나 kubelet에 <code>anonymous-auth=true</code>가 명시적으로 설정됨. 두 배포판 모두 기본값은 꺼짐이며, 익명 요청도 RBAC 인가를 거치므로 더 높게 매기지 않음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>kube.secrets-unencrypted</code></td><td>k3s가 Secret을 데이터스토어에 암호화하지 않고 저장함. 기본값이며, k3s CIS 하드닝 가이드의 첫 항목</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
                 </tbody>
