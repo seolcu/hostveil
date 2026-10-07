@@ -2,6 +2,32 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.33.2](https://github.com/seolcu/hostveil/compare/v3.33.1...v3.33.2) (2026-10-07)
+
+The real-host tests now cover the firewall and k3s fixes too, and found
+three more that reported success while leaving the host otherwise. All three
+are fixed.
+
+### Bug Fixes
+
+* **fix:** closing an exposed datastore or admin panel with ufw did nothing
+  when that port was already allowed, which is the usual reason the finding
+  fires. ufw treats a deny with the same match as an existing allow as a
+  duplicate, skips it and still exits successfully. The fix now removes the
+  matching allow first, then puts the deny ahead of every other rule.
+* **fix:** rolling back the ufw-docker rules restored `after.rules` but left
+  them in force, because `ufw reload` does not touch Docker's `DOCKER-USER`
+  chain. The rollback now empties that chain as well.
+* **fix:** encrypting k3s Secrets did not encrypt them. On a cluster that
+  already exists the setting alone is not enough, and the check read the same
+  setting, so it reported the cluster fixed. The check now asks k3s whether
+  Secrets are encrypted, which also catches hosts where the earlier fix was
+  applied, and the fix runs k3s's own procedure: enable, restart, rotate the
+  keys, restart. The fix can no longer be rolled back, because removing the
+  setting after the keys are rotated would leave Secrets unreadable, and a
+  step that fails is reported, with what ran and what is left, rather than
+  undone.
+
 ## [3.33.1](https://github.com/seolcu/hostveil/compare/v3.33.0...v3.33.1) (2026-10-07)
 
 3.33.0's fixes that restart what they edit had only ever run against a fake
