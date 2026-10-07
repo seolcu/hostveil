@@ -108,7 +108,6 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 		// a stale *comment*, so it is written down as history rather than
 		// deleted, and register.go carries the argument.
 
-		"fileperms.owner":        "chown has no checkpoint — a rollback records contents and mode and has nowhere to put the previous owner; and the right group differs by distribution",
 		"compose.ds012":          "the right healthcheck depends on what the service exposes; a guessed one marks a working container unhealthy and stalls everything waiting on it",
 		"ports.exposed":          "the aggregate says N services are exposed; the per-service findings carry the fixable detail, and a firewall is firewall.inactive's fix rather than this one's",
 		"accounts.duplicate-uid": "UID migration spans every file the account owns and is not one reversible action",

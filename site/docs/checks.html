@@ -150,7 +150,7 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">169</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">94</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">171</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">96</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">How the 183 findings resolve</p>
               <div class="ledger-bar">
@@ -160,13 +160,13 @@
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:51%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">94</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:52%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">96</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:8%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">14</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:7%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">12</span>
               </div>
             </div>
 
@@ -397,7 +397,7 @@
                 <tbody>
                   <tr><td><code>proxmox.webui-open</code></td><td>The web interface and API on 8006 accept a login from any address: no <code>LISTEN_IP</code>, and no allow-list that a deny rule or policy actually enforces</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>proxmox.root-no-tfa</code></td><td>root@pam has no enabled second factor (TOTP, WebAuthn, U2F or Yubico); recovery keys alone do not count</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>proxmox.enterprise-repo-unsubscribed</code></td><td>An enterprise repository (PVE or Ceph) is enabled without an active subscription, so <code>apt update</code> is refused and Proxmox's own packages stop receiving updates while Debian's keep arriving</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxmox.enterprise-repo-unsubscribed</code></td><td>An enterprise repository (PVE or Ceph) is enabled without an active subscription, so <code>apt update</code> is refused and Proxmox's own packages stop receiving updates while Debian's keep arriving</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-proxmox.enterprise-repo-unsubscribed">Review</a></td></tr>
                 </tbody>
               </table>
             </div>
@@ -443,7 +443,7 @@
                   <tr><td><code>fileperms.cron-deny</code></td><td>The cron denylist is too permissive</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.cron-deny">Auto</a></td></tr>
                   <tr><td><code>fileperms.crontab</code></td><td>The system crontab is too permissive</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.crontab">Auto</a></td></tr>
                   <tr><td><code>fileperms.passwd-backup</code></td><td>The passwd backup is writable by non-root</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.passwd-backup">Auto</a></td></tr>
-                  <tr><td><code>fileperms.owner</code></td><td>One of the files above is not owned by root — permissions are only half of who can read it</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>fileperms.owner</code></td><td>One of the files above is not owned by root — permissions are only half of who can read it</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.owner">Review</a></td></tr>
                   <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code> is writable by non-root users</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.sshd-config">Auto</a></td></tr>
                   <tr><td><code>fileperms.compiler</code></td><td>The system compiler is available to every local user</td><td><span class="sev low">LOW</span></td><td><a href="#fix-fileperms.compiler">Review</a></td></tr>
                 </tbody>
@@ -1156,6 +1156,12 @@
               <p lang="en">Tighten /etc/shadow to 0640</p>
               <p class="fix-benefit" lang="en">✓ Stops a non-root account reading this server's SSH private host key — the one thing that would let them impersonate this host to anyone connecting.</p>
             </dd>
+            <dt id="fix-fileperms.owner"><code>fileperms.owner</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set the owning user of each file to root, keeping its group</p>
+              <p class="fix-benefit" lang="en">✓ The account that owned these files loses the access ownership gave it — every password hash, in /etc/shadow's case — and the permission bits mean what they appear to again.</p>
+              <p class="fix-warning" lang="en">⚠ If a service runs as that account and reads one of these files on purpose, it stops being able to. And if several files changed owner at once, something put them there — a restore run as the wrong user, an archive extracted with its own uids — and other files are likely affected too. The previous owner is checkpointed and a rollback restores it.</p>
+            </dd>
             <dt id="fix-fileperms.passwd"><code>fileperms.passwd</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
@@ -1731,6 +1737,15 @@
               <p class="fix-warning" lang="en">⚠ The dashboard is gone until you expose <code>api@internal</code> through a router with authentication. The edit has a checkpoint and rolls back exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
                 </li>
               </ul>
+            </dd>
+          </dl>
+          <h3>Proxmox</h3>
+          <dl class="fix-actions">
+            <dt id="fix-proxmox.enterprise-repo-unsubscribed"><code>proxmox.enterprise-repo-unsubscribed</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Rewrite /etc/apt/sources.list.d/pve-enterprise.list to the pve-no-subscription repository</p>
+              <p class="fix-benefit" lang="en">✓ apt can reach Proxmox's packages again, so the kernel, QEMU and the management stack start receiving the security updates that have been silently refused.</p>
+              <p class="fix-warning" lang="en">⚠ The no-subscription repository is the one Proxmox describes as less tested than enterprise and not recommended for production. The next <code>apt full-upgrade</code> may bring a lot of Proxmox packages at once, after months of none — run it while you can reboot. If you have a subscription, add the key instead (<code>pvesubscription set &lt;key&gt;</code>) and roll this back. The edit has a checkpoint.</p>
             </dd>
           </dl>
           <h3>Kubernetes</h3>

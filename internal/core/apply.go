@@ -405,8 +405,12 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 	summary := modeTable(changes)
 
 	prior := make(map[string]os.FileMode, len(changes))
+	owners := map[string]history.Owner{}
 	for _, c := range changes {
 		prior[c.path] = c.from
+		if c.owner {
+			owners[c.path] = history.Owner{UID: c.uid, GID: c.gid}
+		}
 	}
 	cp := history.Checkpoint{
 		ID:         history.NewID(f.ID),
@@ -422,7 +426,7 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 			cp.SafeRoots[c.path] = a.SafeRoot
 		}
 	}
-	saved, err := e.store.SaveModes(cp, prior)
+	saved, err := e.store.SaveModesAndOwners(cp, prior, owners)
 	if err != nil {
 		return model.FixOutcome{}, fmt.Errorf("backup failed, not applying: %w", err)
 	}
@@ -436,6 +440,9 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 			chmodErr = platform.ChmodBeneath(a.SafeRoot, c.path, c.to)
 		} else {
 			chmodErr = platform.ChmodNoFollow(c.path, c.to)
+		}
+		if chmodErr == nil && c.owner {
+			chmodErr = platform.ChownNoFollowPath(c.path, c.toUID, -1)
 		}
 		if chmodErr != nil {
 			// The checkpoint is already on disk and covers every path in the

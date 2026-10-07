@@ -178,7 +178,7 @@ func (*Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 // wrong people.
 func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, error) {
 	var findings []model.Finding
-	var wrongOwner []string
+	var wrongOwner, wrongOwnerPaths []string
 	var cov check.Coverage
 	for _, rule := range c.Rules {
 		paths, err := rule.paths()
@@ -209,6 +209,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 			// case the mode check reads as clean.
 			if uid, ok := fileUID(fi); ok && uid != c.OwnerUID {
 				wrongOwner = append(wrongOwner, fmt.Sprintf("%s (uid %d)", p, uid))
+				wrongOwnerPaths = append(wrongOwnerPaths, p)
 			}
 			if fi.Mode().Perm()&^rule.MaxMode != 0 {
 				badPaths = append(badPaths, p)
@@ -248,10 +249,11 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		sort.Strings(wrongOwner)
 		findings = append(findings, model.NewFinding(ownerFindingID,
 			"A sensitive system file is not owned by root",
-			model.SeverityHigh, model.SourceFilePerms, model.RemediationManual,
+			model.SeverityHigh, model.SourceFilePerms, model.RemediationReview,
 			model.WithDescription("These files are owned by an account other than root. Permission bits are only half of who can read and write a file — the other half is who the owner is. A mode-0600 /etc/shadow grants everything to its owner and nothing to anyone else, so if that owner is an ordinary user, they hold every password hash on the host while the permissions look exactly right."),
-			model.WithHowToFix("Restore root ownership, e.g. `chown root:root "+strings.SplitN(wrongOwner[0], " ", 2)[0]+"`. Check the group too — /etc/shadow is usually root:shadow. If this happened to several files at once, something restored them as the wrong user; look at how they got there before assuming a chown is the whole fix."),
+			model.WithHowToFix("Restore root ownership of the user and leave the group as it is, e.g. `chown root "+strings.SplitN(wrongOwner[0], " ", 2)[0]+"`. Check the group too — /etc/shadow is usually root:shadow on Debian and root:root elsewhere. If this happened to several files at once, something restored them as the wrong user; look at how they got there before assuming a chown is the whole fix."),
 			model.WithEvidence("files", strings.Join(wrongOwner, model.EvidenceSeparator)),
+			model.WithEvidence("owner-paths", strings.Join(sortedCopy(wrongOwnerPaths), model.PathListSeparator)),
 		))
 	}
 	return findings, cov.Err()
@@ -269,4 +271,10 @@ func fileUID(fi os.FileInfo) (int, bool) {
 		return 0, false
 	}
 	return int(st.Uid), true
+}
+
+func sortedCopy(xs []string) []string {
+	out := append([]string(nil), xs...)
+	sort.Strings(out)
+	return out
 }

@@ -54,6 +54,8 @@ func Finding(id string) model.Finding {
 		model.WithEvidence("mount", "/var/run/docker.sock"),
 		model.WithEvidence("path", "/var/run/docker.sock"),
 		model.WithEvidence("env_files", ".env"),
+		model.WithEvidence("owner-paths", "/etc/shadow"),
+		model.WithEvidence("sources", "/etc/apt/sources.list.d/pve-enterprise.list"),
 		model.WithEvidence("set-in", "command: --api.insecure=true"),
 		model.WithMetadata("caddy_host", "true"),
 		model.WithEvidence("published", "8080/tcp (web)"),

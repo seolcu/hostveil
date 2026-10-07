@@ -26,7 +26,7 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">169</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">94</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">171</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">96</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">How the 183 findings resolve</p>
               <div class="ledger-bar">
@@ -36,13 +36,13 @@
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:51%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">94</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:52%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">96</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:8%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">14</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:7%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">12</span>
               </div>
             </div>
 
@@ -273,7 +273,7 @@
                 <tbody>
                   <tr><td><code>proxmox.webui-open</code></td><td>The web interface and API on 8006 accept a login from any address: no <code>LISTEN_IP</code>, and no allow-list that a deny rule or policy actually enforces</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>proxmox.root-no-tfa</code></td><td>root@pam has no enabled second factor (TOTP, WebAuthn, U2F or Yubico); recovery keys alone do not count</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>proxmox.enterprise-repo-unsubscribed</code></td><td>An enterprise repository (PVE or Ceph) is enabled without an active subscription, so <code>apt update</code> is refused and Proxmox's own packages stop receiving updates while Debian's keep arriving</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxmox.enterprise-repo-unsubscribed</code></td><td>An enterprise repository (PVE or Ceph) is enabled without an active subscription, so <code>apt update</code> is refused and Proxmox's own packages stop receiving updates while Debian's keep arriving</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                 </tbody>
               </table>
             </div>
@@ -319,7 +319,7 @@
                   <tr><td><code>fileperms.cron-deny</code></td><td>The cron denylist is too permissive</td><td><span class="sev medium">MEDIUM</span></td><td>Auto</td></tr>
                   <tr><td><code>fileperms.crontab</code></td><td>The system crontab is too permissive</td><td><span class="sev high">HIGH</span></td><td>Auto</td></tr>
                   <tr><td><code>fileperms.passwd-backup</code></td><td>The passwd backup is writable by non-root</td><td><span class="sev high">HIGH</span></td><td>Auto</td></tr>
-                  <tr><td><code>fileperms.owner</code></td><td>One of the files above is not owned by root — permissions are only half of who can read it</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>fileperms.owner</code></td><td>One of the files above is not owned by root — permissions are only half of who can read it</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                   <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code> is writable by non-root users</td><td><span class="sev medium">MEDIUM</span></td><td>Auto</td></tr>
                   <tr><td><code>fileperms.compiler</code></td><td>The system compiler is available to every local user</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
                 </tbody>

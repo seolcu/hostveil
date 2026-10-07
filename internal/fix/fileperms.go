@@ -15,6 +15,7 @@ import (
 // globs so that introducing one is a deliberate act rather than a silent
 // widening of what the registry claims to fix.
 func registerFilePerms(r *Registry) {
+	r.Register("fileperms.owner", buildRestoreRootOwner)
 	for _, id := range []string{
 		"fileperms.shadow",
 		"fileperms.passwd",
@@ -155,6 +156,44 @@ func buildTightenMode(f model.Finding) (Fix, error) {
 			Paths:    paths,
 			SafeRoot: f.Evidence["root"],
 			Mode:     func(cur fs.FileMode) fs.FileMode { return tighten(cur, mask) },
+		}},
+	}, nil
+}
+
+// buildRestoreRootOwner gives the files back to root, user only.
+//
+// It was declined for two reasons. A checkpoint had nowhere to put an
+// owner, so this would have been the one fix a rollback could not undo; it
+// records the prior uid and gid now (history.Owner). And the right group
+// differs by distribution; the group is left exactly as it is, because the
+// owner is the half of this finding that is wrong. What stays true is the
+// Warning: ownership landing on the wrong account is usually a symptom, and
+// chowning the files hostveil knows about fixes the visible part.
+func buildRestoreRootOwner(f model.Finding) (Fix, error) {
+	var paths []string
+	for _, p := range strings.Split(f.Evidence["owner-paths"], model.PathListSeparator) {
+		if p != "" {
+			paths = append(paths, p)
+		}
+	}
+	if len(paths) == 0 {
+		return Fix{}, fmt.Errorf("finding %s names no files", f.ID)
+	}
+	root := 0
+	return Fix{
+		Label: "Give " + strings.Join(paths, ", ") + " back to root", Kind: model.RemediationReview,
+		IndividualOnly: true,
+		Actions: []Action{{
+			Label: "Set the owning user of each file to root, keeping its group",
+			Benefit: "The account that owned these files loses the access ownership gave it — every password hash, " +
+				"in /etc/shadow's case — and the permission bits mean what they appear to again.",
+			Warning: "If a service runs as that account and reads one of these files on purpose, it stops being " +
+				"able to. And if several files changed owner at once, something put them there — a restore run as " +
+				"the wrong user, an archive extracted with its own uids — and other files are likely affected too. " +
+				"The previous owner is checkpointed and a rollback restores it.",
+			Kind: ActionMode, Paths: paths,
+			Mode:     func(cur fs.FileMode) fs.FileMode { return cur },
+			ChownUID: &root,
 		}},
 	}, nil
 }

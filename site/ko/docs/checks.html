@@ -151,7 +151,7 @@
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">183</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">169</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">94</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 유출된 비밀값은 그것을 발급한 쪽에서 바꿔야 하고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
+            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">183</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">171</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">96</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 유출된 비밀값은 그것을 발급한 쪽에서 바꿔야 하고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">183개 발견 항목의 처리 방식</p>
               <div class="ledger-bar">
@@ -161,13 +161,13 @@
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:51%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">94</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:52%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">96</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:8%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">14</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:7%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">12</span>
               </div>
             </div>
 
@@ -398,7 +398,7 @@
                 <tbody>
                   <tr><td><code>proxmox.webui-open</code></td><td>8006번의 웹 인터페이스와 API가 어느 주소에서든 로그인을 받음. <code>LISTEN_IP</code>가 없고, 거부 규칙이나 정책이 실제로 적용되는 허용 목록도 없음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>proxmox.root-no-tfa</code></td><td>root@pam에 켜진 2단계 인증(TOTP, WebAuthn, U2F, Yubico)이 없음. 복구 키만 있는 경우는 인정하지 않음</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>proxmox.enterprise-repo-unsubscribed</code></td><td>활성 구독 없이 엔터프라이즈 저장소(PVE 또는 Ceph)가 켜져 있음. <code>apt update</code>가 거부되어, Debian 업데이트는 계속 들어오는데 Proxmox 자체 패키지는 업데이트가 끊김</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxmox.enterprise-repo-unsubscribed</code></td><td>활성 구독 없이 엔터프라이즈 저장소(PVE 또는 Ceph)가 켜져 있음. <code>apt update</code>가 거부되어, Debian 업데이트는 계속 들어오는데 Proxmox 자체 패키지는 업데이트가 끊김</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-proxmox.enterprise-repo-unsubscribed">Review</a></td></tr>
                 </tbody>
               </table>
             </div>
@@ -444,7 +444,7 @@
                   <tr><td><code>fileperms.cron-deny</code></td><td>cron 차단 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.cron-deny">Auto</a></td></tr>
                   <tr><td><code>fileperms.crontab</code></td><td>시스템 crontab 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.crontab">Auto</a></td></tr>
                   <tr><td><code>fileperms.passwd-backup</code></td><td>passwd 백업을 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.passwd-backup">Auto</a></td></tr>
-                  <tr><td><code>fileperms.owner</code></td><td>위 파일 중 하나가 root 소유가 아니며, 누가 읽을 수 있는지는 권한 비트만으로 정해지지 않음</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>fileperms.owner</code></td><td>위 파일 중 하나가 root 소유가 아니며, 누가 읽을 수 있는지는 권한 비트만으로 정해지지 않음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.owner">Review</a></td></tr>
                   <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.sshd-config">Auto</a></td></tr>
                   <tr><td><code>fileperms.compiler</code></td><td>모든 로컬 사용자가 시스템 컴파일러를 실행할 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-fileperms.compiler">Review</a></td></tr>
                 </tbody>
@@ -1157,6 +1157,12 @@
               <p lang="en">Tighten /etc/shadow to 0640</p>
               <p class="fix-benefit" lang="en">✓ Stops a non-root account reading this server's SSH private host key — the one thing that would let them impersonate this host to anyone connecting.</p>
             </dd>
+            <dt id="fix-fileperms.owner"><code>fileperms.owner</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set the owning user of each file to root, keeping its group</p>
+              <p class="fix-benefit" lang="en">✓ The account that owned these files loses the access ownership gave it — every password hash, in /etc/shadow's case — and the permission bits mean what they appear to again.</p>
+              <p class="fix-warning" lang="en">⚠ If a service runs as that account and reads one of these files on purpose, it stops being able to. And if several files changed owner at once, something put them there — a restore run as the wrong user, an archive extracted with its own uids — and other files are likely affected too. The previous owner is checkpointed and a rollback restores it.</p>
+            </dd>
             <dt id="fix-fileperms.passwd"><code>fileperms.passwd</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
@@ -1732,6 +1738,15 @@
               <p class="fix-warning" lang="en">⚠ The dashboard is gone until you expose <code>api@internal</code> through a router with authentication. The edit has a checkpoint and rolls back exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
                 </li>
               </ul>
+            </dd>
+          </dl>
+          <h3>Proxmox</h3>
+          <dl class="fix-actions">
+            <dt id="fix-proxmox.enterprise-repo-unsubscribed"><code>proxmox.enterprise-repo-unsubscribed</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Rewrite /etc/apt/sources.list.d/pve-enterprise.list to the pve-no-subscription repository</p>
+              <p class="fix-benefit" lang="en">✓ apt can reach Proxmox's packages again, so the kernel, QEMU and the management stack start receiving the security updates that have been silently refused.</p>
+              <p class="fix-warning" lang="en">⚠ The no-subscription repository is the one Proxmox describes as less tested than enterprise and not recommended for production. The next <code>apt full-upgrade</code> may bring a lot of Proxmox packages at once, after months of none — run it while you can reboot. If you have a subscription, add the key instead (<code>pvesubscription set &lt;key&gt;</code>) and roll this back. The edit has a checkpoint.</p>
             </dd>
           </dl>
           <h3>쿠버네티스</h3>

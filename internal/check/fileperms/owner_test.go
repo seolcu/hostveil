@@ -116,15 +116,19 @@ func TestOwnerFindingIsActionable(t *testing.T) {
 	if !strings.Contains(owner.Evidence["files"], path) {
 		t.Errorf("the evidence does not name the file: %q", owner.Evidence["files"])
 	}
-	if !strings.Contains(owner.HowToFix, "chown root:root "+path) {
+	if !strings.Contains(owner.HowToFix, "chown root "+path) {
 		t.Errorf("the how-to-fix does not carry a runnable command: %q", owner.HowToFix)
 	}
 	if !strings.Contains(owner.HowToFix, "group") {
 		t.Errorf("the how-to-fix does not mention the group, which differs by distribution: %q", owner.HowToFix)
 	}
-	// Manual on purpose: chown has no checkpoint. The register says why.
-	if owner.Remediation != model.RemediationManual {
-		t.Errorf("remediation = %v, want Manual", owner.Remediation)
+	// Review: the checkpoint records the previous owner now, and the paths
+	// travel in their own evidence for the fix to read.
+	if owner.Remediation != model.RemediationReview {
+		t.Errorf("remediation = %v, want Review", owner.Remediation)
+	}
+	if owner.Evidence["owner-paths"] != path {
+		t.Errorf("owner-paths = %q, want %q", owner.Evidence["owner-paths"], path)
 	}
 }
 

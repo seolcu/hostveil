@@ -29,6 +29,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/seolcu/hostveil/internal/check"
@@ -314,9 +315,17 @@ func (c *Checker) auditRepos(ctx context.Context, r platform.CommandRunner) ([]m
 	if status == "active" {
 		return nil, ""
 	}
+	// One file is one edit: the enterprise source rewritten to the
+	// no-subscription one, which is signed by the same key. Two — PVE's and
+	// Ceph's — are two edits, and a fix makes one.
+	kind, why := model.RemediationReview, ""
+	if len(enabled) != 1 {
+		kind, why = model.RemediationManual, "The enterprise repository is enabled in "+strconv.Itoa(len(enabled))+
+			" files, and a fix rewrites one file at a time."
+	}
 	return []model.Finding{model.NewFinding("proxmox.enterprise-repo-unsubscribed",
 		"Proxmox updates come from a repository this host cannot use",
-		model.SeverityMedium, model.SourceProxmox, model.RemediationManual,
+		model.SeverityMedium, model.SourceProxmox, kind, model.WithWhyNoFix(why),
 		model.WithDescription(
 			"The enterprise repository is enabled ("+strings.Join(enabled, ", ")+") but the subscription status is \""+status+"\", "+
 				"so every `apt update` is refused by "+enterpriseHost+" and the Proxmox packages — the kernel, QEMU, the management stack — stop receiving updates. "+
