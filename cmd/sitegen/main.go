@@ -361,7 +361,11 @@ func fragment(kind, lang, slug string) (string, error) {
 			return "", err
 		}
 		frag = strings.Replace(frag, fixActionsMarker, actions, 1)
-		frag = linkFixColumnRows(frag, fix.Default(), lang)
+		synced, _, err := syncChecks(frag, lang, fix.Default())
+		if err != nil {
+			return "", err
+		}
+		frag = linkFixColumnRows(synced, fix.Default(), lang)
 	}
 	return frag, nil
 }
@@ -412,6 +416,7 @@ func main() {
 	}
 
 	t := template.Must(template.ParseFS(assets, "templates/*.tmpl"))
+	must(syncSources(fix.Default()))
 	must(prune(outDir))
 
 	count := 0
