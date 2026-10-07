@@ -2,6 +2,24 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.33.3](https://github.com/seolcu/hostveil/compare/v3.33.2...v3.33.3) (2026-10-07)
+
+The last of the fixes 3.33.0 opened up now run against the real programs
+they change too: Caddy, Traefik, OpenClaw, and the Proxmox package
+repositories. One more rollback that could not do its job turned up, and is
+fixed.
+
+### Bug Fixes
+
+* **fix:** rolling back the fix that moves Caddy's admin API to loopback
+  failed. Reloading the restored Caddyfile sends it to the admin address that
+  file names, which is the exposed one again, while the running Caddy has
+  listened on loopback since the fix and refused the request. The rollback now
+  sends the restored file to where the API actually is.
+* **check:** the OpenClaw gateway's process is now named as `ss` reports it
+  (`openclaw-gatewa`, truncated by the kernel), so an exposed gateway's
+  evidence names the right process.
+
 ## [3.33.2](https://github.com/seolcu/hostveil/compare/v3.33.1...v3.33.2) (2026-10-07)
 
 The real-host tests now cover the firewall and k3s fixes too, and found
