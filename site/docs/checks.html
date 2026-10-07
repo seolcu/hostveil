@@ -1575,7 +1575,7 @@
             <dd>
               <p lang="en">Set "live-restore": true in /etc/docker/daemon.json and reload Docker</p>
               <p class="fix-benefit" lang="en">✓ Containers keep running while the daemon restarts, so upgrading Docker stops being an outage and stops being the update that gets put off.</p>
-              <p class="fix-warning" lang="en">⚠ Docker picks this setting up on a reload, so applying it stops nothing. It is unsupported in swarm mode, and a daemon that cannot use it keeps running without it. If the daemon refuses to start with the new file, Hostveil puts the old one back and starts it again. The file edit has a checkpoint, and rolling it back restarts Docker under the original.</p>
+              <p class="fix-warning" lang="en">⚠ Docker picks this setting up on a reload, so applying it stops nothing. It is unsupported in swarm mode, and a daemon that cannot use it keeps running without it. If the daemon refuses the new file, Hostveil puts the old one back and reloads again. Rolling it back restarts Docker, because a reload does not turn the setting off again; with live-restore still on at that moment, the containers keep running through it.</p>
             </dd>
             <dt id="fix-dockerd.no-new-privileges"><code>dockerd.no-new-privileges</code> <span class="fix-kind review">Review</span></dt>
             <dd>

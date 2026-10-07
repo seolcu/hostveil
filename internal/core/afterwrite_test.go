@@ -78,8 +78,8 @@ func TestAfterWriteRunsOnceTheEditIsWritten(t *testing.T) {
 	if got, _ := os.ReadFile(path); string(got) != "new\n" {
 		t.Errorf("file = %q, want the edit", got)
 	}
-	if !slices.Equal(runner.calls(), []string{"systemctl restart docker"}) {
-		t.Errorf("ran %v, want one restart after the write", runner.calls())
+	if !slices.Equal(runner.calls(), []string{"systemctl reset-failed docker", "systemctl restart docker"}) {
+		t.Errorf("ran %v, want one restart after the write, its failed state cleared first", runner.calls())
 	}
 
 	// Rolling back puts the old file in force the same way.
@@ -89,7 +89,7 @@ func TestAfterWriteRunsOnceTheEditIsWritten(t *testing.T) {
 	if got, _ := os.ReadFile(path); string(got) != "old\n" {
 		t.Errorf("after rollback file = %q, want the original", got)
 	}
-	if n := len(runner.calls()); n != 2 {
+	if n := len(runner.calls()); n != 4 {
 		t.Errorf("ran %v; the rollback must restart under the restored file", runner.calls())
 	}
 }
@@ -113,7 +113,15 @@ func TestAFailedRestartPutsTheOriginalBack(t *testing.T) {
 	if got, _ := os.ReadFile(path); string(got) != "old\n" {
 		t.Errorf("file = %q; the original must be restored when the restart fails", got)
 	}
-	if n := len(runner.calls()); n != 2 {
+	// Two restarts: the one that failed under the edit, and the retry under
+	// the restored file (with systemd's failed state cleared between them).
+	restarts := 0
+	for _, c := range runner.calls() {
+		if c == "systemctl restart docker" {
+			restarts++
+		}
+	}
+	if restarts != 2 {
 		t.Errorf("ran %v; the restart must be retried under the restored file", runner.calls())
 	}
 	if !strings.Contains(err.Error(), "may be down") {
@@ -156,7 +164,10 @@ func TestARestartThatFailsOnlyUnderTheEditReportsNothingChanged(t *testing.T) {
 // flakyRestart fails while the file holds the edit and succeeds otherwise.
 type flakyRestart struct{ n int }
 
-func (r *flakyRestart) Run(context.Context, string, ...string) ([]byte, error) {
+func (r *flakyRestart) Run(_ context.Context, _ string, args ...string) ([]byte, error) {
+	if len(args) > 0 && args[0] == "reset-failed" {
+		return nil, nil
+	}
 	r.n++
 	if r.n == 1 {
 		return nil, errors.New("daemon refused the configuration")
@@ -182,3 +193,87 @@ func TestThePreviewShowsWhatRunsAfterTheWrite(t *testing.T) {
 		t.Errorf("preview commands = %v", got)
 	}
 }
+
+// An action that declares its own AfterRestore has that run on rollback, not
+// its AfterWrite.
+func TestARollbackRunsTheDeclaredAfterRestore(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "daemon.json")
+	if err := os.WriteFile(path, []byte("old\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runner := &restartRunner{}
+	reg := fix.NewRegistry()
+	reg.Register("dockerd.test", func(model.Finding) (fix.Fix, error) {
+		return fix.Fix{Label: "x", Kind: model.RemediationReview, Actions: []fix.Action{{
+			Label: "x", Benefit: "b", Warning: "w", Kind: fix.ActionEdit, Path: path,
+			Transform:    func([]byte) ([]byte, error) { return []byte("new\n"), nil },
+			AfterWrite:   [][]string{{"systemctl", "reload", "docker"}},
+			AfterRestore: [][]string{{"systemctl", "restart", "docker"}},
+		}}}, nil
+	})
+	e := New(Config{Fixes: reg, Store: history.NewStore(t.TempDir()), Runner: runner})
+	f := model.NewFinding("dockerd.test", "t", model.SeverityLow, model.SourceDockerd, model.RemediationReview)
+	out, err := e.ApplyFix(context.Background(), f, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.Rollback(out.CheckpointID); err != nil {
+		t.Fatal(err)
+	}
+	if got := runner.calls(); !slices.Equal(got, []string{"systemctl reset-failed docker", "systemctl reload docker", "systemctl reset-failed docker", "systemctl restart docker"}) {
+		t.Errorf("ran %v, want the reload on apply and the restart on rollback", got)
+	}
+}
+
+// A failed restart counts against systemd's start limit, and a crash-looping
+// daemon reaches it in seconds; past it the retry under the restored file is
+// refused. The retry must clear the failed state first.
+func TestTheRetryClearsSystemdsFailedState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "daemon.json")
+	if err := os.WriteFile(path, []byte("old\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runner := &resetAwareRunner{}
+	reg := fix.NewRegistry()
+	reg.Register("dockerd.test", func(model.Finding) (fix.Fix, error) {
+		return fix.Fix{Label: "x", Kind: model.RemediationReview, Actions: []fix.Action{{
+			Label: "x", Benefit: "b", Warning: "w", Kind: fix.ActionEdit, Path: path,
+			Transform:  func([]byte) ([]byte, error) { return []byte("new\n"), nil },
+			AfterWrite: [][]string{{"systemctl", "restart", "docker"}},
+		}}}, nil
+	})
+	e := New(Config{Fixes: reg, Store: history.NewStore(t.TempDir()), Runner: runner})
+	f := model.NewFinding("dockerd.test", "t", model.SeverityLow, model.SourceDockerd, model.RemediationReview)
+	_, err := e.ApplyFix(context.Background(), f, 0)
+	if err == nil || !strings.Contains(err.Error(), "nothing changed") {
+		t.Fatalf("err = %v; with the start limit cleared the retry must succeed", err)
+	}
+	if !slices.Contains(runner.ran, "systemctl reset-failed docker") {
+		t.Errorf("ran %v; the retry did not clear the failed state first", runner.ran)
+	}
+}
+
+// resetAwareRunner fails the first restart, then refuses every restart until
+// reset-failed has run — systemd's start limit, in miniature.
+type resetAwareRunner struct {
+	ran      []string
+	failed   bool
+	limitHit bool
+}
+
+func (r *resetAwareRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
+	cmd := strings.Join(append([]string{name}, args...), " ")
+	r.ran = append(r.ran, cmd)
+	switch {
+	case cmd == "systemctl reset-failed docker":
+		r.limitHit = false
+	case cmd == "systemctl restart docker" && !r.failed:
+		r.failed, r.limitHit = true, true
+		return nil, errors.New("Job for docker.service failed")
+	case cmd == "systemctl restart docker" && r.limitHit:
+		return nil, errors.New("start request repeated too quickly")
+	}
+	return nil, nil
+}
+
+func (r *resetAwareRunner) LookPath(name string) (string, error) { return "/usr/bin/" + name, nil }

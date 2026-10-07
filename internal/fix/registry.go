@@ -134,6 +134,16 @@ type Action struct {
 	// once the commands succeed the edit is in force.
 	AfterWrite [][]string
 
+	// AfterRestore, when set, is what a rollback runs instead of AfterWrite.
+	// They differ where putting the old file in force needs more than putting
+	// the new one did: dockerd reloads live-restore on SIGHUP, but a reload
+	// only applies keys the file has, so reloading after the key is removed
+	// leaves the daemon running with it. Turning it on is a reload; turning
+	// it back off is a restart. A rollback that reports the file restored
+	// while the daemon still runs the fix is the outcome this field exists
+	// to prevent — and it took a real Docker to show it.
+	AfterRestore [][]string
+
 	// Exec: one or more commands (argv, no shell) run in order as a single
 	// atomic action — e.g. "allow SSH" then "enable firewall".
 	Commands [][]string

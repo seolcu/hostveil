@@ -111,8 +111,15 @@ func buildDockerdLiveRestore(f model.Finding) (Fix, error) {
 		"Containers keep running while the daemon restarts, so upgrading Docker stops being an outage and "+
 			"stops being the update that gets put off.",
 		"Docker picks this setting up on a reload, so applying it stops nothing. It is unsupported in swarm "+
-			"mode, and a daemon that cannot use it keeps running without it. "+dockerdRevertNote)
+			"mode, and a daemon that cannot use it keeps running without it. If the daemon refuses the new "+
+			"file, Hostveil puts the old one back and reloads again. Rolling it back restarts Docker, because "+
+			"a reload does not turn the setting off again; with live-restore still on at that moment, the "+
+			"containers keep running through it.")
 	a.AfterWrite = [][]string{{"systemctl", "reload", "docker"}}
+	// A reload applies the keys the file has and leaves the rest as they are,
+	// so the rollback, which removes the key, needs a restart for the daemon
+	// to drop it. Found by scripts/e2e/individual.sh on a real Docker.
+	a.AfterRestore = restartDocker
 	return Fix{Label: "Keep containers running across daemon restarts", Kind: model.RemediationReview,
 		IndividualOnly: true, Actions: []Action{a}}, nil
 }

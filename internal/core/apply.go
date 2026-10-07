@@ -188,7 +188,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		// work. Computed before the write so the checkpoint is complete
 		// before anything on the host changes.
 		AppliedSHA256: map[string]string{a.Path: history.SHA256Hex(next)},
-		AfterRestore:  a.AfterWrite,
+		AfterRestore:  afterRestore(a),
 	}
 	if a.SafeRoot != "" {
 		cp.SafeRoots = map[string]string{a.Path: a.SafeRoot}
@@ -292,7 +292,19 @@ func (e *Engine) runAfterWrite(ctx context.Context, a fix.Action) error {
 	return runEach(runCtx, e.runner, a.AfterWrite)
 }
 
+// runEach runs commands in order, stopping at the first that fails.
+//
+// Every unit a command starts has its failed state cleared first. systemd
+// counts starts against a limit — docker.service allows three a minute — and
+// past it refuses the next one outright, failed or not. Two hostveil paths hit
+// it on a real Docker (scripts/e2e/individual.sh): the retry after a restart
+// the new file broke, when the daemon's own Restart=always had already used up
+// the limit, which left Docker down — the one outcome that retry exists to
+// prevent; and an operator applying and rolling back daemon fixes within a
+// minute, whose next fix failed with nothing wrong in it. reset-failed also
+// clears the start counter, so each restart hostveil asks for is a real one.
 func runEach(ctx context.Context, r platform.CommandRunner, cmds [][]string) error {
+	resetFailedUnits(ctx, r, cmds)
 	for _, cmd := range cmds {
 		if len(cmd) == 0 {
 			continue
@@ -539,3 +551,29 @@ func countCommands(cmds [][]string) int {
 // differently between the two calls would mark a finding pending and score it
 // as though it were not. applyFix reads the action once and puts both the flag
 // and the sentence on the outcome.
+
+// afterRestore is what a rollback of a runs to put the restored file in
+// force: its own AfterRestore where it declares one, otherwise the same
+// commands that put the fix in force.
+func afterRestore(a fix.Action) [][]string {
+	if a.AfterRestore != nil {
+		return a.AfterRestore
+	}
+	return a.AfterWrite
+}
+
+// resetFailedUnits clears systemd's failed state, and with it the start-limit
+// counter, for every unit a set of commands starts or restarts. Errors are
+// ignored: on a host without systemd, or for a unit that never failed, there
+// is nothing to clear, and the retry that follows reports anything real.
+func resetFailedUnits(ctx context.Context, r platform.CommandRunner, cmds [][]string) {
+	for _, cmd := range cmds {
+		if len(cmd) < 3 || cmd[0] != "systemctl" {
+			continue
+		}
+		switch cmd[1] {
+		case "restart", "start", "reload", "try-reload-or-restart", "reload-or-restart", "try-restart":
+			_, _ = r.Run(ctx, "systemctl", append([]string{"reset-failed"}, cmd[2:]...)...)
+		}
+	}
+}
