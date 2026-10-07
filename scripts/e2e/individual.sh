@@ -417,11 +417,21 @@ scenario_k3s() {
     # encryption off by removing the setting leaves them unreadable, and the
     # fix's own Warning says not to. What is checked is that it is on.
     step "kube.secrets-unencrypted: encrypt Secrets at rest"
+    # A Secret written before the fix, which the key rotation has to rewrite.
+    k3s kubectl create secret generic hv-e2e --from-literal=password=hunter2 >/dev/null
+    k3s secrets-encrypt status | grep -q 'Encryption Status: Disabled' || fail "the seeded cluster already encrypts Secrets"
     expect_count 1 kube.secrets-unencrypted
     apply kube.secrets-unencrypted
     k3s_ready
-    k3s secrets-encrypt status | grep -qi 'Encryption Status: Enabled' || fail "k3s does not report secrets encryption enabled"
+    if ! k3s secrets-encrypt status | grep -q 'Encryption Status: Enabled'; then
+        k3s secrets-encrypt status >&2 || true
+        fail "k3s does not report secrets encryption enabled"
+    fi
+    [[ $(k3s kubectl get secret hv-e2e -o jsonpath='{.data.password}' | base64 -d) == hunter2 ]] ||
+        fail "the Secret written before the fix cannot be read after it"
     expect_count 0 kube.secrets-unencrypted
+    "$HV" history | grep -F '  kube.secrets-unencrypted  (' | grep -q 'not reversible' ||
+        fail "the encryption fix is listed as reversible"
 }
 
 # --- reboot ----------------------------------------------------------------------
