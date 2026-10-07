@@ -33,6 +33,16 @@ type config struct {
 
 	inFile bool // daemon.json contributed
 	inUnit bool // the unit's ExecStart contributed
+
+	// Where each host came from, and the unit's argv, kept for the fix: an
+	// endpoint is removed from the source that declared it, and a fix that
+	// edited daemon.json for a socket on the unit's ExecStart would report
+	// success over a daemon still listening.
+	fileHosts []string
+	unitHosts []string
+	unitArgv  []string
+	path      string
+	unit      string
 }
 
 // origin names where the operator will find the settings this finding is
@@ -114,15 +124,19 @@ func (c *Checker) readConfig(ctx context.Context, env platform.Env) (config, boo
 	case err == nil:
 		cfg = fileCfg
 		cfg.inFile = fileCfg.inFile
+		cfg.fileHosts = fileCfg.hosts
 	case os.IsNotExist(err):
 		// No file, no options. A complete answer.
 	default:
 		failed = append(failed, fmt.Sprintf("cannot read %s", c.DaemonConfig))
 	}
 
-	unitHosts, unitTLS, unitVerify, unitReason := c.readUnit(ctx, env)
+	cfg.path, cfg.unit = c.DaemonConfig, c.Unit
+	unitHosts, unitTLS, unitVerify, unitArgv, unitReason := c.readUnit(ctx, env)
 	if unitReason == "" {
 		cfg.inUnit = true
+		cfg.unitHosts = unitHosts
+		cfg.unitArgv = unitArgv
 		cfg.hosts = append(cfg.hosts, unitHosts...)
 		cfg.tls = cfg.tls || unitTLS
 		cfg.tlsVerify = cfg.tlsVerify || unitVerify
@@ -217,24 +231,25 @@ func readDaemonJSON(path string) (config, error) {
 // The reason is returned rather than a bool so readConfig can say *which*
 // source it lost; a host with no systemd at all and a host whose systemctl
 // refused are both gaps, but not the same one to an operator.
-func (c *Checker) readUnit(ctx context.Context, env platform.Env) (hosts []string, tls, verify bool, reason string) {
+func (c *Checker) readUnit(ctx context.Context, env platform.Env) (hosts []string, tls, verify bool, argvs []string, reason string) {
 	if env.ServiceManager != platform.SMSystemd {
-		return nil, false, false, "this host does not run systemd, so the daemon's own start-up flags could not be read"
+		return nil, false, false, nil, "this host does not run systemd, so the daemon's own start-up flags could not be read"
 	}
 	out, err := env.Runner.Run(ctx, "systemctl", "show", c.Unit, "--property=LoadState,ExecStart", "--no-pager")
 	if err != nil {
-		return nil, false, false, "cannot inspect the " + c.Unit + " unit"
+		return nil, false, false, nil, "cannot inspect the " + c.Unit + " unit"
 	}
 	if state := platform.ShowProperty(string(out), "LoadState"); state != "loaded" {
-		return nil, false, false, "systemd has no " + c.Unit + " (LoadState=" + state + "), so the daemon's start-up flags could not be read"
+		return nil, false, false, nil, "systemd has no " + c.Unit + " (LoadState=" + state + "), so the daemon's start-up flags could not be read"
 	}
-	for _, argv := range platform.ExecStartArgv(string(out)) {
+	argvs = platform.ExecStartArgv(string(out))
+	for _, argv := range argvs {
 		h, t, v := parseDaemonFlags(argv)
 		hosts = append(hosts, h...)
 		tls = tls || t
 		verify = verify || v
 	}
-	return hosts, tls, verify, ""
+	return hosts, tls, verify, argvs, ""
 }
 
 // parseDaemonFlags reads the socket and TLS flags out of one dockerd argv.

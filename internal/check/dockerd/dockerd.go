@@ -257,6 +257,16 @@ func (f *facts) apiFindings() []model.Finding {
 	ev := []model.FindingOption{
 		model.WithEvidence("endpoints", strings.Join(exposed, model.EvidenceSeparator)),
 		model.WithEvidence("configured in", f.cfg.origin()),
+		model.WithMetadata("daemon_json", f.cfg.path),
+		model.WithMetadata("unit", f.cfg.unit),
+		model.WithMetadata("file_endpoints", strings.Join(intersect(exposed, f.cfg.fileHosts), model.EvidenceSeparator)),
+		model.WithMetadata("unit_endpoints", strings.Join(intersect(exposed, f.cfg.unitHosts), model.EvidenceSeparator)),
+		model.WithMetadata("file_hosts", strings.Join(f.cfg.fileHosts, model.EvidenceSeparator)),
+	}
+	// Only a single ExecStart can be rewritten: several mean a drop-in is
+	// already layering them, and which one runs is not this fix's to decide.
+	if len(f.cfg.unitArgv) == 1 {
+		ev = append(ev, model.WithMetadata("execstart", f.cfg.unitArgv[0]))
 	}
 	if obs := f.observed(exposed); obs != "" {
 		ev = append(ev, model.WithEvidence("listening", obs))
@@ -266,7 +276,7 @@ func (f *facts) apiFindings() []model.Finding {
 		return []model.Finding{model.NewFinding(
 			"dockerd.api-tls-unverified",
 			"Docker API is encrypted but does not verify clients",
-			model.SeverityHigh, model.SourceDockerd, model.RemediationManual,
+			model.SeverityHigh, model.SourceDockerd, model.RemediationReview,
 			append(ev,
 				model.WithDescription("The daemon serves its API over TLS but does not require a client certificate, so the traffic is confidential and the authorization is nonexistent. TLS without client verification authenticates the server to the client and nothing in the other direction: anyone who can reach the port still gets full control of the daemon, and full control of the daemon is root on this host."),
 				model.WithHowToFix("Set `\"tlsverify\": true` alongside a `\"tlscacert\"` naming the CA that signed your client certificates, then restart the daemon. Docker treats `tlsverify` as the switch that turns encryption into authentication; without it the `tls` setting is only encryption."),
@@ -290,7 +300,7 @@ func (f *facts) apiFindings() []model.Finding {
 	return []model.Finding{model.NewFinding(
 		"dockerd.api-unauthenticated",
 		"Docker API is exposed over TCP without authentication",
-		sev, model.SourceDockerd, model.RemediationManual,
+		sev, model.SourceDockerd, model.RemediationReview,
 		append(ev,
 			model.WithDescription(desc),
 			model.WithHowToFix("Remove the `tcp://` endpoint and administer the daemon over SSH instead (`DOCKER_HOST=ssh://user@host`), which is the supported remote path and needs no new listening port. If the socket must stay, put it behind mutual TLS: `\"tlsverify\": true` with `\"tlscacert\"`, `\"tlscert\"`, and `\"tlskey\"`, and restrict the port at the firewall as well."),
@@ -331,7 +341,7 @@ func (f *facts) socketFindings() []model.Finding {
 	return []model.Finding{model.NewFinding(
 		"dockerd.socket-world-writable",
 		"Docker socket is writable by every account on this host",
-		model.SeverityHigh, model.SourceDockerd, model.RemediationManual,
+		model.SeverityHigh, model.SourceDockerd, model.RemediationReview,
 		model.WithDescription("Every local account can connect to the Docker socket, and the Docker API grants whoever reaches it the ability to start a container with the host filesystem mounted inside. Any unprivileged user, and any process running as one — a web application, a compromised service account — can therefore become root on this host without a password and without an exploit."),
 		model.WithHowToFix("Restore the socket to group-only access. The mode is set by systemd, not by the daemon, so a `chmod` is undone at the next restart: put `[Socket]` / `SocketMode=0660` in a drop-in under /etc/systemd/system/docker.socket.d/, then `systemctl daemon-reload && systemctl restart docker.socket`. Grant access by adding accounts to the socket's group rather than by widening the mode."),
 		model.WithEvidence("path", f.sock.path),
@@ -386,7 +396,7 @@ func (f *facts) groupFindings() []model.Finding {
 	return []model.Finding{model.NewFinding(
 		"dockerd.group-members",
 		fmt.Sprintf("%s can control the Docker daemon", plural(len(names), "One account", fmt.Sprintf("%d accounts", len(names)))),
-		sev, model.SourceDockerd, model.RemediationManual,
+		sev, model.SourceDockerd, model.RemediationReview,
 		model.WithDescription(fmt.Sprintf("Membership in the %q group is root on this host. Anyone in it can start a container that mounts / and read or write any file, with no password prompt, no sudoers entry, and no entry in the sudo log. It is a privilege grant that looks like a convenience setting.%s", f.sock.group, extra)),
 		model.WithHowToFix(fmt.Sprintf("Remove any account that does not need to administer containers: `gpasswd -d <user> %s`. For accounts that do, consider rootless Docker, which gives them a daemon of their own with no path to host root. Do not remove the account you are currently administering this host with until you have confirmed another route in.", f.sock.group)),
 		model.WithEvidence("group", f.sock.group),
@@ -407,10 +417,11 @@ func (f *facts) defaultsFindings() []model.Finding {
 		out = append(out, model.NewFinding(
 			"dockerd.no-new-privileges",
 			"Containers can gain privileges through setuid binaries",
-			model.SeverityMedium, model.SourceDockerd, model.RemediationManual,
+			model.SeverityMedium, model.SourceDockerd, model.RemediationReview,
 			model.WithDescription("The daemon does not apply no-new-privileges by default, so a process inside a container can still gain privileges by executing a setuid binary. That is the step that turns a foothold in an application container into root inside that container, and root inside a container is the starting point for every escape technique that follows."),
 			model.WithHowToFix("Add `\"no-new-privileges\": true` to /etc/docker/daemon.json and restart the daemon. It becomes the default for every container; a service that genuinely needs setuid escalation can still opt out with `security_opt: [\"no-new-privileges:false\"]`."),
 			model.WithEvidence("security options", f.info.securityOptions()),
+			model.WithMetadata("daemon_json", f.cfg.path),
 		))
 	}
 
@@ -418,10 +429,11 @@ func (f *facts) defaultsFindings() []model.Finding {
 		out = append(out, model.NewFinding(
 			"dockerd.userns-remap",
 			"Container root is host root",
-			model.SeverityLow, model.SourceDockerd, model.RemediationManual,
+			model.SeverityLow, model.SourceDockerd, model.RemediationReview,
 			model.WithDescription("User-namespace remapping is not enabled, so uid 0 inside a container is uid 0 on the host. Any container escape, any bind mount the operator did not think through, and any misconfigured volume therefore lands with real root privileges rather than with an unprivileged subordinate uid."),
 			model.WithHowToFix("Set `\"userns-remap\": \"default\"` in /etc/docker/daemon.json and restart the daemon. Weigh it first: remapping changes the ownership of every bind mount, and containers using `--privileged`, host networking, or host PID cannot use it — which is why this is a Low and not an instruction."),
 			model.WithEvidence("security options", f.info.securityOptions()),
+			model.WithMetadata("daemon_json", f.cfg.path),
 		))
 	}
 
@@ -432,10 +444,11 @@ func (f *facts) defaultsFindings() []model.Finding {
 		out = append(out, model.NewFinding(
 			"dockerd.live-restore",
 			"Restarting the daemon stops every container",
-			model.SeverityLow, model.SourceDockerd, model.RemediationManual,
+			model.SeverityLow, model.SourceDockerd, model.RemediationReview,
 			model.WithDescription("Without live-restore, containers do not survive a daemon restart. The security cost is indirect and worth stating as such: it makes upgrading Docker an outage, so daemon updates get deferred, and a deferred daemon update is an unpatched daemon holding root on this host."),
 			model.WithHowToFix("Add `\"live-restore\": true` to /etc/docker/daemon.json. Unlike the other daemon defaults this one is picked up by `systemctl reload docker`, so enabling it does not itself require an outage. It is unsupported in swarm mode."),
 			model.WithEvidence("live restore", "disabled"),
+			model.WithMetadata("daemon_json", f.cfg.path),
 		))
 	}
 	return out
@@ -461,4 +474,18 @@ func joinNames(names []string) string {
 	default:
 		return strings.Join(names[:len(names)-1], ", ") + ", and " + names[len(names)-1]
 	}
+}
+
+// intersect is the members of a that are also in b, in a's order.
+func intersect(a, b []string) []string {
+	var out []string
+	for _, x := range a {
+		for _, y := range b {
+			if x == y {
+				out = append(out, x)
+				break
+			}
+		}
+	}
+	return out
 }

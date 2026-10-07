@@ -150,7 +150,7 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">151</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">76</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">158</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">83</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">How the 183 findings resolve</p>
               <div class="ledger-bar">
@@ -160,13 +160,13 @@
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:42%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">76</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:45%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">83</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:17%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">32</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:14%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">25</span>
               </div>
             </div>
 
@@ -512,13 +512,13 @@
               <table>
                 <thead><tr><th>ID</th><th>What it means</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>dockerd.api-unauthenticated</code></td><td>The Docker API is served over TCP with no TLS client verification — unauthenticated root for anyone who can reach the port</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.socket-world-writable</code></td><td>Every local account can connect to the Docker socket, and so become root</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.api-tls-unverified</code></td><td>The API is encrypted but accepts any client — TLS without <code>tlsverify</code> authenticates the server, not the caller</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.group-members</code></td><td>Accounts other than root hold the socket's group, which is root-equivalent with no password prompt and no audit record</td><td><span class="sev medium">MEDIUM</span> / <span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.no-new-privileges</code></td><td>Containers can still gain privileges through setuid binaries</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.userns-remap</code></td><td>User namespaces are not remapped, so container root is host root</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
-                  <tr><td><code>dockerd.live-restore</code></td><td>Restarting the daemon stops every container, which is why daemon updates get deferred</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>dockerd.api-unauthenticated</code></td><td>The Docker API is served over TCP with no TLS client verification — unauthenticated root for anyone who can reach the port</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-dockerd.api-unauthenticated">Review</a></td></tr>
+                  <tr><td><code>dockerd.socket-world-writable</code></td><td>Every local account can connect to the Docker socket, and so become root</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-dockerd.socket-world-writable">Review</a></td></tr>
+                  <tr><td><code>dockerd.api-tls-unverified</code></td><td>The API is encrypted but accepts any client — TLS without <code>tlsverify</code> authenticates the server, not the caller</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-dockerd.api-tls-unverified">Review</a></td></tr>
+                  <tr><td><code>dockerd.group-members</code></td><td>Accounts other than root hold the socket's group, which is root-equivalent with no password prompt and no audit record</td><td><span class="sev medium">MEDIUM</span> / <span class="sev high">HIGH</span></td><td><a href="#fix-dockerd.group-members">Review</a></td></tr>
+                  <tr><td><code>dockerd.no-new-privileges</code></td><td>Containers can still gain privileges through setuid binaries</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-dockerd.no-new-privileges">Review</a></td></tr>
+                  <tr><td><code>dockerd.userns-remap</code></td><td>User namespaces are not remapped, so container root is host root</td><td><span class="sev low">LOW</span></td><td><a href="#fix-dockerd.userns-remap">Review</a></td></tr>
+                  <tr><td><code>dockerd.live-restore</code></td><td>Restarting the daemon stops every container, which is why daemon updates get deferred</td><td><span class="sev low">LOW</span></td><td><a href="#fix-dockerd.live-restore">Review</a></td></tr>
                 </tbody>
               </table>
             </div>
@@ -1491,6 +1491,78 @@
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-unprivileged-bpf.conf</p>
               <p class="fix-benefit" lang="en">✓ Removes unprivileged users' ability to load BPF programs into the kernel, closing a well-documented local privilege-escalation and kernel-exploit vector.</p>
+            </dd>
+          </dl>
+          <h3>Dockerd</h3>
+          <dl class="fix-actions">
+            <dt id="fix-dockerd.api-tls-unverified"><code>dockerd.api-tls-unverified</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p lang="en">Set "tlsverify": true in /etc/docker/daemon.json and restart Docker (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ The API keeps listening, but only clients holding a certificate your CA signed can use it, which turns encryption into authentication.</p>
+              <p class="fix-warning" lang="en">⚠ The daemon needs "tlscacert" naming the CA that signs your client certificates; without it Docker refuses to start. Every client that connects today without a certificate is refused afterwards. Restarting Docker stops every container and starts the ones with a restart policy again. If the daemon refuses to start with the new file, Hostveil puts the old one back and starts it again. The file edit has a checkpoint, and rolling it back restarts Docker under the original.</p>
+                </li>
+                <li>
+              <p lang="en">Remove tcp://0.0.0.0:2375 from hosts in /etc/docker/daemon.json and restart Docker</p>
+              <p class="fix-benefit" lang="en">✓ Nothing on the network can reach the Docker API any more, which closes a port that is root on this host for anyone who can connect to it.</p>
+              <p class="fix-warning" lang="en">⚠ Anything that administers this daemon over TCP from another machine — a Portainer or Docker context on your laptop, a CI runner, a remote agent — loses it. <code>DOCKER_HOST=ssh://user@host</code> is the supported replacement and needs no open port. Restarting Docker stops every container and starts the ones with a restart policy again. If the daemon refuses to start with the new file, Hostveil puts the old one back and starts it again. The file edit has a checkpoint, and rolling it back restarts Docker under the original.</p>
+                </li>
+              </ul>
+            </dd>
+            <dt id="fix-dockerd.api-unauthenticated"><code>dockerd.api-unauthenticated</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Remove tcp://0.0.0.0:2375 from hosts in /etc/docker/daemon.json and restart Docker</p>
+              <p class="fix-benefit" lang="en">✓ Nothing on the network can reach the Docker API any more, which closes a port that is root on this host for anyone who can connect to it.</p>
+              <p class="fix-warning" lang="en">⚠ Anything that administers this daemon over TCP from another machine — a Portainer or Docker context on your laptop, a CI runner, a remote agent — loses it. <code>DOCKER_HOST=ssh://user@host</code> is the supported replacement and needs no open port. Restarting Docker stops every container and starts the ones with a restart policy again. If the daemon refuses to start with the new file, Hostveil puts the old one back and starts it again. The file edit has a checkpoint, and rolling it back restarts Docker under the original.</p>
+            </dd>
+            <dt id="fix-dockerd.group-members"><code>dockerd.group-members</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Remove ci-runner from docker (<code>gpasswd -d</code>)</p>
+              <p class="fix-benefit" lang="en">✓ ci-runner can no longer become root on this host through the Docker API, which takes a password-free, unlogged root grant away from an account that may not need it.</p>
+              <p class="fix-warning" lang="en">⚠ If ci-runner is how you administer containers, <code>docker</code> stops working for it without sudo; if it is a service — Portainer's agent, Watchtower, a CI runner — that service stops being able to manage containers. Do not remove the account you are using right now until you have another route in. Existing sessions keep the group until they log out. There is no checkpoint: to reverse it, <code>usermod -aG docker ci-runner</code>.</p>
+            </dd>
+            <dt id="fix-dockerd.live-restore"><code>dockerd.live-restore</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set "live-restore": true in /etc/docker/daemon.json and reload Docker</p>
+              <p class="fix-benefit" lang="en">✓ Containers keep running while the daemon restarts, so upgrading Docker stops being an outage and stops being the update that gets put off.</p>
+              <p class="fix-warning" lang="en">⚠ Docker picks this setting up on a reload, so applying it stops nothing. It is unsupported in swarm mode, and a daemon that cannot use it keeps running without it. If the daemon refuses to start with the new file, Hostveil puts the old one back and starts it again. The file edit has a checkpoint, and rolling it back restarts Docker under the original.</p>
+            </dd>
+            <dt id="fix-dockerd.no-new-privileges"><code>dockerd.no-new-privileges</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p lang="en">Set "no-new-privileges": true in /etc/docker/daemon.json and restart Docker now (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ Every container started from now on runs with no-new-privileges, so a setuid binary inside one can no longer turn a foothold in an application into root in its container.</p>
+              <p class="fix-warning" lang="en">⚠ A container that relies on setuid escalation — sudo inside the container, an image whose entrypoint switches users through a setuid helper — fails once recreated, and needs <code>security_opt: ["no-new-privileges:false"]</code> to opt back out. Restarting Docker stops every container on the host and starts the ones with a restart policy again; anything started by hand stays down. If the daemon refuses to start with the new file, Hostveil puts the old one back and starts it again. The file edit has a checkpoint, and rolling it back restarts Docker under the original.</p>
+                </li>
+                <li>
+              <p lang="en">Set "no-new-privileges": true in /etc/docker/daemon.json; restart Docker yourself later</p>
+              <p class="fix-benefit" lang="en">✓ Every container started from now on runs with no-new-privileges, so a setuid binary inside one can no longer turn a foothold in an application into root in its container.</p>
+              <p class="fix-warning" lang="en">⚠ A container that relies on setuid escalation — sudo inside the container, an image whose entrypoint switches users through a setuid helper — fails once recreated, and needs <code>security_opt: ["no-new-privileges:false"]</code> to opt back out. Nothing changes until Docker restarts, and the finding is reported until then. The file edit has a checkpoint.</p>
+                </li>
+              </ul>
+            </dd>
+            <dt id="fix-dockerd.socket-world-writable"><code>dockerd.socket-world-writable</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set SocketMode=0660 in /etc/systemd/system/docker.socket.d/99-hostveil.conf and chmod the live socket</p>
+              <p class="fix-benefit" lang="en">✓ Only root and the socket's group can reach the Docker API, so an ordinary account or a compromised service on this host can no longer become root through it.</p>
+              <p class="fix-warning" lang="en">⚠ Any account or service that reached Docker only because the socket was world-writable — not through the group — loses access now. Add it to the group if it should keep it. The drop-in is a new file with a checkpoint; rolling back deletes it, but the live socket keeps mode 0660 until Docker next recreates it.</p>
+            </dd>
+            <dt id="fix-dockerd.userns-remap"><code>dockerd.userns-remap</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p lang="en">Set "userns-remap": "default" in /etc/docker/daemon.json and restart Docker now (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ Root inside a container becomes an unprivileged UID on the host, so an escape or a careless bind mount no longer lands as real root.</p>
+              <p class="fix-warning" lang="en">⚠ This is the most disruptive daemon setting there is. Docker keeps remapped images and containers in a separate storage directory, so every existing container and image disappears from <code>docker ps -a</code> and <code>docker images</code> until it is turned off again, and pulls start from nothing. Bind-mounted host files owned by root become unwritable to the remapped root. Containers using privileged mode, host networking or host PID cannot run under it at all. Restarting Docker stops every container on the host and starts the ones with a restart policy again; anything started by hand stays down. If the daemon refuses to start with the new file, Hostveil puts the old one back and starts it again. The file edit has a checkpoint, and rolling it back restarts Docker under the original.</p>
+                </li>
+                <li>
+              <p lang="en">Set "userns-remap": "default" in /etc/docker/daemon.json; restart Docker yourself later</p>
+              <p class="fix-benefit" lang="en">✓ Root inside a container becomes an unprivileged UID on the host, so an escape or a careless bind mount no longer lands as real root.</p>
+              <p class="fix-warning" lang="en">⚠ This is the most disruptive daemon setting there is. Docker keeps remapped images and containers in a separate storage directory, so every existing container and image disappears from <code>docker ps -a</code> and <code>docker images</code> until it is turned off again, and pulls start from nothing. Bind-mounted host files owned by root become unwritable to the remapped root. Containers using privileged mode, host networking or host PID cannot run under it at all. Nothing changes until Docker restarts, and the finding is reported until then. The file edit has a checkpoint.</p>
+                </li>
+              </ul>
             </dd>
           </dl>
           <h3>Services</h3>

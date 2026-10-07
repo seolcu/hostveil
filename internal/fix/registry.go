@@ -121,6 +121,19 @@ type Action struct {
 	// from blocking a perfectly good fix. "Cannot verify" is not "invalid".
 	VerifyCmd []string
 
+	// AfterWrite is argv run, in order, once an edit is written and its
+	// checkpoint saved — the restart or reload that puts the edit in force.
+	//
+	// It is what lets an edit to a file a daemon reads only at start be one
+	// action rather than a fix plus a chore. The edit is still the checkpoint:
+	// if a command fails, the engine restores the original file and runs the
+	// commands again, so a daemon that will not start under the new file is
+	// brought back under the old one rather than left down. The checkpoint
+	// records the commands too, and a rollback re-runs them for the same
+	// reason. An action with AfterWrite leaves TakesEffectOn empty, because
+	// once the commands succeed the edit is in force.
+	AfterWrite [][]string
+
 	// Exec: one or more commands (argv, no shell) run in order as a single
 	// atomic action — e.g. "allow SSH" then "enable firewall".
 	Commands [][]string

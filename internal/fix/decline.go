@@ -98,13 +98,6 @@ var declineReasons = map[string]string{
 	"agent.sandbox-off":     "The sandbox is off and nothing in Hostveil names the mode that turns it on, so any value it wrote into your config would be a guess wearing a fix's clothes.",
 
 	// dockerd
-	"dockerd.api-tls-unverified":    "Requiring client certificates cuts off every client that has none, perhaps the one you administer through, and there is no editor for deleting the endpoint either way.",
-	"dockerd.api-unauthenticated":   "Removing the TCP endpoint severs the exact channel a remote operator may administer this host through, and there is no editor for deleting a hosts entry or an ExecStart flag.",
-	"dockerd.group-members":         "A service account in the docker group is as likely a deliberate integration (Portainer, Watchtower, CI) as a forgotten grant, and nothing in the evidence tells them apart.",
-	"dockerd.live-restore":          "Enabling it means adding a key to daemon.json, and Hostveil only rewrites values there \u2014 creating one would mean re-encoding the file and reordering your keys.",
-	"dockerd.no-new-privileges":     "Setting it means adding a key to daemon.json, and Hostveil replaces values in that file rather than creating them \u2014 every host with this finding lacks the key.",
-	"dockerd.socket-world-writable": "A chmod is undone when systemd recreates the socket, and this checker does not read the socket's drop-ins, so a file it wrote might never decide the mode.",
-	"dockerd.userns-remap":          "Remapping rewrites the ownership of every bind mount on the host, and enabling it means adding a key to daemon.json that Hostveil can only rewrite, not create.",
 
 	// systemd
 }

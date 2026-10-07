@@ -585,11 +585,14 @@ func TestEveryFindingValidates(t *testing.T) {
 		if !strings.HasPrefix(f.ID, "dockerd.") {
 			t.Errorf("%s is not namespaced by its domain", f.ID)
 		}
-		if f.Remediation != model.RemediationManual {
-			t.Errorf("%s: remediation = %v; every dockerd finding is Manual by decision", f.ID, f.Remediation)
+		// Review, never Auto: every remediation here restarts the daemon or
+		// changes who can reach it, and the registry marks each one
+		// individual-only on top of that.
+		if f.Remediation != model.RemediationReview {
+			t.Errorf("%s: remediation = %v; every dockerd fix needs a person to read it", f.ID, f.Remediation)
 		}
 		if f.Description == "" || f.HowToFix == "" {
-			t.Errorf("%s: a Manual finding is only as good as its prose", f.ID)
+			t.Errorf("%s: a finding is only as good as its prose", f.ID)
 		}
 	}
 }

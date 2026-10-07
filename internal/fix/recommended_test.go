@@ -42,6 +42,18 @@ var recommendedFirst = map[string]struct{ label, why string }{
 		label: "Lock and expire",
 		why:   "locking keeps the evidence and can be reversed with usermod; deleting the account cannot be undone and orphans its files",
 	},
+	"dockerd.no-new-privileges": {
+		label: "restart Docker now",
+		why:   "the alternative writes the file and changes nothing until a restart nobody has scheduled, so the finding stands",
+	},
+	"dockerd.userns-remap": {
+		label: "restart Docker now",
+		why:   "same as dockerd.no-new-privileges; the warning on both says what the restart costs",
+	},
+	"dockerd.api-tls-unverified": {
+		label: "tlsverify",
+		why:   "it keeps the remote channel the operator built and adds the authentication it was missing; removing the endpoint is the fallback",
+	},
 	"compose.ds009": {
 		label: "1000:1000",
 		why:   "an image built to run without root is far more often built for the first regular user than for nobody",

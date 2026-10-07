@@ -1,7 +1,9 @@
 package core
 
 import (
+	"context"
 	"errors"
+	"fmt"
 
 	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"
@@ -74,5 +76,12 @@ func (e *Engine) rollback(id string, force bool) (model.RollbackOutcome, error) 
 	}
 	out.Unfixed = e.state.unmarkFixed(cp)
 	out.NewScore = e.state.rescore()
+	// The fix restarted something to put its edit in force, so the restored
+	// file needs the same restart to be in force again. The files are back
+	// either way; a failure here is reported, never retried by restoring,
+	// because there is nothing further back to restore to.
+	if err := runEach(context.Background(), e.runner, cp.AfterRestore); err != nil {
+		return out, fmt.Errorf("the files were restored, but putting them back in force failed: %w", err)
+	}
 	return out, nil
 }
