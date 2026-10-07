@@ -419,15 +419,21 @@ jobs:
         run: sudo -E scripts/e2e/individual.sh compose
 
       - name: Docker daemon fixes restart Docker and roll back
+        # Every scenario runs whatever happened to the one before it, so one
+        # failure does not hide the next.
+        if: ${{ !cancelled() }}
         run: sudo -E scripts/e2e/individual.sh dockerd
 
       - name: a Docker restart that fails puts the original daemon.json back
+        if: ${{ !cancelled() }}
         run: sudo -E scripts/e2e/individual.sh dockerd-revert
 
       - name: systemd drop-ins take effect and roll back
+        if: ${{ !cancelled() }}
         run: sudo -E scripts/e2e/individual.sh systemd
 
       - name: nginx fixes are checked by nginx before the reload
+        if: ${{ !cancelled() }}
         run: sudo -E scripts/e2e/individual.sh nginx
 
   # hostveil publishes archives and packages for hosts that are not Debian,
