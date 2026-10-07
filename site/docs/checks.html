@@ -150,7 +150,7 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">162</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">87</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">169</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">94</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">How the 183 findings resolve</p>
               <div class="ledger-bar">
@@ -160,13 +160,13 @@
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:48%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">87</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:51%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">94</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:11%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">21</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:8%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">14</span>
               </div>
             </div>
 
@@ -379,10 +379,10 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>proxy.traefik-api-insecure</code></td><td>Traefik's API and dashboard are served with no authentication, listing every router and backend address behind the proxy</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>proxy.admin-api-exposed</code></td><td>Caddy's admin API, which has no authentication and can replace the whole running configuration, listens on something other than loopback. Medium for a container whose port 2019 is not published to the host, since reaching it then takes a foothold in a neighbouring container</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>proxy.tls-deprecated-protocols</code></td><td><code>ssl_protocols</code> still offers TLS 1.0 or 1.1, which RFC 8996 deprecated and every current browser refuses</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>proxy.directory-listing</code></td><td>nginx's <code>autoindex on</code> or Caddy's <code>file_server browse</code> makes every directory with no index file browsable</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxy.traefik-api-insecure</code></td><td>Traefik's API and dashboard are served with no authentication, listing every router and backend address behind the proxy</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-proxy.traefik-api-insecure">Review</a></td></tr>
+                  <tr><td><code>proxy.admin-api-exposed</code></td><td>Caddy's admin API, which has no authentication and can replace the whole running configuration, listens on something other than loopback. Medium for a container whose port 2019 is not published to the host, since reaching it then takes a foothold in a neighbouring container</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-proxy.admin-api-exposed">Review</a></td></tr>
+                  <tr><td><code>proxy.tls-deprecated-protocols</code></td><td><code>ssl_protocols</code> still offers TLS 1.0 or 1.1, which RFC 8996 deprecated and every current browser refuses</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-proxy.tls-deprecated-protocols">Review</a></td></tr>
+                  <tr><td><code>proxy.directory-listing</code></td><td>nginx's <code>autoindex on</code> or Caddy's <code>file_server browse</code> makes every directory with no index file browsable</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-proxy.directory-listing">Review</a></td></tr>
                   <tr><td><code>proxy.no-scan-jail</code></td><td>fail2ban is installed but its nginx-botsearch jail, built to catch repeated requests for nonexistent or known-vulnerable paths, is not enabled</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-proxy.no-scan-jail">Review</a></td></tr>
                 </tbody>
               </table>
@@ -562,12 +562,12 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>agent.auth-disabled</code></td><td>An exposed gateway that accepts requests with no authentication</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>agent.gateway-exposed</code></td><td>The gateway is bound to a network-reachable address</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.auth-disabled</code></td><td>An exposed gateway that accepts requests with no authentication</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.auth-disabled">Review</a></td></tr>
+                  <tr><td><code>agent.gateway-exposed</code></td><td>The gateway is bound to a network-reachable address</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.gateway-exposed">Review</a></td></tr>
                   <tr><td><code>agent.secret-exposed</code></td><td>A credentials file or directory is readable beyond its owner</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.secret-exposed">Auto</a></td></tr>
                   <tr><td><code>agent.exec-unrestricted</code></td><td>The agent may run shell commands with no approval step. For Goose that is <code>GOOSE_MODE</code> set to <code>auto</code> <em>or not set at all</em>, since auto is its default</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.exec-unrestricted">Review</a></td></tr>
                   <tr><td><code>agent.elevated-enabled</code></td><td>Elevated (host-level) command execution is enabled</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.elevated-enabled">Auto</a></td></tr>
-                  <tr><td><code>agent.sandbox-off</code></td><td>Agent tools run unsandboxed, directly on the host</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.sandbox-off</code></td><td>Agent tools run unsandboxed, directly on the host</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.sandbox-off">Review</a></td></tr>
                   <tr><td><code>agent.control-ui-insecure</code></td><td>The control UI has its auth or device-identity checks disabled</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-agent.control-ui-insecure">Auto</a></td></tr>
                   <tr><td><code>agent.config-perms</code></td><td>A config or state path is more permissive than upstream ships it</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-agent.config-perms">Auto</a></td></tr>
                   <tr><td><code>agent.ssrf-private-network</code></td><td>The agent browser may reach private-network addresses</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-agent.ssrf-private-network">Auto</a></td></tr>
@@ -1194,6 +1194,12 @@
           </dl>
           <h3>AI agents</h3>
           <dl class="fix-actions">
+            <dt id="fix-agent.auth-disabled"><code>agent.auth-disabled</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set kernel.kptr_restrict to 1</p>
+              <p class="fix-benefit" lang="en">✓ Nothing on the network can drive the agent any more; only processes on this host, and you through a tunnel, can reach it.</p>
+              <p class="fix-warning" lang="en">⚠ Once the gateway restarts it listens on loopback only, so every client that reached it over the network — your laptop, a phone app, another machine's integration — loses it until you reach it over an SSH tunnel or a tailnet. Without network exposure, no authentication is the single-user default OpenClaw treats as legitimate, which is what clears this finding. The edit has a checkpoint and rolls back exactly.</p>
+            </dd>
             <dt id="fix-agent.config-perms"><code>agent.config-perms</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
@@ -1213,6 +1219,18 @@
             <dd>
               <p lang="en">Set kernel.kptr_restrict to 1</p>
               <p class="fix-benefit" lang="en">✓ Stops the agent executing shell commands at all without an explicit human decision each time — closes the most direct path from "the agent was tricked by its input" to "a shell command ran on this host."</p>
+            </dd>
+            <dt id="fix-agent.gateway-exposed"><code>agent.gateway-exposed</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set kernel.kptr_restrict to 1</p>
+              <p class="fix-benefit" lang="en">✓ Nothing on the network can drive the agent any more; only processes on this host, and you through a tunnel, can reach it.</p>
+              <p class="fix-warning" lang="en">⚠ Once the gateway restarts it listens on loopback only, so every client that reached it over the network — your laptop, a phone app, another machine's integration — loses it until you reach it over an SSH tunnel or a tailnet. The edit has a checkpoint and rolls back exactly.</p>
+            </dd>
+            <dt id="fix-agent.sandbox-off"><code>agent.sandbox-off</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set kernel.kptr_restrict to 1</p>
+              <p class="fix-benefit" lang="en">✓ Every session except your own direct chat runs its tools in a container, so a prompt injected through a group, a channel or a message from a stranger reaches a sandbox instead of your real filesystem.</p>
+              <p class="fix-warning" lang="en">⚠ Sandboxed tools run in a container, so OpenClaw needs Docker on this host and pulls a sandbox image the first time; tools that relied on reaching the host's own files, network or devices stop being able to. "all" also moves your own direct chat into the sandbox. The edit has a checkpoint and rolls back exactly.</p>
             </dd>
             <dt id="fix-agent.secret-exposed"><code>agent.secret-exposed</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -1666,6 +1684,18 @@
           </dl>
           <h3>Proxy</h3>
           <dl class="fix-actions">
+            <dt id="fix-proxy.admin-api-exposed"><code>proxy.admin-api-exposed</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set <code>admin localhost:2019</code> in /etc/ssh/sshd_config, then validate and reload Caddy</p>
+              <p class="fix-benefit" lang="en">✓ The API that can replace the proxy's whole configuration stops answering anyone but processes on this host.</p>
+              <p class="fix-warning" lang="en">⚠ Whatever calls the admin API from elsewhere — a deploy script, a config manager, a certificate sidecar on another machine — stops being able to, and the proxy keeps serving until something needs to change and then cannot. If the proxy refuses the new configuration, Hostveil puts the original file back and reloads again. The edit has a checkpoint and rolls back exactly.</p>
+            </dd>
+            <dt id="fix-proxy.directory-listing"><code>proxy.directory-listing</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set every <code>autoindex on;</code> in /etc/ssh/sshd_config to off, then reload nginx</p>
+              <p class="fix-benefit" lang="en">✓ Directories without an index file stop listing what is in them, so a stray backup or .env beside the site is no longer one click away.</p>
+              <p class="fix-warning" lang="en">⚠ A directory somebody meant to be browsable — a download mirror, a shared folder — stops listing and answers 403 instead. Listing is sometimes on for one location on purpose; if so, put it back for that location alone. If the proxy refuses the new configuration, Hostveil puts the original file back and reloads again. The edit has a checkpoint and rolls back exactly.</p>
+            </dd>
             <dt id="fix-proxy.no-scan-jail"><code>proxy.no-scan-jail</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <ul>
@@ -1681,6 +1711,27 @@
                 </li>
               </ul>
             </dd>
+            <dt id="fix-proxy.tls-deprecated-protocols"><code>proxy.tls-deprecated-protocols</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set every ssl_protocols in /etc/ssh/sshd_config to TLSv1.2 TLSv1.3, then reload nginx</p>
+              <p class="fix-benefit" lang="en">✓ Connections can no longer be negotiated down to TLS 1.0 or 1.1, which every current browser already refuses, so nothing that can connect today loses anything.</p>
+              <p class="fix-warning" lang="en">⚠ A client that only speaks TLS 1.0 or 1.1 — a very old Android or Java, an embedded device — stops connecting. If the proxy refuses the new configuration, Hostveil puts the original file back and reloads again. The edit has a checkpoint and rolls back exactly.</p>
+            </dd>
+            <dt id="fix-proxy.traefik-api-insecure"><code>proxy.traefik-api-insecure</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <ul>
+                <li>
+              <p lang="en">Remove --api.insecure=true and recreate app now (recommended)</p>
+              <p class="fix-benefit" lang="en">✓ The unauthenticated dashboard, and the map of every router and backend it shows, stops being served to anyone who reaches port 8080.</p>
+              <p class="fix-warning" lang="en">⚠ The dashboard is gone until you expose <code>api@internal</code> through a router with authentication. The edit has a checkpoint and rolls back exactly. Recreating app drops every connection through this proxy for the seconds it takes to start.</p>
+                </li>
+                <li>
+              <p lang="en">Remove --api.insecure=true; recreate app yourself</p>
+              <p class="fix-benefit" lang="en">✓ The unauthenticated dashboard, and the map of every router and backend it shows, stops being served to anyone who reaches port 8080.</p>
+              <p class="fix-warning" lang="en">⚠ The dashboard is gone until you expose <code>api@internal</code> through a router with authentication. The edit has a checkpoint and rolls back exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+                </li>
+              </ul>
+            </dd>
           </dl>
           <h3>Kubernetes</h3>
           <dl class="fix-actions">
@@ -1688,7 +1739,7 @@
             <dd>
               <p lang="en">chmod /var/run/docker.sock to 0600</p>
               <p class="fix-benefit" lang="en">✓ Local accounts and services lose the cluster-admin credentials, and with them the privileged pod that is root on this host.</p>
-              <p class="fix-warning" lang="en">⚠ kubectl stops working for anyone who used this file without sudo — give them a kubeconfig of their own. k3s writes this file again at every start from its write-kubeconfig-mode setting, so this lasts until k3s restarts. Make it permanent by setting <code>write-kubeconfig-mode: "0600"</code> in /etc/rancher/k3s/config.yaml. The old mode is checkpointed.</p>
+              <p class="fix-warning" lang="en">⚠ kubectl stops working for anyone who used this file without sudo — give them a kubeconfig of their own. k3s writes this file again at every start from its write-kubeconfig-mode setting, so this lasts until k3s restarts. Make it permanent by setting <code>write-kubeconfig-mode: "0600"</code> where the current mode is set, command: --api.insecure=true. The old mode is checkpointed.</p>
             </dd>
             <dt id="fix-kube.token-readable"><code>kube.token-readable</code> <span class="fix-kind review">Review</span></dt>
             <dd>

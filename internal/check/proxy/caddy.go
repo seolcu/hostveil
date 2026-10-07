@@ -467,7 +467,18 @@ func caddyAdminFinding(addr, where string, sev model.Severity, service, file str
 		opts = append(opts, model.WithEvidence("config", file))
 	}
 	opts = append(opts, extra...)
+	// Fixable where it is one line in a Caddyfile that a host-installed Caddy
+	// reloads. A container reads it at start and may take it from CADDY_ADMIN,
+	// neither of which is an edit-and-reload.
+	kind := model.RemediationManual
+	if service == "" && file != "" {
+		kind = model.RemediationReview
+		opts = append(opts, model.WithMetadata("caddy_host", "true"))
+	} else {
+		opts = append(opts, model.WithWhyNoFix("Hostveil rewrites the admin address in a host Caddyfile and reloads Caddy; "+
+			"inside a container the address comes from CADDY_ADMIN or a mounted file read only at start."))
+	}
 	return model.NewFinding("proxy.admin-api-exposed",
 		"The reverse proxy's admin API is reachable without authentication",
-		sev, model.SourceProxy, model.RemediationManual, opts...)
+		sev, model.SourceProxy, kind, opts...)
 }

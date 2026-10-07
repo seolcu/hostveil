@@ -54,6 +54,10 @@ var recommendedFirst = map[string]struct{ label, why string }{
 		label: "tlsverify",
 		why:   "it keeps the remote channel the operator built and adds the authentication it was missing; removing the endpoint is the fallback",
 	},
+	"proxy.traefik-api-insecure": {
+		label: "recreate",
+		why:   "the alternative edits the file and leaves the dashboard open until a recreate nobody has scheduled",
+	},
 	"compose.ds009": {
 		label: "1000:1000",
 		why:   "an image built to run without root is far more often built for the first regular user than for nobody",

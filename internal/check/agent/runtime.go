@@ -44,9 +44,9 @@ type ModeRule struct {
 // and it is what makes the finding fixable. An empty Good is a deliberate
 // statement rather than an omission: it means hostveil knows the value is
 // dangerous and does not know which value is right, so the finding stays
-// Manual. agents.defaults.sandbox.mode is the case — "off" is plainly wrong
-// and nothing here knows what turns the sandbox on, and a fix that writes a
-// guessed enum is the invented mapping the CVE fixes are declined for.
+// Manual. agents.defaults.sandbox.mode used to be the case, until OpenClaw's
+// sandbox reference documented the values: "non-main" sandboxes every session
+// but the operator's own, "all" sandboxes every one.
 //
 // A second entry in Good is what makes a finding Review instead of Auto: two
 // safe values that do not dominate each other are a choice for the operator,
@@ -211,6 +211,12 @@ func runtimes() []Runtime {
 				},
 				{
 					ID: "agent.sandbox-off", Key: "agents.defaults.sandbox.mode", Bad: []string{"off"},
+					// docs.openclaw.ai/gateway/config-agents/sandbox: off,
+					// non-main, all. non-main first because it keeps the
+					// operator's own direct session on the host and sandboxes
+					// every group and channel session, which is where
+					// untrusted input arrives.
+					Good:     []any{"non-main", "all"},
 					Sev:      model.SeverityHigh,
 					Title:    "Agent tools run unsandboxed on the host",
 					Desc:     "With the sandbox off, the agent's tools run directly on the gateway host rather than in an isolated container, so a tool call that goes wrong reaches your real filesystem and network.",

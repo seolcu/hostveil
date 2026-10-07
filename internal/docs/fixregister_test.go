@@ -139,7 +139,10 @@ func unfixableInDocs(t *testing.T) map[string]bool {
 			out[r[1]] = true
 		}
 	}
-	if len(out) < 20 {
+	// The floor guards the extraction, not the product: it only has to sit
+	// well above zero. It was 20 until the risky fixes were offered rather
+	// than declined, which took the honest count below it.
+	if len(out) < 8 {
 		t.Fatalf("only %d unfixable findings parsed from the checks table — extraction is broken, "+
 			"not the table", len(out))
 	}

@@ -537,10 +537,12 @@ func TestDangerFindingKindFollowsTheSafeValues(t *testing.T) {
 			alt:  `tools.exec.security="ask"`,
 		},
 		{
-			name: "a key with only a bad value stays Manual",
+			name: "the sandbox offers OpenClaw's two documented modes",
 			cfg:  `{"agents":{"defaults":{"sandbox":{"mode":"off"}}}}`,
 			id:   "agent.sandbox-off",
-			want: model.RemediationManual,
+			want: model.RemediationReview,
+			set:  `agents.defaults.sandbox.mode="non-main"`,
+			alt:  `agents.defaults.sandbox.mode="all"`,
 		},
 	}
 	for _, c := range cases {
@@ -569,25 +571,15 @@ func TestDangerFindingKindFollowsTheSafeValues(t *testing.T) {
 	}
 }
 
-// A Manual finding must carry no values at all. Evidence a fix could read is
-// evidence a fix will read, and the whole reason sandbox-off is Manual is
-// that nothing here knows what to write.
+// A rule with no known safe value must carry no values at all. Evidence a fix
+// could read is evidence a fix will read, and a rule is Manual precisely
+// because nothing here knows what to write. No shipped rule is like that any
+// more, so the rule is built here.
 func TestManualDangerFindingCarriesNoValuesToWrite(t *testing.T) {
-	h := newHost(t, "alice")
-	h.write("alice", ".openclaw/openclaw.json", `{"agents":{"defaults":{"sandbox":{"mode":"off"}}}}`, 0o600)
-
-	fs, err := h.checker().Check(context.Background(), envNoFirewall(""))
-	if err != nil {
-		t.Fatal(err)
-	}
-	f, ok := findByID(fs, "agent.sandbox-off")
-	if !ok {
-		t.Fatal("no agent.sandbox-off finding")
-	}
-	for _, k := range []string{"set", "set-alt"} {
-		if v := f.Evidence[k]; v != "" {
-			t.Errorf("a Manual finding carries %q evidence %q", k, v)
-		}
+	rt := Runtime{Format: FormatJSON5}
+	kind, set, alt := remediation(rt, []DangerRule{{Key: "x.mode", Bad: []string{"off"}}})
+	if kind != model.RemediationManual || set != "" || alt != "" {
+		t.Errorf("remediation = %v %q %q, want Manual with nothing to write", kind, set, alt)
 	}
 }
 
@@ -925,5 +917,39 @@ func TestTheAgentDomainDoesNotProbeTheFirewall(t *testing.T) {
 				t.Errorf("the agent checker ran %q; it does not read the firewall's answer", cmd)
 			}
 		}
+	}
+}
+
+// The bind is rewritten only where the config says it. A config that sets
+// "lan" carries the loopback assignment for the fix; a gateway seen listening
+// while the config leaves the bind at its default has no line to change, and
+// says so rather than going without a reason.
+func TestTheGatewayIsFixableOnlyWhereTheConfigSetsTheBind(t *testing.T) {
+	h := newHost(t, "alice")
+	h.write("alice", ".openclaw/openclaw.json", `{"gateway":{"bind":"lan"}}`, 0o600)
+	fs, err := h.checker().Check(context.Background(), envNoFirewall(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, ok := findByID(fs, "agent.gateway-exposed")
+	if !ok {
+		t.Fatal("no gateway finding")
+	}
+	if f.Remediation != model.RemediationReview || f.Evidence["set"] != `gateway.bind="loopback"` {
+		t.Errorf("configured bind: remediation %v set %q", f.Remediation, f.Evidence["set"])
+	}
+
+	h2 := newHost(t, "bob")
+	h2.write("bob", ".openclaw/openclaw.json", `{"tools":{}}`, 0o600)
+	fs, err = h2.checker().Check(context.Background(), envNoFirewall(ssLine("0.0.0.0", 18789, "openclaw")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, ok = findByID(fs, "agent.gateway-exposed")
+	if !ok {
+		t.Fatal("no gateway finding from the listener")
+	}
+	if f.Remediation != model.RemediationManual || f.Evidence["set"] != "" || f.WhyNoFix == "" {
+		t.Errorf("default bind: remediation %v set %q why %q", f.Remediation, f.Evidence["set"], f.WhyNoFix)
 	}
 }

@@ -89,6 +89,11 @@ func WithHowToFix(s string) FindingOption { return func(f *Finding) { f.HowToFix
 // compose service name); empty means host-level.
 func WithService(s string) FindingOption { return func(f *Finding) { f.Service = s } }
 
+// WithWhyNoFix records the checker's own reason a particular finding cannot
+// be fixed, for an ID that is fixable elsewhere. Engine.classify keeps it over
+// the registry's per-ID answer.
+func WithWhyNoFix(s string) FindingOption { return func(f *Finding) { f.WhyNoFix = s } }
+
 // WithEvidence attaches a single key/value piece of evidence. It is
 // additive across calls.
 func WithEvidence(key, val string) FindingOption {

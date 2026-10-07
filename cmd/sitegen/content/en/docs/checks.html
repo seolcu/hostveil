@@ -26,7 +26,7 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">162</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">87</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">183</strong> findings, and <strong data-counted="findings.fixable">169</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">94</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title">How the 183 findings resolve</p>
               <div class="ledger-bar">
@@ -36,13 +36,13 @@
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:48%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">87</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:51%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">94</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:11%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">21</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:8%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">14</span>
               </div>
             </div>
 
@@ -255,10 +255,10 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>proxy.traefik-api-insecure</code></td><td>Traefik's API and dashboard are served with no authentication, listing every router and backend address behind the proxy</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>proxy.admin-api-exposed</code></td><td>Caddy's admin API, which has no authentication and can replace the whole running configuration, listens on something other than loopback. Medium for a container whose port 2019 is not published to the host, since reaching it then takes a foothold in a neighbouring container</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>proxy.tls-deprecated-protocols</code></td><td><code>ssl_protocols</code> still offers TLS 1.0 or 1.1, which RFC 8996 deprecated and every current browser refuses</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
-                  <tr><td><code>proxy.directory-listing</code></td><td>nginx's <code>autoindex on</code> or Caddy's <code>file_server browse</code> makes every directory with no index file browsable</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxy.traefik-api-insecure</code></td><td>Traefik's API and dashboard are served with no authentication, listing every router and backend address behind the proxy</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
+                  <tr><td><code>proxy.admin-api-exposed</code></td><td>Caddy's admin API, which has no authentication and can replace the whole running configuration, listens on something other than loopback. Medium for a container whose port 2019 is not published to the host, since reaching it then takes a foothold in a neighbouring container</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
+                  <tr><td><code>proxy.tls-deprecated-protocols</code></td><td><code>ssl_protocols</code> still offers TLS 1.0 or 1.1, which RFC 8996 deprecated and every current browser refuses</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
+                  <tr><td><code>proxy.directory-listing</code></td><td>nginx's <code>autoindex on</code> or Caddy's <code>file_server browse</code> makes every directory with no index file browsable</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                   <tr><td><code>proxy.no-scan-jail</code></td><td>fail2ban is installed but its nginx-botsearch jail, built to catch repeated requests for nonexistent or known-vulnerable paths, is not enabled</td><td><span class="sev medium">MEDIUM</span></td><td>Review</td></tr>
                 </tbody>
               </table>
@@ -438,12 +438,12 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>agent.auth-disabled</code></td><td>An exposed gateway that accepts requests with no authentication</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
-                  <tr><td><code>agent.gateway-exposed</code></td><td>The gateway is bound to a network-reachable address</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.auth-disabled</code></td><td>An exposed gateway that accepts requests with no authentication</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
+                  <tr><td><code>agent.gateway-exposed</code></td><td>The gateway is bound to a network-reachable address</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                   <tr><td><code>agent.secret-exposed</code></td><td>A credentials file or directory is readable beyond its owner</td><td><span class="sev high">HIGH</span></td><td>Auto</td></tr>
                   <tr><td><code>agent.exec-unrestricted</code></td><td>The agent may run shell commands with no approval step. For Goose that is <code>GOOSE_MODE</code> set to <code>auto</code> <em>or not set at all</em>, since auto is its default</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                   <tr><td><code>agent.elevated-enabled</code></td><td>Elevated (host-level) command execution is enabled</td><td><span class="sev high">HIGH</span></td><td>Auto</td></tr>
-                  <tr><td><code>agent.sandbox-off</code></td><td>Agent tools run unsandboxed, directly on the host</td><td><span class="sev high">HIGH</span></td><td>Manual</td></tr>
+                  <tr><td><code>agent.sandbox-off</code></td><td>Agent tools run unsandboxed, directly on the host</td><td><span class="sev high">HIGH</span></td><td>Review</td></tr>
                   <tr><td><code>agent.control-ui-insecure</code></td><td>The control UI has its auth or device-identity checks disabled</td><td><span class="sev high">HIGH</span></td><td>Auto</td></tr>
                   <tr><td><code>agent.config-perms</code></td><td>A config or state path is more permissive than upstream ships it</td><td><span class="sev medium">MEDIUM</span></td><td>Auto</td></tr>
                   <tr><td><code>agent.ssrf-private-network</code></td><td>The agent browser may reach private-network addresses</td><td><span class="sev medium">MEDIUM</span></td><td>Auto</td></tr>
