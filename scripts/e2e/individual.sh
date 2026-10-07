@@ -523,7 +523,7 @@ OC_USER=${SUDO_USER:-runner}
 oc() { runuser -u "$OC_USER" -- openclaw "$@"; }
 
 scenario_openclaw() {
-    command -v openclaw >/dev/null || npm install -g --silent openclaw@latest >/dev/null 2>&1 || fail "npm could not install openclaw"
+    command -v openclaw >/dev/null || npm install -g --silent openclaw@latest || fail "npm could not install openclaw"
     local home cfg
     home=$(getent passwd "$OC_USER" | cut -d: -f6)
     cfg=$home/.openclaw/openclaw.json
@@ -563,18 +563,19 @@ JSON5
 }
 
 # What OpenClaw binds to when gateway.bind is not set. hostveil assumes
-# loopback; one published guide says 0.0.0.0. Observed and printed here, not
-# asserted, until the answer is known.
+# loopback; OpenClaw resolves an unset bind as "auto", and inside a container
+# auto warned that it was binding off loopback. This is the same on a VM.
+# Observed and printed here, not asserted, until the answer is known.
 observe_openclaw_default_bind() {
     local home
     home=$(getent passwd "$OC_USER" | cut -d: -f6)
-    printf '{\n  "gateway": {"auth": {"mode": "token", "token": "e2e-observe-only-0123456789"}},\n}\n' >"$home/.openclaw/openclaw.json"
+    printf '{\n  "gateway": {"mode": "local", "auth": {"mode": "token", "token": "e2e-observe-only-0123456789abcdef"}},\n}\n' >"$home/.openclaw/openclaw.json"
     chown "$OC_USER" "$home/.openclaw/openclaw.json"
     (runuser -u "$OC_USER" -- timeout 40 openclaw gateway >/tmp/oc-gateway.log 2>&1 &)
-    sleep 25
+    sleep 30
     printf '\n== observed: listeners of the OpenClaw gateway with gateway.bind unset\n'
-    ss -ltnp | grep -E 'openclaw|node|18789' || echo "(nothing listening)"
-    tail -20 /tmp/oc-gateway.log || true
+    ss -ltnp | grep -E ':18789 ' || echo "(nothing listening on 18789)"
+    grep -iE 'bind|loopback|listening' /tmp/oc-gateway.log || tail -20 /tmp/oc-gateway.log || true
 }
 
 # --- Proxmox -------------------------------------------------------------------
