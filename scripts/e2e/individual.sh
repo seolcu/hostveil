@@ -33,11 +33,30 @@ HV=${HOSTVEIL:-hostveil}
 # a daemon left down says why in its own journal, not in ours.
 DIAGNOSE=""
 
+SCENARIO=""
+
+# diagnose prints what DIAGNOSE's unit says about itself.
+diagnose() {
+    [[ -n $DIAGNOSE ]] && command -v systemctl >/dev/null || return 0
+    systemctl status "$DIAGNOSE" --no-pager -l 2>&1 | tail -15 || true
+    journalctl -u "$DIAGNOSE" -n 30 --no-pager 2>&1 || true
+}
+
+# fail also writes the reason and the diagnosis into the job summary when
+# there is one, so a failed run is read from `gh run view` rather than dug out
+# of the raw log, which took a second CI round trip more than once.
 fail() {
     printf 'FAIL %s\n' "$*" >&2
-    if [[ -n $DIAGNOSE ]] && command -v systemctl >/dev/null; then
-        systemctl status "$DIAGNOSE" --no-pager -l 2>&1 | tail -15 >&2 || true
-        journalctl -u "$DIAGNOSE" -n 30 --no-pager 2>&1 >&2 || true
+    diagnose >&2
+    if [[ -n ${GITHUB_STEP_SUMMARY:-} ]]; then
+        {
+            printf '### FAIL %s: %s\n\n' "$SCENARIO" "$*"
+            if [[ -n $DIAGNOSE ]]; then
+                printf '<details><summary>%s</summary>\n\n```\n' "$DIAGNOSE"
+                diagnose
+                printf '```\n</details>\n\n'
+            fi
+        } >>"$GITHUB_STEP_SUMMARY"
     fi
     exit 1
 }
@@ -634,7 +653,8 @@ scenario_reboot_preview() {
     rm -f /var/run/reboot-required
 }
 
-case ${1:-} in
+SCENARIO=${1:-}
+case $SCENARIO in
 accounts) scenario_accounts ;;
 owner) scenario_owner ;;
 compose) scenario_compose ;;
