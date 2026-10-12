@@ -2,6 +2,34 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.34.0](https://github.com/seolcu/hostveil/compare/v3.33.4...v3.34.0) (2026-10-12)
+
+Firewall fixes now work on firewalld, the default firewall on Fedora, RHEL,
+Rocky and Alma, and not only on ufw. Until now every firewall finding on
+those systems came with no fix. Testing on a real Fedora host also found the
+firewall reading wrong in two places, and both are fixed.
+
+### Features
+
+* **check:** `firewall.inactive`, `firewall.default-allow`,
+  `ports.exposed-datastore` and `ports.exposed-admin` can now be fixed on
+  firewalld. Each fix allows the SSH port first and then changes the policy,
+  the same order as on ufw. An exposed port is closed with a firewalld rule
+  that takes precedence over the zone's own open ports. These fixes run
+  commands and have no rollback checkpoint, so each one is offered for
+  review, and the preview shows the commands that undo it.
+
+### Bug Fixes
+
+* **check:** a port that firewalld already refused was reported as
+  reachable from the network, with advice to enable ufw. hostveil now reads
+  firewalld's default zone and only drops the finding when it understood
+  every rule that could open the port.
+* **check:** with firewalld stopped, a scan reported "cannot read firewall
+  state — re-run with sudo", even when run as root, and never reported
+  `firewall.inactive`. hostveil now recognises firewalld's "not running"
+  answer.
+
 ## [3.33.4](https://github.com/seolcu/hostveil/compare/v3.33.3...v3.33.4) (2026-10-12)
 
 hostveil now runs on a real Fedora host in CI, a Fedora 44 VM booted under

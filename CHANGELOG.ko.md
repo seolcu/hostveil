@@ -7,6 +7,32 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.34.0](https://github.com/seolcu/hostveil/compare/v3.33.4...v3.34.0) (2026-10-12)
+
+이제 방화벽 수정이 ufw뿐 아니라 firewalld에서도 동작합니다. firewalld는
+Fedora, RHEL, Rocky, Alma의 기본 방화벽입니다. 지금까지 이런 시스템에서는
+방화벽 발견 항목에 수정이 하나도 없었습니다. 실제 Fedora 호스트에서 시험하다가
+방화벽 상태를 잘못 읽는 문제도 두 가지 찾았고, 모두 고쳤습니다.
+
+### 새 기능
+
+* **check:** 이제 firewalld에서도 `firewall.inactive`, `firewall.default-allow`,
+  `ports.exposed-datastore`, `ports.exposed-admin`을 고칠 수 있습니다. ufw와
+  같은 순서로 SSH 포트를 먼저 허용한 뒤 정책을 바꿉니다. 노출된 포트는 zone이
+  열어 둔 포트보다 먼저 적용되는 firewalld 규칙으로 닫습니다. 명령을 실행하는
+  수정이라 롤백 체크포인트가 없습니다. 그래서 모두 검토를 거쳐 적용하며,
+  미리보기에서 되돌리는 명령을 함께 보여 줍니다.
+
+### 버그 수정
+
+* **check:** firewalld가 이미 막고 있는 포트를 네트워크에서 접근할 수 있다고
+  보고했습니다. 안내도 ufw를 켜라는 내용이었습니다. 이제 firewalld의 기본
+  zone을 읽습니다. 포트를 열 수 있는 규칙을 모두 이해했을 때만 발견 항목을
+  지웁니다.
+* **check:** firewalld가 멈춰 있으면 root로 스캔해도 "방화벽 상태를 읽을 수
+  없으니 sudo로 다시 실행하라"고 보고했고, `firewall.inactive`는 끝내 나오지
+  않았습니다. 이제 firewalld가 "실행 중이 아님"이라고 답하는 것을 알아듣습니다.
+
 ## [3.33.4](https://github.com/seolcu/hostveil/compare/v3.33.3...v3.33.4) (2026-10-12)
 
 이제 CI가 실제 Fedora 호스트에서 hostveil을 실행합니다. 지금까지는 Fedora
