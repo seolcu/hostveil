@@ -50,8 +50,16 @@ package fix
 // to a firewall that happens to already be running: allow SSH first, then
 // flip the default inbound policy from accept to deny. It was declined for
 // exactly firewall.inactive's original reason — no known SSH port — and that
-// reason no longer holds here either. Both stay restricted to ufw; firewalld's
-// target flip has no registered fix yet.
+// reason no longer holds here either. Both are built for ufw and for
+// firewalld — the default on Fedora and the RHEL family, where until 3.34.0
+// every firewall finding had no fix at all. On firewalld the SSH allow goes
+// into the permanent configuration with firewall-offline-cmd before the
+// daemon starts, and the target flip is a reload after the allow; an exposed
+// port is closed by a negative-priority rich rule, which firewalld applies
+// before the zone's own ports. firewall.docker-bypass stays ufw-only: Docker
+// on firewalld publishes through its own zone and policies, a different
+// mechanism from ufw's DOCKER-USER chain that nothing here has been tested
+// against yet.
 //
 // # Risky fixes, offered one at a time
 //

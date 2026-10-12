@@ -65,6 +65,14 @@ esac
 CACHE=${XDG_CACHE_HOME:-$HOME/.cache}/hostveil/e2e/$DISTRO
 STATE=$CACHE/vm
 PORT=${HOSTVEIL_E2E_PORT:-$DEFAULT_PORT}
+# Guest ports a scenario can reach from outside the VM. Each is forwarded from
+# 127.0.0.1:OUTSIDE+port on this machine, and QEMU's user network answers the
+# guest's 10.0.2.2 with this machine's loopback, so a scenario connecting to
+# 10.0.2.2:OUTSIDE+port leaves the VM and comes back in through its network
+# card, where the firewall applies. That is the one view of an exposed port
+# that is not the host's own opinion of itself.
+PROBE_PORTS=(6379 8080 9000)
+OUTSIDE=$(((PORT - 2222 + 1) * 10000))
 BASE=$CACHE/${IMAGE_URL##*/}
 # Provisioning — Docker, a firewall, node — takes minutes, and a reset that
 # paid it every time would put back the wait this script exists to remove. So
@@ -119,12 +127,19 @@ EOF
     genisoimage -quiet -output "$SEED" -volid cidata -joliet -rock "$CACHE/user-data" "$CACHE/meta-data"
 }
 
+forwards() {
+    local p
+    for p in "${PROBE_PORTS[@]}"; do
+        printf ',hostfwd=tcp:127.0.0.1:%s-:%s' "$((OUTSIDE + p))" "$p"
+    done
+}
+
 boot() {
     local disk=$1 limit=$2 start=$SECONDS
     qemu-system-x86_64 -enable-kvm -cpu host -m 4096 -smp 4 \
         -drive "file=$disk,if=virtio" \
         -drive "file=$SEED,media=cdrom" \
-        -netdev "user,id=n0,hostfwd=tcp:127.0.0.1:$PORT-:22" -device virtio-net-pci,netdev=n0 \
+        -netdev "user,id=n0,hostfwd=tcp:127.0.0.1:$PORT-:22$(forwards)" -device virtio-net-pci,netdev=n0 \
         -display none -serial "file:$STATE/serial.log" \
         -daemonize -pidfile "$STATE/pid"
     printf 'booting'
@@ -209,7 +224,7 @@ cmd_run() {
     local results=() s start rc=0
     for s in "$@"; do
         start=$SECONDS
-        if vssh "sudo -E env $summary HOSTVEIL=/usr/local/bin/hostveil PATH=\$PATH bash /tmp/individual.sh $s"; then
+        if vssh "sudo -E env $summary HOSTVEIL_E2E_OUTSIDE=10.0.2.2:$OUTSIDE HOSTVEIL=/usr/local/bin/hostveil PATH=\$PATH bash /tmp/individual.sh $s"; then
             results+=("ok   $s ($((SECONDS - start))s)")
         else
             results+=("FAIL $s ($((SECONDS - start))s)")

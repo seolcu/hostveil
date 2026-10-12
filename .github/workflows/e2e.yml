@@ -496,6 +496,13 @@ jobs:
       - name: dnf-automatic, pending security updates and the reboot check on Fedora 44
         run: scripts/e2e/vm.sh run fedora-updates
 
+      # firewalld, the default on Fedora and the RHEL family, where every
+      # firewall fix was ufw-only. "From outside" is a real request through
+      # a port vm.sh forwards, so firewalld is what decides it.
+      - name: firewalld refuses, opens and closes ports, and the firewall fixes on Fedora 44
+        if: ${{ !cancelled() }}
+        run: scripts/e2e/vm.sh run fedora-firewall
+
   # k3s's control-plane fixes, against a real single-node k3s: the check is
   # what an unauthenticated request to the API server actually gets, not what
   # a config file says. Its own VM, because k3s brings its own containerd and

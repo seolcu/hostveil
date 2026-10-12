@@ -331,3 +331,17 @@ func DockerReachable(ctx context.Context, r CommandRunner) (bool, string) {
 func DockerProbeArgv() []string {
 	return []string{"docker", "version", "--format", "{{.Server.Version}}"}
 }
+
+// ExitCode returns the exit status a command's error carries, when it carries
+// one. Some tools answer through it — firewall-cmd --state exits 252 for "not
+// running" and 253 for "not authorized" — and those are an answer and a
+// silence respectively, which reading every non-zero exit alike confuses.
+// It matches on the method rather than on *exec.ExitError so a test runner
+// can script an exit status.
+func ExitCode(err error) (int, bool) {
+	var coded interface{ ExitCode() int }
+	if errors.As(err, &coded) {
+		return coded.ExitCode(), true
+	}
+	return 0, false
+}

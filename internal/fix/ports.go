@@ -54,6 +54,9 @@ func buildUFWDenyPort(f model.Finding) (Fix, error) {
 	if port == "" {
 		return Fix{}, fmt.Errorf("finding %s names no port", f.ID)
 	}
+	if f.Evidence["firewall"] == "firewalld" {
+		return firewalldRejectPort(f, port)
+	}
 	rule := port + "/tcp"
 	// The allow goes first. ufw treats a deny with the same match as an
 	// allow already in the ruleset as a duplicate — "Skipping inserting
@@ -80,5 +83,40 @@ func buildUFWDenyPort(f model.Finding) (Fix, error) {
 				"configuration is the cleaner long-term fix.",
 			Kind:     ActionExec,
 			Commands: cmds,
+		}}}, nil
+}
+
+// firewalldRejectPort is buildUFWDenyPort for firewalld: a rich rule that
+// rejects the port, at a negative priority so firewalld applies it before
+// the zone's ports and services — which is what lets it close a port the
+// zone opened, the case this finding fires on. On a real Fedora 44 the port
+// answered from outside with the zone opening it and stopped with this rule.
+// It goes in at runtime and permanently rather than through a reload, which
+// would drop any rule somebody added without --permanent.
+func firewalldRejectPort(f model.Finding, port string) (Fix, error) {
+	zone := f.Evidence["zone"]
+	if zone == "" {
+		return Fix{}, fmt.Errorf("finding %s does not name firewalld's default zone; re-scan before fixing", f.ID)
+	}
+	rule := `rule priority="-100" port port="` + port + `" protocol="tcp" reject`
+	what := f.Service
+	if what == "" {
+		what = "port " + port
+	}
+	return Fix{Label: "Close " + port + "/tcp to the network with firewalld", Kind: model.RemediationReview, IndividualOnly: true,
+		Actions: []Action{{
+			Label: "Reject " + port + "/tcp in firewalld's " + zone + " zone, ahead of its ports and services",
+			Benefit: what + " stops being reachable from any other machine, while everything on this host keeps " +
+				"reaching it as before.",
+			Warning: "Every remote client of " + what + " is cut off — an application server on another machine, a " +
+				"replica, a backup job, your own desktop client — including ones the zone used to let in. There is " +
+				"no checkpoint: undo it with `firewall-cmd --zone=" + zone + " --remove-rich-rule='" + rule +
+				"'`, and again with --permanent. Binding the service to 127.0.0.1 in its own configuration is the " +
+				"cleaner long-term fix.",
+			Kind: ActionExec,
+			Commands: [][]string{
+				{"firewall-cmd", "--zone=" + zone, "--add-rich-rule=" + rule},
+				{"firewall-cmd", "--permanent", "--zone=" + zone, "--add-rich-rule=" + rule},
+			},
 		}}}, nil
 }
