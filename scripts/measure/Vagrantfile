@@ -45,12 +45,15 @@ GO_VERSION = "1.26.3"
 #            nothing. fedora/40-cloud-base and cloud-image/fedora-41 both
 #            advertise libvirt and 404 on the artifact itself.
 #
-# So the dnf half of seed.sh is still unexercised end to end. What has been
-# confirmed, in a Fedora container: distro detection resolves to
-# "fedora, dnf, systemd" and the base-package install runs against real dnf.
-# It stops at `require docker`, which a container cannot satisfy without
-# either privileges or the host's own docker socket — and neither is a thing
-# to do to somebody's workstation. It needs a Fedora host that boots.
+# The dnf half has since run end to end on a Fedora host that boots:
+# scripts/e2e/vm.sh boots Fedora 44's cloud image under plain QEMU, with
+# user-mode networking and no libvirt network to lease from. There, seed.sh
+# completed and `run.sh -c -p seeded` passed its checks — score 38 to 46,
+# 96% of the watched paths restored, the rest residue from Review actions
+# marked not reversible. Use that, not this, for Fedora:
+#
+#   HOSTVEIL_E2E_DISTRO=fedora scripts/e2e/vm.sh up
+#   (copy the repo to /hostveil, then seed.sh and run.sh as above)
 HOSTS = {
   "fedora" => { box: "cloud-image/fedora-42", disk: nil, bootstrap: <<~SH },
     dnf install -y -q curl tar git >/dev/null 2>&1 || true
