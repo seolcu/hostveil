@@ -25,6 +25,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -223,3 +224,12 @@ type composeLS struct {
 	Name        string
 	ConfigFiles string
 }
+
+// ExitStatus is an error carrying an exit status, as a failed command's does,
+// for scripting a tool that answers through it.
+type ExitStatus int
+
+func (e ExitStatus) Error() string { return fmt.Sprintf("exit status %d", int(e)) }
+
+// ExitCode is what platform.ExitCode reads.
+func (e ExitStatus) ExitCode() int { return int(e) }

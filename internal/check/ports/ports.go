@@ -78,10 +78,11 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		return nil, err
 	}
 
-	// Read once: whether ufw already refuses a port decides whether a
-	// datastore listening on it is reachable at all, and whether hostveil
-	// can close it with a rule.
-	ufw := firewall.ReadUFW(ctx, env.Runner)
+	// Read once: whether the running firewall already refuses a port
+	// decides whether a datastore listening on it is reachable at all, and
+	// whether hostveil can close it with a rule. ufw or firewalld: reading
+	// only ufw reported ports a Fedora host's firewalld refused as reachable.
+	shield := firewall.ReadShield(ctx, env.Runner)
 
 	var findings []model.Finding
 	generic := map[int]platform.Listener{} // exposed, non-sensitive; deduped by port
@@ -97,10 +98,10 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 				continue
 			}
 			seenDS[l.Port] = true
-			if ufw.Blocks(l.Port) && l.Proc != dockerProxy {
+			if shield.Blocks(l.Port) && l.Proc != dockerProxy {
 				continue
 			}
-			findings = append(findings, exposedFinding(l, ufw, "ports.exposed-datastore",
+			findings = append(findings, exposedFinding(l, shield, "ports.exposed-datastore",
 				"Datastore reachable from the network: "+datastorePorts[l.Port],
 				"A database listening on a non-loopback address is reachable from every network this host is on. Datastores rarely need to accept remote connections directly; exposing one invites credential-stuffing and data theft.",
 				model.SeverityHigh))
@@ -109,10 +110,10 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 				continue
 			}
 			seenDS[l.Port] = true
-			if ufw.Blocks(l.Port) && l.Proc != dockerProxy {
+			if shield.Blocks(l.Port) && l.Proc != dockerProxy {
 				continue
 			}
-			findings = append(findings, exposedFinding(l, ufw, "ports.exposed-admin",
+			findings = append(findings, exposedFinding(l, shield, "ports.exposed-admin",
 				"Admin panel reachable from the network: "+adminPorts[l.Port],
 				"A management UI listening on a non-loopback address lets anyone who can reach this host attempt to log in and control your services. Bind it to localhost and reach it over an SSH tunnel or VPN.",
 				model.SeverityHigh))
@@ -183,11 +184,12 @@ func regexpLine(text, expression string) bool {
 }
 
 // dockerProxy is the process Docker publishes a port through. Its traffic is
-// accepted by Docker's own iptables rules before ufw sees it, so a ufw rule
-// neither shields it nor closes it.
+// accepted by Docker's own rules before ufw or firewalld sees it, so a rule
+// in either neither shields it nor closes it — on a real Fedora 44 a
+// published port answered from outside with firewalld running.
 const dockerProxy = "docker-proxy"
 
-func exposedFinding(l platform.Listener, ufw firewall.UFWView, id, title, desc string, sev model.Severity) model.Finding {
+func exposedFinding(l platform.Listener, shield firewall.Shield, id, title, desc string, sev model.Severity) model.Finding {
 	opts := []model.FindingOption{
 		// Attribute the finding to this specific listener so two different
 		// exposed datastores (e.g. Redis and Postgres) get distinct Keys and
@@ -203,15 +205,21 @@ func exposedFinding(l platform.Listener, ufw firewall.UFWView, id, title, desc s
 	}
 	// The remediation that fits every product on the list is a firewall
 	// rule: binding to loopback is a different file and syntax for each.
-	// It needs ufw running, and it does nothing for a port Docker publishes.
+	// It needs ufw or firewalld running, and it does nothing for a port
+	// Docker publishes.
 	kind := model.RemediationReview
 	switch {
 	case l.Proc == dockerProxy:
 		kind = model.RemediationManual
-		opts = append(opts, model.WithWhyNoFix("Docker publishes this port and accepts its traffic before ufw sees it; bind it to 127.0.0.1 in the Compose file instead (compose.ds018/ds019)."))
-	case !ufw.Active:
+		opts = append(opts, model.WithWhyNoFix("Docker publishes this port and accepts its traffic before the host firewall sees it; bind it to 127.0.0.1 in the Compose file instead (compose.ds018/ds019)."))
+	case shield.Name == "":
 		kind = model.RemediationManual
-		opts = append(opts, model.WithWhyNoFix("Hostveil closes this with a ufw rule, and ufw is not running here; enable it first (firewall.inactive), or bind the service to 127.0.0.1 in its own config."))
+		opts = append(opts, model.WithWhyNoFix("Hostveil closes this with a ufw or firewalld rule, and neither is running here; enable a firewall first (firewall.inactive), or bind the service to 127.0.0.1 in its own config."))
+	default:
+		opts = append(opts, model.WithEvidence("firewall", shield.Name))
+		if shield.Zone != "" {
+			opts = append(opts, model.WithEvidence("zone", shield.Zone))
+		}
 	}
 	return model.NewFinding(id, title, sev, model.SourcePorts, kind, opts...)
 }

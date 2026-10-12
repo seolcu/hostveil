@@ -46,8 +46,12 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 			"so enabling a firewall could lock the operator out: %w", f.ID, err)
 	}
 	if !strings.Contains(f.Evidence["available"], "ufw") {
-		return Fix{}, fmt.Errorf("finding %s reports no ufw, and the other front-ends "+
-			"take rules this fix cannot write safely", f.ID)
+		if strings.Contains(f.Evidence["available"], "firewall-cmd") &&
+			!strings.Contains(f.Evidence["available"], "pve-firewall") {
+			return enableFirewalld(f, ports), nil
+		}
+		return Fix{}, fmt.Errorf("finding %s reports neither ufw nor firewalld, and nftables "+
+			"and iptables take rules this fix cannot write safely", f.ID)
 	}
 	// A Proxmox VE host that also has ufw installed must not have ufw turned
 	// on under it. The hypervisor's own firewall manages the same chains,
@@ -103,9 +107,16 @@ func buildFixDefaultAllow(f model.Finding) (Fix, error) {
 		return Fix{}, fmt.Errorf("finding %s does not name the port(s) sshd is listening on, "+
 			"so tightening the firewall's default policy could lock the operator out: %w", f.ID, err)
 	}
-	if f.Evidence["firewall"] != "ufw" {
-		return Fix{}, fmt.Errorf("finding %s reports %q, and only ufw's default policy "+
-			"has a registered fix", f.ID, f.Evidence["firewall"])
+	switch f.Evidence["firewall"] {
+	case "ufw":
+	case "firewalld":
+		if f.Evidence["zone"] == "" {
+			return Fix{}, fmt.Errorf("finding %s does not name firewalld's default zone; re-scan before fixing", f.ID)
+		}
+		return firewalldDenyByDefault(f, ports), nil
+	default:
+		return Fix{}, fmt.Errorf("finding %s reports %q, and only ufw's and firewalld's default "+
+			"policy have a registered fix", f.ID, f.Evidence["firewall"])
 	}
 	list := make([]string, 0, len(ports))
 	for _, p := range ports {
@@ -155,4 +166,83 @@ func parseSSHPorts(raw string) ([]int, error) {
 		out = append(out, port)
 	}
 	return out, nil
+}
+
+// enableFirewalld starts a firewalld that is installed and stopped, the way
+// buildEnableFirewall enables ufw: SSH allowed first, while the daemon is
+// still off, and the default zone set to reject what nothing allowed, then
+// the daemon started. firewall-offline-cmd writes the permanent
+// configuration without the daemon, which is the only way to put the SSH
+// allow in place before the policy is.
+func enableFirewalld(f model.Finding, ports []int) Fix {
+	spelled := joinPorts(ports)
+	var cmds [][]string
+	for _, p := range ports {
+		cmds = append(cmds, []string{"firewall-offline-cmd", "--add-port=" + strconv.Itoa(p) + "/tcp"})
+	}
+	cmds = append(cmds,
+		[]string{"firewall-offline-cmd", "--set-target=default"},
+		[]string{"systemctl", "enable", "--now", "firewalld"})
+	return Fix{
+		FindingID: f.ID,
+		Label:     "Start firewalld, allowing SSH on port " + spelled + " first",
+		// One ordered procedure, declared Auto and floored to Review by
+		// EffectiveKind as exec, like the ufw one.
+		Kind: model.RemediationAuto,
+		Actions: []Action{{
+			Label: "Allow SSH on " + spelled + "/tcp in firewalld's default zone, set it to reject by default, " +
+				"then enable and start firewalld",
+			Benefit: "Turns on default-deny, so only the ports hostveil confirmed sshd is actually " +
+				"listening on — and the services the default zone already allows — stay reachable.",
+			Warning: "Every inbound port the default zone does not already allow, except " + spelled +
+				"/tcp, stops being reachable the moment firewalld starts. Ports Docker publishes stay " +
+				"reachable: Docker's rules come first. There is no rollback checkpoint — undo it with " +
+				"`systemctl disable --now firewalld`.",
+			Kind:     ActionExec,
+			Commands: cmds,
+		}},
+	}
+}
+
+// firewalldDenyByDefault is buildFixDefaultAllow for firewalld: SSH allowed
+// in the zone at runtime and permanently, then the zone's target set back to
+// firewalld's default, which rejects, and the configuration reloaded — a
+// target is permanent-only, so the reload is what puts it in force.
+func firewalldDenyByDefault(f model.Finding, ports []int) Fix {
+	zone := f.Evidence["zone"]
+	spelled := joinPorts(ports)
+	var cmds [][]string
+	for _, p := range ports {
+		port := "--add-port=" + strconv.Itoa(p) + "/tcp"
+		cmds = append(cmds,
+			[]string{"firewall-cmd", "--zone=" + zone, port},
+			[]string{"firewall-cmd", "--permanent", "--zone=" + zone, port})
+	}
+	cmds = append(cmds,
+		[]string{"firewall-cmd", "--permanent", "--zone=" + zone, "--set-target=default"},
+		[]string{"firewall-cmd", "--reload"})
+	return Fix{
+		FindingID: f.ID,
+		Label:     "Allow SSH on port " + spelled + ", then make firewalld's " + zone + " zone reject by default",
+		Kind:      model.RemediationAuto,
+		Actions: []Action{{
+			Label: "Allow SSH on " + spelled + "/tcp in " + zone + ", set its target to default, and reload firewalld",
+			Benefit: "Flips a firewall that is already running from accept-by-default to reject-by-default, " +
+				"closing every port nothing has explicitly opened.",
+			Warning: "Every inbound port the " + zone + " zone does not allow, except " + spelled + "/tcp, stops " +
+				"being reachable. The reload also drops any rule that was added without --permanent. There is " +
+				"no rollback checkpoint — undo it with `firewall-cmd --permanent --zone=" + zone +
+				" --set-target=ACCEPT && firewall-cmd --reload`.",
+			Kind:     ActionExec,
+			Commands: cmds,
+		}},
+	}
+}
+
+func joinPorts(ports []int) string {
+	list := make([]string, 0, len(ports))
+	for _, p := range ports {
+		list = append(list, strconv.Itoa(p))
+	}
+	return strings.Join(list, " and ")
 }

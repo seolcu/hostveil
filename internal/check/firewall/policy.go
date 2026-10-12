@@ -184,8 +184,8 @@ func parseFirewalldTarget(out string) inboundPolicy {
 // can allow that port first and only then flip the default policy, as two
 // commands of one action. It stays Review — the change cannot be rolled back
 // and it takes every other inbound port with it, which an operator should
-// decide rather than discover — and, like firewall.inactive, it is only
-// buildable for ufw; firewalld's target flip has no such fix registered yet.
+// decide rather than discover. It is buildable for ufw and for firewalld,
+// whose fix flips the default zone's target.
 func defaultAllowFinding(which string) model.Finding {
 	how := "Run `ufw default deny incoming`, then `ufw reload`. Make sure your SSH port is allowed first (`ufw allow OpenSSH`) — the deny policy takes effect immediately and an unallowed session is the one you are using."
 	if which == "pve-firewall" {

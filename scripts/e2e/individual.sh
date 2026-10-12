@@ -19,6 +19,7 @@
 #   scripts/e2e/individual.sh openclaw       # installs OpenClaw from npm
 #   scripts/e2e/individual.sh proxmox        # Debian 12 or 13; fakes /etc/pve, uses the real repositories
 #   scripts/e2e/individual.sh fedora-updates # Fedora (dnf5) with systemd; installs dnf-automatic
+#   scripts/e2e/individual.sh fedora-firewall # Fedora with firewalld; run through scripts/e2e/vm.sh
 #
 # Why it exists: these fixes are excluded from every batch on purpose, so
 # `fix --all --review` — the E2E job's and the measurement harness's path —
@@ -28,6 +29,11 @@
 set -euo pipefail
 
 export HOSTVEIL_NO_SUDO=1
+
+# A freshly booted Ubuntu runs its daily apt jobs within the first minutes,
+# and an install racing them fails on the lock: nginx and caddy did, on a VM
+# reset seconds earlier. Wait for the lock instead.
+apt-get() { command apt-get -o DPkg::Lock::Timeout=300 "$@"; }
 HV=${HOSTVEIL:-hostveil}
 
 # DIAGNOSE names a unit whose state is worth printing when a scenario fails;
@@ -704,6 +710,76 @@ scenario_fedora_updates() {
     expect_count 1 updates.disabled
 }
 
+# --- Fedora firewall ---------------------------------------------------------
+
+# reachable PORT: whether PORT answers from off this host. scripts/e2e/vm.sh
+# forwards it from the machine running the VM and names the way back in as
+# HOSTVEIL_E2E_OUTSIDE, so the connection arrives on the VM's own network card
+# and firewalld decides it — not the host's opinion of itself.
+#
+# An HTTP answer, not a TCP connect: QEMU accepts the connection on the far
+# side of the forward before it tries the guest, so a bare connect succeeds
+# whatever the firewall does. The listener is an HTTP server so that only a
+# packet the firewall let through produces a 200.
+reachable() {
+    local host=${HOSTVEIL_E2E_OUTSIDE%:*} base=${HOSTVEIL_E2E_OUTSIDE#*:}
+    [[ $(curl -s -m 3 -o /dev/null -w '%{http_code}' "http://$host:$((base + $1))/") == 200 ]]
+}
+
+# Every firewall fix was ufw-only, so on firewalld — Fedora's and the RHEL
+# family's default — none of these findings had a fix. And the reading was
+# wrong too: a port firewalld refused was reported reachable, and a stopped
+# firewalld read as "cannot read firewall state" rather than no firewall.
+scenario_fedora_firewall() {
+    [[ -n ${HOSTVEIL_E2E_OUTSIDE:-} ]] || fail "run this through scripts/e2e/vm.sh, which provides the outside view"
+    command -v firewall-cmd >/dev/null || fail "this scenario is for a host with firewalld"
+    systemctl is-active -q firewalld || systemctl start firewalld
+    local zone svc=python3:6379
+    zone=$(firewall-cmd --get-default-zone)
+    python3 -m http.server 6379 --bind 0.0.0.0 >/dev/null 2>&1 &
+    local listener=$!
+    trap 'kill $listener 2>/dev/null || true' RETURN
+    sleep 1
+
+    step "ports: a port firewalld refuses is not reported reachable"
+    reachable 6379 && fail "6379 answers from outside before anything opened it"
+    expect_count 0 ports.exposed-datastore "$svc"
+
+    step "ports.exposed-datastore: firewalld closes a port its zone opened"
+    firewall-cmd -q --zone="$zone" --add-port=6379/tcp
+    reachable 6379 || fail "6379 does not answer from outside after opening it"
+    expect_count 1 ports.exposed-datastore "$svc"
+    apply ports.exposed-datastore "$svc"
+    reachable 6379 && fail "6379 still answers from outside after the fix"
+    expect_count 0 ports.exposed-datastore "$svc"
+    firewall-cmd --permanent --zone="$zone" --list-rich-rules | grep -q 'port="6379"' ||
+        fail "the rule is not in the permanent configuration; a reload would undo the fix"
+    local rule='rule priority="-100" port port="6379" protocol="tcp" reject'
+    firewall-cmd -q --zone="$zone" --remove-rich-rule="$rule"
+    firewall-cmd -q --permanent --zone="$zone" --remove-rich-rule="$rule"
+    firewall-cmd -q --zone="$zone" --remove-port=6379/tcp
+
+    step "firewall.default-allow: a zone that accepts everything is set back to reject"
+    firewall-cmd -q --permanent --zone="$zone" --set-target=ACCEPT
+    firewall-cmd -q --reload
+    reachable 6379 || fail "6379 does not answer from outside with the zone accepting"
+    expect_count 1 firewall.default-allow
+    apply firewall.default-allow
+    [[ $(firewall-cmd --permanent --zone="$zone" --get-target) == default ]] || fail "the zone's target is not default"
+    reachable 6379 && fail "6379 still answers from outside after the fix"
+    expect_count 0 firewall.default-allow
+
+    step "firewall.inactive: a stopped firewalld is no firewall, and the fix starts it with SSH allowed"
+    systemctl stop firewalld
+    expect_count 1 firewall.inactive
+    reachable 6379 || fail "6379 does not answer from outside with firewalld stopped"
+    apply firewall.inactive
+    systemctl is-active -q firewalld || fail "firewalld is not running after the fix"
+    firewall-cmd --list-ports | grep -qw 22/tcp || fail "SSH's port is not allowed: $(firewall-cmd --list-ports)"
+    reachable 6379 && fail "6379 still answers from outside after the fix"
+    expect_count 0 firewall.inactive
+}
+
 SCENARIO=${1:-}
 case $SCENARIO in
 accounts) scenario_accounts ;;
@@ -721,8 +797,9 @@ traefik) scenario_traefik ;;
 openclaw) scenario_openclaw && observe_openclaw_default_bind ;;
 proxmox) scenario_proxmox ;;
 fedora-updates) scenario_fedora_updates ;;
+fedora-firewall) scenario_fedora_firewall ;;
 *)
-    sed -n '2,21p' "$0"
+    sed -n '2,22p' "$0"
     exit 2
     ;;
 esac

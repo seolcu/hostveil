@@ -100,7 +100,15 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 
 		switch defaultInbound(ctx, env.Runner, which) {
 		case policyAllow:
-			findings = append(findings, withSSHPortEvidence(defaultAllowFinding(which), ctx, env.Runner))
+			f := defaultAllowFinding(which)
+			if which == "firewalld" {
+				// The zone whose target the fix flips; the scan cache
+				// answers this from the policy read above.
+				if zone, err := env.Runner.Run(ctx, "firewall-cmd", "--get-default-zone"); err == nil {
+					f.Evidence["zone"] = strings.TrimSpace(string(zone))
+				}
+			}
+			findings = append(findings, withSSHPortEvidence(f, ctx, env.Runner))
 		case policyUnknown:
 			// The same rule the probe itself follows: not being able to read
 			// the policy degrades the domain, it does not accuse the host.
@@ -292,11 +300,21 @@ func probe(ctx context.Context, r platform.CommandRunner) (Status, string) {
 	// "running" to stdout, others to stderr, and Run captures stdout only.
 	// Matching the text therefore read a running firewalld as absent on every
 	// host of the second kind — a High finding on a firewalled machine.
+	//
+	// Not every non-zero exit is a silence, though. 252 is firewalld saying it
+	// is not running, as root or not; 253 is a user it will not answer. Both
+	// read as unreadable once, so a root scan of a host with firewalld
+	// stopped reported "cannot read firewall state — re-run with sudo" and
+	// never firewall.inactive. Found on a real Fedora 44.
 	if platform.Has(r, "firewall-cmd") {
-		if _, err := r.Run(ctx, "firewall-cmd", "--state"); err != nil {
-			unreadable = true
-		} else {
+		_, err := r.Run(ctx, "firewall-cmd", "--state")
+		code, coded := platform.ExitCode(err)
+		switch {
+		case err == nil:
 			return StatusActive, "firewalld"
+		case coded && code == firewalldNotRunning:
+		default:
+			unreadable = true
 		}
 	}
 	// Proxmox VE's firewall is asked before nft and iptables because neither
@@ -394,3 +412,7 @@ func availableTools(r platform.CommandRunner) []string {
 	}
 	return tools
 }
+
+// firewalldNotRunning is firewall-cmd's exit status for a daemon that is not
+// running (FirewallError NOT_RUNNING).
+const firewalldNotRunning = 252
