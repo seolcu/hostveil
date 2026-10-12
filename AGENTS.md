@@ -74,6 +74,8 @@ cd demo && ./run.sh up      # then: ./run.sh scan | web | shell | reset | halt
 
 The repo syncs on `up`/`reload` but **not** on `provision` — re-sync after editing code. See `demo/README.md` and `docs/DEVELOPMENT.md`.
 
+The individual-only fix scenarios have a faster loop than CI. `scripts/e2e/vm.sh run dockerd ufw` builds the binary, boots a throwaway Ubuntu 24.04 VM under KVM — the release the `ubuntu-latest` runner uses — and runs `scripts/e2e/individual.sh` in it, and `scripts/e2e/vm.sh ssh` gets you into the VM exactly as a failure left it; `reset` throws the run away in seconds, because the first boot keeps its provisioned disk. Run a scenario there before pushing it. The scenarios that found 3.33.1–3.33.3's bugs were debugged in CI instead: thirteen round trips of two to six minutes, eight of them failures, two of which only added diagnostics to read on the next one. The same pre-fix binary fails the same way in the VM in about ten seconds. `HOSTVEIL_BIN` runs a binary you built yourself, which is how to show a scenario catches the bug it was written for.
+
 ## Repository metadata
 
 The About box and the topics are the only published surface with no copy in
