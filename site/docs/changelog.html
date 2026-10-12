@@ -133,6 +133,23 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.34.0"><a href="https://github.com/seolcu/hostveil/compare/v3.33.4...v3.34.0">3.34.0</a> <span class="changelog-date">2026-10-12</span></h2>
+          <p>Firewall fixes now work on firewalld, the default firewall on Fedora, RHEL, Rocky and Alma, and not only on ufw. Until now every firewall finding on those systems came with no fix. Testing on a real Fedora host also found the firewall reading wrong in two places, and both are fixed.</p>
+          <h3>Features</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>check:</strong> <code>firewall.inactive</code>, <code>firewall.default-allow</code>, <code>ports.exposed-datastore</code> and <code>ports.exposed-admin</code> can now be fixed on firewalld. Each fix allows the SSH port first and then changes the policy, the same order as on ufw. An exposed port is closed with a firewalld rule that takes precedence over the zone's own open ports. These fixes run commands and have no rollback checkpoint, so each one is offered for review, and the preview shows the commands that undo it.</p>
+            </li>
+          </ul>
+          <h3>Bug Fixes</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>check:</strong> a port that firewalld already refused was reported as reachable from the network, with advice to enable ufw. hostveil now reads firewalld's default zone and only drops the finding when it understood every rule that could open the port.</p>
+            </li>
+            <li>
+              <p><strong>check:</strong> with firewalld stopped, a scan reported "cannot read firewall state — re-run with sudo", even when run as root, and never reported <code>firewall.inactive</code>. hostveil now recognises firewalld's "not running" answer.</p>
+            </li>
+          </ul>
           <h2 id="v3.33.4"><a href="https://github.com/seolcu/hostveil/compare/v3.33.3...v3.33.4">3.33.4</a> <span class="changelog-date">2026-10-12</span></h2>
           <p>hostveil now runs on a real Fedora host in CI, a Fedora 44 VM booted under KVM, rather than only scanning a Fedora container. The first run found the updates domain wrong in several ways on dnf5 (Fedora 41 and later), and all of them are fixed.</p>
           <h3>Bug Fixes</h3>
