@@ -18,6 +18,7 @@
 #   scripts/e2e/individual.sh traefik        # needs a Docker daemon
 #   scripts/e2e/individual.sh openclaw       # installs OpenClaw from npm
 #   scripts/e2e/individual.sh proxmox        # Debian 12 or 13; fakes /etc/pve, uses the real repositories
+#   scripts/e2e/individual.sh fedora-updates # Fedora (dnf5) with systemd; installs dnf-automatic
 #
 # Why it exists: these fixes are excluded from every batch on purpose, so
 # `fix --all --review` — the E2E job's and the measurement harness's path —
@@ -653,6 +654,56 @@ scenario_reboot_preview() {
     rm -f /var/run/reboot-required
 }
 
+# --- Fedora updates ----------------------------------------------------------
+
+# Everything here was wrong on dnf5 and right against the fake runner: the
+# security count read zero because dnf5 takes a bare `security` as an advisory
+# name, the reboot question went unasked for want of a binary dnf5 does not
+# ship, the timer read as off forever because its name is an alias, and the
+# fix enabled a timer whose default is to install nothing.
+scenario_fedora_updates() {
+    command -v dnf5 >/dev/null || fail "this scenario is for a dnf5 host (Fedora 41 or later)"
+
+    step "updates.pending-security: hostveil counts what dnf lists"
+    # Scan first and list after, so both read the metadata the scan just
+    # refreshed; listing first compared against a cache the scan replaced.
+    local reported listed
+    reported=$(count updates.pending-security)
+    listed=$(dnf -q -C updateinfo list --security 2>/dev/null | awk '$2 == "security"' | wc -l)
+    if ((listed > 0)); then
+        [[ $reported == 1 ]] || fail "dnf lists $listed security packages, hostveil reports no updates.pending-security"
+        reported=$(jq -r '[.findings[] | select(.id == "updates.pending-security")][0].evidence.pending' /tmp/hv-scan.json)
+        [[ $reported == "$listed" ]] || fail "dnf lists $listed security packages, hostveil reports $reported"
+    else
+        echo "  (no security updates pending on this image; the count is not exercised)"
+    fi
+
+    step "updates: the reboot question is answered without needs-restarting"
+    jq -e '.domains[] | select(.source == "updates") | (.reason // "") | test("reboot") | not' /tmp/hv-scan.json >/dev/null ||
+        fail "the updates domain still cannot tell whether a reboot is pending: $(jq -r '.domains[] | select(.source == "updates") | .reason' /tmp/hv-scan.json)"
+
+    step "updates.disabled: dnf-automatic installs what it downloads"
+    dnf install -y -q dnf-automatic >/dev/null
+    systemctl disable --now dnf-automatic.timer 2>/dev/null || true
+    rm -f /etc/dnf/automatic.conf
+    expect_count 1 updates.disabled
+    apply updates.disabled
+    grep -Eq '^apply_updates *= *yes' /etc/dnf/automatic.conf || fail "apply_updates is not set: $(cat /etc/dnf/automatic.conf 2>&1)"
+    [[ $(systemctl show dnf-automatic.timer -p UnitFileState --value) == enabled ]] || fail "the timer is not enabled"
+    expect_count 0 updates.disabled
+
+    step "updates.disabled: an enabled timer that only downloads is still reported"
+    sed -i 's/^apply_updates.*/apply_updates = no/' /etc/dnf/automatic.conf
+    expect_count 1 updates.disabled
+    sed -i 's/^apply_updates.*/apply_updates = yes/' /etc/dnf/automatic.conf
+
+    step "updates.disabled: rollback removes the config and stops the timer"
+    rollback_latest updates.disabled
+    [[ ! -e /etc/dnf/automatic.conf ]] || fail "the config the fix created is still there"
+    [[ $(systemctl show dnf-automatic.timer -p UnitFileState --value) == disabled ]] || fail "the timer is still enabled"
+    expect_count 1 updates.disabled
+}
+
 SCENARIO=${1:-}
 case $SCENARIO in
 accounts) scenario_accounts ;;
@@ -669,8 +720,9 @@ caddy) scenario_caddy ;;
 traefik) scenario_traefik ;;
 openclaw) scenario_openclaw && observe_openclaw_default_bind ;;
 proxmox) scenario_proxmox ;;
+fedora-updates) scenario_fedora_updates ;;
 *)
-    sed -n '2,20p' "$0"
+    sed -n '2,21p' "$0"
     exit 2
     ;;
 esac

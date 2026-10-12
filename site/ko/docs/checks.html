@@ -931,9 +931,9 @@
             </dd>
             <dt id="fix-updates.disabled"><code>updates.disabled</code> <span class="fix-kind review">Review</span></dt>
             <dd>
-              <p lang="en">Install and enable dnf-automatic</p>
+              <p lang="en">Turn on apply_updates in dnf-automatic's config, install dnf-automatic and enable its timer</p>
               <p class="fix-benefit" lang="en">✓ Once enabled, security patches for every installed package arrive on their own instead of depending on someone remembering to run apt/dnf.</p>
-              <p class="fix-warning" lang="en">⚠ Installs dnf-automatic and enables its timer. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
+              <p class="fix-warning" lang="en">⚠ Starts dnf-automatic's timer, which installs updates on its own from then on — and an update can restart the service it belongs to. The config edit has a checkpoint; rolling it back also stops the timer, but leaves the package installed.</p>
             </dd>
             <dt id="fix-updates.fail2ban"><code>updates.fail2ban</code> <span class="fix-kind review">Review</span></dt>
             <dd>

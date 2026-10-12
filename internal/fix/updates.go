@@ -165,18 +165,99 @@ func buildEnableAutoUpdates(f model.Finding) (Fix, error) {
 				{"systemctl", "enable", "--now", "unattended-upgrades.service"},
 			}), nil
 	case "dnf-automatic":
-		return execFix("Enable automatic security updates (dnf-automatic)",
-			"Install and enable dnf-automatic",
-			autoUpdatesBenefit,
-			"Installs dnf-automatic and enables its timer. There is no rollback checkpoint; "+
-				"undoing this means removing the package by hand.",
-			[][]string{
-				{"dnf", "install", "-y", "dnf-automatic"},
-				{"systemctl", "enable", "--now", "dnf-automatic.timer"},
-			}), nil
+		return enableDnfAutomatic(f)
 	default:
 		return Fix{}, fmt.Errorf("finding %s has no known update mechanism", f.ID)
 	}
+}
+
+// enableDnfAutomatic sets apply_updates in dnf-automatic's host config and
+// then, if the checker found the timer off or missing, installs and starts
+// it. Installing and enabling were the whole fix once, and on every dnf host
+// that produced a timer that downloads updates and installs none: the shipped
+// default is apply_updates = no. Found on a real Fedora 44, where letting the
+// timer's service run with this key set installed the pending security
+// updates and without it installed nothing.
+//
+// The file is written first and the commands run after it, so the timer's
+// first run already reads the new key. On dnf4 a package installed after the
+// write keeps this file and leaves its own beside it as .rpmnew, which is the
+// %config(noreplace) contract, and dnf4 defaults every key the file omits.
+func enableDnfAutomatic(f model.Finding) (Fix, error) {
+	path := f.Evidence["config"]
+	if path == "" {
+		return Fix{}, fmt.Errorf("finding %s does not name dnf-automatic's config; re-scan before fixing", f.ID)
+	}
+	act := Action{
+		Label:           "Turn on apply_updates in dnf-automatic's config",
+		Benefit:         autoUpdatesBenefit,
+		Kind:            ActionEdit,
+		Path:            path,
+		CreateIfMissing: true,
+		Transform:       setDnfApplyUpdates,
+	}
+	if f.Evidence["timer"] == "enabled" {
+		return Fix{FindingID: f.ID, Label: "Make dnf-automatic install the updates it downloads",
+			Kind: model.RemediationAuto, Actions: []Action{act}}, nil
+	}
+	if f.Evidence["installed"] != "true" {
+		act.AfterWrite = append(act.AfterWrite, []string{"dnf", "install", "-y", "dnf-automatic"})
+		act.Label += ", install dnf-automatic"
+	}
+	act.AfterWrite = append(act.AfterWrite, []string{"systemctl", "enable", "--now", "dnf-automatic.timer"})
+	act.Label += " and enable its timer"
+	// A rollback restores the config and stops the timer it started. The
+	// package stays: removing one is not a rollback anybody asked for.
+	act.AfterRestore = [][]string{{"systemctl", "disable", "--now", "dnf-automatic.timer"}}
+	act.Timeout = 20 * time.Minute
+	act.Warning = "Starts dnf-automatic's timer, which installs updates on its own from then on — and an " +
+		"update can restart the service it belongs to. The config edit has a checkpoint; rolling it back also " +
+		"stops the timer, but leaves the package installed."
+	return Fix{FindingID: f.ID, Label: "Enable automatic security updates (dnf-automatic)",
+		Kind: model.RemediationReview, Actions: []Action{act}}, nil
+}
+
+// setDnfApplyUpdates sets apply_updates = yes in [commands], in place where
+// the key is already there and after the section header where it is not. A
+// file created here also gets upgrade_type = security, so a host that never
+// configured dnf-automatic gets security updates rather than every update;
+// an existing file keeps whatever upgrade_type its operator chose.
+func setDnfApplyUpdates(in []byte) ([]byte, error) {
+	if strings.TrimSpace(string(in)) == "" {
+		return []byte("[commands]\napply_updates = yes\nupgrade_type = security\n"), nil
+	}
+	lines := strings.SplitAfter(string(in), "\n")
+	section, header, done := "", -1, false
+	for i, line := range lines {
+		t := strings.TrimSpace(line)
+		if strings.HasPrefix(t, "[") && strings.HasSuffix(t, "]") {
+			section = strings.TrimSpace(t[1 : len(t)-1])
+			if section == "commands" {
+				header = i
+			}
+			continue
+		}
+		if section != "commands" || t == "" || t[0] == '#' || t[0] == ';' {
+			continue
+		}
+		if k, _, ok := strings.Cut(t, "="); ok && strings.TrimSpace(k) == "apply_updates" {
+			lines[i] = "apply_updates = yes\n"
+			done = true
+		}
+	}
+	out := strings.Join(lines, "")
+	switch {
+	case done:
+	case header >= 0:
+		lines[header] = strings.TrimRight(lines[header], "\n") + "\napply_updates = yes\n"
+		out = strings.Join(lines, "")
+	default:
+		if !strings.HasSuffix(out, "\n") {
+			out += "\n"
+		}
+		out += "\n[commands]\napply_updates = yes\n"
+	}
+	return []byte(out), nil
 }
 
 // aptPeriodicKeys are the two directives that switch apt's periodic upgrades

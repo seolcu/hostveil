@@ -460,6 +460,42 @@ jobs:
       - name: ufw fixes enable, close and route around Docker, and roll back
         run: sudo -E scripts/e2e/individual.sh ufw
 
+  # Fedora as a host, not a container. No runner is Fedora, so this boots one
+  # under KVM with scripts/e2e/vm.sh, the same VM a developer runs locally.
+  # Every dnf-side probe of the updates domain was wrong on dnf5 and right
+  # against the fake runner: zero pending security updates on a host with
+  # eighty, a timer that read as off after it was enabled, and a fix that
+  # enabled a timer which installs nothing.
+  individual-fixes-fedora:
+    runs-on: ubuntu-latest
+    env:
+      HOSTVEIL_E2E_DISTRO: fedora
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26"
+          check-latest: true
+
+      - name: KVM and QEMU
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' |
+            sudo tee /etc/udev/rules.d/99-kvm.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qemu-system-x86 qemu-utils genisoimage >/dev/null
+
+      # The cloud image only; provisioning runs every time, so what is tested
+      # is a fresh install, not a disk somebody's earlier run left behind.
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/hostveil/e2e/fedora/Fedora-Cloud-Base-*.qcow2
+          key: fedora-cloud-${{ hashFiles('scripts/e2e/vm.sh') }}
+
+      - name: dnf-automatic, pending security updates and the reboot check on Fedora 44
+        run: scripts/e2e/vm.sh run fedora-updates
+
   # k3s's control-plane fixes, against a real single-node k3s: the check is
   # what an unauthenticated request to the API server actually gets, not what
   # a config file says. Its own VM, because k3s brings its own containerd and

@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/model"
@@ -34,6 +35,11 @@ type Checker struct {
 	PAMTmpdirPaths []string
 	// SysstatConfigPath controls collection after the package is installed.
 	SysstatConfigPath string
+	// DnfAutomaticDefaults and DnfAutomaticConfig are where dnf-automatic
+	// reads apply_updates: dnf5 loads the first and then the second over it,
+	// dnf4 has only the second. Overridable for tests.
+	DnfAutomaticDefaults string
+	DnfAutomaticConfig   string
 }
 
 // New returns an updates checker.
@@ -51,7 +57,9 @@ func New() *Checker {
 			"/usr/lib/aarch64-linux-gnu/security/pam_tmpdir.so",
 			"/usr/lib/security/pam_tmpdir.so",
 		},
-		SysstatConfigPath: "/etc/default/sysstat",
+		SysstatConfigPath:    "/etc/default/sysstat",
+		DnfAutomaticDefaults: "/usr/share/dnf5/dnf5-plugins/automatic.conf",
+		DnfAutomaticConfig:   "/etc/dnf/automatic.conf",
 	}
 }
 
@@ -237,6 +245,9 @@ func packageFinding(id, title, description, pkg string, severity model.Severity)
 		model.WithEvidence("package-manager", "apt"), model.WithEvidence("package", pkg))
 }
 
+// dnfTimeout bounds the dnf probes, which may download repository metadata.
+const dnfTimeout = 5 * time.Minute
+
 func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	var findings []model.Finding
 	var reasons []string
@@ -252,24 +263,50 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 	// A unit that is genuinely absent *is* the finding — dnf-automatic is
 	// not installed — and that is the one case where a non-zero exit is an
 	// answer rather than a silence.
-	state, err := env.Runner.Run(ctx, "systemctl", "show", "dnf-automatic.timer", "--property=LoadState")
+	//
+	// UnitFileState rather than `systemctl is-enabled`: on dnf5 (Fedora 41
+	// and later) dnf-automatic.timer is an alias of dnf5-automatic.timer, and
+	// is-enabled answers "alias" for it whether the timer is on or not. So the
+	// finding outlived its own fix on every such host — found on a real
+	// Fedora 44 by scripts/e2e/vm.sh. show resolves the alias first.
+	state, err := env.Runner.Run(ctx, "systemctl", "show", "dnf-automatic.timer", "--property=LoadState,UnitFileState")
+	props := systemdProps(string(state))
 	switch {
 	case err != nil && !platform.Has(env.Runner, "systemctl"):
 		reasons = append(reasons, "cannot tell whether dnf-automatic is enabled — systemctl is not available")
 	case err != nil:
 		reasons = append(reasons, "cannot tell whether dnf-automatic is enabled — systemctl did not answer")
-	case !strings.Contains(string(state), "LoadState=loaded"):
+	case props["LoadState"] != "loaded":
 		// systemd answered and does not have the unit: it is not installed.
-		findings = append(findings, disabledFinding("dnf-automatic",
-			"Install and enable dnf-automatic: `dnf install dnf-automatic` then `systemctl enable --now dnf-automatic.timer` (configure it to apply security updates)."))
+		f := disabledFinding("dnf-automatic",
+			"Install and enable dnf-automatic: `dnf install dnf-automatic`, set `apply_updates = yes` under [commands] in "+
+				c.DnfAutomaticConfig+", then `systemctl enable --now dnf-automatic.timer`.")
+		f.Evidence["installed"] = "false"
+		f.Evidence["config"] = c.DnfAutomaticConfig
+		findings = append(findings, f)
 	default:
-		out, err := env.Runner.Run(ctx, "systemctl", "is-enabled", "dnf-automatic.timer")
-		// The unit is loaded, so a non-zero exit here means disabled, static
-		// or masked — every one of which is "not enabled" and none of which
-		// is silence.
-		if err != nil || strings.TrimSpace(string(out)) != "enabled" {
-			findings = append(findings, disabledFinding("dnf-automatic",
-				"Enable it: `systemctl enable --now dnf-automatic.timer` (and configure it to apply security updates)."))
+		// A timer that runs is only half of it. dnf-automatic's shipped
+		// default is apply_updates = no — it downloads updates and installs
+		// none — so an enabled timer on a stock config is a host that
+		// believes it patches itself and does not.
+		apply, ok := c.dnfApplyUpdates()
+		timerOn := props["UnitFileState"] == "enabled"
+		switch {
+		case !ok:
+			reasons = append(reasons, "cannot tell whether dnf-automatic installs updates — "+c.DnfAutomaticConfig+" could not be read")
+		case !timerOn || !apply:
+			f := disabledFinding("dnf-automatic", dnfAutomaticHowToFix(c.DnfAutomaticConfig, timerOn, apply))
+			f.Evidence["installed"] = "true"
+			f.Evidence["config"] = c.DnfAutomaticConfig
+			f.Evidence["timer"] = map[bool]string{true: "enabled", false: "disabled"}[timerOn]
+			f.Evidence["apply_updates"] = map[bool]string{true: "yes", false: "no"}[apply]
+			if timerOn {
+				// The whole remediation is one key in one file, reversible
+				// from a checkpoint: the same shape, and the same kind, as
+				// apt's periodic keys.
+				f.Remediation = model.RemediationAuto
+			}
+			findings = append(findings, f)
 		}
 	}
 
@@ -286,20 +323,39 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 	// Its stdout is unambiguous and is still captured on a non-zero exit, so
 	// the text is the signal — and a reply matching neither phrase means the
 	// command did not answer, which must not be read as "no reboot needed".
-	switch {
-	case !platform.Has(env.Runner, "needs-restarting"):
-		reasons = append(reasons, "cannot tell whether a reboot is pending — needs-restarting is not installed (`dnf install dnf-utils`)")
-	default:
-		rebootOut, _ := env.Runner.Run(ctx, "needs-restarting", "-r")
-		switch classifyNeedsRestarting(string(rebootOut)) {
-		case rebootRequired:
-			findings = append(findings, rebootFinding("sudo reboot"))
-		case rebootUnknown:
+	//
+	// dnf5 has no needs-restarting binary; it is a dnf subcommand there, and
+	// asking only for the binary left this question unanswered on every
+	// Fedora 41 and later. dnf4 hosts with dnf-plugins-core answer it too.
+	//
+	// Both dnf probes refresh repository metadata when it has expired, which
+	// on a fresh Fedora 44 took over a minute — past platform.DefaultTimeout,
+	// so whichever probe ran first was killed and its question went
+	// unanswered. They get a deadline of their own, as Trivy does.
+	dnfCtx, cancel := context.WithTimeout(ctx, dnfTimeout)
+	defer cancel()
+	var rebootOut []byte
+	if platform.Has(env.Runner, "needs-restarting") {
+		rebootOut, _ = env.Runner.Run(dnfCtx, "needs-restarting", "-r")
+	} else {
+		rebootOut, _ = env.Runner.Run(dnfCtx, "dnf", "needs-restarting", "-r")
+	}
+	switch classifyNeedsRestarting(string(rebootOut)) {
+	case rebootRequired:
+		findings = append(findings, rebootFinding("sudo reboot"))
+	case rebootUnknown:
+		if platform.Has(env.Runner, "needs-restarting") {
 			reasons = append(reasons, "cannot tell whether a reboot is pending")
+		} else {
+			reasons = append(reasons, "cannot tell whether a reboot is pending — neither needs-restarting nor `dnf needs-restarting` answered (`dnf install dnf-utils`)")
 		}
 	}
 
-	secOut, err := env.Runner.Run(ctx, "dnf", "-q", "updateinfo", "list", "security")
+	// `--security`, not the positional `security`. dnf4 read the bare word as
+	// a filter; dnf5 reads it as the name of an advisory, finds none called
+	// that, exits 0 and lists nothing. A real Fedora 44 with eighty pending
+	// security packages, openssl among them, was reported as fully patched.
+	secOut, err := env.Runner.Run(dnfCtx, "dnf", "-q", "updateinfo", "list", "--security")
 	switch {
 	case err != nil:
 		reasons = append(reasons, "cannot list pending security updates")
@@ -397,21 +453,100 @@ func countAptSecurityUpdates(out string) int {
 	return n
 }
 
-// countDnfSecurityAdvisories counts advisory rows in `dnf updateinfo list
-// security`. Each row is "ADVISORY SEVERITY package", and dnf prints
-// "Last metadata expiration check" and blank lines around them.
+// countDnfSecurityAdvisories counts rows in `dnf updateinfo list --security`,
+// one per package. dnf4 prints "ADVISORY SEVERITY/Sec. package"; dnf5 prints
+// a header and then "ADVISORY security SEVERITY package ISSUED". A row is
+// counted only when its type column says security, so the header and
+// whatever else dnf prints around the table are not.
 func countDnfSecurityAdvisories(out string) int {
 	n := 0
 	for _, line := range strings.Split(out, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "Last metadata") {
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
 			continue
 		}
-		if len(strings.Fields(line)) >= 3 {
+		if fields[1] == "security" || strings.HasSuffix(fields[1], "/Sec.") {
 			n++
 		}
 	}
 	return n
+}
+
+// systemdProps reads `systemctl show --property=...` output into a map.
+// systemd prints properties in its own order, not the order asked for.
+func systemdProps(out string) map[string]string {
+	props := map[string]string{}
+	for _, line := range strings.Split(out, "\n") {
+		if k, v, ok := strings.Cut(strings.TrimSpace(line), "="); ok {
+			props[k] = v
+		}
+	}
+	return props
+}
+
+// dnfApplyUpdates reports whether dnf-automatic will install what it
+// downloads: [commands] apply_updates, read from the shipped defaults and
+// then the host's overrides, as dnf5 layers them. Absent everywhere means
+// no, which is the default both dnf versions ship. ok is false when a file
+// exists and cannot be read.
+func (c *Checker) dnfApplyUpdates() (apply, ok bool) {
+	for _, p := range []string{c.DnfAutomaticDefaults, c.DnfAutomaticConfig} {
+		data, err := os.ReadFile(p) //nolint:gosec // G304: fixed system path, overridable only by tests
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return false, false
+		}
+		if v, set := iniValue(string(data), "commands", "apply_updates"); set {
+			apply = parseDnfBool(v)
+		}
+	}
+	return apply, true
+}
+
+// iniValue returns the last value of key in section, the way libdnf's
+// parser resolves a repeated key.
+func iniValue(text, section, key string) (value string, set bool) {
+	current := ""
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || line[0] == '#' || line[0] == ';' {
+			continue
+		}
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			current = strings.TrimSpace(line[1 : len(line)-1])
+			continue
+		}
+		if current != section {
+			continue
+		}
+		if k, v, ok := strings.Cut(line, "="); ok && strings.TrimSpace(k) == key {
+			value, set = strings.TrimSpace(v), true
+		}
+	}
+	return value, set
+}
+
+func parseDnfBool(v string) bool {
+	switch strings.ToLower(v) {
+	case "1", "yes", "true", "on":
+		return true
+	}
+	return false
+}
+
+func dnfAutomaticHowToFix(config string, timerOn, apply bool) string {
+	switch {
+	case !apply && timerOn:
+		return "dnf-automatic runs but only downloads updates — its default is `apply_updates = no`. " +
+			"Set `apply_updates = yes` under [commands] in " + config + "."
+	case !apply:
+		return "Set `apply_updates = yes` under [commands] in " + config +
+			", then `systemctl enable --now dnf-automatic.timer` — the default only downloads updates."
+	default:
+		return "Enable it: `systemctl enable --now dnf-automatic.timer`."
+	}
 }
 
 // rebootFinding reports that patches are installed but not in force. The

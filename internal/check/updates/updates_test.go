@@ -165,15 +165,33 @@ func dnfClean() map[string]string {
 		// is on, so that "systemctl is not here" cannot be read as "the timer
 		// is off". A fixture that scripts only the second question describes
 		// a host systemd never answered about.
-		"systemctl show dnf-automatic.timer --property=LoadState": "LoadState=loaded\n",
-		"systemctl is-enabled dnf-automatic.timer":                "enabled\n",
-		"needs-restarting -r":                                     "No core libraries or services have been updated since boot-up.\nReboot should not be necessary.\n",
-		"dnf -q updateinfo list security":                         "",
+		"systemctl show dnf-automatic.timer --property=LoadState,UnitFileState": "LoadState=loaded\nUnitFileState=enabled\n",
+		"needs-restarting -r":               "No core libraries or services have been updated since boot-up.\nReboot should not be necessary.\n",
+		"dnf -q updateinfo list --security": "",
 	}
 }
 
+// dnfChecker reads dnf-automatic's config from a temp directory rather than
+// the machine running the tests, with conf as the host override and no
+// shipped defaults. An empty conf means no override file at all.
+func dnfChecker(t *testing.T, conf string) *Checker {
+	t.Helper()
+	dir := t.TempDir()
+	c := New()
+	c.DnfAutomaticDefaults = filepath.Join(dir, "defaults.conf")
+	c.DnfAutomaticConfig = filepath.Join(dir, "automatic.conf")
+	if conf != "" {
+		if err := os.WriteFile(c.DnfAutomaticConfig, []byte(conf), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return c
+}
+
+const dnfApplies = "[commands]\napply_updates = yes\n"
+
 func TestDnfEnabled(t *testing.T) {
-	fs, err := New().Check(context.Background(), dnfEnv(dnfClean()))
+	fs, err := dnfChecker(t, dnfApplies).Check(context.Background(), dnfEnv(dnfClean()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,8 +202,8 @@ func TestDnfEnabled(t *testing.T) {
 
 func TestDnfDisabled(t *testing.T) {
 	out := dnfClean()
-	out["systemctl is-enabled dnf-automatic.timer"] = "disabled\n"
-	fs, err := New().Check(context.Background(), dnfEnv(out))
+	out["systemctl show dnf-automatic.timer --property=LoadState,UnitFileState"] = "LoadState=loaded\nUnitFileState=disabled\n"
+	fs, err := dnfChecker(t, dnfApplies).Check(context.Background(), dnfEnv(out))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +217,7 @@ func TestDnfDisabled(t *testing.T) {
 func TestDnfRebootRequiredReadFromText(t *testing.T) {
 	out := dnfClean()
 	out["needs-restarting -r"] = "Core libraries or services have been updated since boot-up:\n  * kernel\n\nReboot is required to fully utilize these updates.\n"
-	fs, err := New().Check(context.Background(), dnfEnv(out))
+	fs, err := dnfChecker(t, dnfApplies).Check(context.Background(), dnfEnv(out))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,10 +226,10 @@ func TestDnfRebootRequiredReadFromText(t *testing.T) {
 
 func TestDnfSecurityAdvisoriesCounted(t *testing.T) {
 	out := dnfClean()
-	out["dnf -q updateinfo list security"] = `FEDORA-2026-aaaa Important/Sec. openssl-3.2.1-1.fc41.x86_64
+	out["dnf -q updateinfo list --security"] = `FEDORA-2026-aaaa Important/Sec. openssl-3.2.1-1.fc41.x86_64
 FEDORA-2026-bbbb Moderate/Sec.  curl-8.6.0-1.fc41.x86_64
 `
-	fs, err := New().Check(context.Background(), dnfEnv(out))
+	fs, err := dnfChecker(t, dnfApplies).Check(context.Background(), dnfEnv(out))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +243,7 @@ FEDORA-2026-bbbb Moderate/Sec.  curl-8.6.0-1.fc41.x86_64
 func TestDnfUnrecognizedRebootAnswerIsPartial(t *testing.T) {
 	out := dnfClean()
 	out["needs-restarting -r"] = "some future wording nobody anticipated\n"
-	_, err := New().Check(context.Background(), dnfEnv(out))
+	_, err := dnfChecker(t, dnfApplies).Check(context.Background(), dnfEnv(out))
 
 	var partial *check.PartialError
 	if !errors.As(err, &partial) {
@@ -301,7 +319,7 @@ func TestCheckRejectsUnsupportedPackageManager(t *testing.T) {
 // the domain reported only that a reboot could not be determined.
 func TestMissingNeedsRestartingStillCountsSecurityUpdates(t *testing.T) {
 	out := dnfClean()
-	out["dnf -q updateinfo list security"] = `FEDORA-2026-aaaa Important/Sec. openssl-3.2.1-1.fc41.x86_64
+	out["dnf -q updateinfo list --security"] = `FEDORA-2026-aaaa Important/Sec. openssl-3.2.1-1.fc41.x86_64
 FEDORA-2026-bbbb Moderate/Sec.  curl-8.6.0-1.fc41.x86_64
 `
 	env := platform.Env{
@@ -309,7 +327,7 @@ FEDORA-2026-bbbb Moderate/Sec.  curl-8.6.0-1.fc41.x86_64
 		Runner:         checktest.New().Without("needs-restarting").Outputs(out),
 	}
 
-	fs, err := New().Check(context.Background(), env)
+	fs, err := dnfChecker(t, dnfApplies).Check(context.Background(), env)
 
 	// Still degraded — a reboot genuinely cannot be determined.
 	var partial *check.PartialError
@@ -326,13 +344,13 @@ FEDORA-2026-bbbb Moderate/Sec.  curl-8.6.0-1.fc41.x86_64
 // Both probes failing must read as both failing, not just the first.
 func TestBothDnfProbesFailingAreBothReported(t *testing.T) {
 	out := dnfClean()
-	delete(out, "dnf -q updateinfo list security") // the fake errors on an unknown key
+	delete(out, "dnf -q updateinfo list --security") // the fake errors on an unknown key
 	env := platform.Env{
 		PackageManager: platform.PMDnf,
 		Runner:         checktest.New().Without("needs-restarting").Outputs(out),
 	}
 
-	_, err := New().Check(context.Background(), env)
+	_, err := dnfChecker(t, dnfApplies).Check(context.Background(), env)
 	var partial *check.PartialError
 	if !errors.As(err, &partial) {
 		t.Fatalf("want a PartialError, got %v", err)
@@ -359,12 +377,12 @@ func TestNoSystemctlIsACoverageGapNotADisabledTimer(t *testing.T) {
 	env := platform.Env{
 		PackageManager: platform.PMDnf,
 		Runner: checktest.New().Without("systemctl").Outputs(map[string]string{
-			"needs-restarting -r":             "Reboot should not be necessary.\n",
-			"dnf -q updateinfo list security": "",
+			"needs-restarting -r":               "Reboot should not be necessary.\n",
+			"dnf -q updateinfo list --security": "",
 		}),
 	}
 
-	fs, err := New().Check(context.Background(), env)
+	fs, err := dnfChecker(t, dnfApplies).Check(context.Background(), env)
 	for _, f := range fs {
 		if f.ID == "updates.disabled" {
 			t.Error("a host with no systemctl was reported as having automatic updates switched off")
@@ -384,8 +402,8 @@ func TestNoSystemctlIsACoverageGapNotADisabledTimer(t *testing.T) {
 // means something rather than nothing.
 func TestAnAbsentTimerIsStillReportedAsDisabled(t *testing.T) {
 	out := dnfClean()
-	out["systemctl show dnf-automatic.timer --property=LoadState"] = "LoadState=not-found\n"
-	fs, err := New().Check(context.Background(), dnfEnv(out))
+	out["systemctl show dnf-automatic.timer --property=LoadState,UnitFileState"] = "LoadState=not-found\nUnitFileState=\n"
+	fs, err := dnfChecker(t, dnfApplies).Check(context.Background(), dnfEnv(out))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -419,5 +437,110 @@ func TestAnUnreadableAptConfigIsACoverageGap(t *testing.T) {
 	var partial *check.PartialError
 	if !errors.As(err, &partial) {
 		t.Fatalf("want a PartialError, got %v", err)
+	}
+}
+
+// The output below is `dnf -q updateinfo list --security` on a real Fedora 44
+// (dnf5), trimmed. dnf5 adds a header row and a type column; the count is of
+// security rows, and the header is not one.
+func TestDnf5SecurityAdvisoriesCounted(t *testing.T) {
+	out := dnfClean()
+	out["dnf -q updateinfo list --security"] = `Name                   Type     Severity                                          Package              Issued
+FEDORA-2026-044e56d9ff security Moderate                         tar-2:1.35-9.fc44.x86_64 2026-09-09 04:47:08
+FEDORA-2026-12f3f3d569 security Important                   openssl-1:3.5.9-1.fc44.x86_64 2026-10-03 01:09:41
+FEDORA-2026-12f3f3d569 security Important              openssl-libs-1:3.5.9-1.fc44.x86_64 2026-10-03 01:09:41
+`
+	fs, err := dnfChecker(t, dnfApplies).Check(context.Background(), dnfEnv(out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f := find(t, fs, "updates.pending-security"); f.Evidence["pending"] != "3" {
+		t.Errorf("pending = %q, want 3", f.Evidence["pending"])
+	}
+}
+
+// dnf-automatic ships apply_updates = no: an enabled timer on the stock
+// config downloads updates and installs none. That is automatic updates not
+// being enabled, and since the remedy is one key in one file it is Auto.
+func TestAnEnabledTimerThatOnlyDownloadsIsReported(t *testing.T) {
+	c := dnfChecker(t, "")
+	if err := os.WriteFile(c.DnfAutomaticDefaults, []byte("[commands]\napply_updates = no\nupgrade_type = default\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fs, err := c.Check(context.Background(), dnfEnv(dnfClean()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := find(t, fs, "updates.disabled")
+	if f.Evidence["apply_updates"] != "no" || f.Evidence["timer"] != "enabled" || f.Evidence["config"] != c.DnfAutomaticConfig {
+		t.Errorf("evidence = %v", f.Evidence)
+	}
+	if f.Remediation != model.RemediationAuto {
+		t.Errorf("remediation = %v, want Auto: the fix is one key in one file", f.Remediation)
+	}
+}
+
+// dnf5 reads the shipped defaults and then /etc/dnf/automatic.conf over
+// them, so a host override of one key is enough.
+func TestTheHostOverrideWinsOverTheShippedDefault(t *testing.T) {
+	c := dnfChecker(t, "[commands]\napply_updates = yes\n")
+	if err := os.WriteFile(c.DnfAutomaticDefaults, []byte("[commands]\napply_updates = no\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fs, err := c.Check(context.Background(), dnfEnv(dnfClean()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fs) != 0 {
+		t.Errorf("an override applying updates is clean, got %v", ids(fs))
+	}
+}
+
+// A disabled timer is Review whatever the config says: the fix has to start
+// something, which no checkpoint undoes on its own.
+func TestADisabledTimerIsReview(t *testing.T) {
+	out := dnfClean()
+	out["systemctl show dnf-automatic.timer --property=LoadState,UnitFileState"] = "LoadState=loaded\nUnitFileState=disabled\n"
+	fs, err := dnfChecker(t, "").Check(context.Background(), dnfEnv(out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := find(t, fs, "updates.disabled")
+	if f.Remediation != model.RemediationReview || f.Evidence["timer"] != "disabled" || f.Evidence["installed"] != "true" {
+		t.Errorf("remediation %v, evidence %v", f.Remediation, f.Evidence)
+	}
+}
+
+// dnf5 has no needs-restarting binary; the question goes to the dnf
+// subcommand, and a Fedora 41+ host answers it rather than degrading.
+func TestDnf5AnswersNeedsRestartingAsASubcommand(t *testing.T) {
+	out := dnfClean()
+	delete(out, "needs-restarting -r")
+	out["dnf needs-restarting -r"] = "Core libraries or services have been updated since boot-up:\n  * kernel\n\nReboot is required to fully utilize these updates.\n"
+	env := platform.Env{PackageManager: platform.PMDnf, Runner: checktest.New().Without("needs-restarting").Outputs(out)}
+	fs, err := dnfChecker(t, dnfApplies).Check(context.Background(), env)
+	if err != nil {
+		t.Fatalf("dnf needs-restarting answered; want no coverage gap, got %v", err)
+	}
+	find(t, fs, "updates.reboot-required")
+}
+
+func TestAnUnreadableDnfAutomaticConfigIsACoverageGap(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads every file")
+	}
+	c := dnfChecker(t, dnfApplies)
+	if err := os.Chmod(c.DnfAutomaticConfig, 0); err != nil {
+		t.Fatal(err)
+	}
+	fs, err := c.Check(context.Background(), dnfEnv(dnfClean()))
+	var partial *check.PartialError
+	if !errors.As(err, &partial) || !strings.Contains(partial.Reason, "installs updates") {
+		t.Fatalf("want a PartialError about the config, got %v", err)
+	}
+	for _, f := range fs {
+		if f.ID == "updates.disabled" {
+			t.Error("an unreadable config was reported as automatic updates being off")
+		}
 	}
 }

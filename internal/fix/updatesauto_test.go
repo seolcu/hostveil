@@ -80,3 +80,81 @@ func TestAutoUpdatesStillInstallsWhenTheMechanismIsMissing(t *testing.T) {
 		t.Errorf("EffectiveKind = %v, want Review — an install has no checkpoint", got)
 	}
 }
+
+func dnfAutomaticFinding(evidence map[string]string) model.Finding {
+	opts := []model.FindingOption{model.WithEvidence("mechanism", "dnf-automatic"),
+		model.WithEvidence("config", "/etc/dnf/automatic.conf")}
+	for k, v := range evidence {
+		opts = append(opts, model.WithEvidence(k, v))
+	}
+	return model.NewFinding("updates.disabled", "Automatic security updates are not enabled",
+		model.SeverityMedium, model.SourceUpdates, model.RemediationReview, opts...)
+}
+
+// Installing dnf-automatic and enabling its timer was the whole fix, and on a
+// real Fedora 44 that left a timer downloading updates and installing none:
+// the shipped default is apply_updates = no. Every shape now sets the key.
+func TestDnfAutomaticFixAlwaysTurnsOnApplying(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		evidence  map[string]string
+		kind      model.RemediationKind
+		afterArgs []string
+	}{
+		{"timer on, applying off", map[string]string{"installed": "true", "timer": "enabled"}, model.RemediationAuto, nil},
+		{"timer off", map[string]string{"installed": "true", "timer": "disabled"}, model.RemediationReview,
+			[]string{"systemctl enable --now dnf-automatic.timer"}},
+		{"not installed", map[string]string{"installed": "false"}, model.RemediationReview,
+			[]string{"dnf install -y dnf-automatic", "systemctl enable --now dnf-automatic.timer"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fx, err := buildEnableAutoUpdates(dnfAutomaticFinding(tc.evidence))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := Validate(fx); err != nil {
+				t.Fatal(err)
+			}
+			if got := fx.EffectiveKind(); got != tc.kind {
+				t.Errorf("EffectiveKind = %v, want %v", got, tc.kind)
+			}
+			a := fx.Actions[0]
+			if a.Kind != ActionEdit || a.Path != "/etc/dnf/automatic.conf" || !a.CreateIfMissing {
+				t.Fatalf("want a create-if-missing edit of /etc/dnf/automatic.conf, got %+v", a)
+			}
+			var after []string
+			for _, c := range a.AfterWrite {
+				after = append(after, strings.Join(c, " "))
+			}
+			if strings.Join(after, "|") != strings.Join(tc.afterArgs, "|") {
+				t.Errorf("AfterWrite = %q, want %q", after, tc.afterArgs)
+			}
+			if len(tc.afterArgs) > 0 && (len(a.AfterRestore) != 1 || strings.Join(a.AfterRestore[0], " ") != "systemctl disable --now dnf-automatic.timer") {
+				t.Errorf("a rollback should stop the timer the fix started, got %q", a.AfterRestore)
+			}
+		})
+	}
+}
+
+func TestSetDnfApplyUpdates(t *testing.T) {
+	for _, tc := range []struct{ name, in, want string }{
+		{"created", "", "[commands]\napply_updates = yes\nupgrade_type = security\n"},
+		// dnf4's shipped file, abridged: the key is rewritten where it is,
+		// and the operator's upgrade_type is left alone.
+		{"stock dnf4", "[commands]\n# comment\nupgrade_type = default\napply_updates = no\n\n[emitters]\nemit_via = stdio\n",
+			"[commands]\n# comment\nupgrade_type = default\napply_updates = yes\n\n[emitters]\nemit_via = stdio\n"},
+		{"section without the key", "[commands]\nupgrade_type = security\n[base]\ndebuglevel = 1\n",
+			"[commands]\napply_updates = yes\nupgrade_type = security\n[base]\ndebuglevel = 1\n"},
+		{"no commands section", "[emitters]\nemit_via = motd", "[emitters]\nemit_via = motd\n\n[commands]\napply_updates = yes\n"},
+		// apply_updates in another section is not this one.
+		{"key elsewhere", "[base]\napply_updates = no\n", "[base]\napply_updates = no\n\n[commands]\napply_updates = yes\n"},
+	} {
+		got, err := setDnfApplyUpdates([]byte(tc.in))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(got) != tc.want {
+			t.Errorf("%s:\ngot  %q\nwant %q", tc.name, got, tc.want)
+		}
+	}
+}
