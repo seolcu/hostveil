@@ -134,6 +134,26 @@
 
             <p>각 버전의 릴리스 아카이브, 체크섬, SBOM, 서명된 빌드 프로버넌스는 <a href="https://github.com/seolcu/hostveil/releases">릴리스 페이지</a>에 있습니다. 업그레이드는 <code>hostveil update</code>로 합니다.</p>
 
+          <h2 id="v3.33.4"><a href="https://github.com/seolcu/hostveil/compare/v3.33.3...v3.33.4">3.33.4</a> <span class="changelog-date">2026-10-12</span></h2>
+          <p>이제 CI가 실제 Fedora 호스트에서 hostveil을 실행합니다. 지금까지는 Fedora 컨테이너를 스캔하기만 했지만, 이제는 KVM으로 Fedora 44 VM을 띄웁니다. 처음 실행했을 때 dnf5(Fedora 41 이상)에서 updates 영역이 여러 군데 틀려 있었고, 모두 고쳤습니다.</p>
+          <h3>버그 수정</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>check:</strong> dnf5에서는 대기 중인 보안 업데이트를 세지 못했습니다. hostveil이 묻던 <code>dnf updateinfo list security</code>를 dnf5는 "security"라는 이름의 권고를 찾으라는 뜻으로 읽습니다. 그런 권고는 없으니 아무것도 출력하지 않고 정상 종료합니다. 그래서 보안 패키지 80개(openssl 포함)가 대기 중인 Fedora 44를 모두 패치된 호스트로 보고했습니다. 이제 <code>--security</code> 옵션으로 묻습니다.</p>
+            </li>
+            <li>
+              <p><strong>check:</strong> dnf5에는 <code>needs-restarting</code> 프로그램이 없어서 재부팅이 필요한지 확인하지 못했고, updates 영역은 늘 일부만 검사한 것으로 표시됐습니다. 이제 <code>dnf needs-restarting</code>으로 묻습니다.</p>
+            </li>
+            <li>
+              <p><strong>check:</strong> dnf5에서는 <code>dnf-automatic.timer</code>가 별칭이라, 수정을 적용한 뒤에도 <code>updates.disabled</code>가 계속 보고됐습니다. 이제 별칭을 따라가는 방식으로 타이머 상태를 읽습니다.</p>
+            </li>
+            <li>
+              <p><strong>fix:</strong> dnf 호스트의 자동 업데이트 수정은 아무것도 설치하지 않는 타이머를 켰습니다. dnf-automatic의 기본 설정이 <code>apply_updates = no</code>여서 업데이트를 내려받기만 하고 설치하지 않기 때문입니다. 이제 <code>/etc/dnf/automatic.conf</code>에 <code>apply_updates = yes</code>를 씁니다. 파일 편집이라 롤백할 수 있습니다. 스캔도 내려받기만 하는 타이머를 보고합니다.</p>
+            </li>
+            <li>
+              <p><strong>check:</strong> 패키지 메타데이터가 만료된 호스트에서는 dnf가 메타데이터를 새로 받는 동안 첫 dnf 검사가 시간 초과로 중단될 수 있었습니다. 새로 설치한 Fedora에서는 이 과정이 1분 넘게 걸렸습니다. 이제 dnf 검사에는 5분을 줍니다.</p>
+            </li>
+          </ul>
           <h2 id="v3.33.3"><a href="https://github.com/seolcu/hostveil/compare/v3.33.2...v3.33.3">3.33.3</a> <span class="changelog-date">2026-10-07</span></h2>
           <p>3.33.0에서 연 수정 가운데 남아 있던 것들도 이제 실제 프로그램을 상대로 검증합니다. Caddy, Traefik, OpenClaw, Proxmox 패키지 저장소입니다. 그 과정에서 제 역할을 하지 못하던 롤백을 하나 더 찾아 고쳤습니다.</p>
           <h3>버그 수정</h3>

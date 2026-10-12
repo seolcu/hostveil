@@ -2,6 +2,35 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.33.4](https://github.com/seolcu/hostveil/compare/v3.33.3...v3.33.4) (2026-10-12)
+
+hostveil now runs on a real Fedora host in CI, a Fedora 44 VM booted under
+KVM, rather than only scanning a Fedora container. The first run found the
+updates domain wrong in several ways on dnf5 (Fedora 41 and later), and all
+of them are fixed.
+
+### Bug Fixes
+
+* **check:** pending security updates were never counted on dnf5. hostveil
+  asked `dnf updateinfo list security`, which dnf5 reads as a search for an
+  advisory named "security"; it finds none and exits cleanly. A Fedora 44
+  with eighty pending security packages, openssl among them, was reported
+  as fully patched. hostveil now asks with `--security`.
+* **check:** whether a reboot is pending could not be determined on dnf5,
+  which has no `needs-restarting` program, so the updates domain was always
+  reported as partially checked. hostveil now asks `dnf needs-restarting`.
+* **check:** `updates.disabled` stayed reported after its own fix on dnf5,
+  where `dnf-automatic.timer` is an alias. hostveil now reads the timer's
+  state in a way that follows the alias.
+* **fix:** the automatic-updates fix on dnf hosts enabled a timer that
+  installs nothing. dnf-automatic ships with `apply_updates = no`, so it
+  downloads updates and leaves them. The fix now sets `apply_updates = yes`
+  in `/etc/dnf/automatic.conf` as a file edit that can be rolled back, and
+  the scan reports a timer that only downloads.
+* **check:** on a host whose package metadata had expired, the first dnf
+  check could be cut off while dnf refreshed it, which took over a minute on
+  a fresh Fedora. dnf checks now have five minutes.
+
 ## [3.33.3](https://github.com/seolcu/hostveil/compare/v3.33.2...v3.33.3) (2026-10-07)
 
 The last of the fixes 3.33.0 opened up now run against the real programs

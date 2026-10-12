@@ -7,6 +7,35 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.33.4](https://github.com/seolcu/hostveil/compare/v3.33.3...v3.33.4) (2026-10-12)
+
+이제 CI가 실제 Fedora 호스트에서 hostveil을 실행합니다. 지금까지는 Fedora
+컨테이너를 스캔하기만 했지만, 이제는 KVM으로 Fedora 44 VM을 띄웁니다. 처음
+실행했을 때 dnf5(Fedora 41 이상)에서 updates 영역이 여러 군데 틀려 있었고,
+모두 고쳤습니다.
+
+### 버그 수정
+
+* **check:** dnf5에서는 대기 중인 보안 업데이트를 세지 못했습니다. hostveil이
+  묻던 `dnf updateinfo list security`를 dnf5는 "security"라는 이름의 권고를
+  찾으라는 뜻으로 읽습니다. 그런 권고는 없으니 아무것도 출력하지 않고 정상
+  종료합니다. 그래서 보안 패키지 80개(openssl 포함)가 대기 중인 Fedora 44를
+  모두 패치된 호스트로 보고했습니다. 이제 `--security` 옵션으로 묻습니다.
+* **check:** dnf5에는 `needs-restarting` 프로그램이 없어서 재부팅이 필요한지
+  확인하지 못했고, updates 영역은 늘 일부만 검사한 것으로 표시됐습니다. 이제
+  `dnf needs-restarting`으로 묻습니다.
+* **check:** dnf5에서는 `dnf-automatic.timer`가 별칭이라, 수정을 적용한 뒤에도
+  `updates.disabled`가 계속 보고됐습니다. 이제 별칭을 따라가는 방식으로
+  타이머 상태를 읽습니다.
+* **fix:** dnf 호스트의 자동 업데이트 수정은 아무것도 설치하지 않는 타이머를
+  켰습니다. dnf-automatic의 기본 설정이 `apply_updates = no`여서 업데이트를
+  내려받기만 하고 설치하지 않기 때문입니다. 이제 `/etc/dnf/automatic.conf`에
+  `apply_updates = yes`를 씁니다. 파일 편집이라 롤백할 수 있습니다. 스캔도
+  내려받기만 하는 타이머를 보고합니다.
+* **check:** 패키지 메타데이터가 만료된 호스트에서는 dnf가 메타데이터를 새로
+  받는 동안 첫 dnf 검사가 시간 초과로 중단될 수 있었습니다. 새로 설치한
+  Fedora에서는 이 과정이 1분 넘게 걸렸습니다. 이제 dnf 검사에는 5분을 줍니다.
+
 ## [3.33.3](https://github.com/seolcu/hostveil/compare/v3.33.2...v3.33.3) (2026-10-07)
 
 3.33.0에서 연 수정 가운데 남아 있던 것들도 이제 실제 프로그램을 상대로
