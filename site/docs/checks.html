@@ -608,7 +608,7 @@
             <dd>
               <p lang="en">Delete <code>network_mode: host</code></p>
               <p class="fix-benefit" lang="en">✓ The container gets its own network namespace again, so it can no longer bind any port on the host or reach services that listen only on the host's loopback.</p>
-              <p class="fix-warning" lang="en">⚠ With host networking gone, whatever port the service listens on is no longer reachable from outside the container until you publish it under <code>ports:</code> — hostveil cannot tell which ports those are. Services that discover devices on the LAN (Home Assistant, Plex/Jellyfin DLNA) also lose that. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ With host networking gone, whatever port the service listens on is no longer reachable from outside the container until you publish it under <code>ports:</code> — Hostveil cannot tell which ports those are. Services that discover devices on the LAN (Home Assistant, Plex/Jellyfin DLNA) also lose that. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.dr002"><code>compose.dr002</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -898,7 +898,7 @@
             <dt id="fix-firewall.inactive"><code>firewall.inactive</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Allow SSH on 22/tcp, then enable ufw with a default-deny inbound policy</p>
-              <p class="fix-benefit" lang="en">✓ Turns on default-deny, so only the ports hostveil confirmed sshd is actually listening on stay reachable — everything else stops accepting connections from off this host.</p>
+              <p class="fix-benefit" lang="en">✓ Turns on default-deny, so only the ports Hostveil confirmed sshd is actually listening on stay reachable — everything else stops accepting connections from off this host.</p>
               <p class="fix-warning" lang="en">⚠ Every inbound port except 22/tcp stops being reachable the moment this runs, including anything a container publishes. There is no rollback checkpoint — exec fixes are not file-backed — so undoing it means <code>ufw disable</code> by hand.</p>
             </dd>
           </dl>
@@ -995,7 +995,7 @@
               <ul>
                 <li>
               <p lang="en">Pull the new image and recreate app now (recommended)</p>
-              <p class="fix-benefit" lang="en">✓ Re-resolves the tag to whatever it currently points at, which is how the vendor ships fixes for a floating-tag image — it may include a patch for the CVE that triggered this finding, though hostveil cannot guarantee it does, since the same tag can also move for unrelated reasons. On a host where staying current matters more than staying unchanged, this is the fastest way to find out.</p>
+              <p class="fix-benefit" lang="en">✓ Re-resolves the tag to whatever it currently points at, which is how the vendor ships fixes for a floating-tag image — it may include a patch for the CVE that triggered this finding, though Hostveil cannot guarantee it does, since the same tag can also move for unrelated reasons. On a host where staying current matters more than staying unchanged, this is the fastest way to find out.</p>
               <p class="fix-warning" lang="en">⚠ This recreates the container: the service goes down briefly and comes back on a different image. There is no rollback checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this. Note the current image ID (<code>docker compose -f /opt/example/docker-compose.yml images</code>) before applying, so you can pin it back if the new one misbehaves. The new image may also carry unrelated upstream changes since you last pulled — on a host you are not trying to disturb, that is a real cost to weigh against a fix that is not guaranteed to land anyway.</p>
                 </li>
                 <li>

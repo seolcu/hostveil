@@ -177,7 +177,7 @@ func resolveCommand(args []string, interactive bool) (string, []string) {
 }
 
 func printUsage(w *os.File) {
-	fmt.Fprint(w, `hostveil — guided hardening for self-hosted Linux servers
+	fmt.Fprint(w, `Hostveil — guided hardening for self-hosted Linux servers
 
 Usage:
   hostveil                       Open the interactive TUI (on a terminal)
@@ -198,12 +198,12 @@ Usage:
   hostveil rollback <id> [flags] Undo a previously applied fix
   hostveil history [--scans]     List applied fixes and their rollback IDs;
                                  --scans lists the score of every saved scan
-  hostveil fleet HOST...         Scan several hosts over SSH (each needs hostveil
+  hostveil fleet HOST...         Scan several hosts over SSH (each needs Hostveil
                                  installed) and list their scores side by side
   hostveil diagnostics [flags]   Collect version/OS/crash/scan info into one
                                  file to attach to a bug report by hand
-  hostveil update [flags]        Update hostveil to the latest release
-  hostveil uninstall [--yes]     Remove hostveil, keeping its saved state
+  hostveil update [flags]        Update Hostveil to the latest release
+  hostveil uninstall [--yes]     Remove Hostveil, keeping its saved state
   hostveil version               Print the version (also: --version, -V)
   hostveil help                  Show this help (also: --help, -h)
 
@@ -316,7 +316,7 @@ Exit status:
   was interrupted.
 
 Environment:
-  HOSTVEIL_DEBUG=1     Trace every command hostveil runs against the host, to
+  HOSTVEIL_DEBUG=1     Trace every command Hostveil runs against the host, to
                        stderr: what ran, how long it took, and whether it
                        failed. This is what to attach to a bug report about a
                        domain being skipped or a check reporting the wrong
@@ -324,7 +324,7 @@ Environment:
                        routinely contains environment variables.
   HOSTVEIL_NO_SUDO=1   Never re-exec under sudo (for scripts and CI)
   HOSTVEIL_NO_UPDATE_CHECK
-                       Set to any value and hostveil never contacts GitHub on
+                       Set to any value and Hostveil never contacts GitHub on
                        its own. Without it, scan, tui and serve refresh a
                        cached answer to "is there a newer release" once a day.
   HOSTVEIL_THEME=NAME  Color theme for the TUI and the dashboard

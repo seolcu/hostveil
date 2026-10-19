@@ -401,7 +401,7 @@ func auditContainerCaddy(p compose.Project, name string, svc compose.Service) (f
 			gap = "could not read " + strings.Join(a.unread, ", ") + " — directives there were not audited"
 		}
 	case cfg != caddyDefaultConfig:
-		gap = "service " + name + " reads its Caddyfile from " + cfg + ", which is not a bind mount hostveil can read"
+		gap = "service " + name + " reads its Caddyfile from " + cfg + ", which is not a bind mount Hostveil can read"
 	}
 	// Neither mounted nor overridden: the image's own Caddyfile, which keeps
 	// the default admin address and serves no listing.

@@ -41,7 +41,7 @@ func TestExportMarkdownToStdoutDescribesTheFinding(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("exit = %d, want 1 (unfixed High finding)\n%s", code, out)
 	}
-	if !strings.Contains(out, "# hostveil security report") {
+	if !strings.Contains(out, "# Hostveil security report") {
 		t.Errorf("stdout is not the Markdown report:\n%s", out)
 	}
 	if !strings.Contains(out, "compose.ds018") && !strings.Contains(out, "Datastore") {

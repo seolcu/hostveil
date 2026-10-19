@@ -17,7 +17,7 @@ import (
 func buildDoc(r model.Report, version string) Doc {
 	hostname, _ := os.Hostname()
 	d := Doc{
-		Title:     "hostveil security report",
+		Title:     "Hostveil security report",
 		Generated: time.Now().UTC(),
 		Version:   version,
 		Hostname:  hostname,
@@ -36,7 +36,7 @@ func scoreSection(score model.ScoreBreakdown) Section {
 	sec := Section{Heading: "Overall score", Level: 1}
 	if !score.Applicable {
 		sec.Paragraphs = []string{
-			"No score is shown because every domain was skipped or failed - hostveil " +
+			"No score is shown because every domain was skipped or failed - Hostveil " +
 				"could not look at enough of the host to score it, and a number here " +
 				"would claim otherwise.",
 		}
@@ -48,7 +48,7 @@ func scoreSection(score model.ScoreBreakdown) Section {
 		sec.KV = append(sec.KV, KV{"After fixes", fmt.Sprintf("%d/100", after)})
 	}
 	sec.Paragraphs = []string{
-		"hostveil scores each domain from 0 to 100 by how much of its own credit " +
+		"Hostveil scores each domain from 0 to 100 by how much of its own credit " +
 			"survives the findings on it, then averages the domains that actually ran, " +
 			"weighted by how much each matters to the whole host. A domain that could " +
 			"not be scanned counts toward nothing, never toward a perfect score - see " +
@@ -57,7 +57,7 @@ func scoreSection(score model.ScoreBreakdown) Section {
 	}
 	if _, ok := score.Headroom(); ok {
 		sec.Paragraphs = append(sec.Paragraphs,
-			"\"After fixes\" is the score once every fix hostveil currently offers - "+
+			"\"After fixes\" is the score once every fix Hostveil currently offers - "+
 				"both the ones it can apply unattended and the ones it can only preview "+
 				"- has been applied. It is shown only where it would actually move the "+
 				"number.")
@@ -97,7 +97,7 @@ func domainsScannedSection(domains []model.DomainResult) Section {
 		Heading: "Domains scanned",
 		Level:   1,
 		Paragraphs: []string{
-			"Every domain hostveil knows how to check, and what happened when it ran. " +
+			"Every domain Hostveil knows how to check, and what happened when it ran. " +
 				"This section exists because a score with no domain behind it is not a " +
 				"perfect score: the absence of findings and the absence of a look are not " +
 				"the same thing, and this report says which one happened for every row above.",
@@ -111,7 +111,7 @@ func severityLegendSection() Section {
 		Heading: "Severity - what the levels mean",
 		Level:   1,
 		Paragraphs: []string{
-			"hostveil ranks findings by how urgent they are, not by how bad they sound.",
+			"Hostveil ranks findings by how urgent they are, not by how bad they sound.",
 		},
 	}
 	for _, sev := range model.AllSeverities() {
@@ -137,7 +137,7 @@ func findingsSections(findings []model.Finding) []Section {
 		Level:   1,
 	}
 	if len(active) == 0 {
-		header.Paragraphs = []string{"No active findings - every domain hostveil could scan came back clean."}
+		header.Paragraphs = []string{"No active findings - every domain Hostveil could scan came back clean."}
 		return []Section{header}
 	}
 
@@ -192,9 +192,9 @@ func findingBlock(f model.Finding) FindingBlock {
 func remediationContext(k model.RemediationKind) string {
 	switch k {
 	case model.RemediationAuto:
-		return k.Label() + " - hostveil can apply this unattended."
+		return k.Label() + " - Hostveil can apply this unattended."
 	case model.RemediationReview:
-		return k.Label() + " - hostveil can preview a fix; you choose the alternative."
+		return k.Label() + " - Hostveil can preview a fix; you choose the alternative."
 	case model.RemediationManual:
 		return k.Label() + " - no automatable fix; see below."
 	case model.RemediationUnavailable:

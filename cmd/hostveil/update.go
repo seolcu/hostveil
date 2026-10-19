@@ -69,10 +69,10 @@ func cmdUpdate(ctx context.Context, args []string) int {
 		return 1
 	}
 	if selfupdate.SameVersion(version, rel.Version) {
-		fmt.Printf("hostveil %s is the latest version.\n", version)
+		fmt.Printf("Hostveil %s is the latest version.\n", version)
 		return 0
 	}
-	fmt.Printf("hostveil %s is installed; %s is available.\n", version, rel.Version)
+	fmt.Printf("Hostveil %s is installed; %s is available.\n", version, rel.Version)
 	if check {
 		// A distinct status so a cron job or a CI step can branch on it
 		// without parsing the sentence above.
@@ -96,7 +96,7 @@ func cmdUpdate(ctx context.Context, args []string) int {
 	// that is the one thing this project refuses to do anywhere else.
 	switch now, err := selfupdate.InstalledVersion(ctx, runner, exe); {
 	case err != nil:
-		fmt.Printf("hostveil %s was installed, but asking the binary its version failed: %v\n", rel.Version, err)
+		fmt.Printf("Hostveil %s was installed, but asking the binary its version failed: %v\n", rel.Version, err)
 		return 1
 	case !selfupdate.SameVersion(now, rel.Version):
 		fmt.Fprintf(os.Stderr, "hostveil: the install reported success and %s still reports %s.\n", exe, now)
@@ -104,7 +104,7 @@ func cmdUpdate(ctx context.Context, args []string) int {
 			"records the new version, or when the binary on disk was replaced by hand.")
 		return 1
 	}
-	fmt.Printf("✓ hostveil %s installed.\n", rel.Version)
+	fmt.Printf("✓ Hostveil %s installed.\n", rel.Version)
 	return 0
 }
 
@@ -187,7 +187,7 @@ func cmdUninstall(ctx context.Context, args []string) int {
 	if note := selfupdate.StateNote(history.DefaultDir()); note != "" {
 		fmt.Println("\n" + note)
 	}
-	if !*yes && !promptYesNo("\nRemove hostveil?") {
+	if !*yes && !promptYesNo("\nRemove Hostveil?") {
 		return 1
 	}
 
@@ -201,7 +201,7 @@ func cmdUninstall(ctx context.Context, args []string) int {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1
 	}
-	fmt.Println("✓ hostveil removed.")
+	fmt.Println("✓ Hostveil removed.")
 	return 0
 }
 

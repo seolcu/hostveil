@@ -84,7 +84,7 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 		Kind: model.RemediationAuto,
 		Actions: []Action{{
 			Label: "Allow SSH on " + spelled + "/tcp, then enable ufw with a default-deny inbound policy",
-			Benefit: "Turns on default-deny, so only the ports hostveil confirmed sshd is actually " +
+			Benefit: "Turns on default-deny, so only the ports Hostveil confirmed sshd is actually " +
 				"listening on stay reachable — everything else stops accepting connections from off this host.",
 			Warning: "Every inbound port except " + spelled + "/tcp stops being reachable the moment this " +
 				"runs, including anything a container publishes. There is no rollback checkpoint — " +
@@ -192,7 +192,7 @@ func enableFirewalld(f model.Finding, ports []int) Fix {
 		Actions: []Action{{
 			Label: "Allow SSH on " + spelled + "/tcp in firewalld's default zone, set it to reject by default, " +
 				"then enable and start firewalld",
-			Benefit: "Turns on default-deny, so only the ports hostveil confirmed sshd is actually " +
+			Benefit: "Turns on default-deny, so only the ports Hostveil confirmed sshd is actually " +
 				"listening on — and the services the default zone already allows — stay reachable.",
 			Warning: "Every inbound port the default zone does not already allow, except " + spelled +
 				"/tcp, stops being reachable the moment firewalld starts. Ports Docker publishes stay " +

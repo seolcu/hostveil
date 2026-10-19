@@ -26,7 +26,7 @@ const (
 func pdf(d Doc) ([]byte, error) {
 	b := newPDFBuilder()
 	b.heading(1, d.Title)
-	sub := "Generated " + d.Generated.Format("2006-01-02 15:04 MST") + " by hostveil " + d.Version
+	sub := "Generated " + d.Generated.Format("2006-01-02 15:04 MST") + " by Hostveil " + d.Version
 	if d.Hostname != "" {
 		sub += " on " + d.Hostname
 	}
@@ -159,7 +159,7 @@ func (b *pdfBuilder) finding(f FindingBlock) {
 		b.paragraph("How to fix it: "+f.HowToFix, 10, false)
 		b.gap()
 	case f.WhyNoFix != "":
-		b.paragraph("Why hostveil won't do this for you: "+f.WhyNoFix, 10, false)
+		b.paragraph("Why Hostveil won't do this for you: "+f.WhyNoFix, 10, false)
 		b.gap()
 	}
 	if f.FixBenefit != "" {

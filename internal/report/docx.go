@@ -21,7 +21,7 @@ import (
 func docx(d Doc) ([]byte, error) {
 	var body bytes.Buffer
 	body.WriteString(docxHeading(1, d.Title))
-	sub := "Generated " + d.Generated.Format("2006-01-02 15:04 MST") + " by hostveil " + d.Version
+	sub := "Generated " + d.Generated.Format("2006-01-02 15:04 MST") + " by Hostveil " + d.Version
 	if d.Hostname != "" {
 		sub += " on " + d.Hostname
 	}
@@ -88,7 +88,7 @@ func writeDocxFinding(body *bytes.Buffer, f FindingBlock) {
 	case f.HowToFix != "":
 		body.WriteString(docxParagraphBold("How to fix it", f.HowToFix))
 	case f.WhyNoFix != "":
-		body.WriteString(docxParagraphBold("Why hostveil won't do this for you", f.WhyNoFix))
+		body.WriteString(docxParagraphBold("Why Hostveil won't do this for you", f.WhyNoFix))
 	}
 	if f.FixBenefit != "" {
 		body.WriteString(docxParagraphBold("Benefit", f.FixBenefit))

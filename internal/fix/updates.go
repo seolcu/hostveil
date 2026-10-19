@@ -92,7 +92,7 @@ var hardeningPackageBenefit = map[string]string{
 	"pam-pwquality": "Installs the PAM module that lets password-strength rules actually be enforced " +
 		"at login time, not only at account creation.",
 	"apt-show-versions": "Lets the operator ask, per package, whether a security update is pending " +
-		"from a specific origin — the same query hostveil's own updates domain depends on.",
+		"from a specific origin — the same query Hostveil's own updates domain depends on.",
 	"apt-listchanges": "Shows what actually changed before an upgrade lands, so a package upgrade is " +
 		"something the operator reads rather than something that just happens to them.",
 	"pam-tmpdir": "Gives every login session its own private /tmp, closing the shared-/tmp race and " +
