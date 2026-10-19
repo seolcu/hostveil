@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in this repository. OpenCode and Codex read this file directly; Claude Code does not, so it reads it through the `@AGENTS.md` import in `CLAUDE.md` — keep that file, it is the only thing wiring the two together.
+Guidance for AI coding agents working in this repository. Claude Code, OpenCode and Codex all read this file directly, so it is the one place project guidance lives — do not add a separate Claude-specific file that duplicates or imports it.
 
 `internal/docs/agents_test.go` checks the mechanical claims below against the code — that referenced paths and symbols exist, that the checker count and lint list match. Reword the prose freely; renaming something this file names will fail the build until the sentence is updated too.
 

@@ -437,21 +437,6 @@ func TestDocumentedLintersMatchTheConfig(t *testing.T) {
 	}
 }
 
-// TestClaudeMdImportsAgentsMd guards the wiring that makes this file reach
-// Claude Code at all. Claude Code does not read AGENTS.md natively, so the
-// import in CLAUDE.md is the only thing connecting them — and CLAUDE.md now
-// looks so much like a redundant stub that deleting it is the obvious
-// tidy-up. It is not: the guidance would silently stop loading.
-func TestClaudeMdImportsAgentsMd(t *testing.T) {
-	claude := readRepoFile(t, "CLAUDE.md")
-	for _, line := range strings.Split(claude, "\n") {
-		if strings.TrimSpace(line) == "@AGENTS.md" {
-			return
-		}
-	}
-	t.Error("CLAUDE.md must contain a bare `@AGENTS.md` import line, or Claude Code loads no project guidance at all")
-}
-
 var documentedPRScopes = regexp.MustCompile(`accepts only ([^.]+)\.`)
 
 // TestDocumentedPRScopesMatchTheWorkflow pins the scope allowlist. The list

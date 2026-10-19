@@ -62,9 +62,7 @@ docs/                these docs, and docs/measurements/ — committed results
 `AGENTS.md` is worth reading even if you never use a coding agent: it is the
 shortest description of the architectural rules that span multiple files — the
 one-engine/thin-UI split and the tests that enforce it, the seams that keep
-checkers and fixes unit-testable, and the scoring invariants. Claude Code
-reaches it through a one-line `CLAUDE.md` that imports it; OpenCode and Codex
-read it directly.
+checkers and fixes unit-testable, and the scoring invariants. Claude Code, OpenCode and Codex all read it directly.
 
 ## Editing the website
 
