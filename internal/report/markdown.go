@@ -13,7 +13,7 @@ func markdown(d Doc) ([]byte, error) {
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "# %s\n\n", d.Title)
-	b.WriteString("Generated " + d.Generated.Format("2006-01-02 15:04 MST") + " by hostveil " + d.Version)
+	b.WriteString("Generated " + d.Generated.Format("2006-01-02 15:04 MST") + " by Hostveil " + d.Version)
 	if d.Hostname != "" {
 		b.WriteString(" on `" + d.Hostname + "`")
 	}
@@ -24,8 +24,8 @@ func markdown(d Doc) ([]byte, error) {
 	}
 
 	b.WriteString("---\n\n")
-	fmt.Fprintf(&b, "*hostveil %s — generated %s. No AI was used to produce this report; "+
-		"every explanation above comes directly from the finding hostveil detected.*\n",
+	fmt.Fprintf(&b, "*Hostveil %s — generated %s. No AI was used to produce this report; "+
+		"every explanation above comes directly from the finding Hostveil detected.*\n",
 		d.Version, d.Generated.Format("2006-01-02 15:04 MST"))
 
 	return []byte(b.String()), nil
@@ -88,7 +88,7 @@ func writeMDFinding(b *strings.Builder, f FindingBlock) {
 	case f.HowToFix != "":
 		fmt.Fprintf(b, "**How to fix it.** %s\n\n", f.HowToFix)
 	case f.WhyNoFix != "":
-		fmt.Fprintf(b, "**Why hostveil won't do this for you.** %s\n\n", f.WhyNoFix)
+		fmt.Fprintf(b, "**Why Hostveil won't do this for you.** %s\n\n", f.WhyNoFix)
 	}
 	if f.FixBenefit != "" {
 		fmt.Fprintf(b, "**Benefit.** %s\n\n", f.FixBenefit)

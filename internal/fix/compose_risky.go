@@ -140,7 +140,7 @@ func buildRemoveHostNetwork(f model.Finding) (Fix, error) {
 		"The container gets its own network namespace again, so it can no longer bind any port on the "+
 			"host or reach services that listen only on the host's loopback.",
 		"With host networking gone, whatever port the service listens on is no longer reachable from "+
-			"outside the container until you publish it under `ports:` — hostveil cannot tell which ports "+
+			"outside the container until you publish it under `ports:` — Hostveil cannot tell which ports "+
 			"those are. Services that discover devices on the LAN (Home Assistant, Plex/Jellyfin DLNA) "+
 			"also lose that.",
 		func(d *compose.Doc, svc string) error { return d.RemoveKey(svc, "network_mode") })

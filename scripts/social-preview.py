@@ -69,7 +69,7 @@ MARK = 104
 mark(PAD, 96, MARK)
 
 word = ImageFont.truetype(MONO, 104)
-end = tracked(d, (PAD + MARK + 34, 92), "hostveil", word, TEXT, -104 * 0.04)
+end = tracked(d, (PAD + MARK + 34, 92), "Hostveil", word, TEXT, -104 * 0.04)
 
 # The left column stops short of the panel; nothing is allowed to run under it.
 COL = 800 - 48 - PAD

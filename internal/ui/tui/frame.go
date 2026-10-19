@@ -175,7 +175,7 @@ func (m *appModel) fullHeaderRows() []string {
 
 func (m *appModel) fullHeaderRowsWithout(omit headerPart) []string {
 	s := m.sty()
-	out := []string{s.dim.Render(m.gl.Of(glyph.Brand)+" ") + s.brand.Render("hostveil") + "   " +
+	out := []string{s.dim.Render(m.gl.Of(glyph.Brand)+" ") + s.brand.Render("Hostveil") + "   " +
 		m.gaugeRow(gaugeMeterWidth(m.width))}
 	// How the breakdown is drawn is the arrangement's call: the strip, one
 	// spark row, or nothing at all where the rail is carrying the same
@@ -208,7 +208,7 @@ func (m *appModel) fullHeaderRowsWithout(omit headerPart) []string {
 // of them.
 func (m *appModel) topRow(right string) string {
 	s := m.sty()
-	brand := s.dim.Render(m.gl.Of(glyph.Brand)+" ") + s.brand.Render("hostveil")
+	brand := s.dim.Render(m.gl.Of(glyph.Brand)+" ") + s.brand.Render("Hostveil")
 
 	if right == "" {
 		right = m.axisDigest()
@@ -261,7 +261,7 @@ func (m *appModel) gaugeRow(meterW int) string {
 		// headroom used to ignore the remaining width and was clipped halfway
 		// through "after fixes". A half sentence is not a compact label; omit
 		// the optional note when it cannot fit in full.
-		brand := m.gl.Of(glyph.Brand) + " hostveil   "
+		brand := m.gl.Of(glyph.Brand) + " Hostveil   "
 		if lipgloss.Width(brand)+lipgloss.Width(row)+lipgloss.Width(note) <= m.width {
 			row += note
 		}
@@ -270,7 +270,7 @@ func (m *appModel) gaugeRow(meterW int) string {
 }
 
 // gaugeMeterWidth shrinks the full header's meter on a narrow terminal.
-// Everything around it is fixed width: "▚ " + "hostveil" + a three-space gap
+// Everything around it is fixed width: "▚ " + "Hostveil" + a three-space gap
 // + "SECURITY " + " NNN" + "/100".
 func gaugeMeterWidth(w int) int {
 	const chrome = 2 + 8 + 3 + 9 + 4 + 4

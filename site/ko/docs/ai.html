@@ -137,7 +137,7 @@
             <p>다른 인터페이스에서도 같은 설명을 한 번의 동작으로 볼 수 있습니다. 대시보드의 발견 항목 패널에는 <em>Explain with AI</em> 버튼이 있고, TUI의 상세 화면에서는 <code>e</code> 키가 응답합니다. 둘 다 CLI와 같은 방식으로 우아하게 동작이 줄어듭니다. 닿는 프로바이더가 없으면 오류가 아니라 한 줄 안내가 나옵니다.</p>
 
             <h2 id="context">이 호스트에 맞춰 Fix를 판단하기</h2>
-            <p>Fix의 득실은 일반론입니다. <code>cve.outdated-image</code>의 재수신은 CVE 패치를 빨리 받고 싶은 셀프호스팅 서버에는 매력적이지만, 지금 안정적으로 돌아가는 서버에는 위험할 수 있습니다. 어느 쪽인지 hostveil에게 알려주지 않으면 판단할 방법이 없습니다. <code>hostveil ai-context</code>는 이 호스트를 한 줄로 설명한 문구를 저장해 두고, 바꾸기 전까지 계속 씁니다.</p>
+            <p>Fix의 득실은 일반론입니다. <code>cve.outdated-image</code>의 재수신은 CVE 패치를 빨리 받고 싶은 셀프호스팅 서버에는 매력적이지만, 지금 안정적으로 돌아가는 서버에는 위험할 수 있습니다. 어느 쪽인지 Hostveil에게 알려주지 않으면 판단할 방법이 없습니다. <code>hostveil ai-context</code>는 이 호스트를 한 줄로 설명한 문구를 저장해 두고, 바꾸기 전까지 계속 씁니다.</p>
             <div class="command-box">
               <button class="copy-btn" type="button" data-copy="hostveil ai-context &quot;개인 미디어 서버, 안정성보다 최신 보안 패치가 중요함&quot;">Copy</button>
               <pre><code>hostveil ai-context "개인 미디어 서버, 안정성보다 최신 보안 패치가 중요함"</code></pre>

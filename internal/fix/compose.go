@@ -260,7 +260,7 @@ func buildRepullImage(f model.Finding) (Fix, error) {
 				Label: "Pull the new image and recreate " + svc + " now",
 				Benefit: "Re-resolves the tag to whatever it currently points at, which is how the vendor " +
 					"ships fixes for a floating-tag image — it may include a patch for the CVE that " +
-					"triggered this finding, though hostveil cannot guarantee it does, since the same tag " +
+					"triggered this finding, though Hostveil cannot guarantee it does, since the same tag " +
 					"can also move for unrelated reasons. On a host where staying current matters more than " +
 					"staying unchanged, this is the fastest way to find out.",
 				Warning: "This recreates the container: the service goes down briefly and comes back on a different image. " + noRollback + " Note the current image ID (`docker compose -f " + path + " images`) before applying, so you can pin it back if the new one misbehaves. The new image may also carry unrelated upstream changes since you last pulled — on a host you are not trying to disturb, that is a real cost to weigh against a fix that is not guaranteed to land anyway.",

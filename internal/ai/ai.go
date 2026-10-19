@@ -93,7 +93,7 @@ func buildPrompt(f model.Finding, siteContext string) string {
 func buildAdvisePrompt(findings []model.Finding, siteContext string) string {
 	var b strings.Builder
 	b.WriteString("You are a friendly security assistant helping someone who self-hosts on Linux but is not a security expert. ")
-	b.WriteString("Below is a list of security findings hostveil can fix, and what applying each fix would get them and cost them.\n")
+	b.WriteString("Below is a list of security findings Hostveil can fix, and what applying each fix would get them and cost them.\n")
 	if siteContext != "" {
 		fmt.Fprintf(&b, "The operator describes this host as: %q. ", siteContext)
 		b.WriteString("For each finding, give a one-line verdict — Apply, Skip, or Depends — and one short reason tailored to that description.\n")

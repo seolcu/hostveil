@@ -16,7 +16,7 @@ func markdownOf(t *testing.T) string {
 
 func TestMarkdownHeaderAndFooterCarryVersion(t *testing.T) {
 	got := markdownOf(t)
-	if !strings.Contains(got, "# hostveil security report") {
+	if !strings.Contains(got, "# Hostveil security report") {
 		t.Error("missing title heading")
 	}
 	if !strings.Contains(got, "v-test") {
@@ -49,7 +49,7 @@ func TestMarkdownFindingsCarryPlainLanguageContent(t *testing.T) {
 	}
 
 	// The Manual finding with no fix explains why, not how.
-	if !strings.Contains(got, "Why hostveil won't do this for you.") {
+	if !strings.Contains(got, "Why Hostveil won't do this for you.") {
 		t.Error("Manual finding should render WhyNoFix, not a fix section")
 	}
 	if !strings.Contains(got, "Removing the mount would break the container's intended function") {

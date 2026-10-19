@@ -1,6 +1,6 @@
 cff-version: 1.2.0
-message: "If you use hostveil in your work, please cite it using this metadata."
-title: hostveil
+message: "If you use Hostveil in your work, please cite it using this metadata."
+title: Hostveil
 abstract: >-
   A single-binary guided hardening tool for self-hosted Linux servers. It scans
   the host, its Docker/Compose stacks, and image CVEs, merges the findings into

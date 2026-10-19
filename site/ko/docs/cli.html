@@ -241,7 +241,7 @@ hostveil history --scans</code></pre></div>
             <p>그것을 띄워 둔 채로 본인 기기에서 출력된 URL을 엽니다. 대신 대시보드를 외부에 노출되는 주소로 바인딩하도록 권하지는 않습니다. 이 대시보드의 모든 경로는 root 권한으로 조치를 적용하거나 <code>/etc/shadow</code>를 읽은 스캔 결과를 다루고, 포워딩된 포트는 인증이 이미 끝난 같은 접근이기 때문입니다.</p>
 
             <h2 id="fleet">fleet</h2>
-            <p>여러 호스트를 SSH로 스캔해 점수를 나란히 보여 줍니다. 각 호스트에는 hostveil이 설치돼 있어야 합니다. 원격 호스트에 무언가를 복사하거나 설치하거나 설정하지 않고, 어디에서도 서비스로 돌지 않습니다. 로컬 hostveil 하나가 이미 쓰고 있는 SSH로 각 호스트에서 <code>hostveil scan --json</code>을 실행하고 그 답을 읽을 뿐입니다.</p>
+            <p>여러 호스트를 SSH로 스캔해 점수를 나란히 보여 줍니다. 각 호스트에는 Hostveil이 설치돼 있어야 합니다. 원격 호스트에 무언가를 복사하거나 설치하거나 설정하지 않고, 어디에서도 서비스로 돌지 않습니다. 로컬 Hostveil 하나가 이미 쓰고 있는 SSH로 각 호스트에서 <code>hostveil scan --json</code>을 실행하고 그 답을 읽을 뿐입니다.</p>
             <div class="code-block"><pre><code>hostveil fleet web1 db1 admin@nas.lan
 hostveil fleet --sudo --json web1 db1 &gt; fleet.json
 hostveil fleet --tui web1 db1</code></pre></div>
@@ -252,7 +252,7 @@ hostveil fleet --tui web1 db1</code></pre></div>
               <table>
                 <thead><tr><th>플래그</th><th>하는 일</th></tr></thead>
                 <tbody>
-                  <tr><td><code>--sudo</code></td><td>원격 스캔을 <code>sudo -n hostveil scan</code>으로 실행해 전체를 점검합니다. 해당 호스트에 hostveil용 비밀번호 없는 sudo가 필요하며, 비밀번호를 묻는 호스트는 기다리지 않고 보고합니다.</td></tr>
+                  <tr><td><code>--sudo</code></td><td>원격 스캔을 <code>sudo -n hostveil scan</code>으로 실행해 전체를 점검합니다. 해당 호스트에 Hostveil용 비밀번호 없는 sudo가 필요하며, 비밀번호를 묻는 호스트는 기다리지 않고 보고합니다.</td></tr>
                   <tr><td><code>--json</code></td><td>모든 호스트의 전체 보고서를 적은 순서대로 JSON으로 출력합니다. 스캔하지 못한 호스트는 보고서 대신 <code>error</code>가 들어갑니다.</td></tr>
                   <tr><td><code>--tui</code></td><td>결과를 터미널 UI로 보여 줍니다. 호스트마다 한 줄씩, 옆에는 선택한 호스트의 남아 있는 발견 항목이 나옵니다. <code>r</code>로 다시 스캔합니다.</td></tr>
                   <tr><td><code>--parallel N</code></td><td>동시에 스캔할 호스트 수입니다(기본 4).</td></tr>
@@ -266,7 +266,7 @@ hostveil fleet --tui web1 db1</code></pre></div>
             <h2 id="diagnostics">diagnostics</h2>
             <p>버그 리포트에 필요한 정보를 파일 하나로 모아 줍니다. 네트워크에는 전혀 닿지 않습니다. 전송 기능 자체가 없고, 결과를 이슈에 붙여넣는 것은 운영자의 몫입니다.</p>
             <div class="code-block"><pre><code>hostveil diagnostics [flags]</code></pre></div>
-            <p>리포트에는 hostveil 버전, 호스트의 배포판과 플랫폼, 기록된 크래시 트레이스, 그리고 마지막으로 저장된 스캔의 점수·영역 상태·발견 항목 ID와 심각도가 담깁니다. 발견 항목의 설명, 조치 방법, 근거는 담기지 않습니다. 운영자가 도움을 요청하려는 바로 그 설정을 인용할 수 있는 정보이기 때문입니다.</p>
+            <p>리포트에는 Hostveil 버전, 호스트의 배포판과 플랫폼, 기록된 크래시 트레이스, 그리고 마지막으로 저장된 스캔의 점수·영역 상태·발견 항목 ID와 심각도가 담깁니다. 발견 항목의 설명, 조치 방법, 근거는 담기지 않습니다. 운영자가 도움을 요청하려는 바로 그 설정을 인용할 수 있는 정보이기 때문입니다.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
@@ -325,7 +325,7 @@ hostveil fleet --tui web1 db1</code></pre></div>
             <p>결정론적 목록은 AI 없이도 항상 출력됩니다. <code>--ai</code>는 그 아래에 상황별 판단을 덧붙이거나, 덧붙이지 못한 이유를 말합니다.</p>
 
             <h2 id="ai-context">ai-context</h2>
-            <p>이 호스트를 한 줄로 설명한 문구를 보여주거나, 저장하거나, 지웁니다. "개인 미디어 서버, 안정성보다 최신 보안 패치가 중요함" 같은 문구입니다. <code>explain --ai</code>와 <code>advise --ai</code>는 이 설명을 읽어 Fix를 추상적으로가 아니라 이 호스트에 맞춰 판단합니다. hostveil이 상태를 저장하는 것과 같은 디렉터리에 남아 있으며, 바꾸거나 지우기 전까지 계속 쓰입니다.</p>
+            <p>이 호스트를 한 줄로 설명한 문구를 보여주거나, 저장하거나, 지웁니다. "개인 미디어 서버, 안정성보다 최신 보안 패치가 중요함" 같은 문구입니다. <code>explain --ai</code>와 <code>advise --ai</code>는 이 설명을 읽어 Fix를 추상적으로가 아니라 이 호스트에 맞춰 판단합니다. Hostveil이 상태를 저장하는 것과 같은 디렉터리에 남아 있으며, 바꾸거나 지우기 전까지 계속 쓰입니다.</p>
             <div class="code-block"><pre><code>hostveil ai-context               # 현재 설명을 보여줌
 hostveil ai-context "TEXT"        # 설명을 저장함
 hostveil ai-context --clear       # 설명을 지움</code></pre></div>

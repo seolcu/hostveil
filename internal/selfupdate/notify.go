@@ -84,7 +84,7 @@ func (c Cache) Notice(current string) string {
 	if c.Latest == "" || SameVersion(current, c.Latest) || !looksLikeRelease(current) {
 		return ""
 	}
-	return fmt.Sprintf("hostveil %s is available (this is %s). Run `hostveil update`.", c.Latest, current)
+	return fmt.Sprintf("Hostveil %s is available (this is %s). Run `hostveil update`.", c.Latest, current)
 }
 
 // looksLikeRelease keeps anything that is not a published version quiet.

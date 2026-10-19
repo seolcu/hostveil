@@ -96,7 +96,7 @@ func auditableOS(goos string) (bool, string) {
 	if goos == LinuxOS {
 		return true, ""
 	}
-	return false, "hostveil audits Linux hosts; this is " + goos
+	return false, "Hostveil audits Linux hosts; this is " + goos
 }
 
 // Detect probes the host once and returns its environment. It is

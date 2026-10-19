@@ -116,7 +116,7 @@ hostveil history --scans</code></pre></div>
             <p>Leave that open, then open the printed URL on your own machine. Hostveil does not offer to bind the dashboard to a routable address instead: every route on it applies fixes or reads a scan of <code>/etc/shadow</code>, as root, and a forwarded port is the same access with the authentication already done.</p>
 
             <h2 id="fleet">fleet</h2>
-            <p>Scan several hosts over SSH and lay their scores side by side. Each host needs hostveil installed; nothing is copied, installed or configured on it, and nothing runs as a service anywhere &mdash; one local hostveil runs <code>hostveil scan --json</code> on each host over SSH you already use, and reads the answers.</p>
+            <p>Scan several hosts over SSH and lay their scores side by side. Each host needs Hostveil installed; nothing is copied, installed or configured on it, and nothing runs as a service anywhere &mdash; one local Hostveil runs <code>hostveil scan --json</code> on each host over SSH you already use, and reads the answers.</p>
             <div class="code-block"><pre><code>hostveil fleet web1 db1 admin@nas.lan
 hostveil fleet --sudo --json web1 db1 &gt; fleet.json
 hostveil fleet --tui web1 db1</code></pre></div>
@@ -127,7 +127,7 @@ hostveil fleet --tui web1 db1</code></pre></div>
               <table>
                 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
                 <tbody>
-                  <tr><td><code>--sudo</code></td><td>Run each remote scan as <code>sudo -n hostveil scan</code>, for full coverage. Needs passwordless sudo for hostveil on that host; a host that asks for a password is reported, not waited on.</td></tr>
+                  <tr><td><code>--sudo</code></td><td>Run each remote scan as <code>sudo -n hostveil scan</code>, for full coverage. Needs passwordless sudo for Hostveil on that host; a host that asks for a password is reported, not waited on.</td></tr>
                   <tr><td><code>--json</code></td><td>Print every host&rsquo;s full report as JSON, in the order the hosts were named, with an <code>error</code> in place of the report for a host that could not be scanned.</td></tr>
                   <tr><td><code>--tui</code></td><td>Show the result in the terminal UI: one row per host, and the selected host&rsquo;s standing findings beside it. <code>r</code> rescans.</td></tr>
                   <tr><td><code>--parallel N</code></td><td>How many hosts to scan at once (default 4).</td></tr>
@@ -141,7 +141,7 @@ hostveil fleet --tui web1 db1</code></pre></div>
             <h2 id="diagnostics">diagnostics</h2>
             <p>Collect the pieces a bug report needs into one file. It never touches the network — there is no send step, only local collection you attach to an issue by hand.</p>
             <div class="code-block"><pre><code>hostveil diagnostics [flags]</code></pre></div>
-            <p>The report carries hostveil's version, the host's distro and platform, any recorded crash traces, and the last saved scan's score, domain states, and finding IDs and severities — never a finding's description, remediation text, or evidence, which can quote the very configuration an operator is asking about.</p>
+            <p>The report carries Hostveil's version, the host's distro and platform, any recorded crash traces, and the last saved scan's score, domain states, and finding IDs and severities — never a finding's description, remediation text, or evidence, which can quote the very configuration an operator is asking about.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -200,7 +200,7 @@ hostveil fleet --tui web1 db1</code></pre></div>
             <p>The deterministic listing always prints, with no AI required. <code>--ai</code> adds the situational verdict beneath it, or says why it could not.</p>
 
             <h2 id="ai-context">ai-context</h2>
-            <p>Show, set, or clear the saved one-line description of this host &mdash; "a personal media server, want fast security patches more than stability" &mdash; that <code>explain --ai</code> and <code>advise --ai</code> use to judge a fix for this host specifically rather than in the abstract. Remembered in the same state directory as everything else hostveil keeps, until changed or cleared.</p>
+            <p>Show, set, or clear the saved one-line description of this host &mdash; "a personal media server, want fast security patches more than stability" &mdash; that <code>explain --ai</code> and <code>advise --ai</code> use to judge a fix for this host specifically rather than in the abstract. Remembered in the same state directory as everything else Hostveil keeps, until changed or cleared.</p>
             <div class="code-block"><pre><code>hostveil ai-context               # show the current description
 hostveil ai-context "TEXT"        # set it
 hostveil ai-context --clear       # remove it</code></pre></div>

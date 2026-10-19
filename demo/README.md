@@ -1,10 +1,10 @@
-# hostveil demo — a vulnerable home server in one command
+# Hostveil demo — a vulnerable home server in one command
 
 This directory is a **reproducible, code-defined test/demo environment** for
-hostveil: a real Ubuntu 24.04 server, deliberately misconfigured the way a
+Hostveil: a real Ubuntu 24.04 server, deliberately misconfigured the way a
 non-expert self-hoster's box would be, running inside a VM.
 
-It exists so you can try hostveil (and demo it) **without touching a real
+It exists so you can try Hostveil (and demo it) **without touching a real
 device**, on any laptop, and so teammates get the exact same environment
 from a `git clone`.
 
@@ -16,7 +16,7 @@ cd demo
 ```
 
 Everything is **real** — real Docker with real running stacks, real weak SSH
-config, real firewall state, real package config. Every hostveil domain
+config, real firewall state, real package config. Every Hostveil domain
 fires authentically, and fixes really change the system (and roll back).
 
 ---
@@ -46,7 +46,7 @@ That's it — the same `Vagrantfile` picks libvirt or VirtualBox automatically.
 > demo still comes up but the CVE domain runs out of room — Trivy unpacks an
 > image to scan it, so the two 1.32GB images cannot be scanned at all, and a
 > vulnerability score that skipped the heaviest images is *better* than the
-> truth. hostveil says "partial" when this happens; the number beside it is
+> truth. Hostveil says "partial" when this happens; the number beside it is
 > still wrong.
 >
 > An existing VM keeps the disk it was built with. `./run.sh destroy` then
@@ -92,7 +92,7 @@ VM boots, never gets an address, and Vagrant gives up minutes later with
 **Web dashboard**: port 8787 is forwarded to the host, so while
 `./run.sh web` is running, open **<http://localhost:8787>** in your browser.
 
-hostveil is built from the synced repo at `/hostveil`, so it reflects your
+Hostveil is built from the synced repo at `/hostveil`, so it reflects your
 local source **as of the last sync and rebuild**. After editing code on the
 host:
 
@@ -125,7 +125,7 @@ optional and advisory — see [docs/ai.html](https://hostveil.seolcu.com/docs/ai
 for the full contract. Nothing here is on by default, and `./run.sh scan` /
 `./run.sh web` work exactly as above with none of this set.
 
-hostveil itself has no config file, but `run.sh` has its own, purely as a
+Hostveil itself has no config file, but `run.sh` has its own, purely as a
 convenience so you don't have to `export` the same key every session: copy
 `demo/.env.example` to `demo/.env` and fill in a provider's block. `run.sh`
 sources it automatically (if present) and forwards what it sets onto its

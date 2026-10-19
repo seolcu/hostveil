@@ -135,7 +135,7 @@ func TestFleetReadsEveryAnswer(t *testing.T) {
 	for h, want := range map[string]string{
 		"unreachable": "could not connect over SSH",
 		"no-hostveil": "not installed",
-		"not-json":    "not a hostveil report",
+		"not-json":    "not a Hostveil report",
 	} {
 		e := get(h)
 		if e.Report != nil || !strings.Contains(e.Error, want) {

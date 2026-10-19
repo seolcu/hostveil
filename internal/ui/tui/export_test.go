@@ -142,7 +142,7 @@ func TestExportPathEnterStartsTheExport(t *testing.T) {
 	if saved != "markdown|out.md" {
 		t.Errorf("saveExport called with %q, want \"markdown|out.md\"", saved)
 	}
-	if len(savedData) == 0 || !strings.Contains(string(savedData), "hostveil security report") {
+	if len(savedData) == 0 || !strings.Contains(string(savedData), "Hostveil security report") {
 		t.Errorf("saved data does not look like the Markdown report:\n%s", savedData)
 	}
 }

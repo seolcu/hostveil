@@ -147,7 +147,7 @@ var caddyAdminLine = regexp.MustCompile(`(?m)^([ \t]*)admin[ \t]+[^\s{}#]+`)
 func buildCaddyAdminLoopback(f model.Finding) (Fix, error) {
 	p := f.Evidence["config"]
 	if p == "" || f.Metadata["caddy_host"] != "true" {
-		return Fix{}, fmt.Errorf("finding %s is not a host Caddyfile hostveil can edit and reload", f.ID)
+		return Fix{}, fmt.Errorf("finding %s is not a host Caddyfile Hostveil can edit and reload", f.ID)
 	}
 	return Fix{Label: "Move Caddy's admin API back to loopback", Kind: model.RemediationReview, IndividualOnly: true,
 		Actions: []Action{{

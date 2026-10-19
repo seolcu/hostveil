@@ -92,7 +92,7 @@ sudo dnf install ./hostveil-&lt;version&gt;.x86_64.rpm</code></pre></div>
               <span class="callout-label">A fix on macOS edits a real file</span>
               <p>The SSH domain is not read-only theatre. <code>hostveil fix ssh.passwordauth</code> on a Mac backs up and rewrites <code>/etc/ssh/sshd_config</code>, exactly as it would on a server, and it is reversible from <code>hostveil history</code> the same way. That is correct behaviour and worth knowing before you run it on a laptop.</p>
             </div>
-            <p>And the score is a number, not N/A: two domains ran, so there is something to average. It is an average over 19 of the 100 points of weight, and it says nothing about the ten domains that did not run. Read the axis breakdown, not the headline. Nothing about <code>pf</code>, the application firewall, Homebrew&rsquo;s update state, launchd services, or System Integrity Protection is examined by any part of hostveil.</p>
+            <p>And the score is a number, not N/A: two domains ran, so there is something to average. It is an average over 19 of the 100 points of weight, and it says nothing about the ten domains that did not run. Read the axis breakdown, not the headline. Nothing about <code>pf</code>, the application firewall, Homebrew&rsquo;s update state, launchd services, or System Integrity Protection is examined by any part of Hostveil.</p>
 
             <h2 id="upgrade">Upgrading and uninstalling</h2>
             <p>Hostveil does both itself, and the reason it does rather than telling you to re-run the installer is that it knows how this binary got here.</p>

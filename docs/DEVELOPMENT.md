@@ -1,4 +1,4 @@
-# Developing hostveil
+# Developing Hostveil
 
 How to set up a machine to build, test, and run hostveil. For end-user
 install instructions see the [README](../README.md); for the demo VM in
@@ -11,7 +11,7 @@ depth see [demo/README.md](../demo/README.md).
 - **git**.
 - **(Optional) the demo VM** — [Vagrant](https://developer.hashicorp.com/vagrant/install)
   plus a provider (libvirt on Linux, VirtualBox on macOS/Windows). Needed
-  only to *run* hostveil against a realistic host; not needed to build/test.
+  only to *run* Hostveil against a realistic host; not needed to build/test.
 
 ## Build and test
 
@@ -32,7 +32,7 @@ go mod tidy                 # must leave go.mod/go.sum unchanged
 go test -race ./...
 ```
 
-> **hostveil is a Linux tool.** It reads host configuration
+> **Hostveil is a Linux tool.** It reads host configuration
 > (`/etc/ssh/sshd_config`), inspects Docker Compose projects, and shells out
 > to `ufw`/`firewalld`/`trivy`. It **builds and its tests pass on any OS**
 > (macOS, Windows), but running the binary meaningfully requires Linux with
@@ -103,7 +103,7 @@ implements the `Checker` interface and registering it.
 ## Running it for real: the demo VM
 
 `demo/` is a code-defined, deliberately vulnerable Ubuntu server you can
-bring up on any machine. hostveil is built from your working tree, which is
+bring up on any machine. Hostveil is built from your working tree, which is
 rsync-synced *into* the VM, so a freshly booted VM reflects your current code.
 (After editing code, re-sync before rebuilding — the repo syncs on `up`/`reload`
 but not on `provision`; see [demo/README.md](../demo/README.md).)
@@ -253,10 +253,10 @@ Neither check can tell you the picture is *good*. What they guarantee is that
 nobody ships an interface change without being told the picture is now a
 picture of something else.
 
-### Measuring hostveil with tools that are not hostveil
+### Measuring Hostveil with tools that are not Hostveil
 
 The end-to-end job checks that the score improves after `fix --all`. That
-only shows hostveil is self-consistent: the same code decides what a finding
+only shows Hostveil is self-consistent: the same code decides what a finding
 is, what fixing it means, and what the number should be afterwards.
 `scripts/measure/` checks it with Lynis, docker-bench-security, a TCP
 connect scan from a container on the Docker bridge, and the kernel's socket
@@ -342,7 +342,7 @@ avoids the issue cleanly.
 
 ## Optional tools
 
-- **Trivy** enables image CVE scanning; hostveil skips that domain cleanly
+- **Trivy** enables image CVE scanning; Hostveil skips that domain cleanly
   when it's absent. The demo VM installs it automatically.
 - **Ollama** (local LLM) powers the opt-in `hostveil explain --ai` by
   default; without it, explanations are deterministic. Never required —

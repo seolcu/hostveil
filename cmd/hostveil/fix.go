@@ -87,7 +87,7 @@ func cmdFix(ctx context.Context, args []string) int {
 		return 1
 	}
 	if !finding.IsFixable() {
-		fmt.Fprintf(os.Stderr, "hostveil: %s is %s — hostveil cannot fix it automatically.\nGuidance: %s\n",
+		fmt.Fprintf(os.Stderr, "hostveil: %s is %s — Hostveil cannot fix it automatically.\nGuidance: %s\n",
 			finding.ID, finding.Remediation.Label(), finding.HowToFix)
 		return 1
 	}

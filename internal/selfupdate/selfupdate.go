@@ -66,7 +66,7 @@ const (
 // ErrUnknownOrigin is returned when hostveil cannot establish how its own
 // binary was installed, which is the one case it will not act on. UIs match on
 // it rather than on the message.
-var ErrUnknownOrigin = errors.New("hostveil cannot tell how this binary was installed")
+var ErrUnknownOrigin = errors.New("cannot tell how this Hostveil binary was installed")
 
 // String names the origin for a message.
 func (o Origin) String() string {
@@ -87,7 +87,7 @@ func (o Origin) String() string {
 // Advice is what to tell an operator when hostveil will not act, which is only
 // ever the unknown case. Every other origin has something hostveil can do.
 func (o Origin) Advice() string {
-	return "hostveil could not tell how this binary was installed, so it will not replace or delete it. " +
+	return "Hostveil could not tell how this binary was installed, so it will not replace or delete it. " +
 		"Use the tool that put it there. If you installed it with the script, it should be at " +
 		"/usr/bin/hostveil; a copy somewhere else is yours to manage."
 }

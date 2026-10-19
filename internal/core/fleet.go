@@ -127,7 +127,7 @@ func readFleetAnswer(stdout []byte, err error, sudo bool) (*model.Report, string
 		}
 	}
 	if err == nil {
-		return nil, "answered with something that is not a hostveil report — is `hostveil` on that host a different program?"
+		return nil, "answered with something that is not a Hostveil report — is `hostveil` on that host a different program?"
 	}
 	var exitErr *exec.ExitError
 	code := -1
@@ -141,11 +141,11 @@ func readFleetAnswer(stdout []byte, err error, sudo bool) (*model.Report, string
 	case code == 255:
 		return nil, "could not connect over SSH: " + trimExit(msg)
 	case code == 127:
-		return nil, "hostveil is not installed there, or not on the PATH a non-interactive SSH session gets"
+		return nil, "Hostveil is not installed there, or not on the PATH a non-interactive SSH session gets"
 	case sudo && strings.Contains(msg, "password is required"):
 		// sudo gives this same answer when no rule matches because the
 		// binary the rule names is not there, so the message names both.
-		return nil, "sudo would not run hostveil without a password there — --sudo needs hostveil installed and allowed by a NOPASSWD rule"
+		return nil, "sudo would not run hostveil without a password there — --sudo needs Hostveil installed and allowed by a NOPASSWD rule"
 	default:
 		return nil, "the remote scan failed: " + trimExit(msg)
 	}

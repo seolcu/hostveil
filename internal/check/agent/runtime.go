@@ -316,7 +316,7 @@ func runtimes() []Runtime {
 					Title: "Agent can run shell commands without approval",
 					Desc: "Goose is in `auto` mode, which approves every tool call — shell commands and file edits included — without asking. It is also what Goose does when `GOOSE_MODE` is not set at all. " +
 						"Anything that can steer the agent — a malicious web page it reads, a poisoned document, an instruction hidden in a repository it opens — can run commands as the user it runs as. " +
-						"A `GOOSE_MODE` environment variable overrides this file and is not something hostveil can see.",
+						"A `GOOSE_MODE` environment variable overrides this file and is not something Hostveil can see.",
 					HowToFix: "Set `GOOSE_MODE: approve` (ask before every tool call) or `GOOSE_MODE: smart_approve` (ask only for the ones judged risky) in ~/.config/goose/config.yaml, and make sure no `GOOSE_MODE=auto` is exported where Goose is started.",
 				},
 			},

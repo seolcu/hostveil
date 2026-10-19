@@ -152,11 +152,11 @@
             </li>
           </ul>
           <h2 id="v3.33.4"><a href="https://github.com/seolcu/hostveil/compare/v3.33.3...v3.33.4">3.33.4</a> <span class="changelog-date">2026-10-12</span></h2>
-          <p>이제 CI가 실제 Fedora 호스트에서 hostveil을 실행합니다. 지금까지는 Fedora 컨테이너를 스캔하기만 했지만, 이제는 KVM으로 Fedora 44 VM을 띄웁니다. 처음 실행했을 때 dnf5(Fedora 41 이상)에서 updates 영역이 여러 군데 틀려 있었고, 모두 고쳤습니다.</p>
+          <p>이제 CI가 실제 Fedora 호스트에서 Hostveil을 실행합니다. 지금까지는 Fedora 컨테이너를 스캔하기만 했지만, 이제는 KVM으로 Fedora 44 VM을 띄웁니다. 처음 실행했을 때 dnf5(Fedora 41 이상)에서 updates 영역이 여러 군데 틀려 있었고, 모두 고쳤습니다.</p>
           <h3>버그 수정</h3>
           <ul class="changelog-entries">
             <li>
-              <p><strong>check:</strong> dnf5에서는 대기 중인 보안 업데이트를 세지 못했습니다. hostveil이 묻던 <code>dnf updateinfo list security</code>를 dnf5는 "security"라는 이름의 권고를 찾으라는 뜻으로 읽습니다. 그런 권고는 없으니 아무것도 출력하지 않고 정상 종료합니다. 그래서 보안 패키지 80개(openssl 포함)가 대기 중인 Fedora 44를 모두 패치된 호스트로 보고했습니다. 이제 <code>--security</code> 옵션으로 묻습니다.</p>
+              <p><strong>check:</strong> dnf5에서는 대기 중인 보안 업데이트를 세지 못했습니다. Hostveil이 묻던 <code>dnf updateinfo list security</code>를 dnf5는 "security"라는 이름의 권고를 찾으라는 뜻으로 읽습니다. 그런 권고는 없으니 아무것도 출력하지 않고 정상 종료합니다. 그래서 보안 패키지 80개(openssl 포함)가 대기 중인 Fedora 44를 모두 패치된 호스트로 보고했습니다. 이제 <code>--security</code> 옵션으로 묻습니다.</p>
             </li>
             <li>
               <p><strong>check:</strong> dnf5에는 <code>needs-restarting</code> 프로그램이 없어서 재부팅이 필요한지 확인하지 못했고, updates 영역은 늘 일부만 검사한 것으로 표시됐습니다. 이제 <code>dnf needs-restarting</code>으로 묻습니다.</p>
@@ -204,7 +204,7 @@
               <p><strong>fix:</strong> <code>dockerd.live-restore</code> 수정을 롤백해도 데몬은 live-restore가 켜진 채로 동작했습니다. Docker의 reload는 <code>daemon.json</code>에 있는 키만 반영하고 나머지는 그대로 두기 때문에, 키를 지운 뒤 reload해도 아무것도 바뀌지 않았습니다. 그런데도 롤백은 성공했다고 보고했습니다. 이제 롤백할 때 Docker를 재시작합니다. 그 시점에는 live-restore가 아직 켜져 있으므로 컨테이너는 계속 실행됩니다.</p>
             </li>
             <li>
-              <p><strong>fix:</strong> 재시작에 실패한 수정이 Docker를 꺼진 채로 남길 수 있었습니다. hostveil은 원래 <code>daemon.json</code>을 되돌리고 다시 재시작했지만, Docker가 스스로 재시작을 반복하면서 systemd의 시작 횟수 제한을 이미 다 썼기 때문에 다시 시도한 재시작이 거부됐습니다. 같은 제한 때문에, 다른 수정 직후에 적용한 정상적인 수정이 실패하기도 했습니다. 이제 hostveil은 유닛을 재시작하기 전에 항상 그 유닛의 실패 상태를 초기화합니다.</p>
+              <p><strong>fix:</strong> 재시작에 실패한 수정이 Docker를 꺼진 채로 남길 수 있었습니다. Hostveil은 원래 <code>daemon.json</code>을 되돌리고 다시 재시작했지만, Docker가 스스로 재시작을 반복하면서 systemd의 시작 횟수 제한을 이미 다 썼기 때문에 다시 시도한 재시작이 거부됐습니다. 같은 제한 때문에, 다른 수정 직후에 적용한 정상적인 수정이 실패하기도 했습니다. 이제 Hostveil은 유닛을 재시작하기 전에 항상 그 유닛의 실패 상태를 초기화합니다.</p>
             </li>
             <li>
               <p><strong>fix:</strong> nginx와 Caddy가 설치돼 있지만 멈춰 있는 호스트에서는 해당 수정이 실패하고 되돌려졌습니다. 이제 실행 중인 서비스만 reload하고, 멈춰 있는 서비스는 멈춘 채로 둡니다. 설정 파일은 고쳐 두므로 다음에 시작할 때 반영됩니다.</p>
@@ -214,7 +214,7 @@
             </li>
           </ul>
           <h2 id="v3.33.0"><a href="https://github.com/seolcu/hostveil/compare/v3.32.0...v3.33.0">3.33.0</a> <span class="changelog-date">2026-10-07</span></h2>
-          <p>"이렇게 입력하세요"라는 안내로 끝나던 발견 항목 대부분에 이제 수정 버튼이 생겼습니다. 일부러 설정한 무언가를 깨뜨릴 수 있는 수정도 더는 Manual로 미루지 않습니다. 무엇이 깨질 수 있는지 경고를 붙여 Review로 제공하고, 직접 골랐을 때만 적용합니다. <code>fix --all --review</code>를 포함해 어떤 일괄 적용도 이 수정을 실행하지 않습니다. 수정이 붙은 항목은 183개 중 128개에서 175개로 늘었습니다. 남은 8개는 hostveil이 대신할 수 있는 동작이 없는 항목입니다. 패치가 아직 없는 CVE, 바꿔야 할 유출된 비밀값, 등록해야 할 2단계 인증 기기 같은 것들입니다.</p>
+          <p>"이렇게 입력하세요"라는 안내로 끝나던 발견 항목 대부분에 이제 수정 버튼이 생겼습니다. 일부러 설정한 무언가를 깨뜨릴 수 있는 수정도 더는 Manual로 미루지 않습니다. 무엇이 깨질 수 있는지 경고를 붙여 Review로 제공하고, 직접 골랐을 때만 적용합니다. <code>fix --all --review</code>를 포함해 어떤 일괄 적용도 이 수정을 실행하지 않습니다. 수정이 붙은 항목은 183개 중 128개에서 175개로 늘었습니다. 남은 8개는 Hostveil이 대신할 수 있는 동작이 없는 항목입니다. 패치가 아직 없는 CVE, 바꿔야 할 유출된 비밀값, 등록해야 할 2단계 인증 기기 같은 것들입니다.</p>
           <h3>새 기능</h3>
           <ul class="changelog-entries">
             <li>
@@ -255,15 +255,15 @@
             </li>
           </ul>
           <h2 id="v3.32.0"><a href="https://github.com/seolcu/hostveil/compare/v3.31.0...v3.32.0">3.32.0</a> <span class="changelog-date">2026-10-01</span></h2>
-          <p>이제 hostveil이 여러 호스트를 한 번에 볼 수 있습니다. <code>hostveil fleet</code>은 이미 쓰고 있는 SSH로 각 호스트를 스캔해 점수를 나란히 보여 줍니다. 로드맵의 "검토 중" 목록에서 세 번째로 출시된 항목입니다.</p>
+          <p>이제 Hostveil이 여러 호스트를 한 번에 볼 수 있습니다. <code>hostveil fleet</code>은 이미 쓰고 있는 SSH로 각 호스트를 스캔해 점수를 나란히 보여 줍니다. 로드맵의 "검토 중" 목록에서 세 번째로 출시된 항목입니다.</p>
           <h3>새 기능</h3>
           <ul class="changelog-entries">
             <li>
-              <p><strong>cmd:</strong> <code>hostveil fleet HOST...</code>를 추가했습니다. 로컬 hostveil 하나가 SSH로 각 호스트에서 <code>hostveil scan --json</code>을 실행하고, 상태가 나쁜 순서로 보여 줍니다. 스캔하지 못한 호스트가 이유와 함께 먼저 나오고(점수는 표시하지 않음), 나머지는 점수 순으로 수정 후 점수, HIGH/MED/LOW, 완전히 돌지 못한 영역 수와 함께 나옵니다. 원격 호스트에는 hostveil 말고 아무것도 설치하거나 설정하지 않고, 서비스로 도는 것도 없습니다. 호스트는 <code>ssh</code>에 쓰는 이름 그대로 적고, 접속은 비대화형이며, <code>-</code>로 시작하는 이름은 ssh가 옵션으로 읽으므로 아무것도 실행하기 전에 거부합니다. <code>--sudo</code>는 원격 스캔을 <code>sudo -n hostveil scan</code>으로 실행해 전체를 점검하고, <code>--json</code>은 모든 보고서를 출력하며, <code>--tui</code>는 읽기 전용 화면을 엽니다. 수정은 여전히 각 호스트에서 그 호스트의 미리보기와 롤백으로 적용합니다. 종료 상태는 <code>scan</code>의 규칙을 호스트 전체로 넓힌 것입니다. <code>fleet</code>은 sudo로 자신을 다시 실행하지 않는 유일한 명령입니다. 본인의 SSH 키와 에이전트가 필요하기 때문입니다.</p>
+              <p><strong>cmd:</strong> <code>hostveil fleet HOST...</code>를 추가했습니다. 로컬 Hostveil 하나가 SSH로 각 호스트에서 <code>hostveil scan --json</code>을 실행하고, 상태가 나쁜 순서로 보여 줍니다. 스캔하지 못한 호스트가 이유와 함께 먼저 나오고(점수는 표시하지 않음), 나머지는 점수 순으로 수정 후 점수, HIGH/MED/LOW, 완전히 돌지 못한 영역 수와 함께 나옵니다. 원격 호스트에는 Hostveil 말고 아무것도 설치하거나 설정하지 않고, 서비스로 도는 것도 없습니다. 호스트는 <code>ssh</code>에 쓰는 이름 그대로 적고, 접속은 비대화형이며, <code>-</code>로 시작하는 이름은 ssh가 옵션으로 읽으므로 아무것도 실행하기 전에 거부합니다. <code>--sudo</code>는 원격 스캔을 <code>sudo -n hostveil scan</code>으로 실행해 전체를 점검하고, <code>--json</code>은 모든 보고서를 출력하며, <code>--tui</code>는 읽기 전용 화면을 엽니다. 수정은 여전히 각 호스트에서 그 호스트의 미리보기와 롤백으로 적용합니다. 종료 상태는 <code>scan</code>의 규칙을 호스트 전체로 넓힌 것입니다. <code>fleet</code>은 sudo로 자신을 다시 실행하지 않는 유일한 명령입니다. 본인의 SSH 키와 에이전트가 필요하기 때문입니다.</p>
             </li>
           </ul>
           <h2 id="v3.31.0"><a href="https://github.com/seolcu/hostveil/compare/v3.30.0...v3.31.0">3.31.0</a> <span class="changelog-date">2026-10-01</span></h2>
-          <p>이제 hostveil이 단일 노드 쿠버네티스 호스트, 즉 박스 하나에서 도는 k3s나 k0s 노드를 독립된 영역으로 점검합니다. 로드맵의 "검토 중" 목록에서 두 번째로 출시된 항목입니다. 이를 위해 점수 축의 가중치를 다시 나눴습니다.</p>
+          <p>이제 Hostveil이 단일 노드 쿠버네티스 호스트, 즉 박스 하나에서 도는 k3s나 k0s 노드를 독립된 영역으로 점검합니다. 로드맵의 "검토 중" 목록에서 두 번째로 출시된 항목입니다. 이를 위해 점수 축의 가중치를 다시 나눴습니다.</p>
           <h3>새 기능</h3>
           <ul class="changelog-entries">
             <li>
@@ -271,7 +271,7 @@
             </li>
           </ul>
           <h2 id="v3.30.0"><a href="https://github.com/seolcu/hostveil/compare/v3.29.0...v3.30.0">3.30.0</a> <span class="changelog-date">2026-09-30</span></h2>
-          <p>이제 hostveil이 Proxmox VE 호스트를 독립된 영역으로 점검합니다. 로드맵의 "검토 중" 목록에서 처음으로 출시된 항목입니다. 이를 위해 점수 축의 가중치를 다시 나눴고, 방화벽 영역은 켜져 있는 Proxmox 방화벽을 방화벽이 없는 것으로 잘못 보던 문제를 고쳤습니다.</p>
+          <p>이제 Hostveil이 Proxmox VE 호스트를 독립된 영역으로 점검합니다. 로드맵의 "검토 중" 목록에서 처음으로 출시된 항목입니다. 이를 위해 점수 축의 가중치를 다시 나눴고, 방화벽 영역은 켜져 있는 Proxmox 방화벽을 방화벽이 없는 것으로 잘못 보던 문제를 고쳤습니다.</p>
           <h3>새 기능</h3>
           <ul class="changelog-entries">
             <li>
@@ -297,7 +297,7 @@
           <h3>새 기능</h3>
           <ul class="changelog-entries">
             <li>
-              <p><strong>check:</strong> proxy 영역에서 Caddy를 점검합니다. 패키지로 설치한 Caddy는 <code>/etc/caddy/Caddyfile</code>에서 <code>import</code>를 따라가며 읽고, 컨테이너로 띄운 Caddy는 Compose 서비스가 바인드 마운트한 Caddyfile을 읽습니다. 새 발견 항목 <code>proxy.admin-api-exposed</code>는 Caddy 관리 API가 루프백이 아닌 주소에서 대기할 때 발생합니다. 이 API는 인증이 없고 실행 중인 설정 전체를 바꿀 수 있어서 호스트에서는 HIGH입니다. 컨테이너에서는 관리 포트를 호스트에 공개했을 때만 HIGH이고, 그렇지 않으면 이웃 컨테이너를 먼저 장악해야 닿을 수 있으므로 MEDIUM입니다. <code>file_server browse</code>는 기존 <code>proxy.directory-listing</code>으로 보고하며, 이 항목은 이제 nginx와 Caddy를 합쳐 하나로 나옵니다. JSON으로 설정한 Caddy나 hostveil이 Caddyfile에 닿을 수 없는 컨테이너는 깨끗하다고 보지 않고 점검하지 못했다고 보고합니다.</p>
+              <p><strong>check:</strong> proxy 영역에서 Caddy를 점검합니다. 패키지로 설치한 Caddy는 <code>/etc/caddy/Caddyfile</code>에서 <code>import</code>를 따라가며 읽고, 컨테이너로 띄운 Caddy는 Compose 서비스가 바인드 마운트한 Caddyfile을 읽습니다. 새 발견 항목 <code>proxy.admin-api-exposed</code>는 Caddy 관리 API가 루프백이 아닌 주소에서 대기할 때 발생합니다. 이 API는 인증이 없고 실행 중인 설정 전체를 바꿀 수 있어서 호스트에서는 HIGH입니다. 컨테이너에서는 관리 포트를 호스트에 공개했을 때만 HIGH이고, 그렇지 않으면 이웃 컨테이너를 먼저 장악해야 닿을 수 있으므로 MEDIUM입니다. <code>file_server browse</code>는 기존 <code>proxy.directory-listing</code>으로 보고하며, 이 항목은 이제 nginx와 Caddy를 합쳐 하나로 나옵니다. JSON으로 설정한 Caddy나 Hostveil이 Caddyfile에 닿을 수 없는 컨테이너는 깨끗하다고 보지 않고 점검하지 못했다고 보고합니다.</p>
             </li>
           </ul>
           <h2 id="v3.27.0"><a href="https://github.com/seolcu/hostveil/compare/v3.26.2...v3.27.0">3.27.0</a> <span class="changelog-date">2026-09-30</span></h2>
@@ -317,7 +317,7 @@
               <p><strong>model:</strong> Auto 조치 유형의 표시 이름을 모든 곳에서 "Auto-fix" 대신 "Auto"로 통일했습니다. 네 유형 중 유일한 합성어였고, 유형이 아니라 버튼 이름처럼 읽혔습니다.</p>
             </li>
             <li>
-              <p><strong>docs:</strong> 웹사이트와 두 README가 8월 측정 대신 9월 11일 최종 측정을 인용합니다. hostveil 28 → 58, Lynis 57 → 79, Docker 브리지 도달성 6 → 1, 롤백 충실도 25/28입니다. 복원되지 않은 경로 세 곳은 빼지 않고 이유를 설명했습니다.</p>
+              <p><strong>docs:</strong> 웹사이트와 두 README가 8월 측정 대신 9월 11일 최종 측정을 인용합니다. Hostveil 28 → 58, Lynis 57 → 79, Docker 브리지 도달성 6 → 1, 롤백 충실도 25/28입니다. 복원되지 않은 경로 세 곳은 빼지 않고 이유를 설명했습니다.</p>
             </li>
             <li>
               <p><strong>docs:</strong> <code>CONTRIBUTING.md</code>가 golangci-lint를 <code>go run</code>으로 실행하라고 안내하고 있었습니다. 이 툴체인에서는 실행이 거부되어 아무것도 검사하지 않습니다. 이제 CI와 같이 릴리스 바이너리를 내려받습니다.</p>
@@ -341,7 +341,7 @@
             </li>
           </ul>
           <h2 id="v3.26.0"><a href="https://github.com/seolcu/hostveil/compare/v3.25.0...v3.26.0">3.26.0</a> <span class="changelog-date">2026-08-31</span></h2>
-          <p>지금까지 Fix의 득실은 일반론으로만 적혀 있었습니다. 이제 hostveil은 그 판단을 특정 호스트에 맞춰 내릴 수 있습니다. <code>hostveil ai-context</code>는 이 호스트가 어떤 용도인지 한 줄로 저장해 둡니다. <code>hostveil advise</code>와 <code>explain --ai</code>, TUI의 <code>v</code> 키, 새로 생긴 대시보드 버튼은 이 설명을 읽어, 고칠 수 있는 발견 항목마다 득실을 판단합니다. 원하면 AI 의견도 덧붙습니다. 별도로, 존재하지 않거나 취약한 URL로 반복 접근하는 스캔에 대응하는 기능도 추가됐습니다. fail2ban이 설치돼 있어도 nginx를 감시하도록 켜져 있지 않은 경우를 찾아내, nginx-botsearch 감시 규칙을 켜자고 제안합니다. proxy 영역에 등록된 첫 Fix입니다.</p>
+          <p>지금까지 Fix의 득실은 일반론으로만 적혀 있었습니다. 이제 Hostveil은 그 판단을 특정 호스트에 맞춰 내릴 수 있습니다. <code>hostveil ai-context</code>는 이 호스트가 어떤 용도인지 한 줄로 저장해 둡니다. <code>hostveil advise</code>와 <code>explain --ai</code>, TUI의 <code>v</code> 키, 새로 생긴 대시보드 버튼은 이 설명을 읽어, 고칠 수 있는 발견 항목마다 득실을 판단합니다. 원하면 AI 의견도 덧붙습니다. 별도로, 존재하지 않거나 취약한 URL로 반복 접근하는 스캔에 대응하는 기능도 추가됐습니다. fail2ban이 설치돼 있어도 nginx를 감시하도록 켜져 있지 않은 경우를 찾아내, nginx-botsearch 감시 규칙을 켜자고 제안합니다. proxy 영역에 등록된 첫 Fix입니다.</p>
           <h3>새 기능</h3>
           <ul class="changelog-entries">
             <li>
@@ -352,7 +352,7 @@
             </li>
           </ul>
           <h2 id="v3.25.0"><a href="https://github.com/seolcu/hostveil/compare/v3.24.0...v3.25.0">3.25.0</a> <span class="changelog-date">2026-08-30</span></h2>
-          <p>이제 hostveil은 스캔 결과를 터미널을 보지 않는 사람에게도 전달할 수 있습니다. <code>hostveil export</code> 명령(TUI와 웹 대시보드에서도 사용 가능)은 결과를 동료에게 보여줄 Markdown, Word, PDF로, 다른 프로그램이 읽을 JSON이나 SARIF로 각각 만들어 줍니다. 등록된 모든 Fix는 이제 이미 안내하던 위험 옆에 실제로 얻는 효과도 함께 적습니다. <code>bugreport</code>의 네트워크 전송 경로는 사라지고 로컬 전용 <code>hostveil diagnostics</code>가 그 자리를 대신하며, 설치 스크립트에는 색상 출력과 시작 배너가 추가됐습니다.</p>
+          <p>이제 Hostveil은 스캔 결과를 터미널을 보지 않는 사람에게도 전달할 수 있습니다. <code>hostveil export</code> 명령(TUI와 웹 대시보드에서도 사용 가능)은 결과를 동료에게 보여줄 Markdown, Word, PDF로, 다른 프로그램이 읽을 JSON이나 SARIF로 각각 만들어 줍니다. 등록된 모든 Fix는 이제 이미 안내하던 위험 옆에 실제로 얻는 효과도 함께 적습니다. <code>bugreport</code>의 네트워크 전송 경로는 사라지고 로컬 전용 <code>hostveil diagnostics</code>가 그 자리를 대신하며, 설치 스크립트에는 색상 출력과 시작 배너가 추가됐습니다.</p>
           <h3>새 기능</h3>
           <ul class="changelog-entries">
             <li>
@@ -422,7 +422,7 @@
               <p><strong>check:</strong> 강화 커버리지를 정적 검사 항목 78개에서 111개로 넓힙니다. 자동 적용 권한 fix 8개와 Review 단계를 거치는 SSH/sysctl fix 12개를 추가했고, 자동화가 안전하지 않은 곳마다 이유를 명시한 계정·Compose·systemd 탐지를 새로 넣었습니다 (<a href="https://github.com/seolcu/hostveil/issues/769">#769</a>).</p>
             </li>
             <li>
-              <p><strong>check:</strong> 리버스 프록시 영역을 새로 추가합니다. 자체 호스팅하는 사람이 가장 흔히 갖고 있으면서도 가장 점검받지 않는 구성 요소이기 때문입니다. hostveil이 살펴보는 다른 모든 것은 443에서 응답하는 무언가의 뒤에 있습니다. 패키지로 설치한 nginx는 <code>sshd_config</code>에서 배운 방식 그대로 <code>include</code>를 따라가며 읽고, 컨테이너로 띄운 Traefik은 컨테이너 영역이 이미 찾아낸 Compose 파일에서 읽습니다. 명확하고 모호하지 않은 항목 셋을 새로 냈습니다. 인증 없는 Traefik 대시보드, 폐기된 TLS 프로토콜, 디렉터리 목록 노출입니다. 나머지 셋(평문 HTTP, 보안 헤더 누락, 인증서)은 패키지 자체 문서에 이유를 적고 의도적으로 제외했습니다. 채점 축 여섯 개가 한 점씩 내주어 새 축의 자리를 만들었고, 점수 페이지가 이름까지 붙여 가며 주장하는 동점 관계는 하나도 깨지지 않았습니다 (<a href="https://github.com/seolcu/hostveil/issues/764">#764</a>).</p>
+              <p><strong>check:</strong> 리버스 프록시 영역을 새로 추가합니다. 자체 호스팅하는 사람이 가장 흔히 갖고 있으면서도 가장 점검받지 않는 구성 요소이기 때문입니다. Hostveil이 살펴보는 다른 모든 것은 443에서 응답하는 무언가의 뒤에 있습니다. 패키지로 설치한 nginx는 <code>sshd_config</code>에서 배운 방식 그대로 <code>include</code>를 따라가며 읽고, 컨테이너로 띄운 Traefik은 컨테이너 영역이 이미 찾아낸 Compose 파일에서 읽습니다. 명확하고 모호하지 않은 항목 셋을 새로 냈습니다. 인증 없는 Traefik 대시보드, 폐기된 TLS 프로토콜, 디렉터리 목록 노출입니다. 나머지 셋(평문 HTTP, 보안 헤더 누락, 인증서)은 패키지 자체 문서에 이유를 적고 의도적으로 제외했습니다. 채점 축 여섯 개가 한 점씩 내주어 새 축의 자리를 만들었고, 점수 페이지가 이름까지 붙여 가며 주장하는 동점 관계는 하나도 깨지지 않았습니다 (<a href="https://github.com/seolcu/hostveil/issues/764">#764</a>).</p>
             </li>
           </ul>
           <h3>버그 수정</h3>
@@ -437,7 +437,7 @@
               <p><strong>core:</strong> 권한이 필요한 파일 읽기·쓰기·chmod·체크포인트·롤백을 심볼릭 링크 우회와 동시 파일 교체로부터 강화했습니다. fix는 이제 자신이 다룰 입력이 그 밑에서 바뀌었으면 낡은 상태로 밀어붙이는 대신 멈추고 재스캔을 요구합니다. 자체 업데이트 메타데이터와 아카이브는 쓰기 전에 검증하고, 설치 스크립트는 패키지 매니저가 설치한 버전을 덮어쓰지 않으면서 검증된 정확한 바이너리만 배치합니다. Ollama 응답과 출처도 범위를 제한하고 검증합니다. 안전하지 않거나 형식이 잘못된 입력을 거부하게 된 것 말고는 기존 동작이 달라지지 않았습니다 (<a href="https://github.com/seolcu/hostveil/issues/772">#772</a>).</p>
             </li>
             <li>
-              <p><strong>check:</strong> 컨테이너가 자기 것도 아닌 방화벽을 가진 것처럼 채점되고 있었습니다. 포트가 응답할지 결정하는 방화벽은 호스트 소유이고 컨테이너 안에서는 애초에 보이지 않는데, 스캔을 돌린 적 있는 컨테이너라면 어디든 안에서 손댈 수도 없는 방화벽에 대해 hostveil이 가장 심각한 등급의 항목을 띄우고 있었습니다. 더 나쁜 쪽은 커널 강화 Review fix였습니다. <code>/etc/sysctl.d</code>를 컨테이너 안에 써 놓고 성공했다고 보고했지만, 그 값을 실제로 갖고 있는 호스트 커널에는 끝내 닿지 않았습니다. <code>platform.ContainerRuntime</code>이 한 번 물어보고 그 답을 필요한 모든 검사기가 공유하도록 했습니다. 방화벽 영역은 이제 건너뛰고(N/A) sysctl fix는 Manual로 내려갑니다. 컨테이너가 실제로 감사 대상 호스트 그 자체인 경우를 위해 <code>HOSTVEIL_ASSUME_HOST=1</code>로 둘 다 되돌릴 수 있습니다 (<a href="https://github.com/seolcu/hostveil/issues/761">#761</a>).</p>
+              <p><strong>check:</strong> 컨테이너가 자기 것도 아닌 방화벽을 가진 것처럼 채점되고 있었습니다. 포트가 응답할지 결정하는 방화벽은 호스트 소유이고 컨테이너 안에서는 애초에 보이지 않는데, 스캔을 돌린 적 있는 컨테이너라면 어디든 안에서 손댈 수도 없는 방화벽에 대해 Hostveil이 가장 심각한 등급의 항목을 띄우고 있었습니다. 더 나쁜 쪽은 커널 강화 Review fix였습니다. <code>/etc/sysctl.d</code>를 컨테이너 안에 써 놓고 성공했다고 보고했지만, 그 값을 실제로 갖고 있는 호스트 커널에는 끝내 닿지 않았습니다. <code>platform.ContainerRuntime</code>이 한 번 물어보고 그 답을 필요한 모든 검사기가 공유하도록 했습니다. 방화벽 영역은 이제 건너뛰고(N/A) sysctl fix는 Manual로 내려갑니다. 컨테이너가 실제로 감사 대상 호스트 그 자체인 경우를 위해 <code>HOSTVEIL_ASSUME_HOST=1</code>로 둘 다 되돌릴 수 있습니다 (<a href="https://github.com/seolcu/hostveil/issues/761">#761</a>).</p>
             </li>
             <li>
               <p><strong>site:</strong> 한국어 페이지는 지금까지 쭉 모노스페이스 대체 글꼴로 그려지고 있었습니다. Georgia에도 모노스페이스 스택에도 한글 글리프가 없는데, 둘 다 어떤 배포판도 등록하지 않는 폰트 이름을 요청하고 있었기 때문입니다. 새로 만든 한국어 전용 스타일시트는 이제 본문에 Noto Serif KR을, 라틴 디자인이 모노스페이스로 그리던 자리에 Noto Sans KR을 씁니다. 각각 <code>unicode-range</code>로 한글 블록에만 걸어 두어 영어 페이지는 이 중 아무것도 내려받지 않고, 두 문자 체계 사이에서 그대로 옮겨지지 않는 줄 간격·자간· 줄바꿈 규칙도 함께 손봤습니다 (<a href="https://github.com/seolcu/hostveil/issues/767">#767</a>).</p>
@@ -447,7 +447,7 @@
             </li>
           </ul>
           <h2 id="v3.21.0"><a href="https://github.com/seolcu/hostveil/compare/v3.20.2...v3.21.0">3.21.0</a> <span class="changelog-date">2026-08-16</span></h2>
-          <p>실제 서버에서 보낸 오후 하나로 발견 항목 둘이 바뀌었습니다. 하나는 hostveil이 한 번도 찾아본 적 없던 것이고, 하나는 그렇지 않은 호스트에 대고 보고하고 있던 것입니다.</p>
+          <p>실제 서버에서 보낸 오후 하나로 발견 항목 둘이 바뀌었습니다. 하나는 Hostveil이 한 번도 찾아본 적 없던 것이고, 하나는 그렇지 않은 호스트에 대고 보고하고 있던 것입니다.</p>
           <h3>새 기능</h3>
           <ul class="changelog-entries">
             <li>
@@ -461,7 +461,7 @@
           <ul class="changelog-entries">
             <li>
               <p><strong>platform:</strong> Debian에서 돌고 있는 ufw가 방화벽 없음으로 읽혔습니다 (<a href="https://github.com/seolcu/hostveil/issues/755">#755</a>). Debian은 root가 아닌 사용자의 <code>PATH</code>에서 sbin을 뺐고, <code>ufw</code>와 <code>nft</code>와 <code>iptables</code>는 전부 <code>/usr/sbin</code>에 있습니다. 그래서 설치돼 돌고 있는 방화벽에 대해 <code>exec.LookPath</code>가 실패했고, 방화벽 영역은 찾지 못한 프런트엔드를 설치되지 않은 것으로 읽었고, 프런트엔드가 전부 없는 것을 "활성 방화벽 없음"으로 읽었습니다. 이미 돌고 있는 방화벽을 설치하라는, 이 도구에서 가장 심각한 등급의 발견 항목을 호스트에 건넨 셈입니다. 포트 영역도 같은 실수 위에서 자기 발견 항목을 하나 더 냈습니다.</p>
-              <p>같은 기계에서 몇 분 사이에, 권한 없이는 High 하나와 함께 50/100, root로는 100/100 깨끗함이었습니다. hostveil은 자동으로 권한을 올리기 때문에 지금까지 보이지 않았습니다. <code>HOSTVEIL_NO_SUDO=1</code>은 스크립트와 CI를 위해 문서화돼 있고, 권한 상승은 실패할 수 있고, 컨테이너는 nobody로 돌 수 있습니다.</p>
+              <p>같은 기계에서 몇 분 사이에, 권한 없이는 High 하나와 함께 50/100, root로는 100/100 깨끗함이었습니다. Hostveil은 자동으로 권한을 올리기 때문에 지금까지 보이지 않았습니다. <code>HOSTVEIL_NO_SUDO=1</code>은 스크립트와 CI를 위해 문서화돼 있고, 권한 상승은 실패할 수 있고, 컨테이너는 nobody로 돌 수 있습니다.</p>
               <p><code>LookPath</code>가 관리자 디렉터리로 물러나 찾습니다. 앞이 아니라 뒤에 붙이고, 구분자가 들어간 이름에는 적용하지 않습니다. 바이너리를 찾는 것이 수정의 전부입니다. 탐침은 나머지 절반에 대해서는 이미 조심스러웠기 때문에, 읽을 수 없는 ufw는 이제 비난이 아니라 확인하지 못한 영역이 됩니다.</p>
             </li>
           </ul>
@@ -469,14 +469,14 @@
           <ul class="changelog-entries">
             <li>
               <p><strong>measurements:</strong> 공개된 실측이 열한 릴리스나 낡아 있었고, 3.20.2에서 다시 측정했습니다 (<a href="https://github.com/seolcu/hostveil/issues/754">#754</a>). 아울러 실행한 아키텍처와 무엇을 심었는지에 대한 명세를 기록한 첫 실행입니다. 두 필드 모두 만들어져 있었지만 결과물을 낸 적이 없었고, 그래서 이전 릴리스는 페이지의 아키텍처 주장을 고치는 대신 <em>지워야</em> 했습니다.</p>
-              <p>같은 씨앗인데 점수가 40에서 29로 내려갔고, 페이지가 그 이유를 말합니다. hostveil이 더 많이 찾아냈고, 3.20.1이 기록만 되고 발효되지 않은 수정을 자기 공으로 세는 것을 그만뒀기 때문입니다. 수치 검사가 볼 수 없는 산문 주장 셋이 사실이 아니게 돼 있었고 바로잡았습니다. 그중 "모든 숫자가 시작한 자리로 돌아왔다"는 흥미로운 방식으로 틀려 있었습니다. 방화벽을 켜는 것은 체크포인트가 없어서 ufw가 롤백을 살아남고, 컨테이너가 공개한 포트 다섯 개는 그것을 <em>통과해서</em> 응답합니다. <code>firewall.docker-bypass</code>가, 그것을 한 번도 들어본 적 없는 계측기 안에서 스스로를 증명한 셈입니다.</p>
+              <p>같은 씨앗인데 점수가 40에서 29로 내려갔고, 페이지가 그 이유를 말합니다. Hostveil이 더 많이 찾아냈고, 3.20.1이 기록만 되고 발효되지 않은 수정을 자기 공으로 세는 것을 그만뒀기 때문입니다. 수치 검사가 볼 수 없는 산문 주장 셋이 사실이 아니게 돼 있었고 바로잡았습니다. 그중 "모든 숫자가 시작한 자리로 돌아왔다"는 흥미로운 방식으로 틀려 있었습니다. 방화벽을 켜는 것은 체크포인트가 없어서 ufw가 롤백을 살아남고, 컨테이너가 공개한 포트 다섯 개는 그것을 <em>통과해서</em> 응답합니다. <code>firewall.docker-bypass</code>가, 그것을 한 번도 들어본 적 없는 계측기 안에서 스스로를 증명한 셈입니다.</p>
             </li>
             <li>
               <p>이 저장소가 스스로에 대해 증명할 수 있는 것을 공개합니다 (<a href="https://github.com/seolcu/hostveil/issues/757">#757</a>). 수정 커버리지는 릴리스 노트 안에만 있었고, 테스트 체계는 어느 README에도 어느 페이지에도 없었고, 취약하게 시드된 VM은 기여자용 안내로만 적혀 있었습니다. 추가한 숫자는 전부 타이핑한 것이 아니라 계산한 것입니다. 페이지가 <code>data-counted="findings.fixable"</code>을 달고 테스트가 그것을 수정 레지스트리에 맞춰 풀기 때문에, 수정이 없던 발견 항목에 수정을 등록하면 페이지가 따라 움직일 때까지 빌드가 깨집니다.</p>
             </li>
           </ul>
           <h2 id="v3.20.2"><a href="https://github.com/seolcu/hostveil/compare/v3.20.1...v3.20.2">3.20.2</a> <span class="changelog-date">2026-08-16</span></h2>
-          <p>공개돼 있었는데 틀린 것들에 대한 릴리스입니다. 웹사이트의 스크린샷이 hostveil이 낼 수 없는 발견 항목을 보여주고 있었고, 네 페이지가 바이너리와 어긋나 있었고, 내장 도움말에서 플래그 여섯 개가 빠져 있었고, 동아시아 모호 폭 문자를 넓게 그리는 터미널에서는 미터가 배정된 폭의 두 배로 그려지고 있었습니다.</p>
+          <p>공개돼 있었는데 틀린 것들에 대한 릴리스입니다. 웹사이트의 스크린샷이 Hostveil이 낼 수 없는 발견 항목을 보여주고 있었고, 네 페이지가 바이너리와 어긋나 있었고, 내장 도움말에서 플래그 여섯 개가 빠져 있었고, 동아시아 모호 폭 문자를 넓게 그리는 터미널에서는 미터가 배정된 폭의 두 배로 그려지고 있었습니다.</p>
           <h3>버그 수정</h3>
           <ul class="changelog-entries">
             <li>
@@ -491,7 +491,7 @@
               <p><strong>cmd:</strong> 내장 도움말이 바이너리와 어긋나 있었습니다 (<a href="https://github.com/seolcu/hostveil/issues/742">#742</a>). <code>fix --review</code>, <code>history --scans</code>, <code>update --yes</code>, <code>uninstall --yes</code>, <code>HOSTVEIL_NO_UPDATE_CHECK</code>, 종료 코드 10이 전부 빠져 있었고, <code>--all</code> 줄은 검토 수정을 건드리지 않는다고 했는데 <code>--review</code>가 그걸 사실이 아니게 만든 뒤였습니다. <code>update</code>와 <code>uninstall</code>에는 플래그 항목 자체가 없었습니다. 사이트의 플래그 표는 오래전부터 실제 플래그 집합에 고정돼 있었는데, 도움말은 손으로 쓴 네 개짜리 목록에 고정돼 있었습니다. 이제 둘 다 같은 출처를 따릅니다.</p>
             </li>
             <li>
-              <p><strong>docs:</strong> 공개된 스크린샷이 hostveil이 낼 수 없는 발견 항목을 보여주고 있었습니다 (<a href="https://github.com/seolcu/hostveil/issues/740">#740</a>). 웹사이트와 두 README 맨 위에 있는 <code>site/assets/tui.png</code>가 <code>ssh.maxauth</code>(진짜 id는 <code>ssh.maxauthtries</code>)와, 발견 항목이 아예 아닌 <code>fileperms.envfile</code>을 보여주고 있었습니다. 전체 모드 픽스처에 네 개가 더 있었습니다. <code>TestSiteFrameIsCurrent</code>는 그림이 그것을 그린 코드와 일치하는지를 고정할 뿐, 그림이 말하는 내용이 참인지는 보지 않습니다. 어떤 테스트도 id를 읽지 않았습니다. 이제 읽습니다. 독자에게 닿는 모든 픽스처에 대해서요.</p>
+              <p><strong>docs:</strong> 공개된 스크린샷이 Hostveil이 낼 수 없는 발견 항목을 보여주고 있었습니다 (<a href="https://github.com/seolcu/hostveil/issues/740">#740</a>). 웹사이트와 두 README 맨 위에 있는 <code>site/assets/tui.png</code>가 <code>ssh.maxauth</code>(진짜 id는 <code>ssh.maxauthtries</code>)와, 발견 항목이 아예 아닌 <code>fileperms.envfile</code>을 보여주고 있었습니다. 전체 모드 픽스처에 네 개가 더 있었습니다. <code>TestSiteFrameIsCurrent</code>는 그림이 그것을 그린 코드와 일치하는지를 고정할 뿐, 그림이 말하는 내용이 참인지는 보지 않습니다. 어떤 테스트도 id를 읽지 않았습니다. 이제 읽습니다. 독자에게 닿는 모든 픽스처에 대해서요.</p>
             </li>
             <li>
               <p><strong>docs:</strong> 바이너리와 어긋나던 페이지들 (<a href="https://github.com/seolcu/hostveil/issues/741">#741</a>). 공개된 두 페이지가 서로 반대되는 업그레이드 안내를 하고 있었고, README 쪽 경로는 <code>.deb</code>나 <code>.rpm</code> 설치를 어긋난 상태로 만들 수 있었습니다. <code>hostveil update</code>는 3.18에 나왔는데 어느 README에도 없었습니다. <code>cli.html</code>은 실행하면 종료 코드 2가 나는 <code>-o</code> 플래그를 문서화하고 있었습니다. 네 페이지가 <code>fix --all --review</code>를 부정했고, 그중 README는 두 섹션 간격으로 자기모순이었습니다. 환경 변수 표의 행 다섯 개가 4열 표에 셀 2개만 갖고 있어서 설명이 엉뚱한 열에 렌더됐습니다. 양쪽 언어 모두에서요. AGENTS.md는 퍼즈 타깃 다섯 개 중 셋만 적고 있었습니다.</p>

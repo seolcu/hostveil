@@ -61,25 +61,25 @@ func BinaryFromArchive(archive []byte) ([]byte, error) {
 			continue
 		}
 		if hdr.Typeflag != tar.TypeReg {
-			return nil, fmt.Errorf("the archive's hostveil entry is not a regular file")
+			return nil, fmt.Errorf("the archive's Hostveil entry is not a regular file")
 		}
 		if found != nil {
-			return nil, fmt.Errorf("the archive contains more than one hostveil binary")
+			return nil, fmt.Errorf("the archive contains more than one Hostveil binary")
 		}
 		bin, err := io.ReadAll(io.LimitReader(tr, maxArchive+1))
 		if err != nil {
 			return nil, err
 		}
 		if len(bin) > maxArchive {
-			return nil, fmt.Errorf("the archive's hostveil entry is larger than %d bytes", maxArchive)
+			return nil, fmt.Errorf("the archive's Hostveil entry is larger than %d bytes", maxArchive)
 		}
 		if len(bin) == 0 {
-			return nil, fmt.Errorf("the archive's hostveil entry is empty")
+			return nil, fmt.Errorf("the archive's Hostveil entry is empty")
 		}
 		found = bin
 	}
 	if found == nil {
-		return nil, fmt.Errorf("the archive does not contain a hostveil binary")
+		return nil, fmt.Errorf("the archive does not contain a Hostveil binary")
 	}
 	return found, nil
 }

@@ -45,11 +45,11 @@ EOF
 package_owner() {
   local path=$1
   if command -v dpkg >/dev/null 2>&1 && dpkg -S "$path" 2>/dev/null | grep -q '^hostveil:'; then
-    echo "the hostveil .deb package"
+    echo "the Hostveil .deb package"
     return 0
   fi
   if command -v rpm >/dev/null 2>&1 && rpm -qf "$path" 2>/dev/null | grep -q '^hostveil-'; then
-    echo "the hostveil RPM package"
+    echo "the Hostveil RPM package"
     return 0
   fi
   return 1
@@ -93,7 +93,7 @@ uninstall() {
     echo ""
     echo "  Saved scans and rollback checkpoints are still in:"
     echo "    ${state}"
-    echo "  Those checkpoints are the backups of every file hostveil edited here."
+    echo "  Those checkpoints are the backups of every file Hostveil edited here."
     echo "  Delete them only if you no longer need to undo any of its fixes:"
     echo "    ${SUDO[*]:+sudo }rm -rf ${state}"
   fi
@@ -136,7 +136,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$UNINSTALL" != true ]]; then
-  echo "${BOLD}▣ hostveil${RESET}${DIM} — guided hardening for self-hosted Linux${RESET}"
+  echo "${BOLD}▣ Hostveil${RESET}${DIM} — guided hardening for self-hosted Linux${RESET}"
 fi
 
 # ─── privilege ────────────────────────────────────────────────────────────
@@ -460,7 +460,7 @@ if ! "${SUDO[@]}" mv -f "$INSTALL_TMP" /usr/bin/hostveil; then
 fi
 
 if ! INSTALLED=$(/usr/bin/hostveil --version 2>/dev/null); then
-  echo "  ${RED}ERROR:${RESET} hostveil installed but --version check failed" >&2
+  echo "  ${RED}ERROR:${RESET} Hostveil installed but --version check failed" >&2
   exit 1
 fi
 if [[ "${INSTALLED##* }" != "v${VERSION}" ]]; then
@@ -469,6 +469,6 @@ if [[ "${INSTALLED##* }" != "v${VERSION}" ]]; then
 fi
 
 echo ""
-echo "  ${GREEN}✓${RESET} hostveil v${VERSION} installed (${INSTALLED})."
+echo "  ${GREEN}✓${RESET} Hostveil v${VERSION} installed (${INSTALLED})."
 echo "  Run: hostveil"
 echo "  Upgrade later by re-running this script; uninstall with: install.sh --uninstall"
