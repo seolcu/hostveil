@@ -201,7 +201,17 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 				// file, and saying nothing would report it as having passed.
 				unstattable = append(unstattable, p)
 				continue
-			case fi.IsDir():
+			case !fi.Mode().IsRegular():
+				// Every rule names a file whose contents are the risk, and
+				// Stat follows symlinks. A masked systemd unit is a symlink
+				// to /dev/null — `systemctl mask` makes exactly that — and
+				// /dev/null is 0666 by design, so judging it read every
+				// masked service on the host as a world-writable root unit:
+				// High, on hosts that had masked rpcbind to shrink their
+				// surface. The fix refuses it too (planModes takes only
+				// regular files), so the finding could never be cleared.
+				// Directories, devices and FIFOs are not what any rule
+				// describes.
 				continue
 			}
 			// Checked for every rule, and independently of the mode: a file
