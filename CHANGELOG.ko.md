@@ -7,6 +7,34 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.35.0](https://github.com/seolcu/hostveil/compare/v3.34.0...v3.35.0) (2026-10-20)
+
+이제 unattended-upgrades가 건너뛰도록 설정된 업데이트를 찾아냅니다.
+Raspberry Pi OS, Tailscale, Docker 같은 서드파티 저장소가 허용 origin 목록에
+없으면, 자동 업데이트는 정상으로 보이는데 그 저장소의 패키지는 계속 대기
+상태로 남습니다. 또 mask된 systemd 유닛이 있는 모든 호스트에서 나오던
+High 오탐을 없앴습니다.
+
+### 새 기능
+
+* **check:** 새 발견 항목 `updates.origin-excluded`. unattended-upgrades가
+  켜져 있으면 `apt-config`와 `apt-cache policy`로 대기 중인 업그레이드가
+  어느 저장소에서 오는지 확인하고, unattended-upgrades와 같은 규칙으로
+  `Origins-Pattern`, `Allowed-Origins`와 대조합니다. 배포판 자체 아카이브는
+  제외합니다. `-updates`를 건너뛰는 건 의도된 기본값이기 때문입니다. 수정은
+  검토를 거쳐 적용합니다. 해당 저장소를 `/etc/apt/apt.conf.d/52hostveil-origins`에
+  추가하며 롤백할 수 있습니다.
+
+### 버그 수정
+
+* **check:** `systemctl mask`로 mask한 유닛을 누구나 쓸 수 있는 systemd
+  유닛(High)으로 보고했습니다. mask된 유닛은 `/dev/null`을 가리키는 심볼릭
+  링크이고 `/dev/null`의 권한은 0666인데, 검사가 링크를 따라갔습니다. 이제
+  일반 파일만 판정합니다. 수정이 심볼릭 링크를 통한 편집을 올바르게 거부하기
+  때문에, 이 발견 항목은 고칠 방법이 없었습니다.
+* **docs:** CLI 도움말, 내보낸 보고서, TUI 헤더, 대시보드에서 제품 이름을
+  Hostveil로 씁니다.
+
 ## [3.34.0](https://github.com/seolcu/hostveil/compare/v3.33.4...v3.34.0) (2026-10-12)
 
 이제 방화벽 수정이 ufw뿐 아니라 firewalld에서도 동작합니다. firewalld는

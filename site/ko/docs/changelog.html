@@ -134,6 +134,23 @@
 
             <p>각 버전의 릴리스 아카이브, 체크섬, SBOM, 서명된 빌드 프로버넌스는 <a href="https://github.com/seolcu/hostveil/releases">릴리스 페이지</a>에 있습니다. 업그레이드는 <code>hostveil update</code>로 합니다.</p>
 
+          <h2 id="v3.35.0"><a href="https://github.com/seolcu/hostveil/compare/v3.34.0...v3.35.0">3.35.0</a> <span class="changelog-date">2026-10-20</span></h2>
+          <p>이제 unattended-upgrades가 건너뛰도록 설정된 업데이트를 찾아냅니다. Raspberry Pi OS, Tailscale, Docker 같은 서드파티 저장소가 허용 origin 목록에 없으면, 자동 업데이트는 정상으로 보이는데 그 저장소의 패키지는 계속 대기 상태로 남습니다. 또 mask된 systemd 유닛이 있는 모든 호스트에서 나오던 High 오탐을 없앴습니다.</p>
+          <h3>새 기능</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>check:</strong> 새 발견 항목 <code>updates.origin-excluded</code>. unattended-upgrades가 켜져 있으면 <code>apt-config</code>와 <code>apt-cache policy</code>로 대기 중인 업그레이드가 어느 저장소에서 오는지 확인하고, unattended-upgrades와 같은 규칙으로 <code>Origins-Pattern</code>, <code>Allowed-Origins</code>와 대조합니다. 배포판 자체 아카이브는 제외합니다. <code>-updates</code>를 건너뛰는 건 의도된 기본값이기 때문입니다. 수정은 검토를 거쳐 적용합니다. 해당 저장소를 <code>/etc/apt/apt.conf.d/52hostveil-origins</code>에 추가하며 롤백할 수 있습니다.</p>
+            </li>
+          </ul>
+          <h3>버그 수정</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>check:</strong> <code>systemctl mask</code>로 mask한 유닛을 누구나 쓸 수 있는 systemd 유닛(High)으로 보고했습니다. mask된 유닛은 <code>/dev/null</code>을 가리키는 심볼릭 링크이고 <code>/dev/null</code>의 권한은 0666인데, 검사가 링크를 따라갔습니다. 이제 일반 파일만 판정합니다. 수정이 심볼릭 링크를 통한 편집을 올바르게 거부하기 때문에, 이 발견 항목은 고칠 방법이 없었습니다.</p>
+            </li>
+            <li>
+              <p><strong>docs:</strong> CLI 도움말, 내보낸 보고서, TUI 헤더, 대시보드에서 제품 이름을 Hostveil로 씁니다.</p>
+            </li>
+          </ul>
           <h2 id="v3.34.0"><a href="https://github.com/seolcu/hostveil/compare/v3.33.4...v3.34.0">3.34.0</a> <span class="changelog-date">2026-10-12</span></h2>
           <p>이제 방화벽 수정이 ufw뿐 아니라 firewalld에서도 동작합니다. firewalld는 Fedora, RHEL, Rocky, Alma의 기본 방화벽입니다. 지금까지 이런 시스템에서는 방화벽 발견 항목에 수정이 하나도 없었습니다. 실제 Fedora 호스트에서 시험하다가 방화벽 상태를 잘못 읽는 문제도 두 가지 찾았고, 모두 고쳤습니다.</p>
           <h3>새 기능</h3>
