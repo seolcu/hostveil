@@ -23,6 +23,78 @@ func registerUpdates(r *Registry) {
 		r.Register(id, buildInstallHardeningPackage)
 	}
 	r.Register("updates.sysstat-disabled", buildEnableSysstat)
+	r.Register("updates.origin-excluded", buildAllowOrigins)
+}
+
+// allowOriginsPath is Hostveil's own drop-in for origin patterns. It is a
+// file of its own rather than an edit to 50unattended-upgrades, which the
+// package owns and replaces on upgrade, and its list is appended to the
+// distribution's because apt merges list values across fragments.
+const allowOriginsPath = "/etc/apt/apt.conf.d/52hostveil-origins"
+
+// buildAllowOrigins adds the skipped repositories' patterns to
+// unattended-upgrades' list. Review, never Auto: letting a third-party
+// repository update the host unattended is a decision about trusting that
+// repository, and on a host with Automatic-Reboot a kernel from it reboots
+// the machine. The edit has a checkpoint, and apt-config checks the result
+// parses before it is written.
+func buildAllowOrigins(f model.Finding) (Fix, error) {
+	var patterns []string
+	for _, p := range strings.Split(f.Evidence["patterns"], "\n") {
+		if p = strings.TrimSpace(p); p != "" {
+			patterns = append(patterns, p)
+		}
+	}
+	if len(patterns) == 0 {
+		return Fix{}, fmt.Errorf("finding %s names no repositories; re-scan before fixing", f.ID)
+	}
+	return Fix{
+		FindingID: f.ID,
+		Label:     "Let unattended-upgrades install from these repositories",
+		Kind:      model.RemediationReview,
+		Actions: []Action{{
+			Label:           "Add their origin patterns to " + allowOriginsPath,
+			Benefit:         "Updates from these repositories install on the same schedule as the distribution's own, instead of waiting for someone to notice them.",
+			Warning:         "From then on these repositories update the host unattended, so you are trusting them as much as the distribution. If one ships a kernel and Unattended-Upgrade::Automatic-Reboot is on, its kernel updates will reboot the machine.",
+			Kind:            ActionEdit,
+			Path:            allowOriginsPath,
+			CreateIfMissing: true,
+			Transform:       func(in []byte) ([]byte, error) { return addOriginPatterns(in, patterns) },
+			VerifyCmd:       []string{"apt-config", "-c", VerifyPathToken, "dump", "Unattended-Upgrade::Origins-Pattern"},
+		}},
+	}, nil
+}
+
+// addOriginPatterns renders the drop-in with every pattern it already lists
+// plus the new ones, in a stable order, so applying the same fix twice is
+// a no-op and a later finding adds to the file rather than replacing it.
+func addOriginPatterns(in []byte, add []string) ([]byte, error) {
+	seen := map[string]bool{}
+	var all []string
+	for _, m := range regexp.MustCompile(`(?m)^\s*"((?:[^"\\]|\\.)*)"\s*;`).FindAllStringSubmatch(string(in), -1) {
+		if !seen[m[1]] {
+			seen[m[1]] = true
+			all = append(all, m[1])
+		}
+	}
+	for _, p := range add {
+		if strings.ContainsAny(p, "\"\n") {
+			return nil, fmt.Errorf("origin pattern %q cannot be written into apt's config", p)
+		}
+		if !seen[p] {
+			seen[p] = true
+			all = append(all, p)
+		}
+	}
+	var b strings.Builder
+	b.WriteString("// Written by Hostveil (updates.origin-excluded): repositories\n")
+	b.WriteString("// unattended-upgrades may install from, beyond the distribution's own.\n")
+	b.WriteString("Unattended-Upgrade::Origins-Pattern {\n")
+	for _, p := range all {
+		b.WriteString("    \"" + p + "\";\n")
+	}
+	b.WriteString("};\n")
+	return []byte(b.String()), nil
 }
 
 func buildEnableSysstat(f model.Finding) (Fix, error) {

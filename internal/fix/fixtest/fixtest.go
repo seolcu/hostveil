@@ -56,6 +56,7 @@ func Finding(id string) model.Finding {
 		model.WithEvidence("env_files", ".env"),
 		model.WithEvidence("owner-paths", "/etc/shadow"),
 		model.WithEvidence("sources", "/etc/apt/sources.list.d/pve-enterprise.list"),
+		model.WithEvidence("patterns", "origin=Tailscale,codename=noble,label=Tailscale"),
 		model.WithEvidence("set-in", "command: --api.insecure=true"),
 		model.WithMetadata("caddy_host", "true"),
 		model.WithMetadata("k3s_dropin_dir", "/etc/rancher/k3s/config.yaml.d"),

@@ -40,6 +40,16 @@ type Checker struct {
 	// dnf4 has only the second. Overridable for tests.
 	DnfAutomaticDefaults string
 	DnfAutomaticConfig   string
+	// OSReleasePath is where VERSION_CODENAME is read for unattended-
+	// upgrades' ${distro_codename}; overridable for tests.
+	OSReleasePath string
+}
+
+func (c *Checker) osReleasePath() string {
+	if c.OSReleasePath != "" {
+		return c.OSReleasePath
+	}
+	return "/etc/os-release"
 }
 
 // New returns an updates checker.
@@ -218,21 +228,36 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 	//
 	// The warning apt prints goes to stderr, and Run captures stdout only, so
 	// it cannot reach countAptSecurityUpdates.
+	questions := 2
 	out, err := env.Runner.Run(ctx, "apt", "list", "--upgradable")
 	if err != nil {
 		reasons = append(reasons, "cannot list pending updates")
-	} else if n := countAptSecurityUpdates(string(out)); n > 0 {
-		findings = append(findings, pendingFinding(n, "apt", "sudo apt update && sudo apt dist-upgrade"))
+	} else {
+		if n := countAptSecurityUpdates(string(out)); n > 0 {
+			findings = append(findings, pendingFinding(n, "apt", "sudo apt update && sudo apt dist-upgrade"))
+		}
+		// A third question once the mechanism is on and something is
+		// waiting: will it ever install what is waiting? See aptexcluded.go.
+		if ok && enabled {
+			questions++
+			groups, gerr := excludedOrigins(ctx, env.Runner, string(out), env.DistroID, osReleaseCodename(c.osReleasePath()))
+			switch {
+			case gerr != nil:
+				reasons = append(reasons, gerr.Error())
+			case len(groups) > 0:
+				findings = append(findings, excludedFinding(groups))
+			}
+		}
 	}
 
-	// Two questions here, as on the dnf side: whether automatic updates are
-	// configured, and whether anything is waiting. Both are reported when
-	// both go unanswered, rather than the first gap standing for the domain.
+	// Whether automatic updates are configured, and whether anything is
+	// waiting — and, when both hold, whether it will ever be installed. Every
+	// gap is reported, rather than the first standing for the domain.
 	if len(reasons) > 0 {
 		return findings, &check.PartialError{
 			Reason:  strings.Join(reasons, "; "),
-			Covered: 2 - len(reasons),
-			Total:   2,
+			Covered: questions - len(reasons),
+			Total:   questions,
 		}
 	}
 	return findings, nil
