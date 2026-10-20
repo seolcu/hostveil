@@ -33,7 +33,11 @@ func aptChecker(t *testing.T, enabled, reboot bool) *Checker {
 			t.Fatal(err)
 		}
 	}
-	return &Checker{AptConfigPath: cfg, RebootRequiredPath: flag}
+	osRelease := filepath.Join(dir, "os-release")
+	if err := os.WriteFile(osRelease, []byte("ID=ubuntu\nVERSION_CODENAME=jammy\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return &Checker{AptConfigPath: cfg, RebootRequiredPath: flag, OSReleasePath: osRelease}
 }
 
 // aptEnv scripts `apt list --upgradable`.
@@ -109,7 +113,8 @@ libssl3/jammy-security 3.0.2-0ubuntu1.18 amd64 [upgradable from: 3.0.2-0ubuntu1.
 linux-libc-dev/jammy-security 5.15.0-91.101 amd64 [upgradable from: 5.15.0-88.98]
 vim/jammy-updates 2:8.2.3995-1ubuntu2.15 amd64 [upgradable from: 2:8.2.3995-1ubuntu2.13]
 `
-	fs, err := aptChecker(t, true, false).Check(context.Background(), aptEnv(upgradable))
+	fs, err := aptChecker(t, true, false).Check(context.Background(),
+		ubuntuOrigins(upgradable, "libssl3", "linux-libc-dev", "vim"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,10 +134,12 @@ vim/jammy-updates 2:8.2.3995-1ubuntu2.15 amd64 [upgradable from: 2:8.2.3995-1ubu
 func TestLargeSecurityBacklogIsHigh(t *testing.T) {
 	var b strings.Builder
 	b.WriteString("Listing...\n")
+	var names []string
 	for i := 0; i < 12; i++ {
-		b.WriteString("pkg" + strings.Repeat("x", i) + "/jammy-security 1.2 amd64 [upgradable from: 1.1]\n")
+		names = append(names, "pkg"+strings.Repeat("x", i))
+		b.WriteString(names[i] + "/jammy-security 1.2 amd64 [upgradable from: 1.1]\n")
 	}
-	fs, err := aptChecker(t, true, false).Check(context.Background(), aptEnv(b.String()))
+	fs, err := aptChecker(t, true, false).Check(context.Background(), ubuntuOrigins(b.String(), names...))
 	if err != nil {
 		t.Fatal(err)
 	}

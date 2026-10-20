@@ -151,9 +151,9 @@
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">183</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">175</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">100</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 유출된 비밀값은 그것을 발급한 쪽에서 바꿔야 하고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
+            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">184</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">176</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">101</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 유출된 비밀값은 그것을 발급한 쪽에서 바꿔야 하고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
             <div class="ledger-bar-group">
-              <p class="ledger-bar-title"><span data-counted="findings.total">183</span>개 발견 항목의 처리 방식</p>
+              <p class="ledger-bar-title"><span data-counted="findings.total">184</span>개 발견 항목의 처리 방식</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Auto</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:41%"></div></div>
@@ -162,7 +162,7 @@
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:55%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">100</span>
+                <span class="ledger-bar-value" data-counted="findings.review">101</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
@@ -320,6 +320,7 @@
                   <tr><td><code>updates.disabled</code></td><td>자동 보안 업데이트가 활성화되지 않음 (apt unattended-upgrades 또는 dnf-automatic)</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.disabled">Review</a></td></tr>
                   <tr><td><code>updates.pending-security</code></td><td>보안 업데이트가 나와 있지만 설치되지 않음</td><td><span class="sev high">HIGH</span> / <span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.pending-security">Review</a></td></tr>
                   <tr><td><code>updates.reboot-required</code></td><td>설치된 업데이트가 적용되려면 재부팅이 필요함</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-updates.reboot-required">Review</a></td></tr>
+                  <tr><td><code>updates.origin-excluded</code></td><td>대기 중인 업데이트가 unattended-upgrades가 설치하지 않는 저장소에서 옴</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.origin-excluded">Review</a></td></tr>
                   <tr><td><code>updates.process-accounting</code></td><td>프로세스 사용 기록 도구가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.process-accounting">Review</a></td></tr>
                   <tr><td><code>updates.sysstat</code></td><td>시스템 활동 기록 도구가 설치되지 않음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-updates.sysstat">Review</a></td></tr>
                   <tr><td><code>updates.auditd</code></td><td>Linux 감사 데몬이 설치되지 않음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-updates.auditd">Review</a></td></tr>
@@ -940,6 +941,12 @@
               <p lang="en">Install and enable auditd</p>
               <p class="fix-benefit" lang="en">✓ Installs a kernel-level audit trail of security-relevant actions — file access, privilege changes — that survives a process exiting or an application log being cleared.</p>
               <p class="fix-warning" lang="en">⚠ Installs auditd and enables its service. There is no rollback checkpoint; undoing this means removing the package by hand.</p>
+            </dd>
+            <dt id="fix-updates.origin-excluded"><code>updates.origin-excluded</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Add their origin patterns to /etc/apt/apt.conf.d/52hostveil-origins</p>
+              <p class="fix-benefit" lang="en">✓ Updates from these repositories install on the same schedule as the distribution's own, instead of waiting for someone to notice them.</p>
+              <p class="fix-warning" lang="en">⚠ From then on these repositories update the host unattended, so you are trusting them as much as the distribution. If one ships a kernel and Unattended-Upgrade::Automatic-Reboot is on, its kernel updates will reboot the machine.</p>
             </dd>
             <dt id="fix-updates.pam-pwquality"><code>updates.pam-pwquality</code> <span class="fix-kind review">Review</span></dt>
             <dd>
