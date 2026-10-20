@@ -2,6 +2,35 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.35.0](https://github.com/seolcu/hostveil/compare/v3.34.0...v3.35.0) (2026-10-20)
+
+Hostveil now notices updates that unattended-upgrades is set up to skip.
+A package from a third-party repository, such as Raspberry Pi OS, Tailscale
+or Docker, that is not on the allowed-origins list stays pending forever
+while automatic updates look healthy. This release also removes a false
+High finding that appeared on any host with a masked systemd unit.
+
+### Features
+
+* **check:** new `updates.origin-excluded` finding. When unattended-upgrades
+  is enabled, Hostveil asks `apt-config` and `apt-cache policy` which
+  repository each pending upgrade comes from, then matches it against
+  `Origins-Pattern` and `Allowed-Origins` with the same rules
+  unattended-upgrades applies. The distribution's own archives are left out,
+  because skipping `-updates` is a deliberate default. The fix is offered
+  for review. It adds the repositories to
+  `/etc/apt/apt.conf.d/52hostveil-origins` and can be rolled back.
+
+### Bug Fixes
+
+* **check:** a unit masked with `systemctl mask` was reported as a
+  world-writable systemd unit (High). A masked unit is a symlink to
+  `/dev/null`, whose mode is 0666, and the check followed the link. Only
+  regular files are judged now. The finding could never be fixed, because
+  the fix correctly refuses to edit through a symlink.
+* **docs:** the CLI help, exported reports, TUI header and dashboard now
+  write the product name as Hostveil.
+
 ## [3.34.0](https://github.com/seolcu/hostveil/compare/v3.33.4...v3.34.0) (2026-10-12)
 
 Firewall fixes now work on firewalld, the default firewall on Fedora, RHEL,
