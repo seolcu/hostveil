@@ -98,6 +98,34 @@ func TestGlobHostKeysAggregated(t *testing.T) {
 	}
 }
 
+// `systemctl mask` replaces a unit with a symlink to /dev/null, which is 0666
+// on every host. Following the link judged the device, and reported each
+// masked service as a world-writable root unit.
+func TestAMaskedUnitIsNotAWritableUnit(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Symlink(os.DevNull, filepath.Join(dir, "rpcbind.service")); err != nil {
+		t.Fatal(err)
+	}
+	fs := run(t, []Rule{{Path: filepath.Join(dir, "*.service"), Glob: true, MaxMode: 0o644, Sev: model.SeverityHigh, ID: "fileperms.systemd-units", Title: "unit", Desc: "d"}})
+	if len(fs) != 0 {
+		t.Fatalf("a masked unit was judged by /dev/null's mode: %v", fs)
+	}
+}
+
+// A unit symlinked to a real file is still judged by that file: the rule is
+// about contents systemd will run, and those are the target's.
+func TestALinkedUnitIsJudgedByItsTarget(t *testing.T) {
+	target := writeMode(t, "ssh.service", 0o666)
+	dir := t.TempDir()
+	if err := os.Symlink(target, filepath.Join(dir, "sshd.service")); err != nil {
+		t.Fatal(err)
+	}
+	fs := run(t, []Rule{{Path: filepath.Join(dir, "*.service"), Glob: true, MaxMode: 0o644, Sev: model.SeverityHigh, ID: "fileperms.systemd-units", Title: "unit", Desc: "d"}})
+	if len(fs) != 1 {
+		t.Fatalf("a world-writable unit reached through a link was not flagged: %v", fs)
+	}
+}
+
 func TestDefaultRulesConstructible(t *testing.T) {
 	// New() must produce well-formed rules the engine will accept.
 	for _, r := range New().Rules {
