@@ -27,6 +27,9 @@ var osGated = map[string]string{
 	"agent": "enumerates homes out of that same /etc/passwd keeping uid 0 and 1000..65533; macOS " +
 		"accounts start at 501, so it finds only /var/root and reports 'no agent runtime' about a " +
 		"host whose /Users it never opened",
+	"forensic": "reads journald, auditd, logrotate and rsyslog, none of which macOS has — its " +
+		"logging is the unified log — so every check would either find nothing to judge or report " +
+		"'no log leaves this host' about a system whose logging it never examined",
 	"proxy": "reads /etc/nginx, which Homebrew's nginx does not use — its configuration is under " +
 		"the prefix, so the domain would report a clean proxy on a Mac that is running one, and " +
 		"the Traefik half would be deciding from a Docker daemon on a host whose own reverse " +

@@ -27,6 +27,7 @@ const (
 	SourceProxy
 	SourceProxmox
 	SourceKube
+	SourceForensic
 
 	sourceCount // sentinel, not a domain; keep last
 )
@@ -91,8 +92,8 @@ type sourceDef struct {
 // previous scan whose findings had all changed domain, which reads to a
 // user as "everything on this host is new and everything old is fixed".
 var sourceDefs = []sourceDef{
-	{SourceCompose, "compose", "Container", "container", "Container exposure", 10},
-	{SourceSSH, "ssh", "SSH", "ssh", "SSH hardening", 11},
+	{SourceCompose, "compose", "Container", "container", "Container exposure", 8},
+	{SourceSSH, "ssh", "SSH", "ssh", "SSH hardening", 9},
 	{SourceFirewall, "firewall", "Firewall", "firewall", "Host firewall", 6},
 	{SourceUpdates, "updates", "Updates", "updates", "Auto-updates", 7},
 	{SourceCVE, "cve", "CVEs", "cve", "Vulnerabilities", 7},
@@ -106,6 +107,7 @@ var sourceDefs = []sourceDef{
 	{SourceProxy, "proxy", "Proxy", "proxy", "Reverse proxy", 6},
 	{SourceProxmox, "proxmox", "Proxmox", "proxmox", "Proxmox VE host", 6},
 	{SourceKube, "kube", "Kubernetes", "kube", "Single-node Kubernetes", 5},
+	{SourceForensic, "forensic", "Forensics", "forensic", "Forensic readiness", 4},
 }
 
 var sourceIndex = indexBy(sourceDefs, func(d sourceDef) Source { return d.source })

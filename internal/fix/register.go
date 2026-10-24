@@ -284,6 +284,15 @@ package fix
 // finding never reaches it: the checker declares Manual, and the more
 // cautious of the two kinds wins.
 //
+// The forensic-readiness domain declines four. forensic.auditd-missing is
+// a package to install and a daemon to start, with default rules and disk use
+// the operator has to accept. forensic.time-unsynced needs a time source, and
+// which one to trust is not written anywhere on the host. forensic.weblog-no-size
+// changes a log format, and every parser of that log — a fail2ban filter, a
+// log shipper, a traffic report — expects the old one; hostveil cannot see
+// which of them read it. forensic.no-remote-log needs a second machine to send
+// to, which is not something a fix on this one can create.
+//
 // # The kernel-hardening fixes, and why they stopped being declined
 //
 // Sysctl findings used to be on the list above because persisting a value
@@ -460,6 +469,7 @@ func Default() *Registry {
 	registerSysctl(r)
 	registerSystemd(r)
 	registerProxy(r)
+	registerForensic(r)
 	r.floorReview()
 	return r
 }

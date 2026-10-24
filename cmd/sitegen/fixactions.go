@@ -43,6 +43,7 @@ var shortDomainLabelsKo = map[model.Source]string{
 	model.SourceProxy:     "프록시",
 	model.SourceKube:      "쿠버네티스",
 	model.SourceProxmox:   "Proxmox",
+	model.SourceForensic:  "포렌식",
 }
 
 // domainHeading is what renderFixActions puts in each domain's <h3>, in the

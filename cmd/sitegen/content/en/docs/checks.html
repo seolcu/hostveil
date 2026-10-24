@@ -21,28 +21,29 @@
                   <tr><td>Reverse proxy</td><td><code>proxy.</code></td><td>nginx, Caddy or Docker</td></tr>
                   <tr><td>Proxmox VE host</td><td><code>proxmox.</code></td><td>a Proxmox VE host</td></tr>
                   <tr><td>Single-node Kubernetes</td><td><code>kube.</code></td><td>k3s or k0s</td></tr>
+                  <tr><td>Forensic readiness</td><td><code>forensic.</code></td><td>—</td></tr>
                   <tr><td>Image CVEs <em>(optional)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
                 </tbody>
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">184</strong> findings, and <strong data-counted="findings.fixable">176</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">101</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">191</strong> findings, and <strong data-counted="findings.fixable">179</strong> of them carry a fix — <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">104</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical &mdash; removing a Docker socket mount, which breaks the tool that needs it &mdash; is not Manual: it is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Manual by <em>decision</em>, never Manual because nobody looked &mdash; a test fails the build on the difference, and the counts in this paragraph are computed from the registry rather than typed here.</p>
             <div class="ledger-bar-group">
-              <p class="ledger-bar-title">How the <span data-counted="findings.total">184</span> findings resolve</p>
+              <p class="ledger-bar-title">How the <span data-counted="findings.total">191</span> findings resolve</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Auto</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:41%"></div></div>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:39%"></div></div>
                 <span class="ledger-bar-value" data-counted="findings.auto">75</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:55%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">101</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:54%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.review">104</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:4%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">8</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:7%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">12</span>
               </div>
             </div>
 
@@ -73,8 +74,8 @@
               <table>
                 <thead><tr><th>Axis</th><th>Weight</th></tr></thead>
                 <tbody>
-                  <tr><td>SSH hardening</td><td>11</td></tr>
-                  <tr><td>Container exposure</td><td>10</td></tr>
+                  <tr><td>SSH hardening</td><td>9</td></tr>
+                  <tr><td>Container exposure</td><td>8</td></tr>
                   <tr><td>Account hygiene</td><td>7</td></tr>
                   <tr><td>Auto-updates</td><td>7</td></tr>
                   <tr><td>Docker daemon</td><td>7</td></tr>
@@ -88,6 +89,7 @@
                   <tr><td>Single-node Kubernetes</td><td>5</td></tr>
                   <tr><td>File permissions</td><td>5</td></tr>
                   <tr><td>Kernel hardening</td><td>5</td></tr>
+                  <tr><td>Forensic readiness</td><td>4</td></tr>
                 </tbody>
               </table>
             </div>
@@ -295,6 +297,25 @@
               </table>
             </div>
             <p>All four are <strong>Manual</strong>. k3s rewrites its kubeconfig at start from <code>write-kubeconfig-mode</code>, so a <code>chmod</code> would pass its re-check and be undone at the next restart; a readable token has to be rotated, not only tightened; and the other two change how the control plane starts, which takes a restart of the node every workload runs on.</p>
+
+            <h2 id="forensic">Forensic readiness <code>forensic.</code></h2>
+            <p>Every other domain asks whether someone can get in. This one asks whether, if someone did, this host will be able to show it. A self-hosted server usually cannot &mdash; not because the evidence was destroyed but because it was never written: the journal is lost at the reboot people reach for first, nothing records what the web server&rsquo;s account executed, and the access log keeps a week and does not say how big a request was. None of these is a way in, so every finding here is <span class="sev low">LOW</span>; the cost is the ability to tell an attempt from a compromise afterwards. Retention is measured against ninety days, the window in which most intrusions are noticed by someone other than the intruder.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
+                <tbody>
+                  <tr><td><code>forensic.journald-volatile</code></td><td>journald keeps the journal in memory only (<code>Storage=volatile</code>, or <code>auto</code> with no <code>/var/log/journal</code>), so everything before the last reboot is gone. Read from <code>systemd-analyze cat-config</code>, so drop-ins count</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>forensic.journald-retention</code></td><td><code>MaxRetentionSec</code> deletes journal entries younger than ninety days</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>forensic.logrotate-short</code></td><td>The logrotate stanza for the authentication or web access logs keeps them for less than ninety days (rotation count &times; period, the live file included)</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>forensic.auditd-missing</code></td><td>The Linux audit daemon is not installed or not running, so nothing keeps the kernel&rsquo;s record of which programs ran</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>forensic.service-exec-unaudited</code></td><td>A web server is installed and no audit rule records the programs its account (<code>www-data</code>, <code>apache</code>, <code>nginx</code>, <code>http</code>) starts. A web application almost never starts programs, so the rule is silent on a healthy host and records a webshell&rsquo;s first command on a compromised one</td><td><span class="sev low">LOW</span></td><td>Review</td></tr>
+                  <tr><td><code>forensic.time-unsynced</code></td><td>The clock is not synchronised with a time server, so log times cannot be lined up with each other or with anyone else&rsquo;s</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>forensic.weblog-no-size</code></td><td>The Apache or nginx access log format has no request size (<code>%I</code> / <code>$request_length</code>), so an exploit carried in a request body looks like every other request to the same page</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>forensic.no-remote-log</code></td><td>Neither rsyslog nor systemd-journal-upload sends logs to another machine, so whoever gains root here can erase every record of how</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>The three journal and rotation fixes write a drop-in or raise a rotate count and restart journald where needed; the audit fix writes one rule file under <code>/etc/audit/rules.d/</code> tagged <code>hostveil-svc-exec</code> and reloads the rules. All are Review because each has a cost only you can weigh &mdash; disk, and an audit log that fills if your web application does start programs. The other four are Manual: a daemon to install, a time server to choose, a log format other tools parse, and a second machine to send logs to.</p>
 
             <h2 id="fileperms">File permissions <code>fileperms.</code></h2>
             <p>Stats a curated set of security-critical files and flags any whose permission bits are looser than they should ever be.</p>

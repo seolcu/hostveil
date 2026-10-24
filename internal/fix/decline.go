@@ -56,6 +56,12 @@ func DeclinedIDs() []string {
 // registered now, and the three left each say something different — which is
 // what the shared sentence had been hiding.
 var declineReasons = map[string]string{
+	// forensic
+	"forensic.auditd-missing": "Installing and enabling a new daemon is a package decision, and auditd's default rules and disk use are yours to accept.",
+	"forensic.time-unsynced":  "Which time server to trust is not written anywhere on this host, and a wrong one moves every timestamp in every log.",
+	"forensic.weblog-no-size": "Every parser of this log — fail2ban filters, log shippers, traffic reports — expects its current format, and Hostveil cannot see which of them read it.",
+	"forensic.no-remote-log":  "Remote logging needs a second machine to receive it, which no change on this one can create.",
+
 	// compose
 	"compose.dr005": "Moving the value into an env_file is a two-file change one action cannot make, and a secret already in backups and git history needs rotating instead.",
 	"compose.ds012": "The right healthcheck depends on what the service exposes, and a guessed probe marks a working container unhealthy and stalls whatever waits on it.",
