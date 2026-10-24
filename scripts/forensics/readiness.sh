@@ -14,10 +14,15 @@ apt-get install -y -q auditd >/dev/null
 systemctl enable --now auditd >/dev/null
 
 # Manual: request size and time in the Apache access log (forensic.weblog-no-size).
-a2enmod -q logio >/dev/null
+# %I needs mod_logio, which Ubuntu builds into the server rather than ships as a module.
+apache2ctl -l | grep -q mod_logio || a2enmod -q logio >/dev/null
 cat > /etc/apache2/conf-available/forensic-log.conf <<'CONF'
 LogFormat "%h %l %u %t \"%r\" %>s %O \"%{Referer}i\" \"%{User-Agent}i\" %I %D" forensic
+LogFormat "%v:%p %h %l %u %t \"%r\" %>s %O \"%{Referer}i\" \"%{User-Agent}i\" %I %D" forensic_vhost
 CONF
+# Both access logs the finding names: the default site's, and the catch-all
+# other_vhosts_access.log Ubuntu enables in conf-enabled.
+sed -i 's/ vhost_combined$/ forensic_vhost/' /etc/apache2/conf-available/other-vhosts-access-log.conf
 a2enconf -q forensic-log >/dev/null
 sed -i 's/CustomLog ${APACHE_LOG_DIR}\/access.log combined/CustomLog ${APACHE_LOG_DIR}\/access.log forensic/' /etc/apache2/sites-enabled/000-default.conf
 systemctl reload apache2

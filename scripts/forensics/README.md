@@ -53,3 +53,7 @@ Manual steps one host can carry out (installing auditd, adding `%I %D` to
 the Apache log format). Each arm gets the S2 + S3 scenarios, is rebooted,
 and is triaged. `score.py` asks ten investigation questions of each bundle
 and counts how many the evidence answers.
+
+## Measured results
+
+`measurements/2026-10-25-summary.{json,md}` is the run the report quotes, scored by `score.py` against `truth.json`. The two earlier runs that found the false positives fixed in c7c7f83 are described in that commit.

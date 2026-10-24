@@ -1,0 +1,819 @@
+{
+  "tools": [
+    {
+      "tool": "triage",
+      "e1-clean": {
+        "seconds": 12.54,
+        "exit": "0",
+        "output_bytes": 483639,
+        "footprint": {
+          "raw": 3,
+          "attributable": 0,
+          "files": []
+        }
+      },
+      "e1-attacked": {
+        "seconds": 8.59,
+        "exit": "3",
+        "output_bytes": 581220,
+        "footprint": {
+          "raw": 4,
+          "attributable": 0,
+          "files": []
+        }
+      },
+      "detected": 18,
+      "per_element": {
+        "S1a": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S1b": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S2a": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S2c": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S3a": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S3b": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S3c": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S4a": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S4b": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S4c": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S4d": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S4e": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S4f": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S5": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S6a": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S6b": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S6c": {
+          "detected": true,
+          "verdict_ok": true
+        },
+        "S6d": {
+          "detected": true,
+          "verdict_ok": true
+        }
+      },
+      "verdict_ok": 18,
+      "clean_false_positives": {
+        "compromise": [],
+        "suspicious": [
+          "triage.persistence.recent-change"
+        ],
+        "attempt": []
+      },
+      "attacked_counts": {
+        "compromise": 10,
+        "suspicious": 7,
+        "attempt": 2
+      }
+    },
+    {
+      "tool": "rkhunter",
+      "e1-clean": {
+        "seconds": 47.81,
+        "exit": "1",
+        "output_bytes": 810,
+        "footprint": {
+          "raw": 12,
+          "attributable": 8,
+          "files": [
+            "/var/lib/landscape/landscape-sysinfo.cache",
+            "/var/lib/rkhunter/db/rkhunter_prop_list.dat",
+            "/var/lib/rkhunter/tmp/group",
+            "/var/lib/rkhunter/tmp/group.old",
+            "/var/lib/rkhunter/tmp/passwd",
+            "/var/lib/rkhunter/tmp/passwd.old",
+            "/var/log/rkhunter.log",
+            "/var/log/rkhunter.log.old"
+          ]
+        }
+      },
+      "e1-attacked": {
+        "seconds": 51.81,
+        "exit": "1",
+        "output_bytes": 1150,
+        "footprint": {
+          "raw": 10,
+          "attributable": 6,
+          "files": [
+            "/var/lib/rkhunter/db/rkhunter_prop_list.dat",
+            "/var/lib/rkhunter/tmp/group",
+            "/var/lib/rkhunter/tmp/passwd",
+            "/var/lib/rkhunter/tmp/passwd.old",
+            "/var/log/rkhunter.log",
+            "/var/log/rkhunter.log.old"
+          ]
+        }
+      },
+      "detected": 3,
+      "per_element": {
+        "S1a": {
+          "detected": false
+        },
+        "S1b": {
+          "detected": false
+        },
+        "S2a": {
+          "detected": false
+        },
+        "S2c": {
+          "detected": false
+        },
+        "S3a": {
+          "detected": false
+        },
+        "S3b": {
+          "detected": false
+        },
+        "S3c": {
+          "detected": false
+        },
+        "S4a": {
+          "detected": false
+        },
+        "S4b": {
+          "detected": false
+        },
+        "S4c": {
+          "detected": true
+        },
+        "S4d": {
+          "detected": false
+        },
+        "S4e": {
+          "detected": true
+        },
+        "S4f": {
+          "detected": true
+        },
+        "S5": {
+          "detected": false
+        },
+        "S6a": {
+          "detected": false
+        },
+        "S6b": {
+          "detected": false
+        },
+        "S6c": {
+          "detected": false
+        },
+        "S6d": {
+          "detected": false
+        }
+      },
+      "clean_warnings": [
+        "Warning: User 'alice' has been added to the passwd file.",
+        "Warning: Group 'alice' has been added to the group file.",
+        "Warning: The SSH configuration option 'PermitRootLogin' has not been set.\n         The default value may be 'yes', to allow root access.",
+        "Warning: Hidden file found: /etc/.resolv.conf.systemd-resolved.bak: ASCII text",
+        "Warning: Hidden file found: /etc/.updated: ASCII text"
+      ],
+      "attacked_warnings": 9,
+      "attacked_untied_warnings": 4
+    },
+    {
+      "tool": "chkrootkit",
+      "e1-clean": {
+        "seconds": 2.59,
+        "exit": "0",
+        "output_bytes": 1034,
+        "footprint": {
+          "raw": 3,
+          "attributable": 0,
+          "files": []
+        }
+      },
+      "e1-attacked": {
+        "seconds": 2.61,
+        "exit": "0",
+        "output_bytes": 1081,
+        "footprint": {
+          "raw": 2,
+          "attributable": 0,
+          "files": []
+        }
+      },
+      "detected": 1,
+      "per_element": {
+        "S1a": {
+          "detected": false
+        },
+        "S1b": {
+          "detected": false
+        },
+        "S2a": {
+          "detected": false
+        },
+        "S2c": {
+          "detected": false
+        },
+        "S3a": {
+          "detected": false
+        },
+        "S3b": {
+          "detected": false
+        },
+        "S3c": {
+          "detected": false
+        },
+        "S4a": {
+          "detected": false
+        },
+        "S4b": {
+          "detected": false
+        },
+        "S4c": {
+          "detected": false
+        },
+        "S4d": {
+          "detected": false
+        },
+        "S4e": {
+          "detected": false
+        },
+        "S4f": {
+          "detected": true
+        },
+        "S5": {
+          "detected": false
+        },
+        "S6a": {
+          "detected": false
+        },
+        "S6b": {
+          "detected": false
+        },
+        "S6c": {
+          "detected": false
+        },
+        "S6d": {
+          "detected": false
+        }
+      },
+      "clean_warnings": [
+        "WARNING: The following suspicious files and directories were found:",
+        "/usr/lib/modules/6.8.0-142-generic/vdso/.build-id",
+        "/usr/lib/python3/dist-packages/twisted/newsfragments/.gitignore",
+        "/usr/lib/python3/dist-packages/twisted/conch/newsfragments/.gitignore",
+        "/usr/lib/python3/dist-packages/twisted/web/newsfragments/.gitignore",
+        "/usr/lib/python3/dist-packages/twisted/trial/newsfragments/.gitignore",
+        "/usr/lib/python3/dist-packages/twisted/names/newsfragments/.gitignore",
+        "/usr/lib/python3/dist-packages/twisted/words/newsfragments/.gitignore",
+        "/usr/lib/python3/dist-packages/twisted/mail/newsfragments/.gitignore",
+        "/usr/lib/ruby/vendor_ruby/rubygems/ssl_certs/.document",
+        "/usr/lib/ruby/vendor_ruby/rubygems/tsort/.document",
+        "/usr/lib/ruby/vendor_ruby/rubygems/optparse/.document",
+        "WARNING: Possible Linux.Xor.DDoS installed:",
+        "/tmp/vagrant-shell",
+        "WARNING: Output from ifpromisc:",
+        "ens5: PACKET SNIFFER(/usr/lib/systemd/systemd-networkd[1726])"
+      ],
+      "attacked_warnings": 18,
+      "attacked_untied_warnings": 17
+    },
+    {
+      "tool": "lynis",
+      "e1-clean": {
+        "seconds": 17.21,
+        "exit": "0",
+        "output_bytes": 59721,
+        "footprint": {
+          "raw": 13,
+          "attributable": 4,
+          "files": [
+            "/var/cache/swcatalog/cache/C-local-metainfo.xb",
+            "/var/log/apt/eipp.log.xz",
+            "/var/log/lynis-report.dat",
+            "/var/log/lynis.log"
+          ]
+        }
+      },
+      "e1-attacked": {
+        "seconds": 18.12,
+        "exit": "0",
+        "output_bytes": 60836,
+        "footprint": {
+          "raw": 12,
+          "attributable": 3,
+          "files": [
+            "/var/log/apt/eipp.log.xz",
+            "/var/log/lynis-report.dat",
+            "/var/log/lynis.log"
+          ]
+        }
+      },
+      "detected": 1,
+      "per_element": {
+        "S1a": {
+          "detected": false
+        },
+        "S1b": {
+          "detected": false
+        },
+        "S2a": {
+          "detected": false
+        },
+        "S2c": {
+          "detected": false
+        },
+        "S3a": {
+          "detected": false
+        },
+        "S3b": {
+          "detected": false
+        },
+        "S3c": {
+          "detected": false
+        },
+        "S4a": {
+          "detected": false
+        },
+        "S4b": {
+          "detected": false
+        },
+        "S4c": {
+          "detected": false
+        },
+        "S4d": {
+          "detected": false
+        },
+        "S4e": {
+          "detected": true
+        },
+        "S4f": {
+          "detected": false
+        },
+        "S5": {
+          "detected": false
+        },
+        "S6a": {
+          "detected": false
+        },
+        "S6b": {
+          "detected": false
+        },
+        "S6c": {
+          "detected": false
+        },
+        "S6d": {
+          "detected": false
+        }
+      },
+      "clean_warnings": [
+        "warning[]=PKGS-7392|Found one or more vulnerable packages.|-|-|",
+        "warning[]=MAIL-8818|Found some information disclosure in SMTP banner (OS or software name)|-|-|",
+        "warning[]=FIRE-4512|iptables module(s) loaded, but no rules active|-|-|"
+      ],
+      "attacked_warnings": 5,
+      "attacked_untied_warnings": 4
+    },
+    {
+      "tool": "uac",
+      "e1-clean": {
+        "seconds": 126.19,
+        "exit": "0",
+        "output_bytes": 49915772,
+        "footprint": {
+          "raw": 150,
+          "attributable": 44,
+          "files": [
+            "/etc/passwd",
+            "/etc/passwd-",
+            "/etc/shadow",
+            "/etc/shadow-",
+            "/etc/systemd/system/snap-core24-2124.mount",
+            "/etc/systemd/system/snap-lxd-40958.mount",
+            "/etc/systemd/system/snap-snapd-28254.mount",
+            "/etc/systemd/system/snap.lxd.activate.service",
+            "/etc/systemd/system/snap.lxd.daemon.service",
+            "/etc/systemd/system/snap.lxd.daemon.unix.socket",
+            "/etc/systemd/system/snap.lxd.user-daemon.service",
+            "/etc/systemd/system/snap.lxd.user-daemon.unix.socket",
+            "/etc/udev/rules.d/70-snap.snapd.rules",
+            "/root/snap/lxd/common/config/config.yml",
+            "/var/cache/snapd/aux/J60k4JY0HppjwOjW8dZdYc8obXKxujRu.json",
+            "/var/cache/snapd/aux/PMrrV4ml8uWuEUDBT8dSGnKUYbevVhc4.json",
+            "/var/cache/snapd/aux/dwTAh7MZZ01zyriOZErqd1JynQLiOGvM.json",
+            "/var/cache/snapd/commands.db",
+            "/var/cache/snapd/icons-pool/J60k4JY0HppjwOjW8dZdYc8obXKxujRu.icon",
+            "/var/cache/snapd/icons-pool/PMrrV4ml8uWuEUDBT8dSGnKUYbevVhc4.icon",
+            "/var/cache/snapd/icons-pool/dwTAh7MZZ01zyriOZErqd1JynQLiOGvM.icon",
+            "/var/cache/snapd/icons/J60k4JY0HppjwOjW8dZdYc8obXKxujRu.icon",
+            "/var/cache/snapd/icons/PMrrV4ml8uWuEUDBT8dSGnKUYbevVhc4.icon",
+            "/var/cache/snapd/icons/dwTAh7MZZ01zyriOZErqd1JynQLiOGvM.icon",
+            "/var/cache/snapd/names",
+            "/var/cache/snapd/sections",
+            "/var/log/ubuntu-advantage.log",
+            "/var/snap/lxd/common/config",
+            "/var/snap/lxd/common/lxc/local.conf",
+            "/var/snap/lxd/common/lxcfs.pid",
+            "/var/snap/lxd/common/lxd.pid",
+            "/var/snap/lxd/common/lxd/cache/instance_types.yaml",
+            "/var/snap/lxd/common/lxd/database/global/0000000000000001-0000000000000001",
+            "/var/snap/lxd/common/lxd/database/global/dqlite-lock",
+            "/var/snap/lxd/common/lxd/database/global/metadata1",
+            "/var/snap/lxd/common/lxd/database/global/open-1",
+            "/var/snap/lxd/common/lxd/database/global/open-2",
+            "/var/snap/lxd/common/lxd/database/global/open-3",
+            "/var/snap/lxd/common/lxd/database/local.db",
+            "/var/snap/lxd/common/lxd/logs/lxd.log"
+          ]
+        }
+      },
+      "e1-attacked": {
+        "seconds": 81.08,
+        "exit": "0",
+        "output_bytes": 54115901,
+        "footprint": {
+          "raw": 5,
+          "attributable": 0,
+          "files": []
+        }
+      },
+      "detected": 0,
+      "per_element": {
+        "S1a": {
+          "detected": null
+        },
+        "S1b": {
+          "detected": null
+        },
+        "S2a": {
+          "detected": null
+        },
+        "S2c": {
+          "detected": null
+        },
+        "S3a": {
+          "detected": null
+        },
+        "S3b": {
+          "detected": null
+        },
+        "S3c": {
+          "detected": null
+        },
+        "S4a": {
+          "detected": null
+        },
+        "S4b": {
+          "detected": null
+        },
+        "S4c": {
+          "detected": null
+        },
+        "S4d": {
+          "detected": null
+        },
+        "S4e": {
+          "detected": null
+        },
+        "S4f": {
+          "detected": null
+        },
+        "S5": {
+          "detected": null
+        },
+        "S6a": {
+          "detected": null
+        },
+        "S6b": {
+          "detected": null
+        },
+        "S6c": {
+          "detected": null
+        },
+        "S6d": {
+          "detected": null
+        }
+      }
+    }
+  ],
+  "elements": [
+    {
+      "id": "S1a",
+      "scenario": "S1 web scan",
+      "what": "60 requests for paths that do not exist",
+      "triage": "triage.web.scanning",
+      "verdict": "attempt",
+      "tokens": [
+        ""
+      ]
+    },
+    {
+      "id": "S1b",
+      "scenario": "S1 web scan",
+      "what": "a secrets file the site serves (/.env, 200)",
+      "triage": "triage.web.probe-answered",
+      "verdict": "suspicious",
+      "tokens": [
+        ".env"
+      ]
+    },
+    {
+      "id": "S2a",
+      "scenario": "S2 web RCE",
+      "what": "a PHP file in the upload directory, executed",
+      "triage": "triage.web.script-in-upload-dir",
+      "verdict": "compromise",
+      "tokens": [
+        "avatar.php"
+      ]
+    },
+    {
+      "id": "S2c",
+      "scenario": "S2 web RCE",
+      "what": "a shell running as www-data",
+      "triage": "triage.process.webuser-shell",
+      "verdict": "compromise",
+      "tokens": [
+        "3601"
+      ]
+    },
+    {
+      "id": "S3a",
+      "scenario": "S3 SSH",
+      "what": "40 failed password logins from one address",
+      "triage": "triage.login.guessing",
+      "verdict": "attempt",
+      "tokens": [
+        ""
+      ]
+    },
+    {
+      "id": "S3b",
+      "scenario": "S3 SSH",
+      "what": "a password login from the guessing address",
+      "triage": "triage.login.after-guessing",
+      "verdict": "compromise",
+      "tokens": [
+        "203.0.113.50"
+      ]
+    },
+    {
+      "id": "S3c",
+      "scenario": "S3 SSH",
+      "what": "a login with a key since removed from authorized_keys",
+      "triage": "triage.login.key-not-authorized-now",
+      "verdict": "suspicious",
+      "tokens": [
+        "SHA256:"
+      ]
+    },
+    {
+      "id": "S4a",
+      "scenario": "S4 persistence",
+      "what": "a cron entry piping a download into sh",
+      "triage": "triage.persistence.download-and-run",
+      "verdict": "compromise",
+      "tokens": [
+        "sync.disabled"
+      ]
+    },
+    {
+      "id": "S4b",
+      "scenario": "S4 persistence",
+      "what": "a systemd unit piping a download into sh",
+      "triage": "triage.persistence.download-and-run",
+      "verdict": "compromise",
+      "tokens": [
+        "sync-helper.service"
+      ]
+    },
+    {
+      "id": "S4c",
+      "scenario": "S4 persistence",
+      "what": "a library in /etc/ld.so.preload",
+      "triage": "triage.persistence.ld-preload",
+      "verdict": "compromise",
+      "tokens": [
+        "ld.so.preload",
+        "preloaded shared library"
+      ]
+    },
+    {
+      "id": "S4d",
+      "scenario": "S4 persistence",
+      "what": "an unpackaged setuid binary in /var/tmp",
+      "triage": "triage.integrity.setuid-unpackaged",
+      "verdict": "compromise",
+      "tokens": [
+        "/var/tmp/.cache/true"
+      ]
+    },
+    {
+      "id": "S4e",
+      "scenario": "S4 persistence",
+      "what": "a second UID 0 account",
+      "triage": "triage.account.uid0",
+      "verdict": "compromise",
+      "tokens": [
+        "toor",
+        "UID 0",
+        "UID = 0"
+      ]
+    },
+    {
+      "id": "S4f",
+      "scenario": "S4 persistence",
+      "what": "a program running from /dev/shm",
+      "triage": "triage.process.exe-unusual",
+      "verdict": "compromise",
+      "tokens": [
+        "/dev/shm/.x"
+      ]
+    },
+    {
+      "id": "S5",
+      "scenario": "S5 bulk export",
+      "what": "one client downloading 25 exports",
+      "triage": "triage.web.bulk-export",
+      "verdict": "suspicious",
+      "tokens": [
+        ""
+      ]
+    },
+    {
+      "id": "S6a",
+      "scenario": "S6 anti-forensics",
+      "what": "shell history linked to /dev/null",
+      "triage": "triage.antiforensic.history-disabled",
+      "verdict": "suspicious",
+      "tokens": [
+        "bash_history"
+      ]
+    },
+    {
+      "id": "S6b",
+      "scenario": "S6 anti-forensics",
+      "what": "wtmp emptied",
+      "triage": "triage.antiforensic.log-emptied",
+      "verdict": "suspicious",
+      "tokens": [
+        "wtmp"
+      ]
+    },
+    {
+      "id": "S6c",
+      "scenario": "S6 anti-forensics",
+      "what": "a backdated unit file (touch -d)",
+      "triage": "triage.file.timestamp-mismatch",
+      "verdict": "suspicious",
+      "tokens": [
+        "sync-helper.service"
+      ]
+    },
+    {
+      "id": "S6d",
+      "scenario": "S6 anti-forensics",
+      "what": "a packaged program modified",
+      "triage": "triage.integrity.package-file-modified",
+      "verdict": "compromise",
+      "tokens": [
+        "lsb_release"
+      ]
+    }
+  ],
+  "verify": {
+    "e1-clean": {
+      "exit": 0,
+      "summary": "Checked 53 files. Manifest SHA-256: 1bd3cc15545055a3850b354bb91ce0babfef19b59fde48f224bd33a76e191ffc"
+    },
+    "e1-attacked": {
+      "exit": 0,
+      "summary": "Checked 60 files. Manifest SHA-256: 2993a25f5bc90924b52722c9cde85491a9a13d5d8a1f70795c6710973981260a"
+    },
+    "e2-default": {
+      "exit": 0,
+      "summary": "Checked 53 files. Manifest SHA-256: d368b12abbe2e65169fea6af0a7b446c919984353b7891ab2ab6a67a06955063"
+    },
+    "e2-ready": {
+      "exit": 0,
+      "summary": "Checked 54 files. Manifest SHA-256: 2c2d5502bc33c616a6c28379174285149461b9f8058eb64cd1f0ee0fef0f7237"
+    },
+    "tampered": {
+      "exit": 1,
+      "output": "Checked 60 files. Manifest SHA-256: 2993a25f5bc90924b52722c9cde85491a9a13d5d8a1f70795c6710973981260a\n  CHANGED  artifacts/files/var/log/auth.log\nThe bundle does not match its manifest."
+    }
+  },
+  "e2": {
+    "default": {
+      "answered": 6,
+      "questions": {
+        "Q1 Were there SSH password-guessing attempts?": true,
+        "Q2 Did a login succeed from the guessing address?": true,
+        "Q3 What did the web server's account execute?": false,
+        "Q4 Was a script in the upload directory run?": true,
+        "Q5 How large was each request (body size recorded)?": false,
+        "Q6 Does the journal still hold the pre-reboot SSH events?": true,
+        "Q7 Does the journal span more than one boot?": true,
+        "Q8 Are logs kept for 90 days?": false,
+        "Q9 Can the log times be trusted (clock synchronised)?": true,
+        "Q10 Is there a copy of the logs off the host?": false
+      },
+      "gaps": [
+        "forensic.auditd-missing",
+        "forensic.logrotate-short",
+        "forensic.no-remote-log",
+        "forensic.weblog-no-size"
+      ],
+      "indicators": [
+        "triage.login.after-guessing",
+        "triage.login.guessing",
+        "triage.persistence.recent-change",
+        "triage.web.script-in-upload-dir"
+      ]
+    },
+    "ready": {
+      "answered": 9,
+      "questions": {
+        "Q1 Were there SSH password-guessing attempts?": true,
+        "Q2 Did a login succeed from the guessing address?": true,
+        "Q3 What did the web server's account execute?": true,
+        "Q4 Was a script in the upload directory run?": true,
+        "Q5 How large was each request (body size recorded)?": true,
+        "Q6 Does the journal still hold the pre-reboot SSH events?": true,
+        "Q7 Does the journal span more than one boot?": true,
+        "Q8 Are logs kept for 90 days?": true,
+        "Q9 Can the log times be trusted (clock synchronised)?": true,
+        "Q10 Is there a copy of the logs off the host?": false
+      },
+      "gaps": [
+        "forensic.no-remote-log"
+      ],
+      "indicators": [
+        "triage.audit.webuser-exec",
+        "triage.login.after-guessing",
+        "triage.login.guessing",
+        "triage.persistence.recent-change",
+        "triage.web.script-in-upload-dir"
+      ]
+    }
+  },
+  "noise_excluded": [
+    "^/var/log/journal/",
+    "^/var/log/(syslog|auth\\.log|kern\\.log)$",
+    "^/var/log/apache2/",
+    "^/var/log/audit/",
+    "^/var/lib/systemd/",
+    "^/var/lib/rsyslog/",
+    "^/var/log/wtmp$",
+    "^/var/log/lastlog$",
+    "^/var/lib/logrotate/",
+    "^/var/log/sysstat/",
+    "^/var/cache/apparmor/",
+    "^/var/lib/apt/",
+    "^/var/cache/apt/",
+    "^/var/lib/update-notifier/",
+    "^/var/lib/ubuntu-advantage/",
+    "^/var/lib/snapd/",
+    "^/var/log/cloud-init",
+    "^/var/lib/cloud/",
+    "^/var/log/dpkg\\.log$"
+  ]
+}
