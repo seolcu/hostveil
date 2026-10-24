@@ -101,13 +101,23 @@ func Collect(ctx context.Context, opts Options) (*Manifest, error) {
 	c.files(2, "authorized_keys", c.homeGlobs(".ssh/authorized_keys", ".ssh/authorized_keys2")...)
 	c.homeLinks(2)
 	c.command(ctx, 2, "auditctl", "auditctl", "-l")
-	c.walk(2, "recent-files", recentRoots, func(st fileStat, _ fs.FileMode) bool {
+	recent := c.walk(2, "recent-files", recentRoots, func(st fileStat, _ fs.FileMode) bool {
 		return !st.mtime.Before(c.since) || !st.ctime.Before(c.since)
 	})
 	suid := c.walk(2, "suid", suidRoots, func(_ fileStat, m fs.FileMode) bool {
 		return m&fs.ModeSetuid != 0 && m.IsRegular()
 	})
-	c.packageOwners(ctx, 2, suid)
+	// Owners are asked for the setuid files and for the recently changed
+	// start-up files: a package installing or upgrading a file leaves its
+	// archive's old mtime under a new ctime, which is otherwise exactly
+	// what backdating looks like.
+	var owned []string
+	for _, p := range recent {
+		if persistencePath(p) {
+			owned = append(owned, p)
+		}
+	}
+	c.packageOwners(ctx, 2, append(suid, owned...))
 	c.packageVerify(ctx, 2)
 
 	// Phase 3: logs. Copied as they are, rotated and compressed ones
@@ -460,26 +470,50 @@ func (c *collector) packageOwners(ctx context.Context, phase int, paths []string
 	if !platform.Has(c.opts.Runner, "dpkg") && platform.Has(c.opts.Runner, "rpm") {
 		tool = []string{"rpm", "-qf"}
 	}
-	a := Artifact{Name: "pkg-owner", Path: c.next("pkg-owner", "txt"), Phase: phase, Kind: "command", Argv: append(tool, "<setuid files>")}
+	a := Artifact{Name: "pkg-owner", Path: c.next("pkg-owner", "txt"), Phase: phase, Kind: "command", Argv: append(tool, "<setuid and recently changed start-up files>")}
 	if !platform.Has(c.opts.Runner, tool[0]) {
 		a.Error = "no package manager to ask"
 		c.record(a, nil)
 		return
 	}
-	var b strings.Builder
-	for _, p := range paths {
+	ask := func(p string) string {
 		cctx, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
 		out, err := c.opts.Runner.Run(cctx, tool[0], append(tool[1:], p)...)
-		cancel()
 		owner := strings.TrimSpace(string(out))
 		if err != nil || owner == "" || strings.Contains(owner, "not owned") {
-			owner = "-"
-		} else if tool[0] == "dpkg" {
+			return "-"
+		}
+		if tool[0] == "dpkg" {
 			owner, _, _ = strings.Cut(owner, ":")
+		}
+		return owner
+	}
+	var b strings.Builder
+	seen := map[string]bool{}
+	for _, p := range paths {
+		if seen[p] {
+			continue
+		}
+		seen[p] = true
+		owner := ask(p)
+		// On a merged-/usr system dpkg still records many files under the
+		// path the package shipped them at, /bin rather than /usr/bin.
+		if alias := unmergedPath(p); owner == "-" && alias != "" {
+			owner = ask(alias)
 		}
 		fmt.Fprintf(&b, "%s\t%s\n", p, owner)
 	}
 	c.record(a, []byte(b.String()))
+}
+
+func unmergedPath(p string) string {
+	for _, d := range []string{"/usr/bin/", "/usr/sbin/", "/usr/lib/", "/usr/lib64/"} {
+		if strings.HasPrefix(p, d) {
+			return strings.TrimPrefix(p, "/usr")
+		}
+	}
+	return ""
 }
 
 func (c *collector) packageVerify(ctx context.Context, phase int) {

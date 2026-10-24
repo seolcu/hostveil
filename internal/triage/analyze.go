@@ -90,11 +90,13 @@ func (b *bundle) text(a Artifact) string {
 }
 
 type analysis struct {
-	b      *bundle
-	now    time.Time
-	since  time.Time
-	res    Result
-	svcUID map[string]string // uid -> name of the web-server accounts
+	owners   map[string]string // path -> package, "-" for none, from pkg-owner
+	modified map[string]bool   // paths the package manager says changed
+	b        *bundle
+	now      time.Time
+	since    time.Time
+	res      Result
+	svcUID   map[string]string // uid -> name of the web-server accounts
 }
 
 // Analyze derives indicators, gaps and a timeline from a bundle on disk.
@@ -104,6 +106,7 @@ func Analyze(dir string) (*Result, *Manifest, error) {
 		return nil, nil, err
 	}
 	an := &analysis{b: b, now: b.m.StartedUTC, since: b.m.Since, svcUID: map[string]string{}}
+	an.loadPackages()
 	an.accounts()
 	an.ssh()
 	an.web()
@@ -121,7 +124,14 @@ func Analyze(dir string) (*Result, *Manifest, error) {
 	return &an.res, &b.m, nil
 }
 
+// IDPrefix namespaces every indicator. An indicator is not a finding — it
+// is a conclusion about the past, not a setting to fix — so no indicator ID
+// may read as one: none starts with, or contains, a detection domain's name
+// followed by a dot (login.*, not ssh.*), which internal/docs enforces.
+const IDPrefix = "triage."
+
 func (an *analysis) add(in Indicator) {
+	in.ID = IDPrefix + in.ID
 	if len(in.Evidence) > 10 {
 		in.Evidence = in.Evidence[:10]
 	}
@@ -306,7 +316,7 @@ func (an *analysis) ssh() {
 		an.event(l.t, "ssh", fmt.Sprintf("login accepted: %s by %s from %s", user, method, ip), l.art.Path)
 		ev := Evidence{Artifact: l.art.Path, Line: l.line, Text: l.text}
 		if s := failed[ip]; s != nil && s.fails >= 5 {
-			an.add(Indicator{ID: "ssh.login-after-guessing", Verdict: Compromise,
+			an.add(Indicator{ID: "login.after-guessing", Verdict: Compromise,
 				Title:  "A login succeeded from an address that had been guessing passwords",
 				Detail: fmt.Sprintf("%s logged in as %s from %s after %d failed attempts from the same address. That is what a successful brute force looks like.", method, user, ip, s.fails),
 				First:  s.first, Last: l.t, Count: s.fails,
@@ -314,13 +324,13 @@ func (an *analysis) ssh() {
 			continue
 		}
 		if method == "password" || strings.HasPrefix(method, "keyboard-interactive") {
-			an.add(Indicator{ID: "ssh.password-login", Verdict: Suspicious,
+			an.add(Indicator{ID: "login.password", Verdict: Suspicious,
 				Title:  "Someone logged in over SSH with a password",
 				Detail: fmt.Sprintf("%s logged in from %s with a password. If you log in with keys, this was not you.", user, ip),
 				First:  l.t, Evidence: []Evidence{ev}})
 		}
 		if fp != "" && len(keys) > 0 && !keys[fp] {
-			an.add(Indicator{ID: "ssh.key-not-authorized-now", Verdict: Suspicious,
+			an.add(Indicator{ID: "login.key-not-authorized-now", Verdict: Suspicious,
 				Title:  "A login used a key that is no longer in any authorized_keys",
 				Detail: fmt.Sprintf("%s logged in from %s with key %s, which no authorized_keys file on this host now contains. Either the key was removed since — which is ordinary — or it was added, used, and removed.", user, ip, fp),
 				First:  l.t, Evidence: []Evidence{ev}})
@@ -336,7 +346,7 @@ func (an *analysis) ssh() {
 		for _, ip := range top[:min(3, len(top))] {
 			ev = append(ev, failed[ip].ev[0])
 		}
-		an.add(Indicator{ID: "ssh.guessing", Verdict: Attempt,
+		an.add(Indicator{ID: "login.guessing", Verdict: Attempt,
 			Title: "SSH password guessing",
 			Detail: fmt.Sprintf("%d failed SSH logins from %d addresses, none followed by a success from the same address. "+
 				"Every server reachable from the internet receives these; on its own it shows only that someone tried.", total, len(failed)),
@@ -594,14 +604,23 @@ func (an *analysis) persistence() {
 	var ev []Evidence
 	for i, l := range lines(text)[1:] {
 		f := strings.Split(l, "\t")
-		if len(f) < 6 || !persistencePath(f[0]) {
+		if len(f) < 6 || !persistencePath(f[0]) || an.packaged(f[0]) {
+			continue
+		}
+		// An enablement symlink is the trace of `systemctl enable`, and the
+		// unit it points to is judged on its own; passwd- and friends are
+		// the copies the account tools keep of the previous version.
+		if strings.HasPrefix(f[1], "L") || strings.HasSuffix(f[0], "-") {
 			continue
 		}
 		mt, _ := time.Parse(time.RFC3339, f[4])
 		ct, _ := time.Parse(time.RFC3339, f[5])
 		an.event(ct, "file", "changed: "+f[0], a.Path)
 		ev = append(ev, Evidence{Artifact: a.Path, Line: i + 2, Text: l})
-		if ct.Sub(mt) > 7*24*time.Hour && !ct.Before(an.since) {
+		// Backdating is judged only where it hides something that runs.
+		// Shell start-up files are copied from /etc/skel with their original
+		// times every time an account is made, so there it is the norm.
+		if executesPath(f[0]) && ct.Sub(mt) > 7*24*time.Hour && !ct.Before(an.since) {
 			an.add(Indicator{ID: "file.timestamp-mismatch", Verdict: Suspicious,
 				Title:    "A file's modification time is older than its last change",
 				Detail:   f[0] + " says it was modified " + mt.Format("2006-01-02") + " but its inode changed " + ct.Format("2006-01-02 15:04") + ". Backdating a file with `touch -d` leaves exactly this; so does restoring one from a backup.",
@@ -614,6 +633,18 @@ func (an *analysis) persistence() {
 			Detail: fmt.Sprintf("%d files that decide what runs at boot or on a schedule, who can log in, or who can become root changed in the window. Each should match something you did.", len(ev)),
 			Count:  len(ev), Evidence: ev})
 	}
+}
+
+// executesPath is the subset of persistencePath whose files are run, by
+// cron, systemd, the loader or a login shell's PATH.
+func executesPath(p string) bool {
+	for _, pre := range []string{"/etc/cron", "/var/spool/cron/", "/etc/systemd/system/", "/etc/ld.so.preload",
+		"/etc/rc.local", "/etc/profile.d/", "/usr/local/bin/", "/usr/local/sbin/"} {
+		if strings.HasPrefix(p, pre) {
+			return true
+		}
+	}
+	return false
 }
 
 func persistencePath(p string) bool {
@@ -630,11 +661,44 @@ func persistencePath(p string) bool {
 
 var dpkgVerifyLine = regexp.MustCompile(`^([.?A-Za-z0-9]{9})\s+(c?)\s*(/\S+)`)
 
+func (an *analysis) loadPackages() {
+	an.owners, an.modified = map[string]string{}, map[string]bool{}
+	if _, text, ok := an.b.one("pkg-owner"); ok {
+		for _, l := range lines(text) {
+			if p, owner, ok := strings.Cut(l, "\t"); ok {
+				an.owners[p] = owner
+			}
+		}
+	}
+	if _, text, ok := an.b.one("pkg-verify"); ok {
+		for _, l := range lines(text) {
+			if m := dpkgVerifyLine.FindStringSubmatch(l); m != nil {
+				an.modified[m[3]] = true
+			}
+		}
+	}
+}
+
+// packaged reports whether the package manager installed p unchanged —
+// which explains an old mtime under a new ctime, and a recent change made
+// by an upgrade.
+func (an *analysis) packaged(p string) bool {
+	o, ok := an.owners[p]
+	return ok && o != "-" && !an.modified[p]
+}
+
 func (an *analysis) integrity() {
+	suid := map[string]bool{}
+	if _, text, ok := an.b.one("suid"); ok {
+		for _, l := range lines(text)[1:] {
+			p, _, _ := strings.Cut(l, "\t")
+			suid[p] = true
+		}
+	}
 	if a, text, ok := an.b.one("pkg-owner"); ok {
 		for i, l := range lines(text) {
 			p, owner, ok := strings.Cut(l, "\t")
-			if ok && owner == "-" {
+			if ok && owner == "-" && suid[p] {
 				an.add(Indicator{ID: "integrity.setuid-unpackaged", Verdict: Compromise,
 					Title:    "A setuid program no package installed",
 					Detail:   p + " runs as its owner whoever starts it, and no installed package claims it. A setuid copy of a shell left behind is the classic way back to root.",

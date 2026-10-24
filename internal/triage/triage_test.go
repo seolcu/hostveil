@@ -55,7 +55,7 @@ func (h *fakeHost) run() (*Result, string, string) {
 func verdicts(res *Result) map[string]Verdict {
 	out := map[string]Verdict{}
 	for _, in := range res.Indicators {
-		out[in.ID] = in.Verdict
+		out[strings.TrimPrefix(in.ID, IDPrefix)] = in.Verdict
 	}
 	return out
 }
@@ -78,7 +78,7 @@ func TestACleanHostShowsOnlyAttempts(t *testing.T) {
 
 	res, _, _ := h.run()
 	v := verdicts(res)
-	if v["ssh.guessing"] != Attempt || v["web.scanning"] != Attempt {
+	if v["login.guessing"] != Attempt || v["web.scanning"] != Attempt {
 		t.Errorf("attempts not reported: %v", v)
 	}
 	for id, verdict := range v {
@@ -120,7 +120,7 @@ func TestTracesOfACompromiseAreReported(t *testing.T) {
 	res, _, _ := h.run()
 	v := verdicts(res)
 	for id, want := range map[string]Verdict{
-		"ssh.login-after-guessing":        Compromise,
+		"login.after-guessing":            Compromise,
 		"web.script-in-upload-dir":        Compromise,
 		"web.probe-answered":              Suspicious,
 		"audit.webuser-exec":              Compromise,
@@ -217,5 +217,52 @@ func TestLogTime(t *testing.T) {
 	}
 	if got := logTime("2026-01-02T10:00:00.123456+09:00 host sshd[1]: x", now); !got.Equal(time.Date(2026, 1, 2, 1, 0, 0, 123456000, time.UTC)) {
 		t.Errorf("rfc3339: %v", got)
+	}
+}
+
+// TestPackagedFilesAreNotBackdatingOrUnpackaged pins the two false
+// positives the first testbed run found on a stock Ubuntu image: dpkg
+// leaves a package's own mtime under the ctime of the install, which reads
+// as backdating, and on merged /usr it records /bin/x for /usr/bin/x, which
+// read as a setuid file no package installed.
+func TestPackagedFilesAreNotBackdatingOrUnpackaged(t *testing.T) {
+	h := newFakeHost(t)
+	h.write("/etc/cron.d/e2scrub_all", "30 3 * * 0 root test -e /run/systemd/system || SERVICE_MODE=1 /usr/lib/x86_64-linux-gnu/e2fsprogs/e2scrub_all_cron\n")
+	old := testNow.Add(-900 * 24 * time.Hour)
+	_ = os.Chtimes(filepath.Join(h.root, "etc/cron.d/e2scrub_all"), old, old)
+	h.write("/usr/bin/fusermount3", "")
+	if err := os.Chmod(filepath.Join(h.root, "usr/bin/fusermount3"), os.ModeSetuid|0o755); err != nil {
+		t.Fatal(err)
+	}
+	h.r.Script("e2fsprogs: /etc/cron.d/e2scrub_all\n", "dpkg", "-S", "/etc/cron.d/e2scrub_all")
+	h.r.Fail(os.ErrNotExist, "dpkg", "-S", "/usr/bin/fusermount3")
+	h.r.Script("fuse3: /bin/fusermount3\n", "dpkg", "-S", "/bin/fusermount3")
+	h.r.Script("", "dpkg", "--verify")
+
+	res, _, _ := h.run()
+	for _, in := range res.Indicators {
+		blob := in.Detail
+		for _, e := range in.Evidence {
+			blob += e.Text
+		}
+		if strings.Contains(blob, "e2scrub_all") || strings.Contains(blob, "fusermount3") {
+			t.Errorf("%s on a packaged file: %s", in.ID, in.Detail)
+		}
+	}
+}
+
+// TestSkeletonDotfilesAreNotBackdating pins the second testbed false
+// positive: useradd copies /etc/skel with its original times, so every new
+// account's .bashrc has an old mtime under a new ctime.
+func TestSkeletonDotfilesAreNotBackdating(t *testing.T) {
+	h := newFakeHost(t)
+	h.write("/home/alice/.bashrc", "# ~/.bashrc\n")
+	old := testNow.Add(-900 * 24 * time.Hour)
+	_ = os.Chtimes(filepath.Join(h.root, "home/alice/.bashrc"), old, old)
+	res, _, _ := h.run()
+	for _, in := range res.Indicators {
+		if in.ID == IDPrefix+"file.timestamp-mismatch" {
+			t.Errorf("flagged %s", in.Detail)
+		}
 	}
 }

@@ -1,0 +1,188 @@
+{
+  "_comment": "Ground truth for experiment 1. Each element is one trace seed.sh plants. 'triage' is the hostveil indicator ID expected for it; 'verdict' is the verdict triage should give. 'tokens' are the strings that tie a detection to this element in a tool's output (indicator evidence for triage, warning lines for the others); any one is enough. The alternatives after the first are the other tools' own wording for the same trace, read off their output by hand (rkhunter: 'Found preloaded shared library'; Lynis AUTH-9204: 'Multiple users with UID 0'). An empty first token means the element is an aggregate only an analysis of the logs can report.",
+  "elements": [
+    {
+      "id": "S1a",
+      "scenario": "S1 web scan",
+      "what": "60 requests for paths that do not exist",
+      "triage": "triage.web.scanning",
+      "verdict": "attempt",
+      "tokens": [
+        ""
+      ]
+    },
+    {
+      "id": "S1b",
+      "scenario": "S1 web scan",
+      "what": "a secrets file the site serves (/.env, 200)",
+      "triage": "triage.web.probe-answered",
+      "verdict": "suspicious",
+      "tokens": [
+        ".env"
+      ]
+    },
+    {
+      "id": "S2a",
+      "scenario": "S2 web RCE",
+      "what": "a PHP file in the upload directory, executed",
+      "triage": "triage.web.script-in-upload-dir",
+      "verdict": "compromise",
+      "tokens": [
+        "avatar.php"
+      ]
+    },
+    {
+      "id": "S2c",
+      "scenario": "S2 web RCE",
+      "what": "a shell running as www-data",
+      "triage": "triage.process.webuser-shell",
+      "verdict": "compromise",
+      "tokens": [
+        "3601"
+      ]
+    },
+    {
+      "id": "S3a",
+      "scenario": "S3 SSH",
+      "what": "40 failed password logins from one address",
+      "triage": "triage.login.guessing",
+      "verdict": "attempt",
+      "tokens": [
+        ""
+      ]
+    },
+    {
+      "id": "S3b",
+      "scenario": "S3 SSH",
+      "what": "a password login from the guessing address",
+      "triage": "triage.login.after-guessing",
+      "verdict": "compromise",
+      "tokens": [
+        "203.0.113.50"
+      ]
+    },
+    {
+      "id": "S3c",
+      "scenario": "S3 SSH",
+      "what": "a login with a key since removed from authorized_keys",
+      "triage": "triage.login.key-not-authorized-now",
+      "verdict": "suspicious",
+      "tokens": [
+        "SHA256:"
+      ]
+    },
+    {
+      "id": "S4a",
+      "scenario": "S4 persistence",
+      "what": "a cron entry piping a download into sh",
+      "triage": "triage.persistence.download-and-run",
+      "verdict": "compromise",
+      "tokens": [
+        "sync.disabled"
+      ]
+    },
+    {
+      "id": "S4b",
+      "scenario": "S4 persistence",
+      "what": "a systemd unit piping a download into sh",
+      "triage": "triage.persistence.download-and-run",
+      "verdict": "compromise",
+      "tokens": [
+        "sync-helper.service"
+      ]
+    },
+    {
+      "id": "S4c",
+      "scenario": "S4 persistence",
+      "what": "a library in /etc/ld.so.preload",
+      "triage": "triage.persistence.ld-preload",
+      "verdict": "compromise",
+      "tokens": [
+        "ld.so.preload",
+        "preloaded shared library"
+      ]
+    },
+    {
+      "id": "S4d",
+      "scenario": "S4 persistence",
+      "what": "an unpackaged setuid binary in /var/tmp",
+      "triage": "triage.integrity.setuid-unpackaged",
+      "verdict": "compromise",
+      "tokens": [
+        "/var/tmp/.cache/true"
+      ]
+    },
+    {
+      "id": "S4e",
+      "scenario": "S4 persistence",
+      "what": "a second UID 0 account",
+      "triage": "triage.account.uid0",
+      "verdict": "compromise",
+      "tokens": [
+        "toor",
+        "UID 0",
+        "UID = 0"
+      ]
+    },
+    {
+      "id": "S4f",
+      "scenario": "S4 persistence",
+      "what": "a program running from /dev/shm",
+      "triage": "triage.process.exe-unusual",
+      "verdict": "compromise",
+      "tokens": [
+        "/dev/shm/.x"
+      ]
+    },
+    {
+      "id": "S5",
+      "scenario": "S5 bulk export",
+      "what": "one client downloading 25 exports",
+      "triage": "triage.web.bulk-export",
+      "verdict": "suspicious",
+      "tokens": [
+        ""
+      ]
+    },
+    {
+      "id": "S6a",
+      "scenario": "S6 anti-forensics",
+      "what": "shell history linked to /dev/null",
+      "triage": "triage.antiforensic.history-disabled",
+      "verdict": "suspicious",
+      "tokens": [
+        "bash_history"
+      ]
+    },
+    {
+      "id": "S6b",
+      "scenario": "S6 anti-forensics",
+      "what": "wtmp emptied",
+      "triage": "triage.antiforensic.log-emptied",
+      "verdict": "suspicious",
+      "tokens": [
+        "wtmp"
+      ]
+    },
+    {
+      "id": "S6c",
+      "scenario": "S6 anti-forensics",
+      "what": "a backdated unit file (touch -d)",
+      "triage": "triage.file.timestamp-mismatch",
+      "verdict": "suspicious",
+      "tokens": [
+        "sync-helper.service"
+      ]
+    },
+    {
+      "id": "S6d",
+      "scenario": "S6 anti-forensics",
+      "what": "a packaged program modified",
+      "triage": "triage.integrity.package-file-modified",
+      "verdict": "compromise",
+      "tokens": [
+        "lsb_release"
+      ]
+    }
+  ]
+}
