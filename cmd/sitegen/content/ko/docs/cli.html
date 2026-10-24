@@ -138,6 +138,23 @@ hostveil fleet --tui web1 db1</code></pre></div>
               </table>
             </div>
 
+            <h2 id="triage">triage</h2>
+            <p>스캔으로는 답할 수 없는 질문, 이 호스트가 이미 침해되었는가에 답합니다. <code>triage</code>는 읽기 전용 증거 번들을 수집합니다. 사라지는 순서대로, 실행 중인 프로세스와 소켓을 먼저, 그다음 재부팅 뒤에도 남게 하는 것들을, 마지막으로 로그를 모으고, 그것이 무엇을 보여 주는지 알려 줍니다. 호스트는 전혀 바꾸지 않고, 쓰는 것은 번들 디렉터리 하나뿐입니다.</p>
+            <div class="code-block"><pre><code>hostveil triage [flags]
+hostveil triage verify &lt;bundle-dir&gt;
+hostveil triage analyze &lt;bundle-dir&gt;</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--out DIR</code></td><td><code>./hostveil-triage-&lt;host&gt;-&lt;time&gt;</code></td><td>번들을 쓸 곳입니다. 없거나 비어 있어야 합니다. 누군가에게 보여 줘야 할 수도 있다면 다른 디스크에 두세요.</td></tr>
+                  <tr><td><code>--since SPAN</code></td><td><code>30d</code></td><td>로그와 파일 변경을 얼마나 거슬러 읽을지 정합니다. <code>7d</code>, <code>2w</code>, <code>48h</code> 같은 형식입니다.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>모든 결론은 세 판정 중 하나입니다. <strong>시도(attempt)</strong>는 성공한 흔적이 없는 공격입니다. 공개된 서버라면 누구나 받는 스캔과 비밀번호 추측이 여기에 듭니다. <strong>의심(suspicious)</strong>은 정상 호스트도 하는 일이라 사용자가 확인해야 하는 것입니다. <strong>침해(compromise)</strong>는 정상 호스트가 하지 않는 일입니다. 비밀번호를 추측하던 주소에서 성공한 로그인, 업로드 디렉터리에서 실행된 스크립트, 셸을 띄운 웹 서버 계정, 어떤 패키지도 설치하지 않은 setuid 프로그램 같은 것입니다. 각 판정은 근거가 된 산출물의 줄을 가리킵니다. 리포트에는 호스트가 증거를 남기지 않아서 번들로 답할 수 없는 질문도 나옵니다. <a href="checks#forensic">포렌식 준비도</a> 항목을 질문으로 바꾼 것입니다.</p>
+            <p>모든 산출물은 쓰이는 순간 해시되고, 가져온 명령이나 경로와 함께 <code>manifest.json</code>에 적힙니다. 마지막에 출력되는 줄이 매니페스트 자체의 SHA-256이니, 호스트가 닿지 않는 곳에 적어 두세요. <code>triage verify</code>는 번들을 다시 해시해서 바뀌거나 빠지거나 더해진 파일을 알려 줍니다. <code>triage analyze</code>는 호스트 없이 번들만으로 리포트를 다시 만듭니다. 비밀번호 해시는 복사하지 않습니다. <code>/etc/shadow</code>는 어느 계정에 비밀번호가 있는지, 없는지, 잠겼는지만 남깁니다. 침해 흔적이 있으면 종료 코드는 3입니다.</p>
+
             <h2 id="diagnostics">diagnostics</h2>
             <p>버그 리포트에 필요한 정보를 파일 하나로 모아 줍니다. 네트워크에는 전혀 닿지 않습니다. 전송 기능 자체가 없고, 결과를 이슈에 붙여넣는 것은 운영자의 몫입니다.</p>
             <div class="code-block"><pre><code>hostveil diagnostics [flags]</code></pre></div>

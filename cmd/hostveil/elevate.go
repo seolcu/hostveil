@@ -12,7 +12,7 @@ import (
 func needsRoot(cmd string) bool {
 	switch cmd {
 	case "scan", "tui", "fix", "serve", "web", "explain", "export", "advise", "ai-context", "rollback", "history",
-		"diagnostics", "update", "uninstall":
+		"diagnostics", "update", "uninstall", "triage":
 		return true
 	}
 	return false

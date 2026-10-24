@@ -128,6 +128,8 @@ func run(ctx context.Context, args []string) (code int) {
 		return cmdHistory(ctx, args)
 	case "fleet":
 		return cmdFleet(ctx, args)
+	case "triage":
+		return cmdTriage(ctx, args)
 	case "diagnostics":
 		return cmdDiagnostics(ctx, args)
 	case "update":
@@ -200,6 +202,9 @@ Usage:
                                  --scans lists the score of every saved scan
   hostveil fleet HOST...         Scan several hosts over SSH (each needs Hostveil
                                  installed) and list their scores side by side
+  hostveil triage [flags]        Collect a read-only evidence bundle and say
+                                 whether it shows a compromise; "triage verify
+                                 DIR" re-hashes a bundle
   hostveil diagnostics [flags]   Collect version/OS/crash/scan info into one
                                  file to attach to a bug report by hand
   hostveil update [flags]        Update Hostveil to the latest release
@@ -279,6 +284,11 @@ Diagnostics flags:
   --unredacted    Skip redacting IPs and home-directory usernames (local
                   use only)
   --output FILE   Write the report to FILE instead of printing it
+
+Triage flags:
+  --out DIR       Write the evidence bundle to DIR (default
+                  ./hostveil-triage-<host>-<time>); another disk if you can
+  --since SPAN    How far back to read logs and file changes (default 30d)
 
 TUI and dashboard flags:
   --theme NAME    Color theme: onedark (default), gruvbox, nord,

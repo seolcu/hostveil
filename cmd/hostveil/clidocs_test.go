@@ -39,6 +39,7 @@ var docSection = map[string]string{
 	"cmdHistory":     "history",
 	"cmdFleet":       "fleet",
 	"cmdDiagnostics": "diagnostics",
+	"cmdTriage":      "triage",
 	"cmdUpdate":      "update",
 	"cmdUninstall":   "uninstall",
 }

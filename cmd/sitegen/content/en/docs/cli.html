@@ -138,6 +138,23 @@ hostveil fleet --tui web1 db1</code></pre></div>
               </table>
             </div>
 
+            <h2 id="triage">triage</h2>
+            <p>Answer the question a scan cannot: has this host already been broken into? <code>triage</code> collects a read-only evidence bundle &mdash; running processes and sockets first, then what makes something survive a reboot, then the logs, in the order they would disappear &mdash; and says what it shows. It changes nothing on the host; the bundle directory is the only thing it writes.</p>
+            <div class="code-block"><pre><code>hostveil triage [flags]
+hostveil triage verify &lt;bundle-dir&gt;
+hostveil triage analyze &lt;bundle-dir&gt;</code></pre></div>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+                <tbody>
+                  <tr><td><code>--out DIR</code></td><td><code>./hostveil-triage-&lt;host&gt;-&lt;time&gt;</code></td><td>Where to write the bundle. Must not exist or be empty. Put it on another disk if you may need to show it to someone.</td></tr>
+                  <tr><td><code>--since SPAN</code></td><td><code>30d</code></td><td>How far back to read logs and file changes: <code>7d</code>, <code>2w</code>, <code>48h</code>.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Every conclusion is one of three verdicts. An <strong>attempt</strong> left no sign of success &mdash; the scans and password guesses every public server receives. <strong>Suspicious</strong> is something a normal host also does, for you to confirm. <strong>Compromise</strong> is something a healthy host does not do: a login from an address that had been guessing passwords, a script run from an upload directory, the web server&rsquo;s account starting a shell, a setuid program no package installed. Each names the line of the artifact it rests on. The report also lists the questions the bundle cannot answer because the host never recorded the evidence &mdash; the <a href="checks#forensic">forensic-readiness</a> findings, put as questions.</p>
+            <p>Every artifact is hashed as it is written and listed in <code>manifest.json</code> with the command or path it came from. The last line printed is the manifest&rsquo;s own SHA-256; write it down somewhere the host cannot reach. <code>triage verify</code> re-hashes a bundle and names any file changed, missing or added. <code>triage analyze</code> re-derives the report from a bundle without the host. Password hashes are never copied: <code>/etc/shadow</code> is reduced to which accounts have a password, none, or a locked one. Exit status is 3 when there is a sign of compromise.</p>
+
             <h2 id="diagnostics">diagnostics</h2>
             <p>Collect the pieces a bug report needs into one file. It never touches the network — there is no send step, only local collection you attach to an issue by hand.</p>
             <div class="code-block"><pre><code>hostveil diagnostics [flags]</code></pre></div>
