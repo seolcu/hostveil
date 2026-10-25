@@ -1,5 +1,5 @@
 # A media server stack — the kind a self-hoster runs for movies and TV.
-# Deliberately misconfigured so hostveil has real findings to demonstrate.
+# Deliberately misconfigured so Hostveil has real findings to demonstrate.
 services:
   jellyfin:
     image: jellyfin/jellyfin:10.8.0   # intentionally old → image CVEs (cve.*)

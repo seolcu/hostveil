@@ -35,7 +35,7 @@ var publishedPortRE = regexp.MustCompile(`(?:0\.0\.0\.0|\[::\]|::):(\d+)->`)
 // tool the operator would think to check reports the firewall as active.
 //
 // This is the single most common real exposure on a self-hosted Docker host,
-// and until this check existed hostveil actively rewarded it: an active ufw
+// and until this check existed Hostveil actively rewarded it: an active ufw
 // scored the firewall axis full marks, and the ports checker suppresses its
 // generic exposure finding precisely because a firewall is up. A host with
 // Postgres open to the world scored better than one with no firewall and

@@ -19,7 +19,7 @@ import (
 
 // The palettes are written as 24-bit hex and almost nobody sees them that way.
 //
-// hostveil's subject is servers, and a server is reached over SSH, which does
+// Hostveil's subject is servers, and a server is reached over SSH, which does
 // not forward COLORTERM. Without it colorprofile degrades the TUI to the
 // xterm-256 palette, so the hexes in internal/ui/theme are not colors that get
 // drawn — they are inputs to a quantiser, and what the operator sees is

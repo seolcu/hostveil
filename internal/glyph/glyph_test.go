@@ -14,8 +14,8 @@ import (
 // row below it off the bottom of the frame. Both sets, every symbol.
 //
 // The Nerd variants live in the Private Use Area, which runewidth treats as
-// ambiguous and therefore one column under the narrow condition hostveil
-// pins — so this measures what hostveil will *lay out*. What the font then
+// ambiguous and therefore one column under the narrow condition Hostveil
+// pins — so this measures what Hostveil will *lay out*. What the font then
 // *draws* is checked separately and by hand, against the four families
 // named in the package doc; the Font Awesome block was chosen partly
 // because it is one cell wide in every build, Mono or not.
@@ -28,7 +28,7 @@ func TestEverySymbolIsOneColumn(t *testing.T) {
 	// "measured rather than assumed to be two", and the alignment sweep and
 	// TestNoRowOverrunsItsColumn both hold every row to its budget with
 	// lipgloss.Width. Those run in this mode; this assertion is about the
-	// condition hostveil pins by default.
+	// condition Hostveil pins by default.
 	if textwidth.Of("·") > 1 {
 		t.Skip("the operator's terminal draws the ambiguous class wide; the renderers measure there")
 	}

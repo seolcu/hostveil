@@ -9,7 +9,7 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// Actions[0] is what hostveil recommends, and it is what an operator who does
+// Actions[0] is what Hostveil recommends, and it is what an operator who does
 // not read the alternatives gets: every interface lists them in this order,
 // the TUI and the dashboard preselect the first, and `fix --all --review`
 // applies index 0 without asking.

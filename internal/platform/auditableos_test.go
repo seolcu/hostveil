@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// hostveil publishes darwin archives, and every detection rule in it is about
+// Hostveil publishes darwin archives, and every detection rule in it is about
 // Linux. Most domains work that out for themselves — no /proc/sys, no
 // systemd, no apt-get, no ss — and skip cleanly. Three did not, and each
 // turned "I could not look" into an answer.
@@ -54,7 +54,7 @@ func TestAnUnknownOSIsNotAudited(t *testing.T) {
 	}
 }
 
-// The build hostveil actually runs its tests on.
+// The build Hostveil actually runs its tests on.
 func TestThisBuildIsAuditable(t *testing.T) {
 	if ok, why := AuditableOS(); !ok {
 		t.Skipf("this build is not auditable (%s) — the checker tests below it will skip too", why)

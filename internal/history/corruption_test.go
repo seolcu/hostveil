@@ -118,7 +118,7 @@ func TestForceDoesNotOverrideADamagedBackup(t *testing.T) {
 func TestBackupsWithoutAHashStillRestore(t *testing.T) {
 	s, path, cp := savedCheckpoint(t)
 
-	// Strip the hash the way an older hostveil would have left it.
+	// Strip the hash the way an older Hostveil would have left it.
 	cp.Files[0].BlobSHA256 = ""
 	meta, err := json.MarshalIndent(cp, "", "  ")
 	if err != nil {

@@ -11,7 +11,7 @@
 # same integer — and "the index did not move" would then read as "nothing
 # happened", which is a different claim. So the test IDs behind every warning
 # and suggestion come out too: those are a set, and a set can be diffed. What
-# hostveil cleared is exactly what leaves it.
+# Hostveil cleared is exactly what leaves it.
 set -euo pipefail
 
 # An auditor that did not run must not be reported as an auditor that found

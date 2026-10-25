@@ -236,7 +236,7 @@ func TestAContainerIsSkippedRatherThanAccused(t *testing.T) {
 	ok, why := c.Available(context.Background(), platform.Env{})
 	if ok {
 		t.Fatal("a container must not be audited for a host firewall it cannot have; " +
-			"reporting one is hostveil describing its own blindness as a finding")
+			"reporting one is Hostveil describing its own blindness as a finding")
 	}
 	for _, want := range []string{"container", "host"} {
 		if !strings.Contains(strings.ToLower(why), want) {

@@ -14,7 +14,7 @@ import (
 // file turns unattended upgrades on, and a later fragment turns them off.
 //
 // apt reads every file in apt.conf.d in lexical order and the last assignment
-// wins, so this host does NOT run unattended upgrades. hostveil read
+// wins, so this host does NOT run unattended upgrades. Hostveil read
 // 20auto-upgrades alone, saw "1", and reported the domain clean — while the
 // fix for the finding it was not reporting would have written "1" into the
 // same losing file.
@@ -88,7 +88,7 @@ func TestTheOrdinaryAptHostStillPointsAtTheConventionalFile(t *testing.T) {
 }
 
 // A host with no apt-config is not a host with the option unset. Falling back
-// to the single file is what hostveil did before and is still the best
+// to the single file is what Hostveil did before and is still the best
 // available answer; claiming to know the effective value is not.
 func TestWithoutAptConfigTheSingleFileIsTheFallback(t *testing.T) {
 	dir := t.TempDir()

@@ -16,7 +16,7 @@ func finding(sev model.Severity, fixed bool) model.Finding {
 	return f
 }
 
-// exitCode is hostveil's CI contract and had no test at all. A regression
+// exitCode is Hostveil's CI contract and had no test at all. A regression
 // here silently turns every pipeline gate into a no-op (always 0) or a
 // permanent red (always 1), and nothing else in the suite would notice.
 func TestExitCode(t *testing.T) {

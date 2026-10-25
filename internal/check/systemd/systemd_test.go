@@ -90,7 +90,7 @@ func TestUnhardenedOperatorUnitIsFlagged(t *testing.T) {
 	// point rather than an inconsistency. protect-system, protect-home and
 	// private-tmp each break something the unit does not show — a service
 	// that hands another files through /tmp, one whose data lives in a home
-	// directory, one that writes under /usr — so hostveil cannot tell a safe
+	// directory, one that writes under /usr — so Hostveil cannot tell a safe
 	// unit from an unsafe one. NoNewPrivileges has no such blind spot, and
 	// the drop-in that turns it on is a file this checker already computes
 	// the path and contents of, so internal/fix writes it.
@@ -376,7 +376,7 @@ func TestParsesRealSystemctlOutput(t *testing.T) {
 	}
 }
 
-// A unit whose loaded drop-ins outrank anything hostveil would write.
+// A unit whose loaded drop-ins outrank anything Hostveil would write.
 //
 // The finding is still real — systemd reports the protection off — and what
 // changes is the remediation: there is no file to create, so the metadata the
@@ -392,7 +392,7 @@ func TestAUnitWhoseDropInsOutrankUsOffersNoFileToWrite(t *testing.T) {
 		t.Fatalf("the finding disappeared; it is still true, only unfixable by a new file: %v", ids(fs))
 	}
 	if f.Metadata["dropin"] != "" {
-		t.Errorf("dropin = %q, want empty — every name hostveil would write sorts before "+
+		t.Errorf("dropin = %q, want empty — every name Hostveil would write sorts before "+
 			"zz-operator.conf, so systemd would apply that one last", f.Metadata["dropin"])
 	}
 	if !strings.Contains(f.HowToFix, "zz-operator.conf") {

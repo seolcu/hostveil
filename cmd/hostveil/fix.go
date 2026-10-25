@@ -126,7 +126,7 @@ func cmdFix(ctx context.Context, args []string) int {
 //
 // The two lists are printed separately and counted separately, because they
 // are different promises. An Auto fix is reversible, cannot cut off access to
-// the host, and has one correct answer. A Review fix is one hostveil can
+// the host, and has one correct answer. A Review fix is one Hostveil can
 // perform and will not perform for you: it may be an exec action with no
 // checkpoint, or it may have more than one defensible remediation, and
 // --review is where the operator says they have read that and accept it.
@@ -136,7 +136,7 @@ func fixAll(ctx context.Context, yes, review bool) int {
 
 	var auto, reviewed, individual []model.Finding
 	for _, f := range report.Findings {
-		// Fixed, not !Active: this is the batch's own question — has hostveil
+		// Fixed, not !Active: this is the batch's own question — has Hostveil
 		// already applied something here — and for a pending fix it has. It
 		// covers the Review branch below as well, which is why it is not
 		// IsAutoFixable.

@@ -82,7 +82,7 @@ func composeRunner(base, override string) *checktest.Runner {
 // single file does: both publish the port and compose appends them, so
 // rewriting either one leaves the other still binding 0.0.0.0.
 //
-// Editing base and reporting success is the failure this pins. What hostveil
+// Editing base and reporting success is the failure this pins. What Hostveil
 // should do instead is what persistSysctl does when the file it would write
 // is outranked — decline, and say why — because a fix that cannot name the
 // deciding file has not got one.
@@ -162,7 +162,7 @@ func idsOfFindings(fs []model.Finding) []string {
 
 // The layout discover.go's comment is actually about: a base binding redis to
 // loopback and an override republishing it. Exactly one file publishes the
-// port on every interface, so exactly one file decides, and hostveil edits it.
+// port on every interface, so exactly one file decides, and Hostveil edits it.
 //
 // This is the case the old code got wrong in the quiet direction. It edited
 // the base — where the binding is already 127.0.0.1 — so BindPortLoopback

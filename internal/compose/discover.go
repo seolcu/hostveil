@@ -64,7 +64,7 @@ func parseDiscovery(ctx context.Context, r platform.CommandRunner, out []byte) (
 // effectiveProject returns the project as docker composes it, not as any one
 // of its files declares it.
 //
-// hostveil used to read the *first* path out of ConfigFiles and audit that.
+// Hostveil used to read the *first* path out of ConfigFiles and audit that.
 // That is not a partial view of a layered project, it is a wrong one, and in
 // the dangerous direction. `docker compose up` reads
 // docker-compose.override.yml with no flag asked for, and `-f base.yml -f

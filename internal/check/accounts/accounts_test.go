@@ -28,7 +28,7 @@ func noSudo() platform.Env { return checktest.New().Without("sudo").Env() }
 // covering the opposite case.
 //
 // The root entry is the control run passwordlessSudoers makes before trusting
-// any failure; a host that omits it is one where hostveil is not root.
+// any failure; a host that omits it is one where Hostveil is not root.
 func withSudo(replies map[string]string) platform.Env {
 	r := checktest.New()
 	for user, out := range replies {

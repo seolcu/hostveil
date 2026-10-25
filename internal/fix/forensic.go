@@ -143,7 +143,7 @@ func buildServiceExecAudit(f model.Finding) (Fix, error) {
 			Transform: func(in []byte) ([]byte, error) {
 				out := string(in)
 				if out == "" {
-					out = "# Written by hostveil: record programs started by web-server accounts.\n"
+					out = "# Written by Hostveil: record programs started by web-server accounts.\n"
 				}
 				if !strings.HasSuffix(out, "\n") {
 					out += "\n"

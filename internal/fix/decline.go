@@ -2,7 +2,7 @@ package fix
 
 import "strings"
 
-// WhyNoFix returns one sentence saying what stops hostveil fixing a finding,
+// WhyNoFix returns one sentence saying what stops Hostveil fixing a finding,
 // or "" for a finding that has a fix.
 //
 // The argument for each of these lives in the doc comment on Default(), which
@@ -44,7 +44,7 @@ func DeclinedIDs() []string {
 // declineReasons is the register in Default()'s doc comment, one sentence at
 // a time. Each answers the question a user actually has looking at a finding
 // with no button on it: not "what is wrong" — the finding already said that —
-// but "why is hostveil not doing anything about it".
+// but "why is Hostveil not doing anything about it".
 //
 // Every sentence is drawn from an argument already made in that comment. None
 // of them is a summary of the finding, because a summary would be the one

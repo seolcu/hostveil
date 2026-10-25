@@ -283,7 +283,7 @@ func squash(s string) string { return strings.Join(strings.Fields(s), " ") }
 // on the releases page, which is true regardless of what the harness ran on
 // and would still be true if no measurement existed at all. Scanning both
 // would make the install instructions fail a test about the measurement, and
-// the only way to pass it would be to stop naming the packages hostveil
+// the only way to pass it would be to stop naming the packages Hostveil
 // actually publishes.
 var codeSpans = regexp.MustCompile("(?s)```.*?```|`[^`\n]*`|<code[^>]*>.*?</code>|<pre[^>]*>.*?</pre>")
 

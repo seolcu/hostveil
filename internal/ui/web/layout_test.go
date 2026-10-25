@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// The picker exists to settle which arrangement hostveil keeps, so what
+// The picker exists to settle which arrangement Hostveil keeps, so what
 // these tests hold is the property that makes it usable for that: every
 // entry in it must actually do something, and choosing none of them must
 // leave the shipped dashboard exactly as it was.
@@ -55,7 +55,7 @@ func TestNoStylesheetRuleForAnUnregisteredLayout(t *testing.T) {
 	}
 }
 
-// An operator who never opens the picker must see the arrangement hostveil
+// An operator who never opens the picker must see the arrangement Hostveil
 // chose, not whichever one happened to be listed first. Named rather than
 // read back from DefaultLayout, which would agree with itself.
 func TestDefaultLayoutIsTheChosenArrangement(t *testing.T) {

@@ -94,7 +94,7 @@ func TestScanProgressIsStablyOrdered(t *testing.T) {
 }
 
 // A declined rollback is a question, not a failure. The engine refuses when
-// the file changed after hostveil wrote it, the CLI has offered --force
+// the file changed after Hostveil wrote it, the CLI has offered --force
 // since 3.4, and the dashboard's server has accepted it since the token
 // landed — but in the TUI the answer was "Rollback failed" and a dead end.
 func TestDeclinedRollbackOffersToForce(t *testing.T) {

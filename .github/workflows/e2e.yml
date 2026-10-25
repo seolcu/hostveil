@@ -5,7 +5,7 @@ name: E2E
 # step, against a container seeded with genuine misconfigurations.
 #
 # Everything above this is a unit test against a fake CommandRunner, which
-# proves the checkers parse what they are handed but never that hostveil
+# proves the checkers parse what they are handed but never that Hostveil
 # reads a real sshd_config, writes it, and puts it back. The project had
 # browser E2E in v2 and deleted it in the v3 rewrite; nothing replaced it,
 # and the demo VM is manual and asserts nothing. This is the smallest thing
@@ -45,7 +45,7 @@ jobs:
     container:
       image: debian:13
     # This job uses a container *as* a host filesystem — the comment above says
-    # so, and it writes /etc/ssh/sshd_config to prove it. hostveil now declines
+    # so, and it writes /etc/ssh/sshd_config to prove it. Hostveil now declines
     # two domains inside a container, because neither can be acted on from in
     # there: the firewall it cannot see and the kernel parameters it cannot
     # change. That is right for an operator who ran a scan in a container by
@@ -85,7 +85,7 @@ jobs:
           mkdir -p /etc/ssh/sshd_config.d
           # The same fixture the demo VM uses, so the two describe one host.
           cp demo/seed/sshd_hostveil.conf /etc/ssh/sshd_config.d/00-hostveil-demo.conf
-          # sshd -t needs a host key to validate against, and hostveil's SSH
+          # sshd -t needs a host key to validate against, and Hostveil's SSH
           # fixes run that validator before writing.
           ssh-keygen -A
           sshd -t
@@ -135,7 +135,7 @@ jobs:
           export HOSTVEIL_NO_SUDO=1
 
           # Enabling automatic security updates is a real remediation that
-          # hostveil knows how to apply, and it runs a command — so it leaves
+          # Hostveil knows how to apply, and it runs a command — so it leaves
           # no restore point, and "fix everything safe" has to decline it.
           # The package must still be absent and the finding must still be
           # open after the batch above.
@@ -197,7 +197,7 @@ jobs:
           # the newest SSH checkpoint because that is the file this test edits.
           id=$(grep '  ssh\.' /tmp/history2.txt | head -1 | grep -o 'hostveil rollback [^] ]*' | awk '{print $3}')
 
-          # The operator edits the file themselves, after hostveil wrote it.
+          # The operator edits the file themselves, after Hostveil wrote it.
           echo "# edited by the operator after the fix" >> "$conf"
           before=$(sha256sum "$conf" | cut -d' ' -f1)
 
@@ -374,7 +374,7 @@ jobs:
         run: |
           set -eux
           export HOSTVEIL_NO_SUDO=1
-          # Where the install script puts it, which is the origin hostveil
+          # Where the install script puts it, which is the origin Hostveil
           # recognises without asking a package manager.
           cp /usr/local/bin/hostveil /usr/bin/hostveil
           hostveil scan >/dev/null 2>&1 || true
@@ -600,7 +600,7 @@ jobs:
       - name: the rewritten source is one apt can use
         run: scripts/e2e/individual.sh proxmox
 
-  # hostveil publishes archives and packages for hosts that are not Debian,
+  # Hostveil publishes archives and packages for hosts that are not Debian,
   # and until now it had never been run on one. Both gaps are real: the CVE
   # and container domains sit behind a daemon, the updates domain branches on
   # apt versus dnf and skips on apk, and the binary is only static because

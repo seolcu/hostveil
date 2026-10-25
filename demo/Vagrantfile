@@ -35,7 +35,7 @@ Vagrant.configure("2") do |config|
     # Trivy exports an image to a temp file before scanning it, so an image
     # larger than the free space cannot be scanned at all: jellyfin and
     # nextcloud are 1.32GB each, and both failed with "no space left on
-    # device" however few scans ran at once. hostveil reported it honestly as
+    # device" however few scans ran at once. Hostveil reported it honestly as
     # partial coverage — and a vulnerability axis that skipped the two
     # heaviest images scored *better* than the truth, which is the one thing
     # a demo of a security tool must not do.
@@ -61,6 +61,6 @@ Vagrant.configure("2") do |config|
     config.disksize.size = "24GB"
   end
 
-  # Provision the vulnerable server and build hostveil from /hostveil.
+  # Provision the vulnerable server and build Hostveil from /hostveil.
   config.vm.provision "shell", path: "provision.sh"
 end

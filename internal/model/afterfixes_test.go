@@ -44,7 +44,7 @@ func TestAfterFixesIsTheScoreWithEveryOfferedFixApplied(t *testing.T) {
 // domains whose fixes are never immediate are the same domains this figure
 // matters most for: run `fix --all` on a container host and every compose fix
 // goes pending at once, so a headroom that dropped them would collapse onto
-// the score precisely when the operator has just done everything hostveil
+// the score precisely when the operator has just done everything Hostveil
 // asked and wants to know what it bought. Every UI hides the figure when it
 // equals the score, so the symptom is not a wrong number — it is the number
 // disappearing.

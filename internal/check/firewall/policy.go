@@ -15,7 +15,7 @@ import (
 // hasDropPolicy both insist on it — while ufw was accepted on the strength
 // of "Status: active" and firewalld on `--state` exiting 0.
 //
-// So hostveil held a hand-written ruleset to a stricter standard than the
+// So Hostveil held a hand-written ruleset to a stricter standard than the
 // two managed front-ends. `ufw enable` after `ufw default allow incoming`
 // produced a perfect score on the third-heaviest axis while the host
 // accepted everything, which is the same posture that scores 0 through

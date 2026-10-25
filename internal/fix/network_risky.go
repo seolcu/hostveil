@@ -154,7 +154,7 @@ func buildTightenKubeToken(f model.Finding) (Fix, error) {
 			Benefit: "No local account can read the token any more, so none of them can hand the cluster to a " +
 				"machine of their choosing from here on.",
 			Warning: "It has already been readable, so anything that copied it can still join a node. Rotate it " +
-				"after this (`k3s token rotate`), which hostveil does not do because it changes what every " +
+				"after this (`k3s token rotate`), which Hostveil does not do because it changes what every " +
 				"joining node has to present. The old mode is checkpointed.",
 			Kind: ActionMode, Paths: []string{p},
 			Mode: func(cur fs.FileMode) fs.FileMode { return tighten(cur, 0o600) },

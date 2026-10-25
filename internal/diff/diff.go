@@ -234,7 +234,7 @@ func lcsDiff(a, b []string) []op {
 
 // maxCoreCells caps the LCS table lcsCore is willing to build.
 //
-// The trim above makes the core tiny for the edits hostveil actually
+// The trim above makes the core tiny for the edits Hostveil actually
 // performs, but it can only trim what matches: when internal/compose falls
 // back to re-encoding a whole YAML file, the reflow leaves no common head or
 // tail at all and the core sees both files entire. Ten million cells is

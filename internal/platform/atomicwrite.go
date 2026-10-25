@@ -11,7 +11,7 @@ import (
 // file beside it, then rename over the target.
 //
 // os.WriteFile truncates and then writes, so a crash or power loss between
-// the two leaves a half-written or empty file. For the files hostveil edits
+// the two leaves a half-written or empty file. For the files Hostveil edits
 // that is not a cosmetic failure — a truncated /etc/ssh/sshd_config can mean
 // sshd refuses to start and nobody can log in to the host to repair it. The
 // checkpoint still holds the original, but reaching it requires the access
@@ -40,7 +40,7 @@ func WriteFileAtomic(path string, data []byte, mode os.FileMode) error {
 		return err
 	}
 	// A rename replaces the inode, so the new file carries the temporary's
-	// ownership rather than the original's. hostveil runs as root, so without
+	// ownership rather than the original's. Hostveil runs as root, so without
 	// this a fix to a compose file owned by the operator's own account would
 	// hand it to root and lock them out of editing their own file. Failing to
 	// preserve ownership is an error, not something to do quietly.
@@ -83,7 +83,7 @@ func WriteFileAtomic(path string, data []byte, mode os.FileMode) error {
 // It is separate from WriteFileAtomic because it is the one piece of that
 // operation that has to reach past the os package: Go exposes no portable
 // way to read a file's owner, so it comes from the underlying stat, the same
-// way cmd/hostveil/elevate.go reaches for syscall.Exec. hostveil builds for
+// way cmd/hostveil/elevate.go reaches for syscall.Exec. Hostveil builds for
 // linux and darwin, both of which carry Uid/Gid here.
 //
 // A file whose ownership already matches needs no call, which is the normal

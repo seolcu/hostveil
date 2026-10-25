@@ -108,7 +108,7 @@ func TestTheScrollbarIsColouredRatherThanInferred(t *testing.T) {
 	}
 }
 
-// Every control a keyboard reaches has hostveil's own focus ring.
+// Every control a keyboard reaches has Hostveil's own focus ring.
 //
 // Buttons and the two selects have had one since they were added; the
 // checkboxes, the fix-alternative radios and the clickable finding rows had

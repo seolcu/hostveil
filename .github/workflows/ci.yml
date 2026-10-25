@@ -145,7 +145,7 @@ jobs:
       # shellcheck over the standalone scripts, which nothing covered.
       # actionlint checks the shell inside `run:` blocks in workflows, not
       # scripts on disk. install.sh is 10 KB of privileged bash that pipes into
-      # sudo on machines hostveil has never seen; seed.sh permits root SSH
+      # sudo on machines Hostveil has never seen; seed.sh permits root SSH
       # login and adds a second UID 0 account, and is published beside an
       # invitation to run it. The runner ships shellcheck.
       #
@@ -162,11 +162,11 @@ jobs:
       - name: Test
         run: go test -race -coverprofile=coverage.out ./... | tee test.out
 
-      # The same suite in the other width mode, which is the one hostveil's
+      # The same suite in the other width mode, which is the one Hostveil's
       # own audience is most likely to be in.
       #
       # RUNEWIDTH_EASTASIAN=1 is an operator saying their terminal draws the
-      # East Asian Ambiguous class two columns wide, and hostveil honours it —
+      # East Asian Ambiguous class two columns wide, and Hostveil honours it —
       # internal/textwidth explains why it must, and lipgloss reads the same
       # variable. Every glyph the frame and the meters are drawn from is in
       # that class, so the whole layout is a different arithmetic there, and

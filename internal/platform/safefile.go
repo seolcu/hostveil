@@ -7,9 +7,9 @@ import (
 	"syscall"
 )
 
-// This file holds the file operations hostveil uses on paths another account
+// This file holds the file operations Hostveil uses on paths another account
 // can shape — anything under a user's home. Plain os.ReadFile, os.Stat, and
-// os.Chmod all follow symlinks, and hostveil runs as root, so on such paths
+// os.Chmod all follow symlinks, and Hostveil runs as root, so on such paths
 // each is a confused deputy: a user who replaces their own config file with a
 // symlink to /etc/passwd turns a routine permission fix into root chmod'ing
 // the password database, and one who replaces it with a FIFO parks the whole
@@ -133,7 +133,7 @@ func ChownNoFollow(path string, uid, gid int) error {
 // ChownNoFollowPath changes the owner of a regular file or directory through
 // a descriptor opened without following a symlink. It is ChownNoFollow for the
 // owner fix and its rollback, which act on system files and directories rather
-// than on an output file hostveil created; gid -1 leaves the group alone.
+// than on an output file Hostveil created; gid -1 leaves the group alone.
 func ChownNoFollowPath(path string, uid, gid int) error {
 	//nolint:gosec // G304: the descriptor is opened with O_NOFOLLOW
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)

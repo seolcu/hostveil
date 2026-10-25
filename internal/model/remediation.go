@@ -2,7 +2,7 @@ package model
 
 // RemediationKind classifies how a finding can be fixed.
 //
-// The zero value is RemediationUnset — deliberately inert. In hostveil v2
+// The zero value is RemediationUnset — deliberately inert. In Hostveil v2
 // the zero value was "Auto", so any Finding built without setting the
 // field silently presented a fix button it never had. Here an
 // unclassified finding is NOT fixable, and a validation pass rejects any
@@ -24,7 +24,7 @@ type remediationDef struct {
 	name    string // stable lowercase name used in exports
 	label   string // human-facing label shown in the UIs
 	abbr    string // short form for surfaces with a width budget
-	fixable bool   // hostveil can offer to apply something
+	fixable bool   // Hostveil can offer to apply something
 }
 
 // remediationDefs is the single description of the enum: name, label, and
@@ -50,7 +50,7 @@ var remediationDefs = []remediationDef{
 
 var remediationIndex = indexBy(remediationDefs, func(d remediationDef) RemediationKind { return d.kind })
 
-// IsFixable reports whether hostveil can offer to apply a fix. Unset,
+// IsFixable reports whether Hostveil can offer to apply a fix. Unset,
 // Manual, and Unavailable are all non-fixable.
 func (r RemediationKind) IsFixable() bool {
 	return remediationIndex[r].fixable

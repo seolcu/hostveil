@@ -188,7 +188,7 @@ type Checkpoint struct {
 // FixVerification is what a re-check of the finding's own domain found
 // after a fix was applied.
 //
-// It exists because "hostveil wrote the file" and "the finding is gone" are
+// It exists because "Hostveil wrote the file" and "the finding is gone" are
 // different claims, and until now only the first was ever established —
 // markFixed set Fixed the moment an apply returned, and the score moved on
 // that. That is the same gap Action.VerifyCmd closes before a write: this

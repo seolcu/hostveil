@@ -74,7 +74,7 @@ func TestRunLeavesOtherErrorsAlone(t *testing.T) {
 }
 
 // A command with no deadline of its own must still be bounded. Nothing
-// hostveil runs is a long question, and a wedged Docker daemon answering
+// Hostveil runs is a long question, and a wedged Docker daemon answering
 // never is the everyday failure — before this the scan simply hung, with no
 // way out but killing the process.
 func TestRunBoundsACommandThatNeverReturns(t *testing.T) {

@@ -23,7 +23,7 @@ import (
 // its answer.
 //
 // -U names the user, which needs root and is why the gap is reported when
-// hostveil is not. -n never prompts: sudo as root does not ask, and a scanner
+// Hostveil is not. -n never prompts: sudo as root does not ask, and a scanner
 // that could block on a password prompt is a scanner that hangs.
 func sudoListArgv(user string) []string {
 	return []string{"sudo", "-n", "-l", "-U", user}
@@ -142,14 +142,14 @@ func askSudo(ctx context.Context, r platform.CommandRunner, user string) ([]byte
 // and the answer we wanted — and for "a non-root user cannot use -U", and
 // nothing in the status distinguishes them. Reading the message instead would
 // mean parsing translated prose. So root is asked first, where the answer is
-// known: on a host where hostveil can use -U at all, root can run anything.
+// known: on a host where Hostveil can use -U at all, root can run anything.
 // A failure there means the question was refused rather than answered, and
 // every later failure would have been the same refusal — which is the
 // difference between "no account has passwordless sudo" and "I never got to
 // look", the two this domain exists to keep apart.
 //
 // The one host this misreads is one whose sudoers grants root nothing, where
-// hostveil reports a coverage gap it does not have. That is the safe
+// Hostveil reports a coverage gap it does not have. That is the safe
 // direction: a domain wrongly marked Degraded is visible, and a domain wrongly
 // marked clean is the failure that produced a perfect CVE score on an
 // unscanned host.

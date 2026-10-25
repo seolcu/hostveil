@@ -1,5 +1,5 @@
 // Package compose implements the Docker Compose static-audit checker —
-// hostveil's crown jewel. It inspects each service in every discovered
+// Hostveil's crown jewel. It inspects each service in every discovered
 // compose project for the misconfigurations most likely to get a
 // self-hoster hacked, and emits plain-language findings.
 package compose

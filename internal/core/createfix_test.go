@@ -108,7 +108,7 @@ func TestPreviewOfACreatedFileShowsTheWholeBody(t *testing.T) {
 
 // Rollback deletes, and deletion cannot be undone — so the external-edit
 // guard matters more here than anywhere else. An operator who tuned the
-// drop-in hostveil created must not have it removed out from under them by
+// drop-in Hostveil created must not have it removed out from under them by
 // a rollback that thinks it is restoring an absence.
 func TestRollbackDeclinesToDeleteAnEditedFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "60-hostveil-kptr.conf")

@@ -16,7 +16,7 @@ import (
 )
 
 // The docs table in content/{en,ko}/docs/checks.html is the enumeration of
-// every finding hostveil can report, and cmd/sitegen's TestDocumentedFixKinds
+// every finding Hostveil can report, and cmd/sitegen's TestDocumentedFixKinds
 // MatchTheRegistry already pins each documented row against the fix registry.
 // But it iterates the *documented* rows, so it can only check findings the
 // table already lists. A checker that starts emitting a new ID and nobody

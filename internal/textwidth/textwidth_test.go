@@ -155,7 +155,7 @@ func TestWrapHasAMinimumWidth(t *testing.T) {
 // runewidth picks its default condition from LANG and LC_ALL at init, so its
 // package-level StringWidth reports two columns for the ambiguous class under
 // ko_KR.UTF-8 and one under en_US.UTF-8. Every one of those glyphs is drawn by
-// hostveil, so using that default would lay the same screen out differently
+// Hostveil, so using that default would lay the same screen out differently
 // for two operators with the same terminal — and would disagree with lipgloss,
 // which the TUI already uses to measure and pad the same rows.
 //

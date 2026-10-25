@@ -121,7 +121,7 @@ func severityLegendSection() Section {
 }
 
 // findingsSections groups active findings by severity, matching the order
-// model.SortFindings already uses everywhere else in hostveil (severity,
+// model.SortFindings already uses everywhere else in Hostveil (severity,
 // then source, then ID) rather than inventing a second order for the report.
 func findingsSections(findings []model.Finding) []Section {
 	var active []model.Finding
@@ -187,7 +187,7 @@ func findingBlock(f model.Finding) FindingBlock {
 }
 
 // remediationContext pairs RemediationKind.Label() with one clause of
-// context, so a reader who has never used hostveil understands what the
+// context, so a reader who has never used Hostveil understands what the
 // classification means without cross-referencing anything else.
 func remediationContext(k model.RemediationKind) string {
 	switch k {

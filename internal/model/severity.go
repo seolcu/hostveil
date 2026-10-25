@@ -1,4 +1,4 @@
-// Package model holds hostveil's pure value types: findings, severity,
+// Package model holds Hostveil's pure value types: findings, severity,
 // source domains, remediation classification, scoring, and the report
 // snapshot returned by the engine. It has zero dependencies on other
 // internal packages so every layer can import it freely.
@@ -15,7 +15,7 @@ import "encoding/json"
 // the order.
 //
 // The four levels this replaced — Critical/High/Medium/Low — came from
-// Trivy, and hostveil kept them so a CVE's rating could pass straight
+// Trivy, and Hostveil kept them so a CVE's rating could pass straight
 // through. That reason is gone: vulnerabilities are rolled up per image, so
 // what reaches a finding is one level for the whole image rather than a
 // rating per CVE, and outside the CVE domain four levels were asking a
@@ -141,7 +141,7 @@ var severityByName = nameIndex(severityDefs,
 	func(d severityDef) Severity { return d.sev },
 	func(d severityDef) string { return d.name })
 
-// legacySeverities maps the names hostveil has written before onto the ones
+// legacySeverities maps the names Hostveil has written before onto the ones
 // it writes now, for reading scans an older build saved.
 //
 // Two generations are in here and they are not the same kind of problem.
@@ -177,7 +177,7 @@ var legacySeverityOrdinals = map[int]Severity{
 }
 
 // ParseSeverity resolves a lowercase severity name, including every name
-// hostveil has used for these levels before.
+// Hostveil has used for these levels before.
 func ParseSeverity(s string) (Severity, bool) {
 	if sev, ok := severityByName[s]; ok {
 		return sev, true

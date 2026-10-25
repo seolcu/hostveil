@@ -578,7 +578,7 @@ func (m *appModel) sparkAxesLine(w int) string {
 // --- severity lanes (H · Lanes) ---
 
 // laneHeadRow is one lane's header: the severity, how many are in it, and
-// how many of those hostveil can fix on its own.
+// how many of those Hostveil can fix on its own.
 //
 // The dashboard puts a button here that marks the lane's Auto findings and
 // hands them to the batch bar. A terminal has no button, so the same action

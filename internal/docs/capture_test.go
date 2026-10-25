@@ -20,7 +20,7 @@ import (
 // prose, and the whole point of the table is that somebody reads it before
 // running a command — so it is pinned instead. A palette adjusted without the
 // table following it produces a screenshot with the wrong ground behind it,
-// which looks like a rendering bug in hostveil rather than a stale document.
+// which looks like a rendering bug in Hostveil rather than a stale document.
 var captureRow = regexp.MustCompile(`^\| ` + "`" + `([a-z]+)` + "`" + `(?: \(default\))? \| ` + "`" + `(#[0-9a-f]{6})` + "`" + ` \| ` + "`" + `(#[0-9a-f]{6})` + "`" + ` \|$`)
 
 func TestTheCaptureTableMatchesThePalettes(t *testing.T) {

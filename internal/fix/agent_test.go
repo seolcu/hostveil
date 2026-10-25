@@ -130,7 +130,7 @@ func TestAgentConfigKeyTransformKeepsTheOperatorsFile(t *testing.T) {
 }
 
 // The read must refuse a symlink. This path is inside an account's own home,
-// so the account controls it, and hostveil is root.
+// so the account controls it, and Hostveil is root.
 func TestAgentConfigKeyRefusesToFollowSymlinks(t *testing.T) {
 	fx, err := buildAgentConfigKey(agentFinding("agent.ssrf-private-network", map[string]string{
 		"config": "/home/alice/.openclaw/openclaw.json",
@@ -185,7 +185,7 @@ func TestAgentConfigKeyRefusesFindingsItCannotTrust(t *testing.T) {
 
 // The JSON literal in the evidence is what keeps false distinguishable from
 // "false". A boolean key written as a string would be a config the runtime
-// reads differently while hostveil reports the finding fixed.
+// reads differently while Hostveil reports the finding fixed.
 func TestAgentConfigKeyPreservesValueTypes(t *testing.T) {
 	fx, err := buildAgentConfigKey(agentFinding("agent.control-ui-insecure", map[string]string{
 		"config": "/home/alice/.openclaw/openclaw.json",

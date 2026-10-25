@@ -2,8 +2,8 @@
 # Easy on-demand control of the hostveil demo VM. Nothing auto-starts —
 # you bring the demo up only when you want it, and halt it when done.
 #
-#   ./run.sh up        boot the VM + rebuild hostveil + start the vulnerable stacks
-#   ./run.sh build     re-sync the repo and rebuild hostveil in the VM
+#   ./run.sh up        boot the VM + rebuild Hostveil + start the vulnerable stacks
+#   ./run.sh build     re-sync the repo and rebuild Hostveil in the VM
 #   ./run.sh scan      run `hostveil scan` on the demo server
 #   ./run.sh web       serve the dashboard at http://localhost:8787 (Ctrl-C to stop)
 #   ./run.sh shell     open a shell on the demo server (then e.g. `hostveil`)
@@ -17,7 +17,7 @@ export VAGRANT_CWD="$PWD"
 
 # demo/.env, if present, is sourced for exactly the AI env vars ai_env_argv
 # forwards below — see .env.example for the ones it reads. This is the demo
-# scripts' own convenience file, not hostveil's: hostveil itself still has no
+# scripts' own convenience file, not Hostveil's: Hostveil itself still has no
 # config file. demo/.gitignore excludes .env, so a real key placed here never
 # reaches a commit; .env.example ships instead, with placeholders.
 #
@@ -184,7 +184,7 @@ ai_env_argv() {
   done
 }
 
-# Re-sync the repo and rebuild hostveil inside the VM. `vagrant up` only runs
+# Re-sync the repo and rebuild Hostveil inside the VM. `vagrant up` only runs
 # provisioners the first time a VM is created, and the build lives in
 # provision.sh — so without this every later boot leaves the VM running
 # whatever binary the *first* provision produced, silently testing stale code.
@@ -233,7 +233,7 @@ case "${1:-up}" in
   web)
     # 0.0.0.0 so Vagrant's NAT port-forward can reach the listener; the
     # browser still addresses it as localhost, which is what the dashboard's
-    # Host allowlist checks. Open the tokenized URL hostveil prints below.
+    # Host allowlist checks. Open the tokenized URL Hostveil prints below.
     echo "Dashboard: http://localhost:8787   (open the URL printed below — it carries the access token)"
     vagrant ssh -c "sudo $(ai_env_argv)hostveil serve --addr 0.0.0.0:8787"
     ;;

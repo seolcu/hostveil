@@ -1,4 +1,4 @@
-/* hostveil — the console design system.
+/* Hostveil — the console design system.
    Monochrome console: bone text on ink, all-monospace, dense. The ONLY
    things that carry color are risk (severity) and safety.
 
@@ -65,7 +65,7 @@ body {
    too new to put on a public page where an unsupported declaration is
    dropped and the mark collapses. */
 /* Nudged up half a descender. align-items:center centres the mark on the
-   *line box*, but "hostveil" has no descenders in either case, so its ink
+   *line box*, but "Hostveil" has no descenders in either case, so its ink
    stops at the baseline and its optical centre sits above the line box's.
    Measured at 1.58px against a 13px face, which is the half-descender of
    every mono here to within a rounding error. */
@@ -151,7 +151,7 @@ button:disabled { opacity: .45; cursor: default; }
   width: 72px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 0 auto; }
 .axis .meter { width: 92px; height: 8px; flex: 0 1 92px; min-width: 32px; }
 .axis-val { font-size: 11px; min-width: 30px; }
-/* The headroom: what the score becomes once every fix hostveil offers is
+/* The headroom: what the score becomes once every fix Hostveil offers is
    applied. Slate and small on purpose — it is context for the number beside
    it, not a second number competing with it, and it is absent entirely on a
    row with nothing to fix. */

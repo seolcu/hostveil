@@ -298,7 +298,7 @@ func TestTheDocumentedJSONValuesAreTheOnesTheModelEmits(t *testing.T) {
 		for _, gone := range []string{"exposed", "weak", "hardening", "critical"} {
 			if strings.Contains(page, "<code>"+gone+"</code>") {
 				t.Errorf("%s cli reference still documents %q as a `scan --json` value; "+
-					"hostveil reads that name but has not written it since it was renamed", lang, gone)
+					"Hostveil reads that name but has not written it since it was renamed", lang, gone)
 			}
 		}
 	}
@@ -672,7 +672,7 @@ func TestBothLanguagesHaveEveryDocsPage(t *testing.T) {
 }
 
 // A docs page's <h1> either is its sidebar label or is deliberately longer
-// than it — docs/index is headed "hostveil documentation" under a nav of
+// than it — docs/index is headed "Hostveil documentation" under a nav of
 // "Introduction", and the FAQ spells its acronym out. What must not differ is
 // which of those a page does in each language.
 //

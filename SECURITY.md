@@ -10,19 +10,19 @@ Include whatever you have: what you did, what happened, and what you expected.
 A proof of concept helps but is not required — a clear description of the flaw
 is enough to start.
 
-You should get an acknowledgement within a week. hostveil is maintained by a
+You should get an acknowledgement within a week. Hostveil is maintained by a
 small team rather than a company with an on-call rotation, so please read that
 as a good-faith target and not a guarantee.
 
 ## Supported versions
 
-Only the latest release gets fixes. hostveil is a single self-updating binary
+Only the latest release gets fixes. Hostveil is a single self-updating binary
 with no long-term support branches; if you are behind, upgrade first and check
 whether the issue still reproduces.
 
 ## What is in scope
 
-hostveil runs as root on the machine it is auditing, so the interesting
+Hostveil runs as root on the machine it is auditing, so the interesting
 questions are about what it does with that privilege:
 
 - **A fix that damages a host.** Any input that makes an applied fix corrupt a
@@ -39,7 +39,7 @@ questions are about what it does with that privilege:
   Host allowlist (DNS-rebinding defense) plus same-origin checks on mutating
   requests. Reaching it from another origin, or from a page in the user's
   browser, is in scope.
-- **Leaking what it reads.** hostveil reads `/etc/shadow`, SSH keys, and
+- **Leaking what it reads.** Hostveil reads `/etc/shadow`, SSH keys, and
   compose files containing secrets. Any path that writes those somewhere
   world-readable, into a scan report, or off the host is in scope.
 - **Privilege escalation via auto-elevation.** `cmd/hostveil/elevate.go`
@@ -48,15 +48,15 @@ questions are about what it does with that privilege:
 
 ## What is not in scope
 
-- **Findings hostveil misses, or reports wrongly.** Detection gaps and false
+- **Findings Hostveil misses, or reports wrongly.** Detection gaps and false
   positives are real bugs and we want them — but as public issues, not private
   advisories. They do not put anyone at risk by being discussed openly.
 - **The severity or score assigned to a finding.** That is a judgement call.
   Argue with it in an issue.
-- **Vulnerabilities in the software hostveil audits.** If Docker or OpenSSH has
+- **Vulnerabilities in the software Hostveil audits.** If Docker or OpenSSH has
   a flaw, report it to them.
 - **Anything requiring an attacker who already has root on the host.** At that
-  point hostveil is not the weakest link.
+  point Hostveil is not the weakest link.
 
 ## Supply chain
 

@@ -83,7 +83,7 @@ func scanJailAction(label, benefit, warning, logLines, extra string) Action {
 // default, and falls back to fail2ban's %(nginx_access_log)s/
 // %(nginx_error_log)s macros rather than a hardcoded path when there is no
 // evidence — those macros are what stay portable across a distribution
-// hostveil has not specifically checked, the same reasoning
+// Hostveil has not specifically checked, the same reasoning
 // internal/check/sysctl's origin-following applies to not re-deriving what
 // a config already gets right.
 func scanJailLogLines(f model.Finding) string {

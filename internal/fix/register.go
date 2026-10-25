@@ -23,12 +23,12 @@ package fix
 //  3. Unambiguous. Exactly one correct remediation, and applying it cannot
 //     break a legitimate configuration.
 //
-// Review means the fix is real and hostveil can apply it, but the user
+// Review means the fix is real and Hostveil can apply it, but the user
 // should see it first. Use it when the action is not file-backed, when it
 // could cut off access to the host, or when there are several defensible
 // remediations to pick between.
 //
-// Manual means there is no action hostveil can safely take. Prefer it over
+// Manual means there is no action Hostveil can safely take. Prefer it over
 // a fix that is technically applicable but likely to break things.
 //
 // The checker's declared kind and the registered fix's kind are resolved
@@ -39,7 +39,7 @@ package fix
 //
 // firewall.inactive was on the list below until the checker started
 // recording the port sshd is actually listening on. The refusal was never
-// about the commands — it was that hostveil could not know which port to keep
+// about the commands — it was that Hostveil could not know which port to keep
 // open, and a firewall enabled without that answer locks the operator out with
 // no checkpoint to undo it. With the port in evidence the fix allows it first
 // and enables the policy second, as two commands of one action, and stays
@@ -66,7 +66,7 @@ package fix
 // Twelve container findings used to sit in the register below, every one for
 // the same reason: the remediation removes or restricts something the author
 // may have set on purpose — privileged mode, a capability, host networking,
-// a Docker socket mount — and hostveil cannot tell a load-bearing setting
+// a Docker socket mount — and Hostveil cannot tell a load-bearing setting
 // from a cargo-culted one. That reason is still true. What it no longer
 // decides is whether there is a button. A fix that might break a deployment
 // is Review rather than Auto, carries a Warning that names what it might
@@ -80,7 +80,7 @@ package fix
 // installed updates, scheduled a minute out so it can be cancelled; locking
 // and expiring a second UID-0 account, with deletion as the irreversible
 // alternative; and expiring a password stored under a weak hash, which is
-// the one thing hostveil can do without inventing the credential. The UID-0
+// the one thing Hostveil can do without inventing the credential. The UID-0
 // checker learned to stop reporting an account that is locked and expired,
 // because that is an account nobody can log in as.
 //
@@ -102,7 +102,7 @@ package fix
 //     become fixable if it returns. Trivy's fixed_version is the OS package
 //     version inside the image (`3.0.11-1~deb12u2`), not an image tag.
 //     There is no mapping from one to the other; treating them as
-//     interchangeable is what issue #473 was. Nothing hostveil can compute
+//     interchangeable is what issue #473 was. Nothing Hostveil can compute
 //     turns "openssl must reach 3.0.11-1~deb12u2" into an image reference,
 //     so a per-CVE fix would have to invent one. That is also why the
 //     checker stopped emitting one finding per vulnerability: a finding is
@@ -113,7 +113,7 @@ package fix
 //     where Action carries one Path, and a move that does not delete the
 //     original improves nothing. More to the point, by the time the secret
 //     is found it has already leaked into backups and git history, so the
-//     real remediation is rotating it, which hostveil cannot do.
+//     real remediation is rotating it, which Hostveil cannot do.
 //   - compose.ds012 — the remediation is a healthcheck, and the right one
 //     depends entirely on what the service exposes: an HTTP path, a CLI
 //     probe, a port to open. A static audit cannot learn any of them, and a
@@ -135,13 +135,13 @@ package fix
 //     theirs.
 //   - proxmox.webui-open — the edit is a few lines in /etc/default/pveproxy
 //     and the values are the operator's alone: which network is the
-//     management network is not in any file hostveil reads, and a guess that
+//     management network is not in any file Hostveil reads, and a guess that
 //     leaves out the address the operator is using locks them out of the
 //     hypervisor's interface on the next restart. LISTEN_IP, the other half,
 //     breaks clusters whose nodes reach each other across subnets, which
 //     upstream warns about in the same breath as documenting it.
 //   - proxmox.root-no-tfa — enrolling a second factor is a person holding a
-//     device, and writing tfa.cfg on their behalf would be hostveil inventing
+//     device, and writing tfa.cfg on their behalf would be Hostveil inventing
 //     a credential.
 //   - accounts.sudo-nopasswd — the blocker is not the lockout risk alone;
 //     accounts.emptypassword carries a comparable one and is registered
@@ -289,7 +289,7 @@ package fix
 // the operator has to accept. forensic.time-unsynced needs a time source, and
 // which one to trust is not written anywhere on the host. forensic.weblog-no-size
 // changes a log format, and every parser of that log — a fail2ban filter, a
-// log shipper, a traffic report — expects the old one; hostveil cannot see
+// log shipper, a traffic report — expects the old one; Hostveil cannot see
 // which of them read it. forensic.no-remote-log needs a second machine to send
 // to, which is not something a fix on this one can create.
 //
@@ -316,7 +316,7 @@ package fix
 // the drop-in is one mechanical, reversible file edit and would otherwise
 // qualify — but it is not unambiguous. rp_filter is 1 on a single-homed
 // server and 2 on a VPN or multi-homed one; sysrq has a restricted-bitmask
-// answer as legitimate as 0. hostveil audits only the unambiguous half of
+// answer as legitimate as 0. Hostveil audits only the unambiguous half of
 // each and writes only what it audited, but the operator is the one who
 // knows which host this is, so they see it first.
 //
@@ -346,7 +346,7 @@ package fix
 // execute is documented to break JIT runtimes — Node.js, Java, Mono,
 // LuaJIT — common in self-hosted app stacks. None of that is visible from
 // the unit — it depends on what the program does — so no amount of reading
-// gets hostveil to "unambiguous". Those eight used to stay declined. They
+// gets Hostveil to "unambiguous". Those eight used to stay declined. They
 // are registered now as IndividualOnly Review fixes whose Warnings name
 // exactly the workloads above (riskySystemdDirectives in systemd.go): the
 // person who knows whether this unit is a VPN or a JIT runtime reads that,

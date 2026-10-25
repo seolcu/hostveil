@@ -1,4 +1,4 @@
-# Forensics testbed for hostveil's forensic-readiness domain and `hostveil
+# Forensics testbed for Hostveil's forensic-readiness domain and `hostveil
 # triage`: one small Ubuntu 24.04 web server (Apache + PHP + sshd), with no
 # Docker, so it boots in a minute and its only state is what the scenarios
 # put there. See README.md; run everything through ./run.sh.
@@ -6,7 +6,7 @@
 Vagrant.configure("2") do |config|
   config.vm.box = "cloud-image/ubuntu-24.04"
   config.vm.hostname = "fxlab"
-  # Only this directory is synced: the hostveil binary is cross-compiled on
+  # Only this directory is synced: the Hostveil binary is cross-compiled on
   # the host into .bin/ and the scripts read and write results/ through it.
   config.vm.synced_folder ".", "/fx", type: "rsync",
     rsync__exclude: ["results/", ".vagrant/"]

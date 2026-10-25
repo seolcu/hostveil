@@ -27,7 +27,7 @@ archives:
       {{ .ProjectName }}-{{ .Os }}-{{ .Arch }}
     formats: ["tar.gz"]
 
-# Native packages, for the audience this tool is actually for. hostveil
+# Native packages, for the audience this tool is actually for. Hostveil
 # runs meaningfully only on Linux, and its users administer servers — where
 # `apt install ./hostveil.deb` is the ordinary way software arrives and a
 # tarball extracted into /usr/bin is the exception. Until now the only
@@ -42,7 +42,7 @@ archives:
 # move from one to the other without ending up with two copies on PATH.
 #
 # There is no postinstall script, no service unit, and no config file to
-# ship. hostveil is a command you run, its state lives in /var/lib/hostveil
+# ship. Hostveil is a command you run, its state lives in /var/lib/hostveil
 # (created on first use as root), and it has no daemon. Packaging it as
 # though it did would invent a lifecycle the tool does not have — and a
 # package that removed /var/lib/hostveil on purge would delete the
@@ -65,7 +65,7 @@ nfpms:
     bindir: /usr/bin
     # Every one of these is optional and each unlocks a domain rather than
     # being required to run: no Docker means the container and CVE domains
-    # report N/A, not that hostveil fails. Recommends, never Depends —
+    # report N/A, not that Hostveil fails. Recommends, never Depends —
     # pulling Docker onto a host as a side effect of installing a scanner
     # would be indefensible.
     recommends:
@@ -81,7 +81,7 @@ checksum:
   name_template: "{{ .ProjectName }}-checksums.txt"
   algorithm: sha256
 
-# One SBOM per archive, so anyone auditing a hostveil binary can see the
+# One SBOM per archive, so anyone auditing a Hostveil binary can see the
 # dependency set it was built from without trusting a build log.
 sboms:
   - id: archive-sbom

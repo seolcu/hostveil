@@ -14,7 +14,7 @@ import (
 // Two questions are asked of model.Finding.Fixed and they are not the same
 // question. "Is this risk still standing on the host" is Active, because a fix
 // that is written and waiting on a restart has changed nothing an attacker can
-// see. "Has hostveil already applied a fix here" is Fixed on its own, because
+// see. "Has Hostveil already applied a fix here" is Fixed on its own, because
 // for that one a pending fix counts.
 //
 // Every site that asks the first and tests Fixed is a place a pending finding
@@ -28,7 +28,7 @@ import (
 // code does not read .Fixed in a condition; it calls Active or IsAutoFixable.
 // The exceptions are the second question, and they are named.
 var fixedIsTheRightQuestion = map[string]string{
-	"internal/core/batch.go": "the batch skip asks whether hostveil has already applied something here, " +
+	"internal/core/batch.go": "the batch skip asks whether Hostveil has already applied something here, " +
 		"and for a pending fix it has — asking Active would re-apply it on every run until the " +
 		"operator restarted the service, writing a checkpoint each time over an unchanged file",
 	"internal/core/reportstate.go": "markFixed and unmarkFixed are what set and clear the flag, so they " +

@@ -12,7 +12,7 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// The fixtures the interfaces are drawn from must name findings hostveil can
+// The fixtures the interfaces are drawn from must name findings Hostveil can
 // actually report.
 //
 // findings_test.go closes the loop between the checkers and the docs: every ID
@@ -49,7 +49,7 @@ func TestEveryFindingIDInAFixtureIsOneHostveilCanReport(t *testing.T) {
 		}
 		t.Errorf("%s:%d names the finding %q, which no checker constructs.\n"+
 			"  This fixture is drawn into a published screenshot, so the ID is a claim about\n"+
-			"  what hostveil reports. Use an ID from internal/check, or teach a checker to\n"+
+			"  what Hostveil reports. Use an ID from internal/check, or teach a checker to\n"+
 			"  emit this one.", hit.file, hit.line, hit.id)
 	}
 }

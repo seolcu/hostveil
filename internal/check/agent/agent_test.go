@@ -726,7 +726,7 @@ func TestReadableEnvWithoutCredentialsIsNotASecretFinding(t *testing.T) {
 	}
 }
 
-// The load-bearing guarantee of the whole domain: hostveil reads secrets to
+// The load-bearing guarantee of the whole domain: Hostveil reads secrets to
 // judge them and must never carry one back out. Evidence is rendered by every
 // UI and persisted to disk, so a value that reaches a Finding has leaked.
 func TestSecretValuesNeverReachAFinding(t *testing.T) {

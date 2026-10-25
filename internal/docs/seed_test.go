@@ -27,7 +27,7 @@ import (
 	"github.com/seolcu/hostveil/internal/json5"
 )
 
-// seeders are the scripts that build a host hostveil is then measured or
+// seeders are the scripts that build a host Hostveil is then measured or
 // demonstrated against.
 var seeders = []string{
 	filepath.Join("scripts", "measure", "seed.sh"),
@@ -181,7 +181,7 @@ func TestTheMeasurementsPageDescribesTheHostTheSeedBuilds(t *testing.T) {
 //
 // The paths test above asks whether the seeded host produces agent findings
 // at all. This asks the next question, and it is the one the measurements
-// page rests on: whether the findings it produces are the ones hostveil can
+// page rests on: whether the findings it produces are the ones Hostveil can
 // now *fix*. The agent axis moved from "detects, cannot fix" to "fixes four
 // of seven" in this release, and a fixture that seeds only the three still
 // declined would publish an axis that does not move while nothing failed —
@@ -225,7 +225,7 @@ func TestSeededAgentConfigExercisesTheRegisteredFixes(t *testing.T) {
 			if !registry.Has(rule.ID) || seen[rule.ID] {
 				continue
 			}
-			t.Errorf("demo/seed/openclaw.json sets no key for %s, which hostveil can fix — "+
+			t.Errorf("demo/seed/openclaw.json sets no key for %s, which Hostveil can fix — "+
 				"the measured host would never exercise that fix", rule.ID)
 		}
 	}

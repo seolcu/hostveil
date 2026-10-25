@@ -54,14 +54,14 @@ func FleetArgv(host string, sudo bool) []string {
 	if sudo {
 		return append(argv, "sudo", "-n", "hostveil", "scan", "--json")
 	}
-	// HOSTVEIL_NO_SUDO, because the remote hostveil would otherwise try to
+	// HOSTVEIL_NO_SUDO, because the remote Hostveil would otherwise try to
 	// re-exec itself under sudo, and with BatchMode there is no terminal to
 	// type a password into — the scan would fail instead of running
 	// unprivileged and saying which domains it could not see.
 	return append(argv, "env", "HOSTVEIL_NO_SUDO=1", "hostveil", "scan", "--json")
 }
 
-// Fleet scans each host over SSH with the hostveil already installed there,
+// Fleet scans each host over SSH with the Hostveil already installed there,
 // and collects the reports side by side.
 //
 // Nothing is installed, copied or configured on the remote host, and nothing

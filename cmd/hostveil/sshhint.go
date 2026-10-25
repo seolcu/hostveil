@@ -12,7 +12,7 @@ import (
 //
 // The question this answers is the one every SSH session ends at: `hostveil
 // serve` printed http://127.0.0.1:8787/?t=… and 127.0.0.1 on a remote shell is
-// the remote machine, so the URL was correct and useless. hostveil knew it was
+// the remote machine, so the URL was correct and useless. Hostveil knew it was
 // in an SSH session the whole time and said nothing.
 //
 // It does not open the dashboard to the network instead. The dashboard applies
@@ -45,7 +45,7 @@ func sshHint(getenv func(string) string, addr string) string {
 
 	// SUDO_USER first: serve auto-elevates, so by the time this runs the
 	// process is root, and telling somebody to `ssh root@…` recommends a
-	// login most hosts refuse and hostveil itself reports as a finding.
+	// login most hosts refuse and Hostveil itself reports as a finding.
 	user := firstNonEmpty(getenv("SUDO_USER"), getenv("USER"), getenv("LOGNAME"))
 
 	dest := serverIP

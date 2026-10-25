@@ -140,7 +140,7 @@ func TestFrameFitsTerminalHeight(t *testing.T) {
 func TestPreviewAndHistoryFitTerminalWidth(t *testing.T) {
 	longWarn := "This recreates the container: the service goes down briefly and comes " +
 		"back on a different image. There is no rollback checkpoint: exec fixes are " +
-		"not file-backed, so hostveil cannot undo this."
+		"not file-backed, so Hostveil cannot undo this."
 
 	preview := &appModel{
 		mode: modePreview, width: 80, height: 30, selected: map[string]bool{},

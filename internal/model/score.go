@@ -25,7 +25,7 @@ type ScoreBreakdown struct {
 	// on.
 	Applicable bool `json:"applicable"`
 
-	// AfterFixes is Overall recomputed with every fix hostveil offers — Auto
+	// AfterFixes is Overall recomputed with every fix Hostveil offers — Auto
 	// and Review both — treated as applied.
 	//
 	// It answers a question the score alone cannot, and that an operator
@@ -37,7 +37,7 @@ type ScoreBreakdown struct {
 	// a verdict on the effort rather than on the host.
 	//
 	// The alternative was to charge Manual findings less, and it is the wrong
-	// trade in the exact place it looks tempting. Manual means hostveil will
+	// trade in the exact place it looks tempting. Manual means Hostveil will
 	// not do it unattended, not that it cannot be done: the operator can
 	// delete the account or drop the socket mount this afternoon. Discounting
 	// a risk the operator is fully able to remove is the flattery this
@@ -47,7 +47,7 @@ type ScoreBreakdown struct {
 	//
 	// So the risk is charged in full and the headroom is published beside it.
 	// Named for what it is rather than "achievable": the difference between
-	// this and 100 is what hostveil will not fix for you, which is not the
+	// this and 100 is what Hostveil will not fix for you, which is not the
 	// same as what cannot be fixed.
 	//
 	// Equal to Overall when nothing is fixable, which is the case every UI
@@ -81,7 +81,7 @@ type ScoreAxis struct {
 	Applicable bool   `json:"applicable"`
 	Degraded   bool   `json:"degraded,omitempty"`
 	Score      uint8  `json:"score"`
-	// AfterFixes is Score with every fix hostveil offers on this axis
+	// AfterFixes is Score with every fix Hostveil offers on this axis
 	// treated as applied. See ScoreBreakdown.AfterFixes; the per-axis one is
 	// what makes the aggregate actionable, because it says *where* the
 	// headroom is.
@@ -143,7 +143,7 @@ func (a ScoreAxis) ValueText() string {
 // lie the marker exists to prevent.
 const ValueTextWidth = 4
 
-// Headroom is what this axis becomes once every fix hostveil offers on it is
+// Headroom is what this axis becomes once every fix Hostveil offers on it is
 // applied, and whether that is worth showing at all.
 //
 // The second return is the whole point: every interface hides the figure
@@ -360,7 +360,7 @@ func weight(f Finding, nth int) float64 {
 func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 	b := scoreOnce(findings, states)
 
-	// And again, over the same findings with everything hostveil offers a
+	// And again, over the same findings with everything Hostveil offers a
 	// button for marked fixed. See ScoreBreakdown.AfterFixes.
 	//
 	// Two calls rather than a second scoring rule: the loop below already
@@ -375,7 +375,7 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 	return b
 }
 
-// withOfferedFixesApplied returns findings with every one hostveil can
+// withOfferedFixesApplied returns findings with every one Hostveil can
 // remediate marked Fixed.
 //
 // Review counts, not only Auto. The operator who wants to know what fixing

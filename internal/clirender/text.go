@@ -169,7 +169,7 @@ const maxDeltaLines = 10
 // It takes the whole Options rather than just the glyph set so it cannot
 // drift out of step with Text's: the two are printed one after the other and
 // a resolved-tick from a different table in the middle of one report would
-// be the only place hostveil disagreed with itself about a symbol.
+// be the only place Hostveil disagreed with itself about a symbol.
 func DeltaSummary(d model.Delta, opts Options) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "\nSince last scan: %d resolved, %d new, %d changed, %d still present.\n",

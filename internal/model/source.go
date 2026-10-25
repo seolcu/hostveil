@@ -32,7 +32,7 @@ const (
 	sourceCount // sentinel, not a domain; keep last
 )
 
-// sourceDef is everything hostveil knows about a detection domain.
+// sourceDef is everything Hostveil knows about a detection domain.
 //
 // There used to be six of these tables, all keyed by the same constant and
 // all maintained by hand: the const block, a String switch, a Label switch,

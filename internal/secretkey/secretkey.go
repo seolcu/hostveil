@@ -2,7 +2,7 @@
 // configuration key names a credential, and that its value looks like a real
 // one rather than a placeholder.
 //
-// It is deliberately name-based. hostveil has to judge a value sensitive
+// It is deliberately name-based. Hostveil has to judge a value sensitive
 // without ever recording the value itself: findings are rendered by every UI
 // and persisted to disk, so a checker that quoted the secret it found would
 // leak it into exactly the places a secret must not reach. Matching on the

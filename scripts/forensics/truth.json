@@ -1,5 +1,5 @@
 {
-  "_comment": "Ground truth for experiment 1. Each element is one trace seed.sh plants. 'triage' is the hostveil indicator ID expected for it; 'verdict' is the verdict triage should give. 'tokens' are the strings that tie a detection to this element in a tool's output (indicator evidence for triage, warning lines for the others); any one is enough. The alternatives after the first are the other tools' own wording for the same trace, read off their output by hand (rkhunter: 'Found preloaded shared library'; Lynis AUTH-9204: 'Multiple users with UID 0'). An empty first token means the element is an aggregate only an analysis of the logs can report.",
+  "_comment": "Ground truth for experiment 1. Each element is one trace seed.sh plants. 'triage' is the Hostveil indicator ID expected for it; 'verdict' is the verdict triage should give. 'tokens' are the strings that tie a detection to this element in a tool's output (indicator evidence for triage, warning lines for the others); any one is enough. The alternatives after the first are the other tools' own wording for the same trace, read off their output by hand (rkhunter: 'Found preloaded shared library'; Lynis AUTH-9204: 'Multiple users with UID 0'). An empty first token means the element is an aggregate only an analysis of the logs can report.",
   "elements": [
     {
       "id": "S1a",

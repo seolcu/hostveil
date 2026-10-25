@@ -11,7 +11,7 @@ import (
 
 // TraceRunner wraps a CommandRunner and writes a line per command to w.
 //
-// It exists because hostveil had no way at all to answer the commonest
+// It exists because Hostveil had no way at all to answer the commonest
 // support question there is: "it says my firewall is inactive, but it
 // isn't." Every claim the tool makes about a host comes from a command run
 // through this interface, so a log of what was run and what came back is
@@ -61,7 +61,7 @@ func (t *TraceRunner) LookPath(name string) (string, error) {
 func (t *TraceRunner) logf(format string, a ...any) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	fmt.Fprintf(t.w, "hostveil[trace] "+format+"\n", a...)
+	fmt.Fprintf(t.w, "Hostveil[trace] "+format+"\n", a...)
 }
 
 func outcome(err error, n int) string {

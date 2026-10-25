@@ -24,7 +24,7 @@ var auditdShowArgv = []string{"systemctl", "show", "auditd.service", "--property
 var auditctlListArgv = []string{"auditctl", "-l"}
 
 // webServerUsers are the accounts web servers and PHP-FPM run as on the
-// distributions hostveil supports. A web application served by one of them
+// distributions Hostveil supports. A web application served by one of them
 // has no reason to start programs, which is what makes recording every
 // execve under that uid both cheap and decisive: on a healthy host the log
 // stays empty, and a webshell's first command is a record.
@@ -104,7 +104,7 @@ func (c *Checker) checkAudit(ctx context.Context, env platform.Env) ([]model.Fin
 				"not kept anywhere. When a web application is exploited, the attacker's first commands run as the "+
 				"web server's account — and without auditing, the only trace of them is whatever they chose not to delete."),
 			model.WithHowToFix("Install and start auditd (`apt-get install auditd` or `dnf install audit`, then "+
-				"`systemctl enable --now auditd`) and run hostveil again: it will offer the rules that record what "+
+				"`systemctl enable --now auditd`) and run Hostveil again: it will offer the rules that record what "+
 				"your web server's account executes."),
 			model.WithEvidence("auditd", state),
 		)}, true

@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Harden the host the way a careful operator would, without hostveil, so the
+# Harden the host the way a careful operator would, without Hostveil, so the
 # harness has a control group.
 #
-# The seeded host answers "does the score move when hostveil fixes things",
+# The seeded host answers "does the score move when Hostveil fixes things",
 # which a score could pass while measuring nothing but its own opinions. This
 # answers the harder question: does the score go up when the host is hardened
-# by *somebody else's* standard? A number that only responds to hostveil's own
+# by *somebody else's* standard? A number that only responds to Hostveil's own
 # fixes is not a security score, it is a to-do list with a percentage on it.
 #
 # Every change below is traceable to the CIS Benchmarks or to Lynis's own
-# suggestions, and none of them was read off hostveil's fix registry. The
+# suggestions, and none of them was read off Hostveil's fix registry. The
 # overlap that results is part of the finding, not a flaw in the method: two
 # independent standards agreeing about PermitRootLogin is what agreement
 # between standards looks like.
@@ -93,7 +93,7 @@ say "accounts: CIS 5.4.2"
 # there has ever been, which makes it a step that could never once have
 # succeeded. `2>/dev/null || true` meant the script said "removing UID 0
 # account breakglass", removed nothing, and exited 0; the control group was
-# quietly missing its account-hygiene half, and hostveil went on reporting
+# quietly missing its account-hygiene half, and Hostveil went on reporting
 # accounts.uid0 about a host this script claimed to have hardened.
 #
 # A control group that silently skips a step is worse than one that fails,

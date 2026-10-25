@@ -128,7 +128,7 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 			periodicKey+"` nor "+c.AptConfigPath+" could be read")
 	case !enabled:
 		// Whether the package is already here decides what the remediation
-		// *is*, and therefore whether hostveil can do it unattended. Ubuntu
+		// *is*, and therefore whether Hostveil can do it unattended. Ubuntu
 		// ships unattended-upgrades installed and Debian's netinst offers it,
 		// so the common case is a host where the whole fix is writing one
 		// config file — reversible, and Auto. Where the package is missing the

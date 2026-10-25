@@ -83,7 +83,7 @@ func TestSARIFSeverityLevels(t *testing.T) {
 		model.SeverityMedium: "warning",
 		model.SeverityLow:    "note",
 	}
-	// One arm per level, and every level covered: SARIF's three and hostveil's
+	// One arm per level, and every level covered: SARIF's three and Hostveil's
 	// three now line up exactly, which is what a missing arm would hide.
 	if len(cases) != len(model.AllSeverities()) {
 		t.Fatalf("%d severities, %d mapped to SARIF levels", len(model.AllSeverities()), len(cases))
@@ -132,7 +132,7 @@ func TestSARIFCarriesDomainCoverage(t *testing.T) {
 //
 // Critical and High both mapped to "error" before they became one level, so
 // SARIF was already saying what the three-level scale says. An ingester's
-// alerts must not move because hostveil renamed something.
+// alerts must not move because Hostveil renamed something.
 //
 // Written against the old ordinals rather than the old constants, which no
 // longer exist: the numbers are what a snapshot on disk holds, and reading

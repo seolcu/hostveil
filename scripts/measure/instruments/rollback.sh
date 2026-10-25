@@ -2,13 +2,13 @@
 # Rollback fidelity: does undoing every fix put the host back byte for byte?
 #
 # Not a security measurement — a claim about the recovery layer, and the one
-# that has to hold for any of the rest to be worth running. hostveil asks an
+# that has to hold for any of the rest to be worth running. Hostveil asks an
 # operator to let it edit files on a server, and "you can undo it" is the
 # reason that is acceptable.
 #
 # The hashing is deliberately not done from the checkpoints. A checkpoint
-# records what hostveil believes it backed up, so comparing a restored file
-# against it asks whether hostveil agrees with itself. The candidate paths
+# records what Hostveil believes it backed up, so comparing a restored file
+# against it asks whether Hostveil agrees with itself. The candidate paths
 # come from the scan instead — every file a finding points at — and they are
 # hashed on the live filesystem before anything is applied. That is the state
 # a rollback has to reproduce.

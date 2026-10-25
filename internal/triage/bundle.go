@@ -61,7 +61,7 @@ func Run(ctx context.Context, opts Options, env platform.Env) (*Result, *Manifes
 // stores its findings in the bundle, so the gaps it implies can be derived
 // from the bundle later like everything else.
 func readiness(ctx context.Context, opts Options, env platform.Env, m *Manifest) {
-	a := Artifact{Name: "readiness", Path: "artifacts/readiness.json", Phase: 3, Kind: "derived", Source: "hostveil forensic-readiness checker"}
+	a := Artifact{Name: "readiness", Path: "artifacts/readiness.json", Phase: 3, Kind: "derived", Source: "Hostveil forensic-readiness checker"}
 	chk := &forensiccheck.Checker{Root: opts.Root}
 	fs, err := chk.Check(ctx, env)
 	if err != nil {

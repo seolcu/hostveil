@@ -341,7 +341,7 @@ func (m *appModel) footerRows(hint string) []string {
 // styleHintLine picks the key out of each hint item and leaves the rest dim.
 //
 // The footer is fourteen bindings in one grey, which is the least scannable
-// thing on the screen: every key hostveil has is written down there and none
+// thing on the screen: every key Hostveil has is written down there and none
 // of them is findable. Colouring the key and only the key turns the row into
 // a column of things you can press — and it is structure, not risk, so it
 // spends the accent rather than one of the heats.
@@ -406,7 +406,7 @@ func (m *appModel) ruleRowOf(w int) string {
 // Counted in columns rather than in runes, which is not pedantry here. Every
 // glyph the frame is drawn from — ─ │ ┬ ▌ ░ █ — is East Asian *Ambiguous*,
 // and an operator whose terminal renders that class double-width says so with
-// RUNEWIDTH_EASTASIAN=1, which hostveil honours (see internal/textwidth for
+// RUNEWIDTH_EASTASIAN=1, which Hostveil honours (see internal/textwidth for
 // why it must). In that mode `strings.Repeat("─", w)` is a row twice as wide
 // as the terminal: clip cut it back, so the rule still looked right, and
 // every junction past the halfway point was cut off with it. The grid came

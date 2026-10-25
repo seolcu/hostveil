@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Drive the forensics experiments end to end from the host.
 #
-#   ./run.sh up        build hostveil for linux/amd64, boot and provision the VM, snapshot "clean"
+#   ./run.sh up        build Hostveil for linux/amd64, boot and provision the VM, snapshot "clean"
 #   ./run.sh e1        experiment 1: every tool on the clean VM, then on the VM with every scenario
 #   ./run.sh e2        experiment 2: the RCE + SSH scenarios and a reboot, on a stock VM and on a readied one
 #   ./run.sh score     score results/ against truth.json into results/summary.json

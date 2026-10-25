@@ -39,7 +39,7 @@ import (
 // That default is chosen from the environment: runewidth reads LANG and
 // LC_ALL at init and sets EastAsianWidth when the locale is an East Asian
 // one. Under ko_KR.UTF-8 it then reports two columns for "…", "→", "±" and
-// "·" — all four of which hostveil draws, in the ellipsis truncate appends,
+// "·" — all four of which Hostveil draws, in the ellipsis truncate appends,
 // the domain-status bullets, and the score arrows. The same binary would
 // lay its screens out differently for an operator in Seoul and an operator
 // in Berlin, from the same terminal width and the same findings.
@@ -56,10 +56,10 @@ import (
 // lay out differently in Seoul and Berlin. That variable is a different
 // thing: it is the operator saying their terminal renders ambiguous
 // characters wide, and lipgloss honours it, in a package init that mutates
-// unexported state hostveil has no way to reset. So ignoring it did not
+// unexported state Hostveil has no way to reset. So ignoring it did not
 // produce a narrow layout; it produced two measurements disagreeing by up
 // to three columns a string, which is the exact failure the paragraph above
-// says this condition exists to prevent. Measured on "→ … ●": hostveil 5,
+// says this condition exists to prevent. Measured on "→ … ●": Hostveil 5,
 // lipgloss 8.
 //
 // The parse is strconv.ParseBool because that is what charmbracelet/x/ansi

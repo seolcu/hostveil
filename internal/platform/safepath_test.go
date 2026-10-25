@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// The Beneath family exists for one situation: hostveil running as root on a
+// The Beneath family exists for one situation: Hostveil running as root on a
 // path the audited account owns every component of. Each test below is a
 // shape that account can leave lying around, and the assertion is always
 // about what happened outside root, because that is the damage.

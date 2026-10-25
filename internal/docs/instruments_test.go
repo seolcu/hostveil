@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// The measurement harness exists to check hostveil against auditors that have
+// The measurement harness exists to check Hostveil against auditors that have
 // never heard of it, and the whole value of that is in the numbers being
 // somebody else's. An auditor that did not run has to say so, because the
 // alternative is the shape of a clean result: `hardening_index: null,

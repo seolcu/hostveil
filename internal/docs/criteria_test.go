@@ -14,7 +14,7 @@ import (
 // The published criteria pages restate constants that live in code. A number
 // copied into prose is a number that drifts, and this repository's answer to
 // that is to pin the copy rather than to stop making it: a user who cannot
-// find the rule cannot check hostveil's work, and "read the source" is not an
+// find the rule cannot check Hostveil's work, and "read the source" is not an
 // answer for a tool that asks to be trusted with root.
 //
 // Only the values that were not already pinned are here. cmd/sitegen/docs_test.go
@@ -66,9 +66,9 @@ func TestTheScoringPagePublishesEveryBand(t *testing.T) {
 	}
 }
 
-// The verification states are what hostveil says about a fix after applying
+// The verification states are what Hostveil says about a fix after applying
 // it, and the table had three of them. The one it was missing is the one that
-// exists so hostveil does not over-claim.
+// exists so Hostveil does not over-claim.
 func TestTheFixingPagePublishesEveryVerificationResult(t *testing.T) {
 	pages := criteriaPages(t, "fixing")
 	for _, v := range []model.FixVerification{
@@ -85,7 +85,7 @@ func TestTheFixingPagePublishesEveryVerificationResult(t *testing.T) {
 }
 
 // A user putting SARIF into GitHub code scanning meets this immediately: a
-// hostveil High lands in code scanning's *critical* band, which looks like a
+// Hostveil High lands in code scanning's *critical* band, which looks like a
 // bug until you read why.
 func TestTheCLIPagePublishesTheSARIFMapping(t *testing.T) {
 	// Read the mapping out of a real export rather than out of a list written
@@ -123,7 +123,7 @@ func TestTheCLIPagePublishesTheSARIFMapping(t *testing.T) {
 		} `json:"runs"`
 	}
 	if err := json.Unmarshal([]byte(out), &doc); err != nil {
-		t.Fatalf("parsing the SARIF hostveil just wrote: %v", err)
+		t.Fatalf("parsing the SARIF Hostveil just wrote: %v", err)
 	}
 	if len(doc.Runs) != 1 || len(doc.Runs[0].Results) != len(findings) {
 		t.Fatalf("the export carried %d runs and %d results, want 1 and %d",
@@ -140,7 +140,7 @@ func TestTheCLIPagePublishesTheSARIFMapping(t *testing.T) {
 		if sev := sevOf[res.RuleID]; sev != "" {
 			// In a cell, not anywhere on the page: the prose beside the table
 			// names GitHub's own bucket thresholds (9.0, 7.0, 4.0), so a bare
-			// substring cannot tell hostveil's value from the one it is being
+			// substring cannot tell Hostveil's value from the one it is being
 			// compared against.
 			want = append(want, "<td>"+sev+"</td>")
 		} else {
@@ -183,7 +183,7 @@ func TestTheFixingPagePublishesCheckpointRetention(t *testing.T) {
 //
 // Both READMEs use the same four English words — "Auto", "Review",
 // "Manual", "Unavailable" — rather than README.ko.md translating them.
-// hostveil's CLI, TUI, and dashboard are English-only and always print these
+// Hostveil's CLI, TUI, and dashboard are English-only and always print these
 // exact words; a Korean docs page that renamed them would be teaching a
 // vocabulary the reader never sees again the moment they run the binary. See
 // cmd/sitegen/kindlabels.go, which states the same rule for the site.

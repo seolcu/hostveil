@@ -42,7 +42,7 @@ type ModeRule struct {
 //
 // Good names the safe values this key may be set to, most-preferred first,
 // and it is what makes the finding fixable. An empty Good is a deliberate
-// statement rather than an omission: it means hostveil knows the value is
+// statement rather than an omission: it means Hostveil knows the value is
 // dangerous and does not know which value is right, so the finding stays
 // Manual. agents.defaults.sandbox.mode used to be the case, until OpenClaw's
 // sandbox reference documented the values: "non-main" sandboxes every session
@@ -99,7 +99,7 @@ type GatewayDesc struct {
 	// attribute an observed listener with more confidence than the port alone.
 	ProcNames []string
 
-	// ListenerOnly is for a gateway whose bind is not in any file hostveil
+	// ListenerOnly is for a gateway whose bind is not in any file Hostveil
 	// reads — Goose's web UI takes it from a command-line flag. With no
 	// config to judge, the observed listener is the whole answer, so it must
 	// be attributed by process name rather than by port: port 3000 is
@@ -139,7 +139,7 @@ type Runtime struct {
 // mirrors upstream documentation; keep it that way, and prefer a small set of
 // stable high-signal keys over a full port of each project's own hardening
 // matrix. OpenClaw ships `openclaw security audit`, which covers its config
-// exhaustively; hostveil's job is the host-observable half — what is actually
+// exhaustively; Hostveil's job is the host-observable half — what is actually
 // listening, what is actually readable — scored beside the other domains.
 func defaultRuntimes() []Runtime {
 	return runtimes()

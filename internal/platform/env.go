@@ -41,19 +41,19 @@ type Env struct {
 	Runner         CommandRunner
 
 	// OS is the host's operating system, from runtime.GOOS. It is the one
-	// place in hostveil that asks, and it exists so a checker can tell
+	// place in Hostveil that asks, and it exists so a checker can tell
 	// "I looked and found nothing" apart from "this is not a host I can
 	// audit" — see AuditableOS.
 	OS string
 }
 
-// LinuxOS is the only operating system hostveil's checkers can audit.
+// LinuxOS is the only operating system Hostveil's checkers can audit.
 const LinuxOS = "linux"
 
 // AuditableOS reports whether the host is one the checkers can draw
 // conclusions about, and why not when it is not.
 //
-// hostveil builds and runs on darwin — goreleaser publishes those archives —
+// Hostveil builds and runs on darwin — goreleaser publishes those archives —
 // and every detection rule in it is about Linux. Most domains discover that
 // on their own and skip cleanly: there is no /proc/sys, no systemd, no
 // apt-get, no ss. Four did not, and each turned "I could not look" into an

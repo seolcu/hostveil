@@ -1813,7 +1813,7 @@
             <dd>
               <p lang="en">chmod /var/run/docker.sock to 0600</p>
               <p class="fix-benefit" lang="en">✓ No local account can read the token any more, so none of them can hand the cluster to a machine of their choosing from here on.</p>
-              <p class="fix-warning" lang="en">⚠ It has already been readable, so anything that copied it can still join a node. Rotate it after this (<code>k3s token rotate</code>), which hostveil does not do because it changes what every joining node has to present. The old mode is checkpointed.</p>
+              <p class="fix-warning" lang="en">⚠ It has already been readable, so anything that copied it can still join a node. Rotate it after this (<code>k3s token rotate</code>), which Hostveil does not do because it changes what every joining node has to present. The old mode is checkpointed.</p>
             </dd>
           </dl>
           <h3>Forensics</h3>

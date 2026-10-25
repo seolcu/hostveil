@@ -541,12 +541,12 @@ func anonymousFinding(dist string, apiserver, kubelet []string, from map[string]
 	return &f
 }
 
-// k3sDropInDir is where a hostveil drop-in goes: read after config.yaml and
+// k3sDropInDir is where a Hostveil drop-in goes: read after config.yaml and
 // in name order with the others, so a 99- name is applied last among files.
 // Only the command line outranks it.
 const k3sDropInDir = k3sEtc + "/config.yaml.d"
 
-// k3sFixable turns a k3s finding Review when a file hostveil writes would
+// k3sFixable turns a k3s finding Review when a file Hostveil writes would
 // decide the setting, and records how to restart k3s. When the command line
 // sets one of keys, the command line wins over every file, so a drop-in would
 // change nothing and the finding says so instead.

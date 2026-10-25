@@ -48,7 +48,7 @@ excluded).
 ## Experiment 2
 
 Two arms from the same clean snapshot: the stock VM, and the VM after
-`readiness.sh` applies every forensic.* fix hostveil offers plus the two
+`readiness.sh` applies every forensic.* fix Hostveil offers plus the two
 Manual steps one host can carry out (installing auditd, adding `%I %D` to
 the Apache log format). Each arm gets the S2 + S3 scenarios, is rebooted,
 and is triaged. `score.py` asks ten investigation questions of each bundle

@@ -29,7 +29,7 @@ func registerAccounts(r *Registry) {
 }
 
 // buildLockEmptyPasswordAccount locks the first account the finding names
-// rather than setting a new password: hostveil has no way to collect one
+// rather than setting a new password: Hostveil has no way to collect one
 // from the operator, and inventing a credential is the same mistake the
 // per-CVE fixes were declined for. `passwd -l` is exec, so EffectiveKind
 // floors this to Review whatever it declares here — and it should, since the

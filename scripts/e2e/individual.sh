@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Apply hostveil's individual-only fixes on a real host and check each one:
+# Apply Hostveil's individual-only fixes on a real host and check each one:
 # the seeded finding is reported, the fix lands, the host really changed, a
 # rescan agrees, and a rollback puts the host back.
 #
@@ -588,7 +588,7 @@ JSON5
     expect_count 1 agent.gateway-exposed
 }
 
-# What OpenClaw binds to when gateway.bind is not set. hostveil assumes
+# What OpenClaw binds to when gateway.bind is not set. Hostveil assumes
 # loopback; OpenClaw resolves an unset bind as "auto", and inside a container
 # auto warned that it was binding off loopback. This is the same on a VM.
 # Observed and printed here, not asserted, until the answer is known.

@@ -6,10 +6,10 @@ import (
 	"strings"
 )
 
-// prefFile is the name of the one-line preference file inside hostveil's
+// prefFile is the name of the one-line preference file inside Hostveil's
 // state directory, beside the theme's. It is a remembered choice about what
 // the operator's font can draw, not configuration: nothing in it changes
-// what hostveil detects, scores, or does to a host.
+// what Hostveil detects, scores, or does to a host.
 const prefFile = "glyphs"
 
 // Load returns the set saved in dir, or "" when there is none, it cannot be

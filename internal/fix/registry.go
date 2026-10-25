@@ -62,7 +62,7 @@ type Action struct {
 	// NoFollow refuses to read the target through a symlink.
 	//
 	// It exists for the edits whose path is inside a user's home, where the
-	// account being audited controls every component of it while hostveil
+	// account being audited controls every component of it while Hostveil
 	// runs as root. Without it, replacing ~/.openclaw/openclaw.json with a
 	// link to a root-only file between the scan and the fix would have root
 	// read that file and render it into a preview diff for anyone at the
@@ -197,7 +197,7 @@ const VerifyPathToken = "{}"
 // The order is not incidental. Every interface lists the alternatives in it,
 // the TUI and the dashboard both preselect the first, and — the part that
 // makes it load-bearing — `fix --all --review` applies index 0 without asking.
-// So Actions[0] is what hostveil recommends, and it is what an operator who
+// So Actions[0] is what Hostveil recommends, and it is what an operator who
 // does not read them gets.
 //
 // That was written down in three prose comments and enforced by nothing, and

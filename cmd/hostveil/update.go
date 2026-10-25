@@ -180,9 +180,9 @@ func cmdUninstall(ctx context.Context, args []string) int {
 		return 1
 	}
 
-	fmt.Printf("This will remove hostveil %s, installed by %s.\n", version, origin)
+	fmt.Printf("This will remove Hostveil %s, installed by %s.\n", version, origin)
 	// Said before the prompt, not after. The checkpoints are the backups of
-	// every file hostveil edited here, and whether they matter is exactly what
+	// every file Hostveil edited here, and whether they matter is exactly what
 	// the operator is being asked to decide.
 	if note := selfupdate.StateNote(history.DefaultDir()); note != "" {
 		fmt.Println("\n" + note)
@@ -212,7 +212,7 @@ const noUpdateCheckEnv = "HOSTVEIL_NO_UPDATE_CHECK"
 // most once a day, without the scan waiting for it.
 //
 // Opt-out, because a security tool that reaches the network on its own has to
-// be stoppable: HOSTVEIL_NO_UPDATE_CHECK=1 and hostveil never contacts GitHub
+// be stoppable: HOSTVEIL_NO_UPDATE_CHECK=1 and Hostveil never contacts GitHub
 // unless you type `hostveil update`.
 func startUpdateCheck(ctx context.Context) {
 	if os.Getenv(noUpdateCheckEnv) != "" {

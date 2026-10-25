@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for looking. hostveil is a single Go binary that scans a Linux server,
+Thanks for looking. Hostveil is a single Go binary that scans a Linux server,
 scores it, and fixes what it safely can.
 
 ## Getting set up
@@ -55,7 +55,7 @@ type. `AGENTS.md` has the full list and the reasoning.
 
 ## What makes a change likely to be merged
 
-hostveil's only real claim is that **its score is honest**. Most of the
+Hostveil's only real claim is that **its score is honest**. Most of the
 project's rules exist to protect that, and they are documented as invariants in
 `AGENTS.md` — worth reading before a first change. The two that come up most:
 
@@ -75,10 +75,10 @@ trigger it alongside the case that must.
 
 ## Reporting things
 
-- **A finding hostveil misses, or reports wrongly** — open an issue. Include
+- **A finding Hostveil misses, or reports wrongly** — open an issue. Include
   the relevant config and what you expected. These are the most useful reports
   the project gets.
-- **A security vulnerability in hostveil itself** — see `SECURITY.md`; report
+- **A security vulnerability in Hostveil itself** — see `SECURITY.md`; report
   it privately rather than in an issue.
 
 ## License

@@ -1,4 +1,4 @@
-// Package platform is hostveil's seam to the host operating system:
+// Package platform is Hostveil's seam to the host operating system:
 // running commands, looking up binaries, and detecting the distro,
 // package manager, and service manager. Every checker and fix reaches the
 // OS through this package so they can be unit-tested against a fake
@@ -49,7 +49,7 @@ type DefaultRunner struct {
 
 // DefaultTimeout bounds any command whose caller set no deadline of its own.
 //
-// Nothing hostveil asks the host is a long question: `ss -tlnp`, `docker
+// Nothing Hostveil asks the host is a long question: `ss -tlnp`, `docker
 // inspect`, `apt list --upgradable`, `sshd -T`. What they have in common is
 // that each talks to a daemon or a package database that can stop answering
 // while the socket stays open — a wedged Docker daemon is the everyday case —
@@ -114,7 +114,7 @@ func (r DefaultRunner) Run(ctx context.Context, name string, args ...string) ([]
 		ctx, cancel = context.WithTimeout(ctx, limit)
 		defer cancel()
 	}
-	// G204: this is the seam. Every command hostveil runs arrives here as
+	// G204: this is the seam. Every command Hostveil runs arrives here as
 	// argv from a checker or a fix — never a shell string, which is the
 	// property that matters and the one gosec cannot see. Refusing a
 	// variable command here would leave the tool able to run nothing.
@@ -168,7 +168,7 @@ const maxStderrBytes = 64 << 10
 //
 // Write always reports the full length. Reporting a short write would make
 // exec close the pipe and the command die of SIGPIPE, which reaches the
-// operator as a broken tool rather than as output hostveil declined to hold.
+// operator as a broken tool rather than as output Hostveil declined to hold.
 type capped struct {
 	buf      []byte
 	limit    int
@@ -190,7 +190,7 @@ func (c *capped) Write(p []byte) (int, error) {
 
 // describeContext turns the "signal: killed" a cancelled command reports into
 // something an operator can act on. The domain reason is the only channel
-// hostveil has for saying why a check did not finish, and "exit status -1" in
+// Hostveil has for saying why a check did not finish, and "exit status -1" in
 // it means the user has to guess between a crash, a permission problem, and a
 // daemon that stopped answering.
 func describeContext(ctx context.Context, name string, limit time.Duration, err error) error {
@@ -250,7 +250,7 @@ func cleanStderr(b []byte) string {
 // They are searched because on Debian and its derivatives they are *not* on a
 // non-root user's PATH. Debian dropped sbin from the user PATH, so ufw, nft
 // and iptables all live somewhere `exec.LookPath` will not look unless the
-// caller is already root — and hostveil is not always root: HOSTVEIL_NO_SUDO=1
+// caller is already root — and Hostveil is not always root: HOSTVEIL_NO_SUDO=1
 // is documented for scripts and CI, elevation can fail, and a container may
 // run as nobody.
 //

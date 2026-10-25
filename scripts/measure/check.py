@@ -51,19 +51,19 @@ def main():
     phases = doc.get("phases") or {}
     before = (phases.get("before") or {}).get("hostveil") or {}
 
-    # A Review fix hostveil itself marks "not reversible" — installing a
+    # A Review fix Hostveil itself marks "not reversible" — installing a
     # package, running a distribution upgrade — has no checkpoint by design,
     # and the packages it pulls in can rewrite files no finding ever named
     # (a compiler binary reinstalled as rkhunter's dependency, /etc/shadow
     # rewritten by a new service account) as an ordinary side effect of doing
     # exactly what it said. That is not the rollback promise breaking; it is
-    # the promise never having covered ground hostveil declined to checkpoint
+    # the promise never having covered ground Hostveil declined to checkpoint
     # in the first place. A run with nothing not-reversible in it is still
     # held to the original, unconditional standard.
     residue_expected = (doc.get("reviewed") or {}).get("not_reversible", 0) > 0
 
     # Which phase the score is read from is the whole difference between the
-    # two runs. "after" is the host with hostveil's own fixes on disk;
+    # two runs. "after" is the host with Hostveil's own fixes on disk;
     # "controlled" is the host somebody else hardened. Keyed off the phase
     # that exists rather than off the profile string, so a run mislabelled
     # with -p cannot be checked against the wrong claim.

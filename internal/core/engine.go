@@ -1,4 +1,4 @@
-// Package core is hostveil's shared engine: the single object every UI
+// Package core is Hostveil's shared engine: the single object every UI
 // (CLI, TUI, Web) calls. All scanning, scoring, and fix
 // preview/apply/rollback orchestration lives here exactly once, so no UI
 // ever re-implements it.
@@ -26,7 +26,7 @@ type Config struct {
 	Store    *history.Store         // nil = default per-user dir
 	Runner   platform.CommandRunner // nil = platform.DefaultRunner
 	AI       ai.Explainer           // nil = ai.Noop (advisory AI disabled)
-	// Version is the hostveil build version, carried only so a crash record
+	// Version is the Hostveil build version, carried only so a crash record
 	// (internal/diagnostics) written from inside a fix or a checker names the
 	// build it happened on. Empty is fine — cmd/hostveil is the only caller
 	// that has a real one to give, and every core test that never sets it

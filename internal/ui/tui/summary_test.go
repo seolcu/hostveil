@@ -51,7 +51,7 @@ func summaryModel(w, h int) *appModel {
 func plain(s string) string { return ansiSeq.ReplaceAllString(s, "") }
 
 // The chip row is the dashboard's filter bar: how much of this wall of
-// findings is High, and how much of it hostveil can fix on its own.
+// findings is High, and how much of it Hostveil can fix on its own.
 // Before it, the TUI answered neither without scrolling and counting.
 func TestChipRowCarriesTheSeveritySpreadAndFixableCount(t *testing.T) {
 	m := summaryModel(120, 30)

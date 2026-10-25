@@ -78,7 +78,7 @@ func run[T ~int](t *testing.T, c enumCase[T]) {
 		}
 
 		// An unrecognised value is an error, not a zero. Resolving it
-		// silently would turn a snapshot hostveil cannot read into one it
+		// silently would turn a snapshot Hostveil cannot read into one it
 		// reads wrongly.
 		for _, bad := range []string{`"nonsense"`, `9999`, `true`} {
 			if err := json.Unmarshal([]byte(bad), c.newPtr()); err == nil {
@@ -305,7 +305,7 @@ func TestEveryNameHostveilHasWrittenStillParses(t *testing.T) {
 	} {
 		got, ok := ParseSeverity(name)
 		if !ok {
-			t.Errorf("ParseSeverity(%q) failed, and hostveil has written that name to disk", name)
+			t.Errorf("ParseSeverity(%q) failed, and Hostveil has written that name to disk", name)
 			continue
 		}
 		if got != want {

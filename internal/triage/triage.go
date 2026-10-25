@@ -1,4 +1,4 @@
-// Package triage answers the question the rest of hostveil cannot: has this
+// Package triage answers the question the rest of Hostveil cannot: has this
 // host already been broken into?
 //
 // It is a live-response collector and a first-pass analyst in one, built

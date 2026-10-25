@@ -1,4 +1,4 @@
-// Command sitegen renders the hostveil website (site/) from shared templates,
+// Command sitegen renders the Hostveil website (site/) from shared templates,
 // per-page content fragments, and one metadata manifest (pages.json).
 //
 // It is the single source of truth for the site's chrome (head, nav, sidebar,

@@ -70,7 +70,7 @@ func TestBothChangelogsCoverTheSameReleases(t *testing.T) {
 // gap legible.
 //
 // Without it a reader lands on a file whose oldest entry is 3.20.1 and has no
-// way to tell whether hostveil started there, whether the older ones were lost,
+// way to tell whether Hostveil started there, whether the older ones were lost,
 // or whether nobody bothered. The file says which, and this keeps it saying so
 // for as long as there is a gap to explain.
 func TestTheKoreanChangelogSaysWhereItBegins(t *testing.T) {

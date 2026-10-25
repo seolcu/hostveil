@@ -11,7 +11,7 @@ import (
 	"github.com/seolcu/hostveil/internal/ui/web"
 )
 
-// The picker exists to settle which arrangement hostveil keeps, in both
+// The picker exists to settle which arrangement Hostveil keeps, in both
 // interfaces at once. So what these tests hold is what makes it usable for
 // that: the six here are the same six as the dashboard's, every one of them
 // actually changes the screen, choosing none of them leaves the shipped TUI
@@ -19,7 +19,7 @@ import (
 // terminal — which is the one failure a terminal cannot absorb.
 
 // layoutFixture is a host with every severity present, some findings
-// hostveil can fix on its own, a skipped domain and a degraded one. The rail
+// Hostveil can fix on its own, a skipped domain and a degraded one. The rail
 // and the verdict are both summaries, and a fixture missing any of those
 // would let a summary pass by having nothing to summarise.
 func layoutFixture() model.Report {
@@ -94,7 +94,7 @@ func TestLayoutRegistriesMatchTheDashboard(t *testing.T) {
 	}
 }
 
-// An operator who never presses `l` must see the arrangement hostveil chose,
+// An operator who never presses `l` must see the arrangement Hostveil chose,
 // not whichever one happened to be listed first. That is two claims: the
 // default is C · Console, and an unset (or stale) ID resolves to it rather
 // than to nothing.
@@ -583,7 +583,7 @@ func TestTheFooterNamesTheKeysTheArrangementAdds(t *testing.T) {
 //
 // It matters most for the header: the brand is the first thing on the widest
 // row, so a symbol that measured wrong there would push the gauge off the
-// end of every frame hostveil draws.
+// end of every frame Hostveil draws.
 func TestEveryLayoutFitsWithNerdGlyphs(t *testing.T) {
 	for _, l := range Layouts() {
 		for _, w := range []int{200, 120, 100, 80, 60, 44} {
@@ -608,7 +608,7 @@ func TestEveryLayoutFitsWithNerdGlyphs(t *testing.T) {
 // Choosing the Nerd set has to actually change the screen, and choosing
 // nothing has to leave it exactly as it was. The second half is the one that
 // protects everybody who never opts in: glyph.Plain is the zero value, so a
-// model built without a set must render what hostveil always rendered.
+// model built without a set must render what Hostveil always rendered.
 func TestTheGlyphSetReachesTheScreen(t *testing.T) {
 	plain := layoutModel("split", 120, 34)
 	nerd := layoutModel("split", 120, 34)

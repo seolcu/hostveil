@@ -75,7 +75,7 @@ func run(ctx context.Context, args []string) (code int) {
 	// everything else: a bug in flag parsing, in the TUI's rendering, in
 	// dispatch itself. Without it, that bug printed a raw Go stack straight
 	// to a terminal that then scrolled it away, which is exactly the "bug
-	// report hostveil wants back" internal/core/contain.go already talks
+	// report Hostveil wants back" internal/core/contain.go already talks
 	// about, with no way for anyone to give it one.
 	//
 	// debug.Stack() runs here, directly in the recover, not inside

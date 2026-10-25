@@ -107,7 +107,7 @@ func LayoutIDs() []string {
 // LayoutOpts carries the arrangement into the TUI.
 //
 // Save is a callback rather than a directory for the reason ThemeOpts.Save
-// is: the TUI must not know where hostveil keeps its state, because that
+// is: the TUI must not know where Hostveil keeps its state, because that
 // lives in internal/history and the layering test forbids importing it.
 type LayoutOpts struct {
 	Initial string                // saved layout ID; "" or unknown means the default

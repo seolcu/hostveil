@@ -42,7 +42,7 @@ var osGated = map[string]string{
 // A checker dropping the call is silent on Linux — every test here runs on
 // Linux, CI cross-compiles darwin but never executes it, and the demo VM is
 // Ubuntu. The failure only appears on a user's Mac, as a finding about
-// something hostveil did not look at, which is the one thing this codebase
+// something Hostveil did not look at, which is the one thing this codebase
 // says a checker must never produce.
 //
 // It reads the source rather than calling Available, because on this platform

@@ -33,7 +33,7 @@ func Provenance(ctx context.Context, r platform.CommandRunner, archive string) (
 	return true, nil
 }
 
-// BinaryFromArchive pulls the hostveil binary out of the release archive.
+// BinaryFromArchive pulls the Hostveil binary out of the release archive.
 //
 // It takes the entry named hostveil and nothing else. The archive is one this
 // project publishes, so this is not a defence against a hostile tarball so
@@ -90,7 +90,7 @@ func BinaryFromArchive(archive []byte) ([]byte, error) {
 // A running executable cannot be opened for writing at all — the kernel
 // answers ETXTBSY — so writing through the path is not merely unwise here, it
 // does not work. And a rename either happens or does not: a truncate-then-write
-// that is interrupted leaves a host with a zero-length hostveil, which is the
+// that is interrupted leaves a host with a zero-length Hostveil, which is the
 // state in which the tool that would tell you something is wrong is the thing
 // that is wrong.
 //
@@ -109,7 +109,7 @@ func Remove(path string) error { return os.Remove(path) }
 
 // StateNote is what to say after removing the binary.
 //
-// The checkpoints are backups of every file hostveil edited on this host, so
+// The checkpoints are backups of every file Hostveil edited on this host, so
 // deleting them with the program would take away the ability to undo work the
 // program did — and an operator uninstalling a tool is not necessarily
 // abandoning the changes it made. The installer says the same thing in the
@@ -140,7 +140,7 @@ func InstalledVersion(ctx context.Context, r platform.CommandRunner, path string
 	if err != nil {
 		return "", err
 	}
-	// "hostveil v3.17.0" — the last field, with the leading v left on for
+	// "Hostveil v3.17.0" — the last field, with the leading v left on for
 	// SameVersion to deal with.
 	fields := strings.Fields(string(out))
 	if len(fields) == 0 {

@@ -47,7 +47,7 @@ func buildK3sAnonymousOff(f model.Finding) (Fix, error) {
 	// repeated flag's last value — so this turns it off without touching the
 	// file that turned it on.
 	return k3sDropIn(f, "99-hostveil-anonymous-auth.yaml",
-		"# Written by hostveil: turns off anonymous requests set earlier.\n"+
+		"# Written by Hostveil: turns off anonymous requests set earlier.\n"+
 			"kube-apiserver-arg+:\n  - anonymous-auth=false\n"+
 			"kubelet-arg+:\n  - anonymous-auth=false\n",
 		"Refuse unauthenticated requests to Kubernetes",
@@ -72,7 +72,7 @@ func buildK3sAnonymousOff(f model.Finding) (Fix, error) {
 // being undone.
 func buildK3sSecretsEncryption(f model.Finding) (Fix, error) {
 	fx, err := k3sDropIn(f, "99-hostveil-secrets-encryption.yaml",
-		"# Written by hostveil: encrypt Secrets at rest.\nsecrets-encryption: true\n",
+		"# Written by Hostveil: encrypt Secrets at rest.\nsecrets-encryption: true\n",
 		"Encrypt Kubernetes Secrets at rest",
 		"Every Secret in the datastore is encrypted, the ones already there included, so a copied "+
 			"/var/lib/rancher/k3s or a shipped snapshot no longer hands over every password the cluster holds.",

@@ -18,9 +18,9 @@ import (
 // short list — never an application's own. alreadyElevated's comment says so,
 // and drew the conclusion about exactly one variable: the marker this code
 // used to pass itself. It applies identically to every variable a user sets
-// on hostveil's own command line.
+// on Hostveil's own command line.
 //
-// So the line hostveil documents most loudly did nothing.
+// So the line Hostveil documents most loudly did nothing.
 // `HOSTVEIL_DEBUG=1 hostveil scan` appears in `hostveil help`, in the README
 // and on both troubleshooting pages as the thing to attach to a bug report,
 // and on the ordinary non-root host it produced no trace, no error, and no
@@ -50,7 +50,7 @@ func TestElevationCarriesTheVariablesTheUserSet(t *testing.T) {
 
 	// Order matters to sudo: assignments come before the command, and the
 	// command's own arguments after it. Getting this wrong turns a variable
-	// into an argument hostveil then rejects as an unknown flag.
+	// into an argument Hostveil then rejects as an unknown flag.
 	exe := slices.Index(argv, "/usr/local/bin/hostveil")
 	if exe < 0 {
 		t.Fatalf("the executable is missing from argv: %v", argv)
@@ -67,7 +67,7 @@ func TestElevationCarriesTheVariablesTheUserSet(t *testing.T) {
 
 // A host with none of them set must build exactly the argv it built before
 // this existed. The re-exec is on the path every non-root user takes, and a
-// change there that is not opt-in is a change to how hostveil starts.
+// change there that is not opt-in is a change to how Hostveil starts.
 func TestElevationIsUnchangedWhenNothingIsSet(t *testing.T) {
 	argv := elevatedArgv("/usr/local/bin/hostveil", nil, func(string) string { return "" })
 	if !slices.Equal(argv, []string{"sudo", "/usr/local/bin/hostveil"}) {

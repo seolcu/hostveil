@@ -25,7 +25,7 @@ import (
 //
 // It runs twice. Under RUNEWIDTH_EASTASIAN the two libraries used to part
 // company for the opposite reason: lipgloss honours that variable in a
-// package init that mutates state hostveil cannot reach, textwidth ignored
+// package init that mutates state Hostveil cannot reach, textwidth ignored
 // it, and "→ … ●" measured 5 columns one way and 8 the other. The variable
 // has to be set before this process starts for x/ansi's init to see it,
 // which is why the second run is a re-exec of this same test binary.
@@ -95,7 +95,7 @@ const eastAsianChild = "HOSTVEIL_TEST_EASTASIAN_CHILD"
 // ambiguous characters wide, and it is common in CJK terminal setups.
 // lipgloss honours it; textwidth did not, so the ellipsis truncate appends
 // and the arrows and bullets the status lines draw measured one column to
-// hostveil and two to lipgloss. truncate cut to one budget while padRight
+// Hostveil and two to lipgloss. truncate cut to one budget while padRight
 // padded to another — the exact failure textwidth's doc comment says the
 // package exists to prevent, arriving through the door it left open.
 func TestTextwidthAgreesWithLipglossUnderEastAsianWidth(t *testing.T) {

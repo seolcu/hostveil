@@ -106,7 +106,7 @@ func (m *fleetModel) render() string {
 		width = 100
 	}
 	var b strings.Builder
-	title := s.brand.Render("hostveil fleet") + s.dim.Render(fmt.Sprintf("  ·  %d host(s) over SSH", len(m.hosts)))
+	title := s.brand.Render("Hostveil fleet") + s.dim.Render(fmt.Sprintf("  ·  %d host(s) over SSH", len(m.hosts)))
 	b.WriteString(title + "\n\n")
 
 	if m.loading {

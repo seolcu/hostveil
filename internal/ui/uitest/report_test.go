@@ -50,7 +50,7 @@ func TestPublishedReportAccountsForEveryDomain(t *testing.T) {
 	}
 }
 
-// A domain the fixture marks as not-done must still be one hostveil has. An
+// A domain the fixture marks as not-done must still be one Hostveil has. An
 // exception left behind after a domain is renamed would sit in the map doing
 // nothing, and the screenshots would quietly lose the notice it was there to
 // produce.

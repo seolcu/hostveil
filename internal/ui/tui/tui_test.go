@@ -65,7 +65,7 @@ func applyMsg(cmd tea.Cmd) tea.Msg {
 // all.
 //
 // 150x31 and the three-pane console arrangement, because that is what the
-// page has room for and what a terminal wide enough to use hostveil actually
+// page has room for and what a terminal wide enough to use Hostveil actually
 // shows. The fixture is deliberately a mixed host rather than a wrecked one —
 // a degraded domain, a skipped one, findings at all three levels, and a
 // couple marked for a batch fix — so the picture carries the claims the page
@@ -161,7 +161,7 @@ func TestDetailAIExplanation(t *testing.T) {
 func TestListScrolls(t *testing.T) {
 	// One real finding across twenty services, which is what a compose host
 	// with twenty services actually looks like — and it keeps the fixture from
-	// naming twenty findings hostveil cannot report. The rows are told apart
+	// naming twenty findings Hostveil cannot report. The rows are told apart
 	// by service, so the scroll assertions below read those rather than the id.
 	var fs []model.Finding
 	for i := 0; i < 20; i++ {

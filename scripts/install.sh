@@ -58,13 +58,13 @@ package_owner() {
 # uninstall removes what this script installed, and nothing else.
 #
 # It deliberately does not delete the state directory. That is where the
-# rollback checkpoints live — the backups of every file hostveil has edited
-# on this host — and removing hostveil is not a statement that the operator
+# rollback checkpoints live — the backups of every file Hostveil has edited
+# on this host — and removing Hostveil is not a statement that the operator
 # no longer wants the ability to undo what it did. So the path is printed
 # with the command to remove it, and the decision stays theirs.
 #
 # trivy is likewise left in place: this script offers to install it, but it
-# is a general-purpose scanner that may well predate hostveil or be used by
+# is a general-purpose scanner that may well predate Hostveil or be used by
 # something else, and silently removing another tool is not ours to do.
 uninstall() {
   local removed=false
@@ -268,7 +268,7 @@ elif command -v brew &>/dev/null; then PM="brew"
 fi
 
 # ─── OPTIONAL DEPENDENCY: TRIVY ───────────────────────────────────────────
-# Trivy enables image CVE scanning. hostveil works fully without it, so it
+# Trivy enables image CVE scanning. Hostveil works fully without it, so it
 # is entirely optional and can be added later.
 DEP_TRIVY=true
 if ! $FORCE && [[ -t 0 ]]; then
@@ -320,10 +320,10 @@ install_tool() {
         return 1
       }
 
-      # Verified for the same reason hostveil's own archive is: this is
-      # installed to /usr/bin and hostveil then executes it. Trivy publishes
+      # Verified for the same reason Hostveil's own archive is: this is
+      # installed to /usr/bin and Hostveil then executes it. Trivy publishes
       # checksums with every release, and skipping them here while insisting
-      # on them for hostveil would secure the front door and leave the side
+      # on them for Hostveil would secure the front door and leave the side
       # one open.
       curl -fsSL --retry 3 "${TRIVY_BASE}/trivy_${TRIVY_VER}_checksums.txt" \
         -o "${TRIVY_DIR}/checksums.txt" || {
@@ -359,7 +359,7 @@ install_tool() {
 }
 
 if [[ "$SKIP_TRIVY" != true && "$DEP_TRIVY" == true ]]; then
-  # Trivy is optional: a failed install must not abort hostveil's install.
+  # Trivy is optional: a failed install must not abort Hostveil's install.
   install_tool trivy trivy || echo "  ${YELLOW}⚠${RESET} trivy not installed; CVE scanning will be skipped"
 fi
 

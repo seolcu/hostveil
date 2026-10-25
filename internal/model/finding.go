@@ -19,27 +19,27 @@ type Finding struct {
 	Metadata    map[string]string `json:"metadata,omitempty"`
 	Fixed       bool              `json:"fixed"`
 
-	// Pending means hostveil applied a fix for this finding and the host has
+	// Pending means Hostveil applied a fix for this finding and the host has
 	// not changed yet: the artifact on disk is correct and whatever reads it
 	// has not read it again.
 	//
-	// It exists because "hostveil wrote the file" and "the risk is gone" are
+	// It exists because "Hostveil wrote the file" and "the risk is gone" are
 	// different claims, and the score was crediting the first. Applying a
 	// compose fix marked the finding Fixed and moved the number while the
 	// container still ran the old configuration — the same mismatch
 	// Action.TakesEffectOn and VerifyPending were added to *describe*, arriving
 	// in the one place that is supposed to be measuring the host rather than
-	// hostveil's own activity.
+	// Hostveil's own activity.
 	//
 	// Ask Active, not this field, for whether a risk is still standing; Fixed
-	// keeps its own meaning of "hostveil applied a fix here" and is what the
+	// keeps its own meaning of "Hostveil applied a fix here" and is what the
 	// apply paths test so a pending fix is never applied twice.
 	//
 	// Never trust it from a snapshot. It describes an apply that happened in
 	// this process, and the next scan re-derives everything from the checkers.
 	Pending bool `json:"pending,omitempty"`
 
-	// WhyNoFix is one sentence saying what stops hostveil fixing this
+	// WhyNoFix is one sentence saying what stops Hostveil fixing this
 	// finding for you. It is set by the engine, never by a checker, and only
 	// on findings that reach a UI with no fix to offer.
 	//
@@ -153,7 +153,7 @@ func (f Finding) Validate() error {
 	return nil
 }
 
-// IsFixable reports whether hostveil can offer an automated fix.
+// IsFixable reports whether Hostveil can offer an automated fix.
 func (f Finding) IsFixable() bool {
 	return f.Remediation.IsFixable()
 }
@@ -181,7 +181,7 @@ func (f Finding) IsAutoFixable() bool {
 // internal/docs/afterfixes_test.go exists to catch, and there is no reason to
 // hand it a fresh instance.
 //
-// The other question — has hostveil already applied a fix here — is Fixed on
+// The other question — has Hostveil already applied a fix here — is Fixed on
 // its own, and the two diverge exactly on a pending fix: it stays charged and
 // visible, and it is not applied again.
 func (f Finding) Active() bool { return !f.Fixed || f.Pending }

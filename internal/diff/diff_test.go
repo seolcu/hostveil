@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// This diff is the last thing an operator reads before authorizing hostveil to
+// This diff is the last thing an operator reads before authorizing Hostveil to
 // write to files like /etc/ssh/sshd_config, so its output is a security
 // surface, not cosmetics: a preview that omits a line the apply would write, or
 // shows one it would not, hands the operator a false basis for consent. These

@@ -191,7 +191,7 @@ func TestWriteFileAtomicKeepsTheTargetMode(t *testing.T) {
 }
 
 // The temporary must not survive a failure, or a directory of half-written
-// .hostveil-* files accumulates beside every file hostveil has ever edited.
+// .hostveil-* files accumulates beside every file Hostveil has ever edited.
 func TestWriteFileAtomicLeavesNoTemporaryBehind(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "conf")

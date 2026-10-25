@@ -118,6 +118,6 @@ jobs:
           mkdir -p /var/lib/hostveil
           bash scripts/install.sh --uninstall
           test ! -e /usr/bin/hostveil
-          # The checkpoints are backups of files hostveil edited; removing
+          # The checkpoints are backups of files Hostveil edited; removing
           # the tool must not throw them away.
           test -d /var/lib/hostveil

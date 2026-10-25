@@ -45,7 +45,7 @@ func TestApplyOneAppliesAnEligibleAutoFinding(t *testing.T) {
 	}
 }
 
-// A finding hostveil has already applied is reported ineligible (skipped),
+// A finding Hostveil has already applied is reported ineligible (skipped),
 // not failed — re-applying it on every tick of a progress loop would write
 // a new checkpoint over a file that has not changed since the last one.
 func TestApplyOneSkipsAnAlreadyFixedFinding(t *testing.T) {
