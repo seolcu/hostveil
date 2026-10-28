@@ -2,11 +2,8 @@ package report
 
 import "time"
 
-// Doc is the shared intermediate representation the Markdown, DOCX, and PDF
-// renderers each walk. Building it once, in build.go, is what keeps the
-// three of them from separately re-deriving what a report contains — the
-// same "one table, many projections" reasoning internal/model already
-// applies to its enums, applied here to the report's layout.
+// Doc is the intermediate representation the Markdown renderer walks,
+// built once in build.go from a model.Report.
 type Doc struct {
 	Title     string
 	Generated time.Time

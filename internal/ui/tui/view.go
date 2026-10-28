@@ -1517,7 +1517,7 @@ func (m *appModel) themeRows() []string {
 }
 
 // exportFormatNote is one clause of context per format — core.FormatInfo
-// carries only a label, and a picker choosing between five formats needs to
+// carries only a label, and a picker choosing between formats needs to
 // say what each is for.
 func exportFormatNote(id string) string {
 	switch id {
@@ -1527,10 +1527,6 @@ func exportFormatNote(id string) string {
 		return "For CI and code-scanning tools."
 	case "markdown":
 		return "Plain-language report, for you or a colleague."
-	case "docx":
-		return "Word document, same content as the Markdown report."
-	case "pdf":
-		return "PDF document, same content as the Markdown report."
 	default:
 		return ""
 	}

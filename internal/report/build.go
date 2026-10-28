@@ -12,7 +12,7 @@ import (
 
 // buildDoc turns a completed scan into the shared report structure every
 // rich renderer walks. It is the one place model.Report/model.Finding are
-// read for report purposes - Markdown, DOCX, and PDF never touch model
+// read for report purposes - Markdown never touches model
 // directly.
 func buildDoc(r model.Report, version string) Doc {
 	hostname, _ := os.Hostname()
