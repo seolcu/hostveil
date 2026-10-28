@@ -34,7 +34,7 @@ type Project struct {
 	Services map[string]Service
 }
 
-// Service is the subset of a compose service definition hostveil audits.
+// Service is the subset of a compose service definition Hostveil audits.
 type Service struct {
 	Name        string
 	Image       string       `yaml:"image"`

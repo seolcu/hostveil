@@ -36,7 +36,7 @@ func contrast(fg, bg string) float64 {
 // text — a 10px uppercase label in the dashboard, a four-column abbreviation
 // in the TUI — so WCAG's 4.5:1 for normal text is the applicable bar, not the
 // 3:1 large-text one. The floors below were set by Instrument, the palette
-// hostveil shipped before any of this existed, which cleared every one of
+// Hostveil shipped before any of this existed, which cleared every one of
 // them without being asked to — so they were never a bar a theme had to be
 // designed up to, only one it had to not fall below.
 //
@@ -116,7 +116,7 @@ func TestChromeIsDistinguishable(t *testing.T) {
 
 // CSS declares color-scheme: dark unconditionally, which is only true while
 // every palette is one. It is not decoration: it decides how the browser
-// draws the widgets hostveil does not style — checkboxes, the theme picker's
+// draws the widgets Hostveil does not style — checkboxes, the theme picker's
 // dropdown, scrollbars — and a light palette shipped under it would render
 // those against the wrong ground.
 //

@@ -1,6 +1,6 @@
-// Package theme is the single source of truth for hostveil's colors.
+// Package theme is the single source of truth for Hostveil's colors.
 //
-// hostveil's design system is a near-monochrome console — bone text on ink,
+// Hostveil's design system is a near-monochrome console — bone text on ink,
 // all-monospace, dense — where the only things that carry color are risk
 // (severity), safety, and structure. A theme swaps the thirteen hexes that
 // system is drawn from; it does not change what any of them mean.
@@ -50,7 +50,7 @@ import (
 // monopoly on the heats.
 //
 // Manual and Unavail answer a different question — not "how bad" but "what
-// kind of nothing can hostveil do about it" — and they are deliberately not
+// kind of nothing can Hostveil do about it" — and they are deliberately not
 // heats. A host can legitimately carry a dozen Manual findings by design (no
 // safe automatable action exists) and that must not read as a dozen problems
 // screaming for attention the way a dozen Crit findings would. Both sit at
@@ -60,7 +60,7 @@ import (
 // Unavail is a muted cool (dusty violet) tone so it never gets mistaken for
 // Accent's blue or for the neutral greys (Slate, Low). Before this pair
 // existed, Manual and Unavailable were drawn identically — the two kinds a
-// finding can be that hostveil will never offer a button for, on purpose,
+// finding can be that Hostveil will never offer a button for, on purpose,
 // looked like one undifferentiated "nothing to do here" in every UI.
 type Palette struct {
 	Ink     string

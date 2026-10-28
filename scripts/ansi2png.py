@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw, ImageFont
 SGR_RE = re.compile(r"\x1b\[([0-9;]*)m")
 
 # The ground and the default ink, which is to say: One Dark's Ink and Bone,
-# the two roles internal/ui/theme gives hostveil's default theme.
+# the two roles internal/ui/theme gives Hostveil's default theme.
 #
 # They have to come from somewhere, because a terminal capture does not carry
 # them. A TUI does not paint its own background — it draws on whatever the
@@ -23,8 +23,8 @@ SGR_RE = re.compile(r"\x1b\[([0-9;]*)m")
 # decide what those mean.
 #
 # It used to answer #090b12, a near-black that no theme in this project
-# contains, so the screenshot showed hostveil's palette floating on a ground
-# hostveil never draws. Anything reading the picture as "what it looks like
+# contains, so the screenshot showed Hostveil's palette floating on a ground
+# Hostveil never draws. Anything reading the picture as "what it looks like
 # on my machine" was reading a colour scheme that does not exist.
 #
 # HOSTVEIL_ANSI2PNG_BG and _FG override them, which is what a capture of a

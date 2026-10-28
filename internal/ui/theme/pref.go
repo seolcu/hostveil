@@ -7,9 +7,9 @@ import (
 	"strings"
 )
 
-// prefFile is the name of the one-line preference file inside hostveil's
+// prefFile is the name of the one-line preference file inside Hostveil's
 // state directory. It is a remembered choice, not configuration: nothing in
-// it changes what hostveil detects, scores, or does to a host.
+// it changes what Hostveil detects, scores, or does to a host.
 const prefFile = "theme"
 
 // Load returns the theme ID saved in dir, or "" when there is none, it cannot

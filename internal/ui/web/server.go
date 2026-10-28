@@ -1,4 +1,4 @@
-// Package web is hostveil's thin, localhost-bound web dashboard. Handlers
+// Package web is Hostveil's thin, localhost-bound web dashboard. Handlers
 // marshal to/from core.Engine and nothing else — there is no detection,
 // fix, scoring, or rollback logic here. It imports only core and model.
 package web
@@ -40,7 +40,7 @@ const sessionCookie = "hostveil_session"
 type Server struct {
 	engine *core.Engine
 	addr   string
-	// theme is the palette the page starts in — the one hostveil resolved
+	// theme is the palette the page starts in — the one Hostveil resolved
 	// from --theme, the environment, or the remembered choice. A theme picked
 	// in the browser is stored there and overrides it for that browser only,
 	// so two people pointed at the same dashboard can read it differently.
@@ -96,7 +96,7 @@ func New(engine *core.Engine, addr string, opts Opts) *Server {
 // newToken mints the per-run access token.
 //
 // Binding to loopback keeps the dashboard off the network; it does not keep
-// it away from other accounts on the same machine. hostveil auto-elevates
+// it away from other accounts on the same machine. Hostveil auto-elevates
 // for `serve`, so the dashboard runs as root, and every route it exposes
 // applies fixes, rolls them back, or reads a scan of /etc/shadow and the
 // compose files. Without a token any unprivileged local user — or any
@@ -177,7 +177,7 @@ const shutdownGrace = 5 * time.Second
 // the printed URL connects to nothing at all. The dashboard already had
 // everything needed to show a scan in progress instead — POST /api/rescan,
 // s.progress, and the frontend's own polling loop — the first scan simply
-// never used any of it, so the operator's first look at hostveil was a
+// never used any of it, so the operator's first look at Hostveil was a
 // browser tab that appeared to hang.
 //
 // The context is the whole point of the signature. Before it, serve ignored
@@ -272,7 +272,7 @@ func isSafeMethod(m string) bool {
 }
 
 // authorize checks the access token, accepting it from the session cookie or
-// from the ?t= parameter in the URL hostveil printed. A request that arrives
+// from the ?t= parameter in the URL Hostveil printed. A request that arrives
 // with a valid parameter is given the cookie, so the dashboard's own fetches
 // — which carry no query string — are authorized from then on.
 func (s *Server) authorize(w http.ResponseWriter, r *http.Request) bool {

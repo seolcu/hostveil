@@ -18,7 +18,7 @@ func registerHostRisky(r *Registry) {
 	r.Register("accounts.weak-password-hash", buildExpireWeakPassword)
 }
 
-// rebootDelay is how long `shutdown -r` waits. Long enough for hostveil to
+// rebootDelay is how long `shutdown -r` waits. Long enough for Hostveil to
 // finish recording the fix and for the operator to read the result on the
 // session the reboot is about to drop; short enough that "later" does not
 // turn into "never". `shutdown -c` cancels it in that window.

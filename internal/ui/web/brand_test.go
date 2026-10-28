@@ -90,7 +90,7 @@ var svgPaint = regexp.MustCompile(`(?:fill|stroke)="(#[0-9a-fA-F]{6})"`)
 // was retired: the mark kept its bone-and-teal until this test said otherwise.
 //
 // It reads Default() rather than a named theme on purpose. The mark belongs
-// to whatever hostveil opens in, and pinning it to an ID would survive that
+// to whatever Hostveil opens in, and pinning it to an ID would survive that
 // ID being replaced.
 func TestBrandMarkColorsAreTheDefaultPalette(t *testing.T) {
 	p := theme.Default().Palette
@@ -126,7 +126,7 @@ func TestBrandMarkColorsAreTheDefaultPalette(t *testing.T) {
 }
 
 // The marketing site cannot serve the dashboard's embedded assets, so it
-// keeps its own copies — and copies are how hostveil ended up with four
+// keeps its own copies — and copies are how Hostveil ended up with four
 // hand-drawn marks in the first place: a favicon, a status-bar mark, a
 // bordered box built in site/styles.css, and a fourth figure inlined as a
 // data URI in the page head, none of which had ever been seen side by side.

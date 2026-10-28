@@ -21,7 +21,7 @@
 set -euo pipefail
 
 IMAGE=${EXTSCAN_IMAGE:-alpine:3.14}
-# The ports hostveil itself has opinions about: SSH, the Docker API, the
+# The ports Hostveil itself has opinions about: SSH, the Docker API, the
 # datastores that ship with no password, the dashboards, and the two agent
 # gateways (11434 Ollama, 18789 OpenClaw).
 PORTS=${EXTSCAN_PORTS:-"22 80 443 2375 2376 3306 5432 6379 6380 8080 8086 8096 9000 9090 11211 11434 18789 27017"}

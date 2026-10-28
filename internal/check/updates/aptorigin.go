@@ -18,7 +18,7 @@ import (
 // every file in /etc/apt/apt.conf.d in lexical order and the last assignment
 // wins. Cloud images and several hardening guides ship
 // 99-disable-auto-upgrades setting `APT::Periodic::Unattended-Upgrade "0";`.
-// hostveil read 20auto-upgrades alone — and so did its fix, which wrote "1"
+// Hostveil read 20auto-upgrades alone — and so did its fix, which wrote "1"
 // into that file, after which the checker re-read the same file, saw "1", and
 // reported the finding fixed. apt went on reading "0".
 //

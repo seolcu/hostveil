@@ -1,14 +1,14 @@
-// Package glyph is the one table of the symbols hostveil's terminal
+// Package glyph is the one table of the symbols Hostveil's terminal
 // interfaces draw, and the two sets they can be drawn from.
 //
 // A terminal cannot be asked what font it is using. There is no escape
 // sequence for it and no width probe that distinguishes a present glyph
 // from a missing one, because a terminal draws tofu in the same single cell
 // it would have drawn the glyph in. So this is an opt-in, not a detection:
-// the operator says they have a Nerd Font and hostveil believes them,
+// the operator says they have a Nerd Font and Hostveil believes them,
 // exactly the way every other tool in this space handles it.
 //
-// The default is therefore Plain, which is every symbol hostveil drew
+// The default is therefore Plain, which is every symbol Hostveil drew
 // before this package existed — nothing about an ordinary run changes.
 //
 // Both sets are held to one column per symbol. That is the load-bearing
@@ -24,7 +24,7 @@
 // because the operator opted in and got a row of tofu. And it is the range
 // that stays one cell wide: the glyphs that go double-width in a
 // non-Mono build are the Powerline, Devicon and Material ranges, not this
-// one, so hostveil does not have to care which variant is installed.
+// one, so Hostveil does not have to care which variant is installed.
 //
 // Verified against v3.4.0 of JetBrains Mono, Hack, FiraCode and Meslo — 18
 // files, Mono and non-Mono — by reading each font's cmap and hmtx: every
@@ -39,7 +39,7 @@ import (
 
 // Set is which of the two tables to draw from. The zero value is Plain, so
 // anything constructed without a choice — and every model built as a bare
-// struct literal in the tests — renders the way hostveil always has.
+// struct literal in the tests — renders the way Hostveil always has.
 type Set int
 
 const (

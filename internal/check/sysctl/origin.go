@@ -19,7 +19,7 @@ import (
 // *filename* and applies them in order, so the last assignment wins — and
 // Ubuntu ships /etc/sysctl.d/99-sysctl.conf as a symlink to /etc/sysctl.conf,
 // which is where operators have been told to put kernel settings for thirty
-// years. On such a host systemd says so out loud and hostveil did not:
+// years. On such a host systemd says so out loud and Hostveil did not:
 //
 //	Overwriting earlier assignment of kernel/dmesg_restrict
 //	  at '/etc/sysctl.d/99-sysctl.conf:65'.

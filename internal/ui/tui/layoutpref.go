@@ -9,7 +9,7 @@ import (
 
 // The remembered arrangement, resolved the way the theme and the symbol set
 // are: an explicit flag wins, then the environment, then the saved choice,
-// then what hostveil ships.
+// then what Hostveil ships.
 //
 // It used to be the odd one out. The flag existed, the picker saved a file,
 // and the two were wired together by hand in cmd/hostveil with no environment
@@ -23,11 +23,11 @@ import (
 // does: this is where the registry is, so this is where a preference can be
 // validated against it, and a package test can reach it. The *directory* is
 // still the caller's to supply — internal/ui may not import internal/history,
-// which is what knows where hostveil keeps state.
+// which is what knows where Hostveil keeps state.
 
-// layoutPrefFile is the one-line preference file inside hostveil's state
+// layoutPrefFile is the one-line preference file inside Hostveil's state
 // directory. It is a remembered choice, not configuration: nothing in it
-// changes what hostveil detects, scores, or does to a host.
+// changes what Hostveil detects, scores, or does to a host.
 const layoutPrefFile = "layout"
 
 // LoadLayoutPref returns the arrangement ID saved in dir, or "" when there is

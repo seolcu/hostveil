@@ -40,7 +40,7 @@ func TestTheDropInNameSortsAfterEveryLoadedOne(t *testing.T) {
 	}
 }
 
-// And the instruction changes with it: a finding hostveil cannot fix by
+// And the instruction changes with it: a finding Hostveil cannot fix by
 // writing a file must not tell the reader to write one.
 func TestTheInstructionNamesTheFileThatOutranksIt(t *testing.T) {
 	u := unit{ID: "app.service", DropInPaths: "/etc/systemd/system/app.service.d/zz-final.conf"}

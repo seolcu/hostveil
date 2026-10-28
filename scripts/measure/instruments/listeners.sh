@@ -8,7 +8,7 @@
 # reads it as closed while the binding is still wide open — and the moment
 # something starts serving behind it, it is exposed.
 #
-# The kernel's own answer, and so independent of hostveil in the only sense
+# The kernel's own answer, and so independent of Hostveil in the only sense
 # that matters: nothing here consults a rule set, ours or anyone's.
 set -euo pipefail
 

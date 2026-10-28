@@ -14,7 +14,7 @@ import (
 
 // maxArchive bounds what will be read from the network. The archives are a few
 // megabytes; this is the difference between a bad response and filling the
-// disk of a host that hostveil is supposed to be looking after.
+// disk of a host that Hostveil is supposed to be looking after.
 const maxArchive = 64 << 20
 
 // Client is the HTTP surface this package needs, so a test can answer without

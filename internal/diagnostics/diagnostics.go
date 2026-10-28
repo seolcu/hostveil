@@ -1,6 +1,6 @@
 // Package diagnostics records what a crash looked like, entirely on disk and
 // entirely local. It has no network client and imports nothing that has one
-// — that is the point of it: a panic anywhere in hostveil leaves a record
+// — that is the point of it: a panic anywhere in Hostveil leaves a record
 // here, and nothing here, nor `hostveil diagnostics` (cmd/hostveil) which
 // reads these back, ever sends that record anywhere. Packaging it for a bug
 // report and mailing it off are different acts, and this package and the
@@ -34,7 +34,7 @@ type CrashRecord struct {
 	Go      string    `json:"go"`
 	OS      string    `json:"os"`
 	Arch    string    `json:"arch"`
-	Command string    `json:"command"` // the hostveil subcommand that was running, e.g. "scan"
+	Command string    `json:"command"` // the Hostveil subcommand that was running, e.g. "scan"
 	Where   string    `json:"where"`   // what was happening: "checker ssh", "fix compose.ds016", "cli"
 	Panic   string    `json:"panic"`
 	Stack   string    `json:"stack"`
@@ -68,7 +68,7 @@ const maxRecords = 20
 func crashesDir(dir string) string { return filepath.Join(dir, "diagnostics", "crashes") }
 
 // RecordCrash writes one crash record under dir and prunes older ones beyond
-// maxRecords. dir is the hostveil state directory — history.DefaultDir() in
+// maxRecords. dir is the Hostveil state directory — history.DefaultDir() in
 // production, or whatever a test points a Store at; this package has no
 // opinion of its own about where that is.
 //

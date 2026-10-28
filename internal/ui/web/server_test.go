@@ -46,7 +46,7 @@ func testServer(t *testing.T) (*Server, string) {
 
 // authedClient returns a client carrying the dashboard's access token in its
 // cookie jar, which is the state a browser is in after following the URL
-// hostveil prints. Requests without it are rejected before routing, so every
+// Hostveil prints. Requests without it are rejected before routing, so every
 // test that exercises a route needs this rather than http.DefaultClient.
 func authedClient(t *testing.T, s *Server, srv *httptest.Server) *http.Client {
 	t.Helper()
@@ -541,7 +541,7 @@ func TestThemeAssets(t *testing.T) {
 	}
 }
 
-// The page paints in the theme hostveil was started with, before any script
+// The page paints in the theme Hostveil was started with, before any script
 // runs — otherwise every load flashes the default palette first.
 func TestServedThemeIsTheStartingPalette(t *testing.T) {
 	s, _ := testServer(t) // built with "nord"
@@ -598,7 +598,7 @@ func TestHostAllowlistJudgesTheWholeAuthority(t *testing.T) {
 		want bool
 		why  string
 	}{
-		{"127.0.0.1:8787", true, "the address hostveil prints"},
+		{"127.0.0.1:8787", true, "the address Hostveil prints"},
 		{"localhost:8787", true, "how a browser usually says it"},
 		{"[::1]:8787", true, "IPv6 loopback with a port"},
 		{"[::1]", true, "IPv6 loopback with no port, as http://[::1]/ sends it"},
@@ -715,7 +715,7 @@ func TestMutatingRoutesRejectGET(t *testing.T) {
 }
 
 // The token is the boundary between the operator and every other account on
-// the machine. hostveil auto-elevates for `serve`, so an unauthenticated
+// the machine. Hostveil auto-elevates for `serve`, so an unauthenticated
 // route is root applying fixes on behalf of whoever asked.
 func TestRoutesRequireTheAccessToken(t *testing.T) {
 	s, _ := testServer(t)

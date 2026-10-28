@@ -1,4 +1,4 @@
-// Package tui is hostveil's thin terminal UI. It renders the engine's
+// Package tui is Hostveil's thin terminal UI. It renders the engine's
 // report and forwards user intent (scan, preview, apply) to the engine —
 // it contains NO detection, fix, scoring, or rollback logic of its own.
 // It imports only core and model, never fix/history/check directly.
@@ -193,7 +193,7 @@ type appModel struct {
 
 	// gl is which symbol set the screen draws from. The zero value is
 	// glyph.Plain, so a model built as a bare struct literal — which is how
-	// every layout and frame test builds one — renders what hostveil has
+	// every layout and frame test builds one — renders what Hostveil has
 	// always rendered.
 	gl glyph.Set
 }
@@ -202,7 +202,7 @@ type appModel struct {
 //
 // Save records a theme chosen in the picker so the next run starts in it. It
 // is a callback rather than a directory because the TUI must not know where
-// hostveil keeps its state: that lives in internal/history, which the
+// Hostveil keeps its state: that lives in internal/history, which the
 // layering test forbids this package from importing. cmd/hostveil, which may
 // import it, wires the two together.
 type ThemeOpts struct {
@@ -710,7 +710,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case rolledBackMsg:
 		if msg.err != nil {
 			// A declined rollback is a question, not a failure. The file
-			// changed after hostveil wrote it, so restoring the backup
+			// changed after Hostveil wrote it, so restoring the backup
 			// would discard whatever was done in between — and rollback
 			// keeps no checkpoint of its own, so there is no way back from
 			// that. The CLI has said so and offered --force since 3.4;

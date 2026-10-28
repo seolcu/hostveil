@@ -79,7 +79,7 @@ func marshalEnum(name string) ([]byte, error) { return json.Marshal(name) }
 //
 // An unrecognised value is an error rather than a fallback. The two answers
 // are not interchangeable: quietly resolving to a zero value would turn a
-// snapshot hostveil cannot read into one it reads wrongly, which is the same
+// snapshot Hostveil cannot read into one it reads wrongly, which is the same
 // trade the scanner refuses everywhere else. Callers that survive a bad
 // snapshot — ScoreHistory skips one that will not unmarshal — already handle
 // the error, and they can only do that if there is one.

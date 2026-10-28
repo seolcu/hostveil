@@ -6,7 +6,7 @@ import "sort"
 // is none.
 //
 // Exactly one of Report and Error is set. A host that could not be reached,
-// has no hostveil, or answered with something that is not a report carries
+// has no Hostveil, or answered with something that is not a report carries
 // an Error and never a score — the same rule every domain follows about "I
 // could not look", one level up.
 type FleetEntry struct {

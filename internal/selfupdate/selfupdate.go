@@ -1,4 +1,4 @@
-// Package selfupdate replaces or removes the hostveil binary in place.
+// Package selfupdate replaces or removes the Hostveil binary in place.
 //
 // It exists because managing a tool should not mean pasting a URL. The
 // installer is still the way in; this is the way to stay current afterwards,
@@ -9,7 +9,7 @@
 // # What this is, honestly
 //
 // A path by which a program running as root fetches code from the network and
-// runs it. hostveil audits hosts for exactly that shape, so the rules it
+// runs it. Hostveil audits hosts for exactly that shape, so the rules it
 // applies to itself are the strict reading of the ones it applies to others:
 //
 //   - The checksum is mandatory. Not "warn and continue": a download that
@@ -27,7 +27,7 @@
 //   - Nothing is written until everything is verified, and the write is a
 //     rename over the target rather than a write through it. A running
 //     executable cannot be opened for writing at all, and a partially written
-//     one is a host with no working hostveil and no obvious reason why.
+//     one is a host with no working Hostveil and no obvious reason why.
 package selfupdate
 
 import (
@@ -63,7 +63,7 @@ const (
 	OriginGoInstall
 )
 
-// ErrUnknownOrigin is returned when hostveil cannot establish how its own
+// ErrUnknownOrigin is returned when Hostveil cannot establish how its own
 // binary was installed, which is the one case it will not act on. UIs match on
 // it rather than on the message.
 var ErrUnknownOrigin = errors.New("cannot tell how this Hostveil binary was installed")
@@ -84,8 +84,8 @@ func (o Origin) String() string {
 	}
 }
 
-// Advice is what to tell an operator when hostveil will not act, which is only
-// ever the unknown case. Every other origin has something hostveil can do.
+// Advice is what to tell an operator when Hostveil will not act, which is only
+// ever the unknown case. Every other origin has something Hostveil can do.
 func (o Origin) Advice() string {
 	return "Hostveil could not tell how this binary was installed, so it will not replace or delete it. " +
 		"Use the tool that put it there. If you installed it with the script, it should be at " +
@@ -116,7 +116,7 @@ func (p Plan) UpToDate() bool { return SameVersion(p.Current, p.Latest) }
 // leading v.
 //
 // The two sides genuinely disagree. goreleaser stamps the binary with
-// `-X main.version=v{{.Version}}`, so a released hostveil says "v3.17.0",
+// `-X main.version=v{{.Version}}`, so a released Hostveil says "v3.17.0",
 // while the release tag read back out of the /releases/latest redirect is
 // trimmed to "3.17.0" because that is what builds an asset URL. Comparing them
 // raw is never equal, and the symptom is not a crash: `hostveil update` on a

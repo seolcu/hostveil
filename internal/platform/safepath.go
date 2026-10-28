@@ -66,7 +66,7 @@ func openBeneath(root, target string, finalFlags int) (*os.File, error) {
 
 // ReadFileBeneath is ReadFileNoFollow extended to every component below
 // root. It is used for paths controlled by the account being audited while
-// hostveil is running as root.
+// Hostveil is running as root.
 func ReadFileBeneath(root, target string, limit int64) ([]byte, error) {
 	f, err := openBeneath(root, target, unix.O_RDONLY|unix.O_NONBLOCK)
 	if err != nil {

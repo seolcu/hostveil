@@ -1,8 +1,8 @@
 // Package dockerd audits the Docker daemon itself — the process that runs
 // every container the compose and CVE domains have opinions about, and the
-// one part of that stack hostveil could not see.
+// one part of that stack Hostveil could not see.
 //
-// The worst finding here is the worst finding hostveil has. A daemon
+// The worst finding here is the worst finding Hostveil has. A daemon
 // listening on a TCP socket without TLS client verification is root on the
 // host for anyone who can reach the port: no credentials, no exploit, one
 // HTTP request that creates a container with / bind-mounted into it.

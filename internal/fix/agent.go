@@ -119,7 +119,7 @@ var agentAltBenefit = map[string]string{
 //
 // A finding whose evidence carries no "set" is an error rather than a fix
 // assembled from a guess. That is the same refusal sysctlPairs makes, and it
-// is what keeps agent.sandbox-off — whose safe value nothing in hostveil
+// is what keeps agent.sandbox-off — whose safe value nothing in Hostveil
 // knows — from being handed a value invented at this layer.
 func buildAgentConfigKey(f model.Finding) (Fix, error) {
 	path := f.Evidence["config"]

@@ -19,7 +19,7 @@ func (e *Engine) ApplyBatch(ctx context.Context, findings []model.Finding) model
 // registry writes as the primary remediation, the one the finding's how-to-fix
 // describes.
 //
-// It exists because "fix everything hostveil can" and "fix everything that
+// It exists because "fix everything Hostveil can" and "fix everything that
 // needs no human" are different requests, and only the second had a command.
 // The classification does not move: a Review fix is still one that can cut off
 // access to the host or has more than one defensible answer, and the caller
@@ -86,11 +86,11 @@ func (e *Engine) applyBatch(ctx context.Context, findings []model.Finding, revie
 // eligible is false for a finding the batch would report as Skipped
 // (already fixed, not Auto/reviewed-Review, unregistered, or a
 // shape-mismatched fix); err is non-nil only for a finding the batch would
-// report as Failed — a defect in hostveil, not a property of the finding.
+// report as Failed — a defect in Hostveil, not a property of the finding.
 func (e *Engine) applyOneLocked(ctx context.Context, f model.Finding, reviewed bool) (res model.FixOutcome, eligible bool, err error) {
 	eligible = f.Remediation == model.RemediationAuto ||
 		(reviewed && f.Remediation == model.RemediationReview)
-	// Fixed, not !Active: this asks whether hostveil has already applied
+	// Fixed, not !Active: this asks whether Hostveil has already applied
 	// something here, and for a pending fix it has. Asking Active would
 	// re-apply it on every batch until the operator restarted the service,
 	// writing a checkpoint each time over a file that had not changed.
@@ -98,7 +98,7 @@ func (e *Engine) applyOneLocked(ctx context.Context, f model.Finding, reviewed b
 		return model.FixOutcome{}, false, nil
 	}
 	fx, ok, err := e.buildFix(f)
-	// A fix that exists and could not be built is a defect in hostveil,
+	// A fix that exists and could not be built is a defect in Hostveil,
 	// not a property of the finding — a malformed registration, or
 	// evidence the checker did not write. Reporting it as Skipped made it
 	// indistinguishable from "there is no fix for this", which is the one

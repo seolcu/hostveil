@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # docker-bench-security: the CIS Docker Benchmark as a shell script, from
-# Docker themselves. Independent of hostveil and considerably broader — it
+# Docker themselves. Independent of Hostveil and considerably broader — it
 # audits the daemon, the host, images and every running container.
 #
 # Only the sections about images and running containers are run. The host

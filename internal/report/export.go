@@ -8,7 +8,7 @@ import (
 
 // Export renders r in the named format, returning the bytes and the
 // resolved Format (whose Ext/ContentType/Label a caller needs to name the
-// output). version is the hostveil build version, embedded in the SARIF
+// output). version is the Hostveil build version, embedded in the SARIF
 // tool driver and the Markdown/DOCX/PDF header.
 func Export(r model.Report, version, formatID string) ([]byte, Format, error) {
 	f, ok := Parse(formatID)

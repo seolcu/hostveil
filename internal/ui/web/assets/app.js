@@ -13,7 +13,7 @@
 //
 // Reloading the stripped URL works for as long as the session cookie lives.
 // Past that the server answers 401 with the sentence telling the operator to
-// reopen the URL hostveil printed, and `serve` is still printing it in the
+// reopen the URL Hostveil printed, and `serve` is still printing it in the
 // terminal that is still running.
 (function stripToken() {
   if (!location.search) return;
@@ -1048,12 +1048,12 @@ async function rollback(cp, force = false) {
     await showHistory();
   } catch (e) {
     // 409 is the engine declining, not failing: the file changed after
-    // hostveil wrote it, so restoring the backup would discard whatever
+    // Hostveil wrote it, so restoring the backup would discard whatever
     // was done in between. Rollback keeps no checkpoint of its own, so
     // say that plainly and make the override a second, informed answer.
     if (e.status === 409) {
       const ok = await confirmModal("Overwrite it anyway?",
-        `${e.message} This restores hostveil's backup over the current file, discarding those changes. ` +
+        `${e.message} This restores Hostveil's backup over the current file, discarding those changes. ` +
         "Rollback writes no checkpoint of its own, so this cannot be undone.", "Overwrite");
       if (ok) await rollback(cp, true);
       return;
@@ -1157,7 +1157,7 @@ function confirmModal(title, message, confirmLabel = "Confirm") {
 // ── layout picker (temporary) ──────────────────────────────────────────
 // Same shape as the theme picker, and for the same reason: /layout.js has
 // already applied the saved choice before first paint, so all that is left
-// is the control. This one exists to settle which arrangement hostveil
+// is the control. This one exists to settle which arrangement Hostveil
 // keeps; when that is decided it goes, along with five of the six.
 function initLayoutPicker() {
   const sel = document.getElementById("layout");
@@ -1196,7 +1196,7 @@ function initThemePicker() {
   }));
   sel.onchange = () => {
     document.documentElement.setAttribute("data-theme", sel.value);
-    // Per browser, not per host: the server's theme stays whatever hostveil
+    // Per browser, not per host: the server's theme stays whatever Hostveil
     // was started with, so two people reading the same dashboard can each
     // have their own.
     try { localStorage.setItem("hostveil.theme", sel.value); } catch (e) { /* private mode */ }
@@ -1450,7 +1450,7 @@ fixallBtn.onclick = async () => {
   applyMany(findings, "Fixing");
 };
 
-// boot loads the page for the first time. hostveil's own first scan is now
+// boot loads the page for the first time. Hostveil's own first scan is now
 // asynchronous (ListenAndServe opens the listener before it finishes), so
 // the very first page load can land while it is still running — the same
 // state a rescan puts the page in, and answered the same way: disable the

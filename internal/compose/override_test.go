@@ -12,7 +12,7 @@ import (
 // `docker compose up` reads docker-compose.override.yml with no flag asked
 // for — it is the documented way to layer local changes — and `docker compose
 // -f a.yml -f b.yml` is the standard production pattern. docker reports every
-// one of them in ConfigFiles as a comma-separated list, and hostveil read
+// one of them in ConfigFiles as a comma-separated list, and Hostveil read
 // only the first.
 //
 // That is not a partial view, it is a wrong one, and in the dangerous

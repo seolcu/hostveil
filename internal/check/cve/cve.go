@@ -156,11 +156,11 @@ type target struct {
 
 // scanParallelism bounds how many Trivy processes run at once.
 //
-// The scan was serial, and Trivy is the slowest thing hostveil runs: a host
+// The scan was serial, and Trivy is the slowest thing Hostveil runs: a host
 // with twenty images spent twenty sequential image scans in a domain the
 // other eight checkers had long since finished. The cap exists because the
 // opposite mistake is just as easy — Trivy is CPU- and IO-heavy, and one
-// process per image on a small VPS would thrash the box hostveil is meant to
+// process per image on a small VPS would thrash the box Hostveil is meant to
 // be looking after gently. Four keeps the pipeline full without becoming the
 // load spike.
 const scanParallelism = 4
@@ -187,7 +187,7 @@ const dbTimeout = 5 * time.Minute
 // images, 25/100 on a run that reached 3, and 16/100 — the truth — on the run
 // that reached all seven.
 //
-// hostveil said "partial" every time, which is the coverage machinery working
+// Hostveil said "partial" every time, which is the coverage machinery working
 // exactly as designed: a domain that could not look never claims it found
 // nothing. But a Degraded axis is still scored, deliberately, so the honest
 // flag sat beside a number that was wrong by 28 points.
@@ -539,7 +539,7 @@ func imageReferenceIsMutable(image string) bool {
 }
 
 // outdatedFinding reports the vulnerabilities a newer image would fix. It
-// carries the only CVE remediation hostveil can actually perform; see the fix
+// carries the only CVE remediation Hostveil can actually perform; see the fix
 // registry's doc comment for why no per-CVE finding does.
 func outdatedFinding(t target, g group) (model.Finding, bool) {
 	if g.empty() {

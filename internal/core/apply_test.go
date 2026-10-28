@@ -215,7 +215,7 @@ func TestRollbackUnmarksFixedAndRescores(t *testing.T) {
 // TestAnInForceFixMovesTheScoreAndAPendingOneDoesNot is the pair that pins
 // this whole rule, and it has to be a pair.
 //
-// The score is what hostveil says about the host, so it may only move when the
+// The score is what Hostveil says about the host, so it may only move when the
 // host has moved. A fix whose artifact is what the domain reads — a file mode
 // is the plainest case, since chmod IS the state — is in force the moment it
 // is applied, and the number must follow. A fix whose artifact is read by
@@ -876,7 +876,7 @@ func TestCompletedBatchIsNotMarkedInterrupted(t *testing.T) {
 // something to go back to. But when the write then fails, the checkpoint that
 // survives says a reversible fix was applied to a file that never changed:
 // `hostveil history` lists it with a full diff, and its AppliedSHA256 asserts
-// to the external-edit guard, permanently, that hostveil wrote bytes it did
+// to the external-edit guard, permanently, that Hostveil wrote bytes it did
 // not.
 func TestAFailedWriteLeavesNoCheckpointBehind(t *testing.T) {
 	if os.Geteuid() == 0 {

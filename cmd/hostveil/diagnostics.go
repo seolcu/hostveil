@@ -18,7 +18,7 @@ import (
 )
 
 // cmdDiagnostics never touches the network. It used to also offer to open
-// the bundle as a GitHub issue (`bugreport --send`), which meant hostveil
+// the bundle as a GitHub issue (`bugreport --send`), which meant Hostveil
 // itself decided when and how a report left the host; the network path was
 // removed rather than fixed because a self-hosted-server tool's own audience
 // is the one most likely to distrust that decision being made for them. What
@@ -63,7 +63,7 @@ type diagnosticsOptions struct {
 	redact bool
 }
 
-// buildDiagnosticsReport assembles hostveil's own identity, recent crash
+// buildDiagnosticsReport assembles Hostveil's own identity, recent crash
 // records, the last saved scan's score and per-finding IDs/severities/domain
 // states — deliberately never the full description, remediation text, or
 // evidence a finding carries, which can quote the very config an operator is

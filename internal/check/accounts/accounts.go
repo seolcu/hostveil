@@ -76,7 +76,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 
 	// Three questions, and each can go unanswered on its own: the UID-0 scan
 	// needs only /etc/passwd, the empty-password scan needs /etc/shadow, and
-	// the sudo scan needs sudo installed and hostveil running as root. A
+	// the sudo scan needs sudo installed and Hostveil running as root. A
 	// ledger rather than an early return, because a non-root scan misses two
 	// of the three and reporting only the first would under-state what went
 	// unexamined — see check.Coverage.

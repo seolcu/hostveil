@@ -76,7 +76,7 @@ unseedable() {
 
 # require fails the run. Reserved for the weaknesses every supported
 # distribution can express: if one of those is missing, the host is broken
-# rather than different, and measuring it would report hostveil finding
+# rather than different, and measuring it would report Hostveil finding
 # nothing on a host that was never made bad.
 require() {
   local what=$1 && shift
@@ -153,7 +153,7 @@ case "$DISTRO_ID $DISTRO_LIKE" in
 esac
 
 # Alpine runs OpenRC, which is not a smaller systemd: it has no unit files, so
-# hostveil's systemd domain skips there and the axis is renormalised away. That
+# Hostveil's systemd domain skips there and the axis is renormalised away. That
 # is the behaviour worth measuring on it, not a gap in the fixture.
 case "$PKG" in
   apt|dnf) INIT=systemd ;;
@@ -233,14 +233,14 @@ export DEBIAN_FRONTEND=noninteractive
 
 SEED_HOME=$(getent passwd "$SEED_USER" 2>/dev/null | cut -d: -f6)
 # busybox getent is absent on a minimal Alpine; the passwd file is the same
-# file hostveil's own agent checker reads, so fall back to it rather than to a
+# file Hostveil's own agent checker reads, so fall back to it rather than to a
 # guess at /root.
 [ -n "$SEED_HOME" ] || SEED_HOME=$(awk -F: -v u="$SEED_USER" '$1 == u { print $6 }' /etc/passwd)
 [ -n "$SEED_HOME" ] || { echo "seed: no such user: $SEED_USER" >&2; exit 1; }
 
 say "base packages ($DISTRO_ID, $PKG, $INIT)"
 pkg_refresh
-# ufw is Debian's; Fedora ships firewalld and Alpine neither. hostveil probes
+# ufw is Debian's; Fedora ships firewalld and Alpine neither. Hostveil probes
 # ufw, firewall-cmd, nft and iptables in that order, so what matters is that
 # *a* firewall exists to be found switched off — not which one.
 case "$PKG" in
@@ -298,10 +298,10 @@ esac
 # distribution and the operator turns it off, or a minimal image leaves the
 # periodic keys at zero.
 #
-# The distinction decides which remediation hostveil offers, so seeding it
+# The distinction decides which remediation Hostveil offers, so seeding it
 # wrong measures the wrong path. Writing the config for a package that is not
 # installed — which this script used to do — produces a host no distribution
-# ships: the finding then carries no config path, hostveil offers the exec
+# ships: the finding then carries no config path, Hostveil offers the exec
 # install instead of the one-file edit, and apt's postinst leaves an existing
 # "0" alone, so the fix completes and the finding survives. The harness caught
 # it, as an apt config file changing with no before-state recorded for it.
@@ -319,7 +319,7 @@ EOF
     # Fedora's equivalent is dnf-automatic, installed and left disabled for the
     # same reason: it is what an ordinary host looks like when the operator
     # turned it off, and it is the state that decides which remediation
-    # hostveil offers.
+    # Hostveil offers.
     pkg_install dnf-automatic || true
     svc_disable dnf-automatic.timer || true
     if command -v dnf-automatic >/dev/null 2>&1 || [ -f /etc/dnf/automatic.conf ]; then
@@ -332,14 +332,14 @@ EOF
     # Alpine ships no unattended-upgrade mechanism at all, so there is nothing
     # to install and switch off. The domain has no weakness to find here, and
     # that raises the score for a reason that is about Alpine and not about
-    # hostveil — which is why it is recorded rather than inferred.
+    # Hostveil — which is why it is recorded rather than inferred.
     unseedable updates-off "Alpine ships no unattended-upgrade mechanism"
     ;;
 esac
 
 say "host-level weaknesses — a native datastore on 0.0.0.0, a uid-0 twin, loose perms"
 # A NON-Docker datastore on every interface. This is the exposure a Compose
-# audit can never see, and the one hostveil reports and declines to fix,
+# audit can never see, and the one Hostveil reports and declines to fix,
 # because the config path differs per datastore.
 pkg_install "$REDIS_PKG" || true
 if [ -f "$REDIS_CONF" ]; then
@@ -353,7 +353,7 @@ if [ -f "$REDIS_CONF" ]; then
     || redis-server "$REDIS_CONF" --daemonize yes >/dev/null 2>&1 || true
 fi
 # The listener is the weakness, not the package. This is the exposure a Compose
-# audit can never see, and it is the one hostveil reports and declines to fix
+# audit can never see, and it is the one Hostveil reports and declines to fix
 # because the config path differs per datastore — so a run without it is
 # missing the finding that argues for that decline.
 if have_exposed_redis; then

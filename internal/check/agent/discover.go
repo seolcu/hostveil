@@ -28,7 +28,7 @@ var skeletonHomes = map[string]bool{
 // homes parses /etc/passwd for the accounts a person might actually log in as
 // and run an agent under: root, plus the regular-user UID range. The nobody
 // UID (65534) and the service accounts below 1000 are excluded — an agent
-// runtime under those is not a configuration hostveil should be guessing at.
+// runtime under those is not a configuration Hostveil should be guessing at.
 //
 // Results are deduplicated by home directory, because two accounts sharing a
 // home would otherwise produce two identical findings for one config file.

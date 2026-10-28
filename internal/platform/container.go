@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// AssumeHostEnv makes hostveil treat this filesystem as a host even when it is
+// AssumeHostEnv makes Hostveil treat this filesystem as a host even when it is
 // plainly a container.
 //
 // It exists for one honest use: a disposable container used *as* a host

@@ -103,7 +103,7 @@ func composeScalarTarget(f model.Finding) (string, error) {
 // a base binding to loopback and an override republishing it — this is the
 // override, which is precisely the file the old code did not edit.
 //
-// Several: hostveil declines. It is the same answer persistSysctl gives when
+// Several: Hostveil declines. It is the same answer persistSysctl gives when
 // the file it would write is outranked. A fix that cannot name the deciding
 // file has not got one, and editing the first and reporting success is worse
 // than saying so.
@@ -178,7 +178,7 @@ func buildAddRestart(f model.Finding) (Fix, error) {
 	}, nil
 }
 
-// memLimits are the alternatives offered for ds010. hostveil cannot know
+// memLimits are the alternatives offered for ds010. Hostveil cannot know
 // what a service actually uses, so it offers defensible starting points and
 // lets the user pick rather than inventing a number.
 //

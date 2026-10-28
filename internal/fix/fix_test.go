@@ -444,7 +444,7 @@ func TestFilePermsFixHandlesPathsContainingTheHumanSeparator(t *testing.T) {
 
 // buildRepullImage's Benefit must not promise more than a re-pulled floating
 // tag can actually deliver: re-resolving the tag *may* pick up a fix for the
-// CVE that triggered the finding, but hostveil has no way to confirm it did,
+// CVE that triggered the finding, but Hostveil has no way to confirm it did,
 // since the same tag can move for unrelated reasons too. This mirrors
 // internal/check/cve's own HowToFix, which carries the identical caveat —
 // and it is the property the whole feature exists to state honestly, per the

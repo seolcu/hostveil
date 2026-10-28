@@ -9,7 +9,7 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// registerSystemd registers the systemd findings whose remediation hostveil
+// registerSystemd registers the systemd findings whose remediation Hostveil
 // can write down.
 //
 // The domain has fourteen rules. Eight stay declined, because each breaks
@@ -86,7 +86,7 @@ type riskyDirective struct {
 }
 
 // systemdRollbackNote is the reassurance half of each risky Warning: the
-// drop-in is a file hostveil created, so undoing it is deleting it.
+// drop-in is a file Hostveil created, so undoing it is deleting it.
 const systemdRollbackNote = "The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching."
 
 func (d riskyDirective) build(f model.Finding) (Fix, error) {
@@ -181,7 +181,7 @@ func buildSystemdProtectKernelModules(f model.Finding) (Fix, error) {
 // the fix and the instructions the same instruction.
 func systemdDropIn(f model.Finding, key, value, benefit, warning string) (Fix, error) {
 	// Empty means the checker found a drop-in systemd loads after anything
-	// hostveil could write. Drop-ins are applied in filename order whichever
+	// Hostveil could write. Drop-ins are applied in filename order whichever
 	// directory they live in (systemd.unit(5)), so the file this fix would
 	// create is one the next daemon-reload overrides — it would appear, report
 	// success, take a checkpoint, and change nothing. That is persistSysctl's

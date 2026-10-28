@@ -35,7 +35,7 @@ func cmdRollback(ctx context.Context, args []string) int {
 	engine := newEngine()
 	out, err := engine.Rollback(id)
 
-	// Declining is not failing. The file changed after hostveil wrote it, so
+	// Declining is not failing. The file changed after Hostveil wrote it, so
 	// restoring the backup would discard whatever was done in between — and
 	// rollback keeps no checkpoint of its own, so there would be no way back.
 	// Say exactly that, and let the user decide.

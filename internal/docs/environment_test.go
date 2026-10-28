@@ -15,16 +15,16 @@ import (
 
 // The environment-variable reference exists because a dozen variables were
 // scattered across five pages with no reference anywhere, and two — the ones
-// that decide whether hostveil re-executes itself as root — were documented
+// that decide whether Hostveil re-executes itself as root — were documented
 // nowhere user-facing at all. cmd/hostveil/elevate_test.go asserted, in a
 // failure message, that "HOSTVEIL_ELEVATED is documented", which was not true
 // of anything a user could read.
 //
 // A reference page's failure mode is omission, and omission is invisible: the
-// page looks complete either way. So this harvests what hostveil's own code
+// page looks complete either way. So this harvests what Hostveil's own code
 // reads and requires every name to appear on the page.
 //
-// It covers hostveil's own reads only. The terminal libraries underneath the
+// It covers Hostveil's own reads only. The terminal libraries underneath the
 // TUI read a dozen more — TERM, COLORTERM, TEA_TRACE and the rest — and those
 // are on the page too, but they cannot be harvested from this tree and their
 // absence would not be caught here. That gap is stated rather than papered
@@ -37,7 +37,7 @@ func TestEveryVariableHostveilReadsIsDocumented(t *testing.T) {
 
 	for _, name := range readEnvNames(t) {
 		if !strings.Contains(page, "<code>"+name+"</code>") {
-			t.Errorf("hostveil reads %s and the environment reference does not list it — "+
+			t.Errorf("Hostveil reads %s and the environment reference does not list it — "+
 				"a reference page that is missing a row looks exactly like a complete one", name)
 		}
 		if !strings.Contains(ko, "<code>"+name+"</code>") {
@@ -134,13 +134,13 @@ func TestNoHostveilVariableIsDocumentedButUnread(t *testing.T) {
 	}
 	for name := range documented {
 		if !slices.Contains(read, name) {
-			t.Errorf("the environment reference documents %s but nothing in hostveil reads it — "+
+			t.Errorf("the environment reference documents %s but nothing in Hostveil reads it — "+
 				"a reader who sets it gets nothing, and the page is why they tried", name)
 		}
 	}
 }
 
-// readEnvNames harvests the variable names hostveil's own code reads.
+// readEnvNames harvests the variable names Hostveil's own code reads.
 //
 // It resolves single-assignment consts, because two of the names are held
 // that way (themeEnv, glyphsEnv) and a harvest that only looked at call
@@ -249,7 +249,7 @@ func readEnvNames(t *testing.T) []string {
 	slices.Sort(names)
 	names = slices.Compact(names)
 
-	// Nothing-extracted guard. hostveil reads several; a harvest that stopped
+	// Nothing-extracted guard. Hostveil reads several; a harvest that stopped
 	// matching would make both tests above pass while checking nothing.
 	if len(names) < 6 {
 		t.Fatalf("only %d environment reads harvested (%v) — the harvest is broken, not the page",

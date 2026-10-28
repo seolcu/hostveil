@@ -22,7 +22,7 @@ func TestTheSSHHintForwardsTheDashboardsOwnPort(t *testing.T) {
 		},
 		{
 			// serve elevates, so by the time this runs the process is root.
-			// Recommending root@ would recommend the login hostveil reports
+			// Recommending root@ would recommend the login Hostveil reports
 			// as a finding.
 			name: "the login name, not the elevated one",
 			vars: map[string]string{"SSH_CONNECTION": "10.0.0.9 51234 10.0.0.2 22",

@@ -89,7 +89,7 @@ func TestTheMessageScreenKeepsTheFactsApart(t *testing.T) {
 // The screen an operator reads immediately before pressing y.
 //
 // It showed the diff and the fix's label and nothing else — not the finding it
-// repairs, not whether hostveil considers the fix safe to apply unattended,
+// repairs, not whether Hostveil considers the fix safe to apply unattended,
 // not the file it edits, and not whether it can be undone. The rollback
 // confirmation, which asks a strictly smaller question, said all of that.
 //
@@ -108,7 +108,7 @@ func TestThePreviewSaysWhatItIsBeforeItAsks(t *testing.T) {
 
 	for _, want := range []string{
 		"COMPOSE.DS018",                        // which finding this repairs
-		"AUTO",                                 // and how much judgement hostveil thinks it needs
+		"AUTO",                                 // and how much judgement Hostveil thinks it needs
 		"/opt/stacks/cloud/docker-compose.yml", // the file it edits
 		"backs the file up",                    // and that it can be undone
 	} {

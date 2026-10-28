@@ -185,7 +185,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		Diff:           d,
 		RestartService: f.Service,
 		// Record what this fix is about to write, so a later rollback can
-		// tell "still exactly as hostveil left it" from "the operator has
+		// tell "still exactly as Hostveil left it" from "the operator has
 		// edited this since" and decline rather than silently discard their
 		// work. Computed before the write so the checkpoint is complete
 		// before anything on the host changes.
@@ -236,8 +236,8 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	if creating {
 		// G301: 0755 and not 0750, because this is a configuration directory
 		// under /etc and the config in it is meant to be readable. `systemctl
-		// cat` run by the operator as themselves reads the drop-in hostveil
-		// wrote; at 0750 root:root it would not, and hostveil would have
+		// cat` run by the operator as themselves reads the drop-in Hostveil
+		// wrote; at 0750 root:root it would not, and Hostveil would have
 		// hidden the change it just made from the person who asked for it.
 		// Nothing secret is written here — the file holds one directive that
 		// is also in the finding, the preview and the checkpoint.
@@ -268,7 +268,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		// The checkpoint is already on disk and `hostveil history` will list
 		// it as an applied, reversible fix — for a change that never landed.
 		// Worse, its AppliedSHA256 permanently asserts to recordedWrites that
-		// hostveil wrote bytes it did not, which weakens the external-edit
+		// Hostveil wrote bytes it did not, which weakens the external-edit
 		// guard for this path from here on.
 		//
 		// So the checkpoint goes with the failure. applyMode reports the same
@@ -322,13 +322,13 @@ func (e *Engine) runAfterWrite(ctx context.Context, a fix.Action) error {
 //
 // Every unit a command starts has its failed state cleared first. systemd
 // counts starts against a limit — docker.service allows three a minute — and
-// past it refuses the next one outright, failed or not. Two hostveil paths hit
+// past it refuses the next one outright, failed or not. Two Hostveil paths hit
 // it on a real Docker (scripts/e2e/individual.sh): the retry after a restart
 // the new file broke, when the daemon's own Restart=always had already used up
 // the limit, which left Docker down — the one outcome that retry exists to
 // prevent; and an operator applying and rolling back daemon fixes within a
 // minute, whose next fix failed with nothing wrong in it. reset-failed also
-// clears the start counter, so each restart hostveil asks for is a real one.
+// clears the start counter, so each restart Hostveil asks for is a real one.
 func runEach(ctx context.Context, r platform.CommandRunner, cmds [][]string) error {
 	resetFailedUnits(ctx, r, cmds)
 	for i, cmd := range cmds {

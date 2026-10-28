@@ -102,7 +102,7 @@ func newestMeasurement(t *testing.T) (string, map[string]any) {
 		}
 		// Only the profile the published pages describe. A control run —
 		// before and after control.sh hardens the host from the CIS
-		// Benchmarks, with hostveil applying nothing — is a different
+		// Benchmarks, with Hostveil applying nothing — is a different
 		// experiment with different phases, and it is committed here beside
 		// the seeded runs. Selecting it as "the newest" would resolve every
 		// data-measured cell on both measurement pages and both landing pages
@@ -363,13 +363,13 @@ func TestTheCommittedRunActuallyRestoredTheHost(t *testing.T) {
 		t.Errorf("%s records rollback.paths_changed_by_fixes = %v, want at least 1", name, v)
 	}
 
-	// A Review fix hostveil itself marks "not reversible" — apt installing a
+	// A Review fix Hostveil itself marks "not reversible" — apt installing a
 	// package, a distribution upgrade — carries no checkpoint by design, and
 	// the package manager can rewrite files no finding ever named as an
 	// ordinary side effect of doing exactly what it said (a compiler binary
 	// reinstalled as a dependency, /etc/shadow rewritten by a new service
 	// account). That is not the rollback promise breaking; the promise never
-	// covered ground hostveil declined to checkpoint. A run with nothing
+	// covered ground Hostveil declined to checkpoint. A run with nothing
 	// not-reversible in it is still held to the original, unconditional
 	// standard: fidelity 100, nothing left dirty, nothing unaccounted for.
 	residueExpected := false

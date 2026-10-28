@@ -2,7 +2,7 @@
 # Provision a deliberately vulnerable Ubuntu 24.04 "home server" for the
 # hostveil demo. Runs as root via Vagrant's shell provisioner. Everything
 # here is REAL — real Docker, real running stacks, real weak configs — so
-# every hostveil domain fires authentically.
+# every Hostveil domain fires authentically.
 set -euo pipefail
 
 REPO=/hostveil                 # synced folder → repo root
@@ -51,7 +51,7 @@ printf '[Service]\nExecStart=\nExecStart=%s -H tcp://0.0.0.0:2375\n' \
 
 # dockerd.socket-world-writable (High). Set on the socket unit, not with
 # chmod: dockerd recreates the socket from this unit at every start, so a
-# chmod would be gone by the time hostveil looked — and the unit drop-in is
+# chmod would be gone by the time Hostveil looked — and the unit drop-in is
 # the misconfiguration people actually make.
 install -d /etc/systemd/system/docker.socket.d
 printf '[Socket]\nSocketMode=0666\n' \
@@ -201,7 +201,7 @@ systemctl start stacks-backup.service || true
 echo "==> [8/10] self-hosted AI agent runtime configs (OpenClaw + Hermes)"
 # NOTE: neither project is packaged for apt, and neither ships a daemon we
 # could honestly run here, so this seeds their *configuration* rather than
-# installing them. That is enough for the agent domain: hostveil detects a
+# installing them. That is enough for the agent domain: Hostveil detects a
 # runtime by its home-directory layout and judges the config and file modes,
 # which is exactly the ground these fixtures cover.
 #

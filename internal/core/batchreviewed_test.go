@@ -10,7 +10,7 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// "Fix everything that needs no human" and "fix everything hostveil can" are
+// "Fix everything that needs no human" and "fix everything Hostveil can" are
 // different requests, and only the first had a command. The classification is
 // unchanged by the second: a Review fix is still one that can cut off access
 // to the host or has more than one defensible answer. What changes is that

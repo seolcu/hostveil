@@ -59,7 +59,7 @@ func (*Checker) Source() model.Source { return model.SourceFirewall }
 //
 // On macOS it is a false finding on every machine. The packet filter is pf
 // and the application firewall is socketfilterfw, and neither string appears
-// anywhere in this repository, so hostveil is not reporting an absence — it
+// anywhere in this repository, so Hostveil is not reporting an absence — it
 // is reporting its own blindness as one. See platform.AuditableOS.
 //
 // Inside a container it is a false finding for the same reason and on a path
@@ -197,7 +197,7 @@ func withSSHPortEvidence(f model.Finding, ctx context.Context, r platform.Comman
 //
 // Keeping only the first is what internal/check/compose and internal/check/cve
 // were both fixed for: the counters under-report what went unexamined, and the
-// operator is told about one of the two things hostveil could not see.
+// operator is told about one of the two things Hostveil could not see.
 func mergePartial(a, b *check.PartialError) *check.PartialError {
 	switch {
 	case a == nil:
@@ -220,7 +220,7 @@ func mergePartial(a, b *check.PartialError) *check.PartialError {
 // and `Port 2222` together, verify the new one works, then drop the old.
 // Returning only the first meant the fix allowed one and `ufw --force enable`
 // severed the other, with no checkpoint to undo it. The fix's entire
-// justification is that hostveil now knows which port to keep open, and it
+// justification is that Hostveil now knows which port to keep open, and it
 // knew one of them.
 //
 // Sorted and deduplicated so the evidence, the label and the argv do not

@@ -1,5 +1,5 @@
 // Package ai provides OPTIONAL, advisory-only explanations. Everything
-// hostveil does — detection, scoring, fixes — works with no AI at all;
+// Hostveil does — detection, scoring, fixes — works with no AI at all;
 // this only adds a plain-language second opinion when the user opts in.
 // HOSTVEIL_AI_PROVIDER (see FromEnv) selects the backend and defaults to a
 // local LLM (Ollama), so nothing leaves the host unless an operator names
@@ -55,7 +55,7 @@ func (Noop) Advise(context.Context, []model.Finding, string) (string, error) { r
 // this host (internal/ai/context.go). It is what turns a generic
 // explanation into a situational one: cve.outdated-image's fix is
 // attractive on a self-hosted box that wants CVE patches fast and risky on
-// one that is stable today, and hostveil has no way to know which side of
+// one that is stable today, and Hostveil has no way to know which side of
 // that this host is on without being told.
 func buildPrompt(f model.Finding, siteContext string) string {
 	var b strings.Builder

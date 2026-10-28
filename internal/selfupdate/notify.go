@@ -12,7 +12,7 @@ import (
 	"github.com/seolcu/hostveil/internal/platform"
 )
 
-// CheckInterval is how often hostveil looks for a newer release.
+// CheckInterval is how often Hostveil looks for a newer release.
 //
 // A day, because the thing being watched moves on the order of weeks and the
 // question a scan is answering has nothing to do with it. A check on every run
@@ -120,7 +120,7 @@ func looksLikeRelease(v string) bool {
 // scanned, and an update check has no business appearing in it.
 //
 // Nothing is reported when it fails. A host behind a proxy, or one with no
-// route to GitHub at all, is not a host with a problem hostveil should be
+// route to GitHub at all, is not a host with a problem Hostveil should be
 // telling it about.
 func CheckInBackground(ctx context.Context, c Client, dir string, now time.Time) {
 	if LoadCache(dir).Due(now) {

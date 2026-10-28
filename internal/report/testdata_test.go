@@ -24,7 +24,7 @@ func sampleReport() model.Report {
 		model.SeverityMedium, model.SourceAgent, model.RemediationManual,
 		model.WithDescription("A container with the Docker socket can control every other container on the host."),
 		model.WithService("portainer"))
-	medium.WhyNoFix = "Removing the mount would break the container's intended function; hostveil cannot judge that trade-off."
+	medium.WhyNoFix = "Removing the mount would break the container's intended function; Hostveil cannot judge that trade-off."
 
 	fixed := model.NewFinding("ssh.x11forwarding", "X11 forwarding is enabled",
 		model.SeverityLow, model.SourceSSH, model.RemediationAuto)

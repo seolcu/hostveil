@@ -93,7 +93,7 @@ func TestALargeBatchLeavesEveryFixRollbackable(t *testing.T) {
 	}
 }
 
-// A fix that exists and cannot be built is a defect in hostveil, and the
+// A fix that exists and cannot be built is a defect in Hostveil, and the
 // batch used to report it as Skipped — the same word it uses for "there is no
 // fix for this finding". One of those is a fact about the host and the other
 // is a bug, and collapsing them is what guarantees nobody looks.

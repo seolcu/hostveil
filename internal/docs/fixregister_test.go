@@ -22,7 +22,7 @@ import (
 // compose.ds012, compose.dr004, ports.exposed, accounts.uid0 and
 // accounts.emptypassword had no registered fix and no entry in the
 // register either. That is the state the register exists to make
-// impossible. Manual is a decision — "there is no action hostveil can
+// impossible. Manual is a decision — "there is no action Hostveil can
 // safely take" — and a finding that is Manual because nobody has looked at
 // it is indistinguishable, in the interface, from one that is Manual
 // because a maintainer weighed the remediation and refused it.

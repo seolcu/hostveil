@@ -52,7 +52,7 @@ func TestTheFirewallFixOpensSSHBeforeItClosesEverything(t *testing.T) {
 }
 
 // "I could not tell" must not quietly become 22. A host running sshd on 2222
-// whose port hostveil failed to read would be locked out by a fix that
+// whose port Hostveil failed to read would be locked out by a fix that
 // guessed, and the guess would look exactly like knowledge.
 func TestNoFirewallFixWithoutTheSSHPort(t *testing.T) {
 	for _, tc := range []struct{ name, port string }{
@@ -88,7 +88,7 @@ func TestNoFirewallFixWithoutUfw(t *testing.T) {
 // severed the second, with no checkpoint to undo it — on a host reached only
 // over SSH.
 //
-// The whole justification for this fix existing is that hostveil now knows
+// The whole justification for this fix existing is that Hostveil now knows
 // which port to keep open. It knew one of them.
 func TestTheFirewallFixAllowsEverySSHPortBeforeItClosesEverything(t *testing.T) {
 	f := model.NewFinding("firewall.inactive", "t", model.SeverityHigh, model.SourceFirewall,
@@ -118,7 +118,7 @@ func TestTheFirewallFixAllowsEverySSHPortBeforeItClosesEverything(t *testing.T) 
 	}
 }
 
-// A list hostveil cannot fully parse is one it cannot fully allow, and
+// A list Hostveil cannot fully parse is one it cannot fully allow, and
 // allowing the part it understood before a default-deny policy is how the
 // rest gets severed.
 func TestTheFirewallFixRefusesAPartlyReadablePortList(t *testing.T) {

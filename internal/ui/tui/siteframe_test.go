@@ -15,7 +15,7 @@ const siteFramePath = "testdata/site-frame.ans"
 
 // TestSiteFrameIsCurrent is the check the image assets never had.
 //
-// Everything else the website says about hostveil is held to the code by a
+// Everything else the website says about Hostveil is held to the code by a
 // test: the domain names, the finding IDs, the fix column, the measured
 // figures. The screenshots were outside all of it, and they drifted exactly
 // the way an unchecked claim does — the published terminal frame kept showing
@@ -62,7 +62,7 @@ func TestSiteFrameIsCurrent(t *testing.T) {
 	}
 
 	t.Errorf("the TUI no longer draws the frame site/assets/tui.png was made from.\n"+
-		"The published screenshot is now showing something hostveil does not do.\n\n"+
+		"The published screenshot is now showing something Hostveil does not do.\n\n"+
 		"Regenerate both:\n"+
 		"  HOSTVEIL_SNAPSHOT=%s go test ./internal/ui/tui -run TestSnapshotDump\n"+
 		"  python3 scripts/ansi2png.py %s site/assets/tui.png\n\n%s",
@@ -127,7 +127,7 @@ func TestSiteFrameShowsWhatTheCaptionPromises(t *testing.T) {
 	// Case-folded: the rail draws the abbreviations upper-case and the model
 	// stores them lower-case, and which of those is right is a styling
 	// question this test has no business having an opinion about. What it
-	// asserts is that every level hostveil has is visible in the picture.
+	// asserts is that every level Hostveil has is visible in the picture.
 	upper := strings.ToUpper(frame)
 	for _, sev := range model.AllSeverities() {
 		if !strings.Contains(upper, strings.ToUpper(sev.Abbr())) {

@@ -8,14 +8,14 @@ import (
 )
 
 // The most ordinary hardening step on a Debian host — switching automatic
-// security updates on — was Review, and only because the one fix hostveil had
+// security updates on — was Review, and only because the one fix Hostveil had
 // ran `apt-get install`. On the common host the package is already there and
 // the whole remediation is two lines in a config file, which is a file edit:
 // reversible from a checkpoint, and something `fix --all` can do on its own.
 //
 // So the shape of this fix is decided by evidence, and both shapes are pinned:
 // get it wrong toward exec and the fix leaves the unattended path again; get
-// it wrong toward edit and hostveil writes a config for a package that is not
+// it wrong toward edit and Hostveil writes a config for a package that is not
 // installed, which enables nothing and reports success.
 func TestAutoUpdatesIsAnEditWhenTheMechanismIsAlreadyInstalled(t *testing.T) {
 	installed := model.NewFinding("updates.disabled", "Automatic security updates are not enabled",

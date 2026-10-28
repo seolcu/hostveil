@@ -181,7 +181,7 @@ func dumpEveryMode(t *testing.T, dir string) {
 		FindingID: "cve.outdated-image", Label: "Update the image for nextcloud", Kind: model.RemediationReview,
 		Actions: []model.ActionPreview{
 			{Index: 0, Label: "Pull the new image and recreate nextcloud now", Type: "exec",
-				Warning: "This recreates the container: the service goes down briefly and comes back on a different image. There is no rollback checkpoint — exec fixes are not file-backed, so hostveil cannot undo this.",
+				Warning: "This recreates the container: the service goes down briefly and comes back on a different image. There is no rollback checkpoint — exec fixes are not file-backed, so Hostveil cannot undo this.",
 				Commands: [][]string{
 					{"docker", "compose", "-f", "/opt/stacks/cloud/docker-compose.yml", "pull", "nextcloud"},
 					{"docker", "compose", "-f", "/opt/stacks/cloud/docker-compose.yml", "up", "-d", "nextcloud"}}},

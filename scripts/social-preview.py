@@ -100,7 +100,7 @@ for line in wrapped("Finds what an attacker would use, scores it out of 100, and
                     "rollback.", small, COL):
     d.text((PAD, y), line, font=small, fill=MUTED); y += 38
 
-# The right column carries the one thing hostveil produces, in the shape it
+# The right column carries the one thing Hostveil produces, in the shape it
 # produces it. A card is read at a fraction of this size, so it has to be a
 # number and a bar rather than a screenshot of a number and a bar.
 GX, GY, GW = 800, 96, W - 800 - PAD

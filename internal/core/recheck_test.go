@@ -15,7 +15,7 @@ import (
 	"github.com/seolcu/hostveil/internal/platform"
 )
 
-// "hostveil wrote the file" and "the finding is gone" are different claims,
+// "Hostveil wrote the file" and "the finding is gone" are different claims,
 // and only the first was ever established: markFixed set Fixed the moment an
 // apply returned, and the score moved on that. Action.VerifyCmd (see
 // verify_test.go) closes the same gap before a write; this closes the one
@@ -165,7 +165,7 @@ func TestAnUnrunnableRecheckIsUnavailableNotAnAnswer(t *testing.T) {
 			// Pending is set only by positive evidence: by the fix declaring
 			// that it takes effect later, or by a checker holding the finding
 			// in its hand. "Could not look" is neither. If it counted, then
-			// re-checking would make hostveil more pessimistic than not
+			// re-checking would make Hostveil more pessimistic than not
 			// re-checking — and an operator applying fixes one at a time
 			// would score below one who ran `fix --all` over the same set.
 			if out.Pending {

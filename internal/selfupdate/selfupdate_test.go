@@ -17,7 +17,7 @@ import (
 	"github.com/seolcu/hostveil/internal/check/checktest"
 )
 
-// The question every one of these is about: may hostveil touch this file, and
+// The question every one of these is about: may Hostveil touch this file, and
 // with which tool. Getting it wrong does not produce an error, it produces a
 // package database describing a file that is no longer there, and the next
 // `apt upgrade` either reverts the update or refuses to proceed. Neither
@@ -50,7 +50,7 @@ func TestTheOriginDecidesWhichToolActs(t *testing.T) {
 			want: OriginStandalone,
 		},
 		{
-			// A copy somebody dropped somewhere. hostveil does not know what
+			// A copy somebody dropped somewhere. Hostveil does not know what
 			// it is and must not delete it.
 			name: "a copy somewhere else",
 			run:  checktest.New().Without("dpkg", "rpm"),
@@ -83,7 +83,7 @@ func TestAPackageClaimBeatsTheLocation(t *testing.T) {
 	}
 }
 
-// go install's destination is recognised so hostveil rebuilds it rather than
+// go install's destination is recognised so Hostveil rebuilds it rather than
 // dropping a published binary over somebody's own build.
 func TestAGoInstallBinaryIsRecognised(t *testing.T) {
 	dir := t.TempDir()

@@ -11,7 +11,7 @@ import (
 
 // The published screenshots print each finding's remediation beside it —
 // "compose.ds016 · Manual" — so the kind in the fixture is a claim about what
-// hostveil shows for that finding, the same as the ID is. It went stale the
+// Hostveil shows for that finding, the same as the ID is. It went stale the
 // first time fixes were added for findings the fixture already carried: the
 // pictures on the website went on saying Manual about a finding the product
 // offered a button for.

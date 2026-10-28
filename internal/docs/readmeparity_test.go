@@ -76,7 +76,7 @@ func TestBothReadmesHaveTheSameSectionsInTheSameOrder(t *testing.T) {
 //
 // Line 5 of README.md was `> 2026-1 Ajou SoftCon 개발부문 최우수상 수상` — the
 // first content an English reader met, in a script most of them cannot read,
-// above the sentence saying what hostveil is. CITATION.cff already carried the
+// above the sentence saying what Hostveil is. CITATION.cff already carried the
 // English rendering of exactly that line.
 //
 // Pinned narrowly rather than as a general language check: the language

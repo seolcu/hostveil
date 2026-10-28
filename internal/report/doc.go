@@ -41,7 +41,7 @@ type Table struct {
 }
 
 // FindingBlock is one finding, rendered in plain language rather than as an
-// ID: what it means, how to fix it (or why hostveil won't), and whatever
+// ID: what it means, how to fix it (or why Hostveil won't), and whatever
 // evidence the checker recorded.
 type FindingBlock struct {
 	Title, Severity, Domain, Service string

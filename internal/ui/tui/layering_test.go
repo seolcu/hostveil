@@ -9,7 +9,7 @@ import (
 // TestUIStaysThin enforces the architectural boundary that keeps the UI a
 // thin shell: production TUI code may import only the engine (core) and
 // value types (model), never the fix, history, check, or compose packages
-// directly. Reaching into those is exactly how hostveil v2 ended up with fix
+// directly. Reaching into those is exactly how Hostveil v2 ended up with fix
 // logic duplicated across its UIs.
 //
 // The check itself lives in internal/ui/uitest because the dashboard needs

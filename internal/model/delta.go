@@ -71,7 +71,7 @@ const EvidenceSeparator = ", "
 // reading the output could guess.
 //
 // ASCII unit separator: it cannot occur in a path (the kernel allows any
-// byte but NUL and '/', while every path hostveil handles comes from a glob
+// byte but NUL and '/', while every path Hostveil handles comes from a glob
 // or a config file), it needs no escaping, and it is invisible enough that a
 // value carrying it reads as machine-facing at a glance.
 const PathListSeparator = "\x1f"

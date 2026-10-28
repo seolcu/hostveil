@@ -219,7 +219,7 @@ func buildEnableAutoUpdates(f model.Finding) (Fix, error) {
 	case "unattended-upgrades":
 		// Where the package is already installed the whole remediation is one
 		// config file, which is a file edit: reversible from a checkpoint,
-		// and therefore something hostveil can do unattended. That is the
+		// and therefore something Hostveil can do unattended. That is the
 		// common case — Ubuntu ships unattended-upgrades — and it used to be
 		// served by the same `apt-get install` the uncommon case needs, which
 		// made an exec action out of a two-line edit and put the most ordinary

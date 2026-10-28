@@ -12,13 +12,13 @@ import (
 func needsRoot(cmd string) bool {
 	switch cmd {
 	case "scan", "tui", "fix", "serve", "web", "explain", "export", "advise", "ai-context", "rollback", "history",
-		"diagnostics", "update", "uninstall":
+		"diagnostics", "update", "uninstall", "triage":
 		return true
 	}
 	return false
 }
 
-// maybeElevate re-executes hostveil under sudo when a root-benefiting command
+// maybeElevate re-executes Hostveil under sudo when a root-benefiting command
 // is run without root, so plain `hostveil` behaves like `sudo hostveil` — the
 // sudo password prompt is sudo's own and appears identically. On success it
 // replaces the current process (execve) and does not return. It degrades to
@@ -39,7 +39,7 @@ func maybeElevate(cmd string) {
 	}
 	sudo, err := exec.LookPath("sudo")
 	if err != nil {
-		// Say so. The two lines below explain why hostveil is *asking* for a
+		// Say so. The two lines below explain why Hostveil is *asking* for a
 		// password; this is the case where it cannot ask, and it said nothing
 		// at all — so the operator learned they needed root domain by domain,
 		// half way through a scan, from findings that read like a broken tool
@@ -54,7 +54,7 @@ func maybeElevate(cmd string) {
 		return
 	}
 	// Say why before sudo asks. A first-time user's opening interaction with
-	// hostveil was otherwise a bare "[sudo] password for ..." with nothing
+	// Hostveil was otherwise a bare "[sudo] password for ..." with nothing
 	// above it explaining who wanted their password or what for — the highest
 	// friction possible for a tool asking to be trusted with root. This goes
 	// to stderr so it never contaminates `--json` on stdout.
@@ -65,7 +65,7 @@ func maybeElevate(cmd string) {
 	// os.Environ() unchanged, and deliberately not carrying a marker of our
 	// own: sudo's env_reset drops everything it does not keep, so a variable
 	// set here would not reach the child. See alreadyElevated.
-	// G204: re-running hostveil's own argv under sudo is what this function
+	// G204: re-running Hostveil's own argv under sudo is what this function
 	// is for. The program is sudo at a resolved path and the arguments are
 	// the ones this process was started with; there is no third party in it,
 	// and refusing a variable here would mean refusing to elevate at all.
@@ -74,13 +74,13 @@ func maybeElevate(cmd string) {
 	// If Exec returns, it failed; fall through and run unprivileged.
 }
 
-// carriedThroughSudo are the variables a user sets on hostveil's own command
+// carriedThroughSudo are the variables a user sets on Hostveil's own command
 // line that have to survive the re-exec.
 //
 // env_reset drops all of them. That is stated in alreadyElevated's comment
 // and was drawn as a conclusion about exactly one variable — the marker this
 // code used to pass itself — while applying identically to every variable a
-// user sets. So on the ordinary non-root host, the path hostveil documents
+// user sets. So on the ordinary non-root host, the path Hostveil documents
 // most loudly did nothing: `HOSTVEIL_DEBUG=1 hostveil scan` is printed in
 // `hostveil help`, in the README and on both troubleshooting pages as the
 // thing to attach to a bug report, and it produced no trace at all, with no
@@ -121,9 +121,9 @@ var carriedThroughSudo = []string{
 	// look like it had turned the check off while the elevated run went on
 	// making it, which is the exact failure this list exists to prevent.
 	"HOSTVEIL_NO_UPDATE_CHECK",
-	// Not hostveil's own, and carried for the same reason as the one above:
+	// Not Hostveil's own, and carried for the same reason as the one above:
 	// serve elevates, so the process that prints the SSH tunnel command is
-	// the child, and sudo's env_reset drops this. Without it hostveil would
+	// the child, and sudo's env_reset drops this. Without it Hostveil would
 	// decide it was on a console — on the path every remote operator takes —
 	// and print a loopback URL with no way to reach it.
 	//
@@ -177,7 +177,7 @@ func elevatedArgv(exe string, _ []string, getenv func(string) string) []string {
 // more variable costs nothing.
 //
 // A false positive here — SUDO_USER left in the environment by something other
-// than the sudo that ran us — means hostveil does not auto-elevate and scans
+// than the sudo that ran us — means Hostveil does not auto-elevate and scans
 // unprivileged, which it is built to do: domains that need root report Skipped
 // with a reason. That is the safe direction to be wrong in, and the loop is
 // not.

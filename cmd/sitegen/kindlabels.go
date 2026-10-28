@@ -12,7 +12,7 @@ import "github.com/seolcu/hostveil/internal/model"
 // subject of the fixing page: one of them is what `fix --all` runs on its own.
 //
 // The Korean row is deliberately the same four English words as the English
-// one, not a translation of them. hostveil's CLI, TUI, and dashboard are
+// one, not a translation of them. Hostveil's CLI, TUI, and dashboard are
 // English-only and always print "Auto"/"Review"/"Manual"/"Unavailable"
 // — there is no Korean build of the tool itself — so a Korean docs page that
 // called them "자동 수정"/"검토"/"수동"/"사용 불가" was teaching a vocabulary

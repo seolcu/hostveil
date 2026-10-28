@@ -4,7 +4,7 @@
 // unauthenticated remote code execution as a real account.
 //
 // The scope is deliberately narrow. These projects ship their own config
-// auditors, which cover their settings far more thoroughly than hostveil
+// auditors, which cover their settings far more thoroughly than Hostveil
 // could sustain across two fast-moving upstream schemas. What they cannot see
 // is the host: whether the gateway is *actually* listening on a reachable
 // address, whether a firewall is standing behind it, whether the credential
@@ -341,7 +341,7 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 	// rides in the evidence rather than in the level.
 	sev := model.SeverityHigh
 
-	// The bind can be rewritten only where hostveil can edit it: a JSON5
+	// The bind can be rewritten only where Hostveil can edit it: a JSON5
 	// config that sets the key itself, with no environment override on top.
 	// Anywhere else — a default, an env var, a listener seen but not
 	// configured — there is no line to change, and the finding says so.
@@ -417,7 +417,7 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 
 // listenerOnlyFindings reports a ListenerOnly gateway from what the host is
 // listening on: every non-loopback socket held by one of the runtime's own
-// binaries, on any port, since the port is a flag hostveil never sees.
+// binaries, on any port, since the port is a flag Hostveil never sees.
 //
 // ss names the owning process only for a scan that can see it — a non-root
 // scan of another account's process reports none — and an unnamed listener is

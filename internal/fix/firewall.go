@@ -26,7 +26,7 @@ import (
 // It stays Review. The commands cannot be rolled back, the host's other
 // services stop being reachable the moment the policy takes effect, and both
 // of those are things an operator should decide rather than discover. What
-// changes is that hostveil can now carry it out, instead of describing it.
+// changes is that Hostveil can now carry it out, instead of describing it.
 func registerFirewall(r *Registry) {
 	r.Register("firewall.inactive", buildEnableFirewall)
 	r.Register("firewall.default-allow", buildFixDefaultAllow)
@@ -150,7 +150,7 @@ func buildFixDefaultAllow(f model.Finding) (Fix, error) {
 }
 
 // parseSSHPorts reads the comma-separated list of ports the checker observed
-// sshd listening on. Every one has to be a real port: a list hostveil cannot
+// sshd listening on. Every one has to be a real port: a list Hostveil cannot
 // fully parse is one it cannot fully allow, and allowing the part it
 // understood before a default-deny policy is how the other part gets severed.
 func parseSSHPorts(raw string) ([]int, error) {

@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# Measure what hostveil actually changes, using instruments that are not
+# Measure what Hostveil actually changes, using instruments that are not
 # hostveil.
 #
 # The end-to-end test already proves the score goes up after `fix --all`. That
-# is hostveil marking its own homework: the same code decides what a finding
+# is Hostveil marking its own homework: the same code decides what a finding
 # is, what fixing it means, and what the number should be afterwards. It can
 # be wholly self-consistent and wholly wrong.
 #
-# So this runs auditors that have never heard of hostveil — Lynis, the CIS
+# So this runs auditors that have never heard of Hostveil — Lynis, the CIS
 # Docker Benchmark, a TCP connect scan from off the host, and the kernel's own
 # list of listening sockets — and reports what each of them saw. Including
-# where they did not move, because a fix that improves hostveil's own score
+# where they did not move, because a fix that improves Hostveil's own score
 # and nothing else is exactly what this exists to catch.
 #
 # Five phases: before the fixes, after them, after the services have been
 # restarted into them, after every reversible Review fix has been accepted as
 # well, and after every one has been rolled back.
 #
-# It measures the host it runs on, the way hostveil does. Point it at a host
+# It measures the host it runs on, the way Hostveil does. Point it at a host
 # you are willing to have edited: it applies every Auto fix and then rolls
 # them all back.
 #
@@ -27,22 +27,22 @@
 # after control.sh hardens the host from the CIS Benchmarks *without*
 # hostveil. It answers the question the run above cannot — does the score go
 # up when the host is hardened by somebody else's standard? A number that only
-# responds to hostveil's own fixes is not a security score, it is a to-do list
+# responds to Hostveil's own fixes is not a security score, it is a to-do list
 # with a percentage on it. No fix, no rollback, and the profile defaults to
 # "control".
 #
 # Requires root. Lynis and docker-bench-security are optional — a missing one
 # is recorded as absent rather than passed over silently.
 #
-# -c exits non-zero when either of hostveil's two promises breaks. Nothing
+# -c exits non-zero when either of Hostveil's two promises breaks. Nothing
 # else here is asserted, because everything else is an observation: an
 # instrument moves for reasons that have nothing to do with a diff — a Lynis
 # release, a new distribution default — and a check that turns red for those
 # is a check somebody turns off.
 #
 # The order below is the whole design. Rollback fidelity is judged against
-# hashes taken *before* the fixes ran, on paths hostveil's own scan named, so
-# "restored" means the filesystem came back — not that hostveil agrees with
+# hashes taken *before* the fixes ran, on paths Hostveil's own scan named, so
+# "restored" means the filesystem came back — not that Hostveil agrees with
 # its own checkpoints.
 set -euo pipefail
 
@@ -71,7 +71,7 @@ OUT=${1:-/dev/stdout}
 [ "$(id -u)" = 0 ] || { echo "measure: needs root — it reads /etc/shadow and edits system files" >&2; exit 1; }
 command -v hostveil >/dev/null || { echo "measure: hostveil is not on PATH" >&2; exit 1; }
 
-# hostveil is already root here, so the re-exec would only add a prompt.
+# Hostveil is already root here, so the re-exec would only add a prompt.
 export HOSTVEIL_NO_SUDO=1
 
 WORK=$(mktemp -d /tmp/hostveil-measure-XXXXXX)
@@ -111,7 +111,7 @@ measure_all() {
 # untouched, and once after the services have been restarted into them.
 # Without the second, an instrument reading the running system reports that
 # nothing happened, which is true and reads as though the fixes did nothing.
-# Without the first, the report would quietly credit hostveil with a restart
+# Without the first, the report would quietly credit Hostveil with a restart
 # it does not perform and deliberately does not offer as an Auto fix.
 restart_services() {
   # AUTO sysctl fixes intentionally persist reversible drop-ins without
@@ -156,10 +156,10 @@ say "$(wc -l < "$WORK/paths.before" | tr -d ' ') paths watched"
 say "BEFORE"
 measure_all before
 
-# The control group. Everything below this branch is about hostveil applying
+# The control group. Everything below this branch is about Hostveil applying
 # fixes and undoing them, and a control run does none of it: the point is to
-# harden the host by somebody else's standard and ask whether hostveil's score
-# notices. There is nothing to roll back because hostveil changed nothing, and
+# harden the host by somebody else's standard and ask whether Hostveil's score
+# notices. There is nothing to roll back because Hostveil changed nothing, and
 # control.sh does not undo itself — which is why it says to run it on
 # something disposable.
 if [ "$CONTROL" = 1 ]; then
@@ -200,11 +200,11 @@ say "RESTARTED"
 measure_all restarted
 
 # Everything above measures `fix --all`, which applies Auto fixes only —
-# the unattended path, and deliberately the most conservative thing hostveil
+# the unattended path, and deliberately the most conservative thing Hostveil
 # does. It is not the path an operator takes. They read a Review fix, decide,
 # and accept it, and the fixes that need that decision are the ones that
 # change the most: every SSH hardening option, because a bad sshd_config can
-# lock the operator out, and hostveil will not do that unattended.
+# lock the operator out, and Hostveil will not do that unattended.
 #
 # So there is a fifth phase for the reviewed path, and it runs the command a
 # user would run — `fix --all --review` — rather than a loop of its own. A

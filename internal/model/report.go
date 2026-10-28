@@ -195,7 +195,7 @@ func (r Report) Select(flt Filter) []Finding {
 }
 
 // AutoFixable returns the findings inside the filter that "fix all safe"
-// would apply — the unfixed ones hostveil can apply unattended.
+// would apply — the unfixed ones Hostveil can apply unattended.
 //
 // It takes a filter because the answer depends on one, and every caller that
 // counted these by hand had to decide which filter it meant without saying
@@ -213,7 +213,7 @@ func (r Report) AutoFixable(flt Filter) []Finding { return AutoFixable(r.Select(
 // so a renderer holding the filtered findings does not have to rebuild them
 // to count what the key would apply.
 // Fixed here and not Active, deliberately. This is the other question — has
-// hostveil already applied a fix here — and a pending fix has. Asking Active
+// Hostveil already applied a fix here — and a pending fix has. Asking Active
 // would put it back in the batch, so `fix --all` would rewrite a file it
 // already wrote and record a second checkpoint over unchanged content, every
 // time it ran, until the operator restarted the service.

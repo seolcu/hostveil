@@ -9,7 +9,7 @@
 # `demo/run.sh up` gives somebody who wants to try hostveil. These are
 # disposable measurement hosts and nobody should be pointed at them.
 #
-# Provisioning stops at "Go is installed and hostveil is built". Seeding and
+# Provisioning stops at "Go is installed and Hostveil is built". Seeding and
 # measuring are separate commands on purpose, because the interesting failures
 # are in seed.sh and watching them scroll past inside a provisioner is how a
 # first run of anything gets misread.
@@ -34,7 +34,7 @@ GO_VERSION = "1.26.3"
 # STATUS, so the next attempt starts from what was learned rather than from
 # zero:
 #
-#   ubuntu   works. Provisions, builds hostveil, ready to seed.
+#   ubuntu   works. Provisions, builds Hostveil, ready to seed.
 #   fedora   DOES NOT COME UP on libvirt here, and it is the box rather than
 #            anything in this file. cloud-image/fedora-42 downloads, the
 #            domain boots, and it never takes a DHCP lease on the
@@ -106,7 +106,7 @@ Vagrant.configure("2") do |config|
 
         #{spec[:bootstrap]}
 
-        # The distribution's Go is too old to build hostveil on most of these.
+        # The distribution's Go is too old to build Hostveil on most of these.
         ARCH=$(uname -m); case "$ARCH" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; esac
         if ! /usr/local/go/bin/go version 2>/dev/null | grep -q "go#{GO_VERSION}"; then
           curl -fsSL "https://go.dev/dl/go#{GO_VERSION}.linux-${ARCH}.tar.gz" -o /tmp/go.tgz

@@ -138,9 +138,9 @@ def rollback_verdict(work):
 # document by dotted path, so a key containing one would be unreachable from
 # the page that publishes it.
 # The order phases are reported in, which is the order they happen in. A run
-# carries a subset: hostveil runs take before → after → restarted → reviewed →
+# carries a subset: Hostveil runs take before → after → restarted → reviewed →
 # restored, and a control run takes before → controlled, because nothing
-# hostveil does is involved in one.
+# Hostveil does is involved in one.
 #
 # "restored" sorts last on purpose even though a control run never reaches it:
 # every delta is measured against "before", so this list is about reading
@@ -286,9 +286,9 @@ def main():
         "deltas": deltas(phases),
     }
     # The hostveil-driven keys are omitted rather than zeroed when nothing
-    # applied a fix. "attempted: 0, failed: []" is a claim that hostveil tried
+    # applied a fix. "attempted: 0, failed: []" is a claim that Hostveil tried
     # nothing and succeeded, which is not what a control run means — it means
-    # hostveil was never asked.
+    # Hostveil was never asked.
     if os.path.exists(os.path.join(work, "fix.log")):
         doc["fixes"] = fix_phase(work)
     if os.path.exists(os.path.join(work, "reviewed.json")):

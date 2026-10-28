@@ -10,7 +10,7 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// hostveil has kept and pruned the last 30 scan snapshots since the store
+// Hostveil has kept and pruned the last 30 scan snapshots since the store
 // was written, and nothing ever read more than the newest one: LastReport
 // takes the last element, and every interface shows "since last scan" and
 // nothing longer. That answers "did that round of fixes help?" and cannot

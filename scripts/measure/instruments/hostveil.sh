@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# hostveil's own score, per axis, and its coverage. The self-measurement —
+# Hostveil's own score, per axis, and its coverage. The self-measurement —
 # reported alongside the independent ones precisely so a reader can see
 # whether they move together.
 set -euo pipefail

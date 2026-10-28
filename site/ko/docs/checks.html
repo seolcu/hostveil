@@ -146,28 +146,29 @@
                   <tr><td>리버스 프록시</td><td><code>proxy.</code></td><td>nginx, Caddy 또는 Docker</td></tr>
                   <tr><td>Proxmox VE 호스트</td><td><code>proxmox.</code></td><td>Proxmox VE 호스트</td></tr>
                   <tr><td>단일 노드 쿠버네티스</td><td><code>kube.</code></td><td>k3s 또는 k0s</td></tr>
+                  <tr><td>포렌식 준비도</td><td><code>forensic.</code></td><td>—</td></tr>
                   <tr><td>이미지 CVE <em>(선택)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
                 </tbody>
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">184</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">176</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">101</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 유출된 비밀값은 그것을 발급한 쪽에서 바꿔야 하고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
+            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">192</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">180</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">105</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 유출된 비밀값은 그것을 발급한 쪽에서 바꿔야 하고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 아무도 들여다보지 않아서 Manual인 것이 아니라 <em>판단</em>해서 Manual인 것이며, 그 차이에서 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 여기 타이핑한 것이 아니라 레지스트리에서 계산한 값입니다.</p>
             <div class="ledger-bar-group">
-              <p class="ledger-bar-title"><span data-counted="findings.total">184</span>개 발견 항목의 처리 방식</p>
+              <p class="ledger-bar-title"><span data-counted="findings.total">192</span>개 발견 항목의 처리 방식</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Auto</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:41%"></div></div>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:39%"></div></div>
                 <span class="ledger-bar-value" data-counted="findings.auto">75</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:55%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.review">101</span>
+                <span class="ledger-bar-value" data-counted="findings.review">105</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:4%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">8</span>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:6%"></div></div>
+                <span class="ledger-bar-value" data-counted="findings.manual">12</span>
               </div>
             </div>
 
@@ -198,8 +199,8 @@
               <table>
                 <thead><tr><th>축</th><th>가중치</th></tr></thead>
                 <tbody>
-                  <tr><td>SSH 하드닝</td><td>11</td></tr>
-                  <tr><td>컨테이너 노출</td><td>10</td></tr>
+                  <tr><td>SSH 하드닝</td><td>9</td></tr>
+                  <tr><td>컨테이너 노출</td><td>8</td></tr>
                   <tr><td>계정 위생</td><td>7</td></tr>
                   <tr><td>자동 업데이트</td><td>7</td></tr>
                   <tr><td>Docker 데몬</td><td>7</td></tr>
@@ -213,6 +214,7 @@
                   <tr><td>단일 노드 쿠버네티스</td><td>5</td></tr>
                   <tr><td>파일 권한</td><td>5</td></tr>
                   <tr><td>커널 하드닝</td><td>5</td></tr>
+                  <tr><td>포렌식 준비도</td><td>4</td></tr>
                 </tbody>
               </table>
             </div>
@@ -420,6 +422,25 @@
               </table>
             </div>
             <p>네 항목 모두 <strong>Manual</strong>입니다. k3s는 시작할 때 <code>write-kubeconfig-mode</code>에 따라 kubeconfig를 다시 쓰므로, <code>chmod</code>는 재검사를 통과하고도 다음 재시작에서 되돌아갑니다. 읽을 수 있었던 토큰은 권한만 좁힐 게 아니라 교체해야 합니다. 나머지 둘은 컨트롤 플레인이 뜨는 방식을 바꾸는 일이라, 모든 워크로드가 도는 노드를 재시작해야 합니다.</p>
+
+            <h2 id="forensic">포렌식 준비도 <code>forensic.</code></h2>
+            <p>다른 영역은 누군가 들어올 수 있는지를 묻습니다. 이 영역은 누군가 들어왔을 때 이 호스트가 그것을 보여 줄 수 있는지를 묻습니다. 셀프호스팅 서버는 대개 그러지 못합니다. 증거가 지워져서가 아니라 처음부터 남지 않아서입니다. 사람들이 가장 먼저 하는 재부팅에 저널이 사라지고, 웹 서버 계정이 무엇을 실행했는지 아무것도 기록하지 않으며, 접근 로그는 일주일만 남고 요청의 크기를 적지 않습니다. 어느 것도 침입 경로는 아니므로 이 영역의 발견 항목은 모두 <span class="sev low">LOW</span>입니다. 대가는 나중에 시도와 침해를 구분할 수 있는 능력입니다. 보존 기간은 90일을 기준으로 봅니다. 대부분의 침입이 침입자가 아닌 누군가에게 발견되기까지 걸리는 기간입니다.</p>
+            <div class="docs-table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>잡아내는 것</th><th>심각도</th><th>수정</th></tr></thead>
+                <tbody>
+                  <tr><td><code>forensic.journald-volatile</code></td><td>journald가 저널을 메모리에만 둡니다(<code>Storage=volatile</code>, 또는 <code>/var/log/journal</code> 없이 <code>auto</code>). 마지막 재부팅 이전 기록은 모두 사라집니다. <code>systemd-analyze cat-config</code>로 읽으므로 드롭인도 반영됩니다</td><td><span class="sev low">LOW</span></td><td><a href="#fix-forensic.journald-volatile">Review</a></td></tr>
+                  <tr><td><code>forensic.journald-retention</code></td><td><code>MaxRetentionSec</code>가 90일이 안 된 저널 항목을 지웁니다</td><td><span class="sev low">LOW</span></td><td><a href="#fix-forensic.journald-retention">Review</a></td></tr>
+                  <tr><td><code>forensic.logrotate-short</code></td><td>인증 로그나 웹 접근 로그의 logrotate 설정이 90일보다 짧게 보관합니다(회전 수 &times; 주기, 현재 파일 포함)</td><td><span class="sev low">LOW</span></td><td><a href="#fix-forensic.logrotate-short">Review</a></td></tr>
+                  <tr><td><code>forensic.auditd-missing</code></td><td>리눅스 감사 데몬이 설치되지 않았거나 실행 중이 아니라서, 어떤 프로그램이 실행됐는지에 대한 커널의 기록이 어디에도 남지 않습니다</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>forensic.service-exec-unaudited</code></td><td>웹 서버가 설치되어 있는데, 그 계정(<code>www-data</code>, <code>apache</code>, <code>nginx</code>, <code>http</code>)이 실행하는 프로그램을 기록하는 감사 규칙이 없습니다. 웹 애플리케이션은 프로그램을 거의 실행하지 않으므로, 정상 호스트에서는 이 규칙이 조용하고 침해된 호스트에서는 웹셸의 첫 명령을 기록합니다</td><td><span class="sev low">LOW</span></td><td><a href="#fix-forensic.service-exec-unaudited">Review</a></td></tr>
+                  <tr><td><code>forensic.time-unsynced</code></td><td>시계가 시간 서버와 동기화되지 않아, 로그 시각을 서로 맞추거나 다른 곳의 로그와 맞출 수 없습니다</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>forensic.weblog-no-size</code></td><td>Apache나 nginx 접근 로그 형식에 요청 크기(<code>%I</code> / <code>$request_length</code>)가 없어, 요청 본문에 실린 익스플로잇이 같은 페이지로 가는 다른 요청과 똑같아 보입니다</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                  <tr><td><code>forensic.no-remote-log</code></td><td>rsyslog도 systemd-journal-upload도 로그를 다른 기계로 보내지 않아, 여기서 root를 얻은 사람은 그 방법에 대한 기록을 모두 지울 수 있습니다</td><td><span class="sev low">LOW</span></td><td>Manual</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>저널과 로그 회전에 대한 세 수정은 드롭인을 쓰거나 회전 수를 늘리고, 필요하면 journald를 재시작합니다. 감사 수정은 <code>/etc/audit/rules.d/</code>에 <code>hostveil-svc-exec</code> 태그를 단 규칙 파일 하나를 쓰고 규칙을 다시 읽습니다. 모두 Review인 이유는 각각 사용자만 판단할 수 있는 비용이 있어서입니다. 디스크 사용량, 그리고 웹 애플리케이션이 실제로 프로그램을 실행한다면 가득 차는 감사 로그입니다. 나머지 넷은 Manual입니다. 설치할 데몬, 고를 시간 서버, 다른 도구가 파싱하는 로그 형식, 로그를 받을 두 번째 기계가 필요하기 때문입니다.</p>
 
             <h2 id="fileperms">파일 권한 <code>fileperms.</code></h2>
             <p>보안상 중요한 파일 목록의 권한을 확인해, 필요 이상으로 느슨하게 설정된 권한을 표시합니다.</p>
@@ -1793,7 +1814,34 @@
             <dd>
               <p lang="en">chmod /var/run/docker.sock to 0600</p>
               <p class="fix-benefit" lang="en">✓ No local account can read the token any more, so none of them can hand the cluster to a machine of their choosing from here on.</p>
-              <p class="fix-warning" lang="en">⚠ It has already been readable, so anything that copied it can still join a node. Rotate it after this (<code>k3s token rotate</code>), which hostveil does not do because it changes what every joining node has to present. The old mode is checkpointed.</p>
+              <p class="fix-warning" lang="en">⚠ It has already been readable, so anything that copied it can still join a node. Rotate it after this (<code>k3s token rotate</code>), which Hostveil does not do because it changes what every joining node has to present. The old mode is checkpointed.</p>
+            </dd>
+          </dl>
+          <h3>포렌식</h3>
+          <dl class="fix-actions">
+            <dt id="fix-forensic.journald-retention"><code>forensic.journald-retention</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set MaxRetentionSec=90day in /etc/systemd/journald.conf.d/90-hostveil-forensic.conf and restart journald</p>
+              <p class="fix-benefit" lang="en">✓ Entries from the last three months stay available, which covers the weeks most intrusions go unnoticed.</p>
+              <p class="fix-warning" lang="en">⚠ The journal keeps more history and uses more disk, still within its SystemMaxUse cap. The drop-in is a new file with a checkpoint; rolling it back deletes it and restarts journald.</p>
+            </dd>
+            <dt id="fix-forensic.journald-volatile"><code>forensic.journald-volatile</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Set Storage=persistent in /etc/systemd/journald.conf.d/90-hostveil-forensic.conf and restart journald</p>
+              <p class="fix-benefit" lang="en">✓ Logins, service starts and errors survive a reboot, so the record of what happened before one is still there when someone looks.</p>
+              <p class="fix-warning" lang="en">⚠ The journal now uses disk under /var/log/journal, capped by journald at 10% of the filesystem (4GB at most) unless SystemMaxUse says otherwise. The drop-in is a new file with a checkpoint; rolling it back deletes it and restarts journald.</p>
+            </dd>
+            <dt id="fix-forensic.logrotate-short"><code>forensic.logrotate-short</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Raise the rotate count in /etc/logrotate.d/rsyslog to cover 90 days</p>
+              <p class="fix-benefit" lang="en">✓ Authentication and web access logs reach back three months, which covers the weeks most intrusions go unnoticed.</p>
+              <p class="fix-warning" lang="en">⚠ Rotated logs are compressed, but a busy web server's three months can still be gigabytes. The file belongs to a package, so its next upgrade asks whether to keep your version. The edit is a checkpoint and rolls back.</p>
+            </dd>
+            <dt id="fix-forensic.service-exec-unaudited"><code>forensic.service-exec-unaudited</code> <span class="fix-kind review">Review</span></dt>
+            <dd>
+              <p lang="en">Write an execve rule for uid 33 to /etc/audit/rules.d/90-hostveil-service-exec.rules and load it</p>
+              <p class="fix-benefit" lang="en">✓ Every program the web server's account starts is recorded with its time and arguments, so a webshell's first command is evidence rather than a guess.</p>
+              <p class="fix-warning" lang="en">⚠ A web application that legitimately starts programs — an image converter, a PDF renderer, a git-backed wiki — writes an audit record each time it does; watch <code>ausearch -k hostveil-svc-exec</code> for a day after applying. The rule file is a checkpoint; rolling it back removes the rule and reloads.</p>
             </dd>
           </dl>
 

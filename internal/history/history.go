@@ -1,4 +1,4 @@
-// Package history is hostveil's recovery layer: before any fix changes a
+// Package history is Hostveil's recovery layer: before any fix changes a
 // file, the engine backs the original up here as a checkpoint, so any
 // applied change — made from any UI — can be rolled back with one command.
 // The checkpoint is the ONLY backup mechanism, which is what makes
@@ -126,7 +126,7 @@ func NewStore(dir string) *Store { return &Store{dir: dir} }
 // guessing where a test pointed it.
 func (s *Store) Dir() string { return s.dir }
 
-// DefaultDir returns the per-user (or system, when root) hostveil data
+// DefaultDir returns the per-user (or system, when root) Hostveil data
 // directory for checkpoints and reports.
 func DefaultDir() string {
 	if os.Geteuid() == 0 {
@@ -186,7 +186,7 @@ func (s *Store) Save(cp Checkpoint, backups map[string][]byte) (Checkpoint, erro
 // the write did not, and what is left describes a change the host never
 // received. Keeping it would put a reversible applied fix in `hostveil
 // history` for something that never happened, and — worse — leave its
-// AppliedSHA256 asserting to recordedWrites that hostveil wrote bytes it did
+// AppliedSHA256 asserting to recordedWrites that Hostveil wrote bytes it did
 // not, which weakens the external-edit guard for that path from then on.
 //
 // The caller must be sure the host is unchanged. Nothing here can check that,
@@ -521,7 +521,7 @@ func (s *Store) Get(id string) (Checkpoint, error) {
 	}
 	// G304: the variable is a checkpoint ID, joined under the store's own
 	// directory. It reaches here from a UI that got it out of List, so it
-	// names something this process wrote — and the read is of hostveil's own
+	// names something this process wrote — and the read is of Hostveil's own
 	// state, not of anything the ID could point at outside it.
 	//nolint:gosec // G304: a checkpoint ID under the store's own directory
 	data, err := os.ReadFile(filepath.Join(s.checkpointsDir(), id, "meta.json"))
@@ -583,7 +583,7 @@ func (e *ExternalEditError) Error() string {
 		"(re-run with --force to restore the backup anyway)", e.Path)
 }
 
-// checkUnmodified reports whether a file still holds content that hostveil
+// checkUnmodified reports whether a file still holds content that Hostveil
 // itself wrote, given the set of writes every checkpoint has recorded.
 //
 // The question is not "does this match what THIS fix wrote" — that would

@@ -462,7 +462,7 @@ func nginxFiles(root string) ([]string, []string) {
 	walk = func(path string, depth int) {
 		// A bound rather than a cycle check: nginx itself refuses to nest
 		// includes forever, and a config that reaches this depth is not one
-		// hostveil should be following anyway.
+		// Hostveil should be following anyway.
 		if depth > 10 || seen[path] {
 			return
 		}

@@ -11,7 +11,7 @@ import (
 // rule audits one property of one unit.
 //
 // Eight of the fourteen rules stay Manual. A drop-in under
-// /etc/systemd/system/<unit>.d is a two-line file and hostveil could
+// /etc/systemd/system/<unit>.d is a two-line file and Hostveil could
 // certainly write it, but writing it is not the same as knowing it is safe:
 // ProtectSystem=full breaks a service that writes under /usr, ProtectHome
 // breaks anything whose data lives in a home directory, PrivateTmp=yes
@@ -56,7 +56,7 @@ type rule struct {
 	//
 	// Three of them break something the unit does not show — a service that
 	// hands another files through /tmp, one whose data lives in a home
-	// directory, one that writes under /usr — so hostveil has no way to tell
+	// directory, one that writes under /usr — so Hostveil has no way to tell
 	// a safe unit from an unsafe one and stays out of it. NoNewPrivileges
 	// carries no such blind spot: it closes the setuid path and nothing
 	// about the unit hides whether that matters.
@@ -206,7 +206,7 @@ func dropInPath(unitID, loaded string) string {
 // case where no file it could name would work.
 //
 // A drop-in wins on filename, so when systemd has already loaded one that
-// sorts after anything hostveil would write, the honest instruction is not
+// sorts after anything Hostveil would write, the honest instruction is not
 // "create this file": it is that the operator has to deal with the file that
 // outranks it. Telling them to write one that loses would be advice that
 // cannot work, which the environment reference test calls the worst kind.

@@ -13,7 +13,7 @@ import (
 //
 // The question it is really answering is "which tool should do this", and the
 // default when it cannot tell is none of them. Every branch has to produce a
-// definite answer before hostveil will act, because the failure it prevents is
+// definite answer before Hostveil will act, because the failure it prevents is
 // silent: overwriting a dpkg-owned binary leaves the package database
 // describing a file that is no longer there, and the next `apt upgrade` either
 // reverts the update or refuses to proceed, neither of which points back at

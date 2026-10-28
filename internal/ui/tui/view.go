@@ -98,11 +98,11 @@ func newStyles(t theme.Theme) *styles {
 // host can carry many Manual findings by design, which must not read as an
 // emergency, so both are muted rather than heats (see the Palette doc
 // comment) and merely distinct from each other and from the neutral grey.
-// Unset stays on the plain dim grey: it is not a kind hostveil ever assigns
+// Unset stays on the plain dim grey: it is not a kind Hostveil ever assigns
 // on purpose, so it gets no color of its own to be muted about.
 func (s *styles) kindStyle(f model.Finding) lipgloss.Style {
 	// Pending is drawn in the accent rather than the safe green, and the
-	// distinction is the point: green on this column has meant "hostveil can
+	// distinction is the point: green on this column has meant "Hostveil can
 	// deal with this" since the column existed, and a row whose fix is
 	// written but not in force is not dealt with. The accent is what this
 	// interface spends on "there is something for you here", which is exactly
@@ -192,7 +192,7 @@ func (s *styles) band(v uint8) color.Color {
 //
 // █ is East Asian *Ambiguous*, so on a terminal that draws that class
 // double-width — which an operator says with RUNEWIDTH_EASTASIAN=1, and which
-// internal/textwidth explains hostveil must honour — it is two columns. ░ is
+// internal/textwidth explains Hostveil must honour — it is two columns. ░ is
 // not ambiguous and is always one. That asymmetry is why a meter cannot be
 // built by repeating either glyph `width` times, and why it cannot be built by
 // dividing `width` by a single cell size either: the answer differs between
@@ -945,7 +945,7 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 		if m.selected[f.Key()] {
 			mark = s.safe.Render(padRight(m.gl.Of(glyph.OK)+" ", markW))
 		} else {
-			// Safe, not slate. The dot means hostveil can fix this row by
+			// Safe, not slate. The dot means Hostveil can fix this row by
 			// itself, which is the same claim the FIXABLE chip makes and
 			// spends the same color on — and drawn in the muted grey it was
 			// the only mark on the screen that said something while looking
@@ -1041,7 +1041,7 @@ const kindColumns = 6
 // kindCell is what the remediation column says for a row.
 //
 // A pending row does not report its RemediationKind. The kind answers "what
-// is there to do about this", and for a row hostveil has already fixed the
+// is there to do about this", and for a row Hostveil has already fixed the
 // answer is no longer "auto" — nothing is going to be pressed here, and the
 // row is still on the list only because the change has not reached the host.
 // Showing AUTO there would invite the operator to apply a fix that has
@@ -1139,7 +1139,7 @@ func sourceLabel(s model.Source) string {
 // It replaces a line that appeared only while a filter was set and named
 // what it was. That told the user what they had just pressed and nothing
 // else: the shape of the report — how much of a wall of findings is
-// High, how much of it hostveil can fix on its own — was reachable only
+// High, how much of it Hostveil can fix on its own — was reachable only
 // by scrolling and counting, in the one interface where scrolling is most
 // expensive. The dashboard has never made anyone do that, and this is its
 // chip bar: a count per severity, the fixable count, and the active filter
@@ -1469,7 +1469,7 @@ func (m *appModel) previewRows() []string {
 
 	// What this fix is, before what it does. The header above carries only the
 	// fix's label, so the screen an operator reads immediately before pressing
-	// y did not name the finding it repairs, whether hostveil considers it
+	// y did not name the finding it repairs, whether Hostveil considers it
 	// safe to apply unattended, or the file it edits — while the rollback
 	// confirmation, which asks a strictly smaller question, said all three.
 	meta := strings.ToUpper(m.preview.FindingID + "  ·  " + m.preview.Kind.String())
@@ -1927,7 +1927,7 @@ func (m *appModel) rollbackRows() []string {
 //
 // It says the two things the CLI's --force text says, because they are the
 // two the operator cannot recover from not knowing: the file has changed
-// since hostveil wrote it, and rollback keeps no backup of its own, so
+// since Hostveil wrote it, and rollback keeps no backup of its own, so
 // whatever is in it now is gone for good.
 func (m *appModel) forceRows() []string {
 	s := m.sty()

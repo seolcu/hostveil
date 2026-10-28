@@ -117,6 +117,7 @@ column is what you pass to `hostveil fix` and `hostveil explain`.
 | **Reverse proxy** | `proxy.*` | The thing on 443 that everything else is behind. nginx read from `/etc/nginx`, following `include` into `conf.d` and `sites-enabled`, for deprecated TLS versions and directory listing; Caddy read from `/etc/caddy` or a container's mounted Caddyfile, for an admin API reachable off loopback — no authentication, and it can replace the whole configuration — and for `file_server browse`; Traefik read from your Compose files, for the dashboard served in insecure mode — an unauthenticated page listing every backend address behind the proxy, and the setting nearly every Traefik tutorial tells you to add | — |
 | **Proxmox VE host** | `proxmox.*` | The hypervisor every guest trusts, read only on a host with `/etc/pve`: a web interface on 8006 that accepts a login from any address, root@pam logging in with a password alone, and an enterprise repository enabled without a subscription — so Proxmox's own packages silently stop updating while Debian's keep arriving. The datacenter firewall is recognised by the firewall domain rather than counted twice | a Proxmox VE host |
 | **Single-node Kubernetes** | `kube.*` | One box running one k3s or k0s node, with k3s's settings resolved across all four of its layers (config.yaml, its drop-ins, the service environment file, the command line): a cluster-admin kubeconfig or join token readable by every account, `anonymous-auth=true` on the API server or kubelet, and Secrets stored unencrypted | k3s or k0s |
+| **Forensic readiness** | `forensic.*` | Whether the host keeps the evidence an investigation would need: a journal that survives reboots and keeps 90 days, auth and web logs rotated for 90 days, auditd recording what the web server's account executes, a synchronised clock, request sizes in the access log, and a copy of the logs off the host | — |
 | **Image CVEs** *(optional)* | `cve.*` | Known vulnerabilities in the images your Compose services run | Trivy |
 
 If Docker or Trivy is missing, those domains are skipped and the score is
@@ -124,8 +125,8 @@ renormalized over the ones that ran, so a partial scan never comes back as a
 misleadingly perfect result.
 
 <!-- hostveil:counts -->
-Hostveil can report **184 findings** across those domains, and **176 of them
-carry a fix** — 75 Hostveil will apply unattended, 101 only after you have read
+Hostveil can report **192 findings** across those domains, and **180 of them
+carry a fix** — 75 Hostveil will apply unattended, 105 only after you have read
 the diff.
 <!-- /hostveil:counts -->
 

@@ -67,5 +67,9 @@ func Finding(id string) model.Finding {
 		model.WithMetadata("unit", "docker.service"),
 		model.WithMetadata("file_endpoints", "tcp://0.0.0.0:2375"),
 		model.WithMetadata("file_hosts", "tcp://0.0.0.0:2375"),
+		model.WithMetadata("journald_dropin", "/etc/systemd/journald.conf.d/90-hostveil-forensic.conf"),
+		model.WithMetadata("service_uid", "33"),
+		model.WithMetadata("logrotate_file", "/etc/logrotate.d/rsyslog"),
+		model.WithMetadata("default_period", "weekly"),
 	)
 }

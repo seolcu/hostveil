@@ -83,7 +83,7 @@ func TestPersistWritesTheDropInWithNoOrigin(t *testing.T) {
 
 // A package's file under /usr/lib is replaced on upgrade, so editing it would
 // be undone by something that leaves no history entry and that rollback
-// cannot reach. hostveil writes the drop-in and says it will not work, rather
+// cannot reach. Hostveil writes the drop-in and says it will not work, rather
 // than reporting a success the next boot contradicts.
 func TestPersistDeclinesToEditAPackageOwnedFile(t *testing.T) {
 	a := persist(t, "/usr/lib/sysctl.d/99-vendor.conf:3")
@@ -97,7 +97,7 @@ func TestPersistDeclinesToEditAPackageOwnedFile(t *testing.T) {
 }
 
 func TestSetSysctlAssignments(t *testing.T) {
-	stamp := "\n# by hostveil\n"
+	stamp := "\n# by Hostveil\n"
 	for _, tc := range []struct {
 		name  string
 		in    string
@@ -127,13 +127,13 @@ func TestSetSysctlAssignments(t *testing.T) {
 			name:  "appends a key the file does not assign",
 			in:    "vm.swappiness = 10\n",
 			pairs: []string{"fs.protected_symlinks=1"},
-			want:  "vm.swappiness = 10\n\n# by hostveil\nfs.protected_symlinks = 1\n",
+			want:  "vm.swappiness = 10\n\n# by Hostveil\nfs.protected_symlinks = 1\n",
 		},
 		{
 			name:  "rewrites one key and appends the other",
 			in:    "fs.protected_symlinks = 0\n",
 			pairs: []string{"fs.protected_symlinks=1", "fs.protected_hardlinks=1"},
-			want:  "fs.protected_symlinks = 1\n\n# by hostveil\nfs.protected_hardlinks = 1\n",
+			want:  "fs.protected_symlinks = 1\n\n# by Hostveil\nfs.protected_hardlinks = 1\n",
 		},
 		{
 			name:  "leaves commented-out assignments alone",
@@ -147,13 +147,13 @@ func TestSetSysctlAssignments(t *testing.T) {
 			// rewriting its value would change others silently.
 			in:    "net.ipv4.conf.*.accept_redirects = 1\n",
 			pairs: []string{"net.ipv4.conf.all.accept_redirects=0"},
-			want:  "net.ipv4.conf.*.accept_redirects = 1\n\n# by hostveil\nnet.ipv4.conf.all.accept_redirects = 0\n",
+			want:  "net.ipv4.conf.*.accept_redirects = 1\n\n# by Hostveil\nnet.ipv4.conf.all.accept_redirects = 0\n",
 		},
 		{
 			name:  "adds the missing trailing newline before appending",
 			in:    "vm.swappiness = 10",
 			pairs: []string{"kernel.dmesg_restrict=1"},
-			want:  "vm.swappiness = 10\n\n# by hostveil\nkernel.dmesg_restrict = 1\n",
+			want:  "vm.swappiness = 10\n\n# by Hostveil\nkernel.dmesg_restrict = 1\n",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -169,7 +169,7 @@ func TestSetSysctlAssignments(t *testing.T) {
 // a file carrying the same line twice is evidence of a tool that does not
 // know what it has done.
 func TestSetSysctlAssignmentsIsIdempotent(t *testing.T) {
-	stamp := "\n# by hostveil\n"
+	stamp := "\n# by Hostveil\n"
 	pairs := []string{"kernel.dmesg_restrict=1"}
 	once := setSysctlAssignments([]byte("vm.swappiness = 10\n"), pairs, stamp)
 	twice := setSysctlAssignments(once, pairs, stamp)

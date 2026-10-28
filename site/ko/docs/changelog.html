@@ -322,7 +322,7 @@
           <h3>새 기능</h3>
           <ul class="changelog-entries">
             <li>
-              <p><strong>ui:</strong> Manual과 Unavailable 발견 항목에 각자의 색을 부여했습니다. 지금까지는 같은 회색을 써서 "hostveil이 자동으로 하지 않는 일"과 "아직 아무도 고칠 수 없는 일"이 똑같아 보였습니다. 두 색 모두 긴급도와 관계가 없으므로 심각도 색 대신 채도가 낮은 색을 썼습니다. 심각도 색과 같은 대비 하한 테스트와 256색 충돌 테스트를 통과해야 합니다. 대시보드에는 정렬 가능한 발견 항목 목록, 일괄 Fix의 항목별 진행 창, 더 명확한 확인·결과 창이 추가됐습니다. 진행 창은 새 <code>POST /api/fix/one</code>을 쓰며, 적용 대상 판단은 <code>Engine.ApplyOne</code>을 통해 일괄 경로와 같은 규칙을 따릅니다.</p>
+              <p><strong>ui:</strong> Manual과 Unavailable 발견 항목에 각자의 색을 부여했습니다. 지금까지는 같은 회색을 써서 "Hostveil이 자동으로 하지 않는 일"과 "아직 아무도 고칠 수 없는 일"이 똑같아 보였습니다. 두 색 모두 긴급도와 관계가 없으므로 심각도 색 대신 채도가 낮은 색을 썼습니다. 심각도 색과 같은 대비 하한 테스트와 256색 충돌 테스트를 통과해야 합니다. 대시보드에는 정렬 가능한 발견 항목 목록, 일괄 Fix의 항목별 진행 창, 더 명확한 확인·결과 창이 추가됐습니다. 진행 창은 새 <code>POST /api/fix/one</code>을 쓰며, 적용 대상 판단은 <code>Engine.ApplyOne</code>을 통해 일괄 경로와 같은 규칙을 따릅니다.</p>
             </li>
             <li>
               <p><strong>demo:</strong> AI 공급자 환경 변수를 데모 VM으로 넘깁니다. <code>demo/run.sh</code>는 git에 올라가지 않는 <code>demo/.env</code>가 있으면 읽어서(<code>demo/.env.example</code> 참고), 알려진 공급자 변수를 <code>scan</code>과 <code>web</code>에 전달합니다. <code>vagrant ssh -c</code>는 호스트 환경을 스스로 넘기지 않습니다.</p>
@@ -541,7 +541,7 @@
           <ul class="changelog-entries">
             <li>
               <p><strong>core:</strong> 아직 적용되지 않은 수정은 점수에 반영되지 않습니다 (<a href="https://github.com/seolcu/hostveil/issues/735">#735</a>). <code>applyFix</code>가 <em>호스트를 확인하기도 전에</em> 항목을 수정됨으로 표시하고 점수를 다시 매겼고, <code>ApplyFix</code>는 그 뒤에야 재점검했습니다. 그래서 "해당 항목이 아직 그대로 보고됩니다"라는 메시지가, 이미 그 수정을 인정해 올라간 점수 밑에 찍혔습니다. Debian 컨테이너에서 실제 바이너리로 측정한 결과, <code>sysctl.ptrace-scope</code> 드롭인을 적용하자 <code>/proc/sys</code>는 전혀 바뀌지 않았는데도 점수가 78 → 80으로 움직였습니다. 커널이 읽지도 않은 파일을 쓴 대가로 2점입니다.</p>
-              <p><code>model.Finding.Pending</code>이 "적용됨"과 "실제로 적용 중"을 분리합니다. 변경이 호스트에 닿을 때까지 해당 항목은 계속 감점되고, <code>Fixed</code>는 "hostveil이 뭔가를 적용했다"는 뜻을 그대로 유지합니다 — 일괄 적용이 같은 수정을 두 번 하지 않는 것이 이 구분 덕분입니다. 위험이 아직 서 있는지는 <code>Finding.Active</code>에, 일괄 적용이 손댈 대상인지는 <code>IsAutoFixable</code>에 물어보면 됩니다.</p>
+              <p><code>model.Finding.Pending</code>이 "적용됨"과 "실제로 적용 중"을 분리합니다. 변경이 호스트에 닿을 때까지 해당 항목은 계속 감점되고, <code>Fixed</code>는 "Hostveil이 뭔가를 적용했다"는 뜻을 그대로 유지합니다 — 일괄 적용이 같은 수정을 두 번 하지 않는 것이 이 구분 덕분입니다. 위험이 아직 서 있는지는 <code>Finding.Active</code>에, 일괄 적용이 손댈 대상인지는 <code>IsAutoFixable</code>에 물어보면 됩니다.</p>
               <p>Pending은 <code>fix.Action.TakesEffectOn</code>, 즉 수정 스스로의 선언에서 나옵니다. 그래서 재점검을 하지 않는 일괄 경로도 단건 경로와 같은 답에 도달합니다. <code>VerifyStillPresent</code>는 이를 승격시키지만 <code>VerifyUnavailable</code>은 그러지 않습니다. "확인할 수 없었다"는 증거가 아니고, 그것을 증거로 치면 재점검이 재점검하지 않는 쪽보다 비관적이 되어 — 하나씩 적용한 사람이 <code>fix --all</code>을 돌린 사람보다 낮은 점수를 받게 됩니다.</p>
               <p><code>persistSysctl</code>에 진작 있었어야 할 <code>TakesEffectOn</code>을 붙였습니다. sysctl 점검기는 <code>/proc/sys</code>를 읽는데 수정은 드롭인 파일을 씁니다. 이 필드가 존재하는 이유가 바로 그 "산출물과 판정 근거의 불일치"인데, 그 사실이 아무것도 손댈 수 없는 <code>Warning</code> 문구 안에 갇혀 있었습니다.</p>
               <p>컨테이너가 많은 호스트에서 <code>fix --all</code>은 이제 적용한 내역 옆에 움직이지 않은 점수를 함께 보고합니다. 그래서 <code>BatchOutcome</code>이 어떤 수정이 무엇을 기다리고 있는지 밝힙니다 — 이 문장이 없으면 부정직한 숫자를 설명 불가능한 숫자로 바꾸는 셈이 됩니다.</p>

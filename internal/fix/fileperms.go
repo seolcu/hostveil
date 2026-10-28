@@ -168,7 +168,7 @@ func buildTightenMode(f model.Finding) (Fix, error) {
 // differs by distribution; the group is left exactly as it is, because the
 // owner is the half of this finding that is wrong. What stays true is the
 // Warning: ownership landing on the wrong account is usually a symptom, and
-// chowning the files hostveil knows about fixes the visible part.
+// chowning the files Hostveil knows about fixes the visible part.
 func buildRestoreRootOwner(f model.Finding) (Fix, error) {
 	var paths []string
 	for _, p := range strings.Split(f.Evidence["owner-paths"], model.PathListSeparator) {

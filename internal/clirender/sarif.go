@@ -166,10 +166,10 @@ func sarifLevel(s model.Severity) string {
 // securitySeverity is the 0–10 scale GitHub code scanning ranks by, which
 // buckets at 9.0 (critical), 7.0 (high) and 4.0 (medium).
 //
-// hostveil's High lands in code scanning's "critical" band rather than its
-// "high" one, and the mismatched words are deliberate. hostveil has three
+// Hostveil's High lands in code scanning's "critical" band rather than its
+// "high" one, and the mismatched words are deliberate. Hostveil has three
 // levels and code scanning has four, so they cannot line up by name; what
-// they can line up on is meaning. hostveil's top level says the problem is
+// they can line up on is meaning. Hostveil's top level says the problem is
 // reachable now, and code scanning's critical band is the one that means act
 // today.
 func securitySeverity(s model.Severity) string {

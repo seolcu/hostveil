@@ -81,7 +81,7 @@ func fail2banInstalled(ctx context.Context, r platform.CommandRunner) (installed
 // This is a section/key scan in the same spirit as statements() below —
 // not a real INI parser, because fail2ban's %(...)s interpolation and
 // [DEFAULT] inheritance would make a faithful parse a much bigger job than
-// deciding "does hostveil's own drop-in, or one the operator already wrote,
+// deciding "does Hostveil's own drop-in, or one the operator already wrote,
 // turn this on" needs. It returns the files it could not read rather than
 // treating them as absent: jail.d commonly holds files an unprivileged scan
 // cannot open, and reading that as "no jail configured" is exactly the

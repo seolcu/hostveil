@@ -88,7 +88,7 @@ var (
 // on it from the registry, and returns how the findings resolve.
 //
 // An Unavailable cell is left as written: the registry has no fix for it
-// either way, and Unavailable — nobody can fix it, not only hostveil — is a
+// either way, and Unavailable — nobody can fix it, not only Hostveil — is a
 // fact about the finding the registry does not record.
 func syncChecks(frag, lang string, r *fix.Registry) (string, tally, error) {
 	labels := kindLabels[lang]

@@ -364,7 +364,7 @@ and reset in a new body face.
 ### Features
 
 * **ui:** give Manual and Unavailable findings their own colours. They
-  used to share one grey, so "hostveil will not do this unattended" and
+  used to share one grey, so "Hostveil will not do this unattended" and
   "nobody can fix this yet" read as the same thing. Both colours are
   muted rather than heat colours, because neither says anything about
   urgency. They are held to the same contrast floor and 256-colour
@@ -1928,7 +1928,7 @@ operator actually takes.
 * **tui:** the grid also holds where a terminal draws East Asian Ambiguous
   characters wide. Every glyph the frame is built from — `─ │ ┬ ▌ ░ █ · ✓` —
   is in that class, and an operator whose terminal renders it double-width
-  says so with `RUNEWIDTH_EASTASIAN=1`, which hostveil honours. Four places
+  says so with `RUNEWIDTH_EASTASIAN=1`, which Hostveil honours. Four places
   counted runes where they should have counted columns: the rule was built as
   `width` dashes and came out twice the terminal, so it was cut back and every
   junction past halfway went with it; the column arithmetic charged one column
@@ -2562,7 +2562,7 @@ that could describe work nobody did.
   whatever the local model wrote. The interesting part of the fix is the
   width table: the obvious library call picks one from `LANG` and `LC_ALL` at
   startup, and under a Korean locale it calls `…`, `→`, `±` and `·` two
-  columns wide — all four of which hostveil draws — so the same binary would
+  columns wide — all four of which Hostveil draws — so the same binary would
   have laid out screens differently for operators in different countries.
   An explicit table is pinned instead, and a test asserts it agrees with the
   one the terminal layer already uses.
@@ -2828,7 +2828,7 @@ to Review, which changes the button they carry, not the number.
   interfaces render what it returns, so the rule cannot drift the way the
   severity palette and the domain table each did before it.
 * **core:** re-check the finding after applying its fix
-  ([#607](https://github.com/seolcu/hostveil/issues/607)). "hostveil wrote
+  ([#607](https://github.com/seolcu/hostveil/issues/607)). "Hostveil wrote
   the file" and "the finding is gone" are different claims, and only the
   first was ever established — `markFixed` set the flag the moment an apply
   returned, and the score moved on that. A fix now re-runs its own domain
@@ -3022,7 +3022,7 @@ N/A rather than a perfect 100. Both replace a number that was never earned.
   troubleshooting guide the docs never had.
 * **install:** add an uninstall path, and verify each release's build
   provenance ([#581](https://github.com/seolcu/hostveil/issues/581)). Nothing
-  in the repository told a user how to remove hostveil, and nothing said that
+  in the repository told a user how to remove Hostveil, and nothing said that
   re-running the installer is how you upgrade. `--uninstall` removes the binary
   and deliberately leaves the state directory alone — those checkpoints are the
   backups of every file Hostveil has edited on the host, and uninstalling the

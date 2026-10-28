@@ -680,7 +680,7 @@ func TestAUnitThatIsNotFoundIsNotAnInspectedUnit(t *testing.T) {
 	}
 }
 
-// With no daemon.json and no readable unit, hostveil has consulted neither
+// With no daemon.json and no readable unit, Hostveil has consulted neither
 // source of the socket and TLS settings — and the default state of most hosts
 // is no daemon.json at all, so this is the ordinary shape of the failure
 // rather than an exotic one.
@@ -692,7 +692,7 @@ func TestAUnitThatIsNotFoundIsNotAnInspectedUnit(t *testing.T) {
 func TestNoDaemonJSONAndNoReadableUnitIsNotAudited(t *testing.T) {
 	h := host(t, "", cleanGroup, cleanPasswd, 0o660)
 	// env with no unit args scripts no `systemctl show` at all, so the call
-	// errors — a host whose unit hostveil cannot read.
+	// errors — a host whose unit Hostveil cannot read.
 	_, err := h.c.Check(context.Background(), env(hardenedInfo, ""))
 
 	var partial *check.PartialError
@@ -724,7 +724,7 @@ func TestDaemonJSONDoesNotMakeUpForAnUnreadableUnit(t *testing.T) {
 }
 
 // The largest behaviour change here, stated as its own case: on a host that
-// does not run systemd, the daemon's start-up flags live somewhere hostveil
+// does not run systemd, the daemon's start-up flags live somewhere Hostveil
 // cannot read — /etc/conf.d/docker under OpenRC, a supervisor's config, a
 // hand-typed command line — and `docker info` does not report them. So the two
 // API rules are genuinely unanswered there.

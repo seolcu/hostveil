@@ -326,7 +326,7 @@ func TestRollbackRefusesToDiscardExternalEdits(t *testing.T) {
 // Two fixes to the same file in sequence — what `fix --all` does with two
 // findings in one compose file — must not look like tampering. By the time
 // the first checkpoint is rolled back the file holds what the SECOND fix
-// wrote, which hostveil is responsible for.
+// wrote, which Hostveil is responsible for.
 func TestSequentialFixesToOneFileAreNotTampering(t *testing.T) {
 	dir := t.TempDir()
 	store := NewStore(dir)

@@ -10,7 +10,7 @@ import (
 )
 
 // dropInDir is where a persistent kernel parameter belongs on any systemd
-// distribution. hostveil writes one file per finding rather than appending
+// distribution. Hostveil writes one file per finding rather than appending
 // to a shared one, which is what keeps the fixes independent: applying the
 // second never has to read what the first wrote, and rolling one back
 // cannot take another's line with it.
@@ -258,7 +258,7 @@ func buildSysctlReview(f model.Finding) (Fix, error) {
 // legacyConfFile is read after every drop-in, so nothing written under
 // /etc/sysctl.d can override it. Ubuntu ships /etc/sysctl.d/99-sysctl.conf as
 // a symlink to it, which is how a file the operator has been editing for
-// years quietly outranks anything hostveil writes.
+// years quietly outranks anything Hostveil writes.
 const legacyConfFile = "/etc/sysctl.conf"
 
 // persistSysctl builds the alternative that survives a reboot.
@@ -315,7 +315,7 @@ func persistSysctl(f model.Finding, pairs []string, benefit string) Action {
 	warning := ""
 	if origin != "" && readAfter(origin, dropIn) {
 		// Reachable only if a distribution ships a late-sorting file setting
-		// an unsafe value, which none do — so hostveil does not edit
+		// an unsafe value, which none do — so Hostveil does not edit
 		// package-owned files under /usr/lib to work around it (an upgrade
 		// would undo the change with no checkpoint involved). It says so
 		// instead of reporting a success the next boot will contradict.

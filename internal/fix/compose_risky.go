@@ -48,7 +48,7 @@ const rollbackNote = "This is a file edit with a checkpoint, so rolling it back 
 // file decides a value, but which file wrote the line. Deleting it from a file
 // that does not contain it is an error, and deleting it from one of two that
 // do leaves the other one in force while the finding clears — so exactly one
-// file must carry it, or hostveil says it cannot tell.
+// file must carry it, or Hostveil says it cannot tell.
 func composeKeyTarget(f model.Finding, has func(compose.Service) bool) (string, error) {
 	files, err := composeFiles(f)
 	if err != nil {
@@ -285,7 +285,7 @@ func buildReadOnlyRootfs(f model.Finding) (Fix, error) {
 	}, nil
 }
 
-// nonRootUsers are the alternatives for ds009. hostveil cannot see what UID
+// nonRootUsers are the alternatives for ds009. Hostveil cannot see what UID
 // an image supports, so these are the two conventions an image is most likely
 // to be built around, with the one an image's own non-root user usually has
 // first.

@@ -13,7 +13,7 @@ import (
 // commentedAgentConfig is the file this whole path exists for: JSON5 with the
 // operator's own reasoning written into it. If a fix reflows this, the fix is
 // worse than no fix — the operator opens the file afterwards and cannot find
-// what they wrote or tell what hostveil changed.
+// what they wrote or tell what Hostveil changed.
 const commentedAgentConfig = `{
   "gateway": {
     // "so I can reach it from the tablet in the kitchen"
@@ -112,7 +112,7 @@ func TestAgentConfigApplyRollbackRoundTrip(t *testing.T) {
 
 // TestAgentConfigApplyRefusesASymlinkedTarget is the obligation register.go
 // records for any fix reaching into a home: the account owns every component
-// of that path, hostveil is root, and a preview renders whatever it read.
+// of that path, Hostveil is root, and a preview renders whatever it read.
 func TestAgentConfigApplyRefusesASymlinkedTarget(t *testing.T) {
 	dir := t.TempDir()
 	secret := filepath.Join(dir, "secret.json")

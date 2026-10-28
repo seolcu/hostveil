@@ -75,7 +75,7 @@ func TestASoundCommandStillAsksForRoot(t *testing.T) {
 // With no sudo on PATH the function returned in silence, so the operator found
 // out they needed root one domain at a time, half way through a scan, from
 // findings that read like a broken tool rather than a missing privilege. The
-// two lines above it have always explained why hostveil is *asking*.
+// two lines above it have always explained why Hostveil is *asking*.
 func TestAMissingSudoSaysSoRatherThanGoingQuiet(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("already root; elevation is not attempted at all")
@@ -88,7 +88,7 @@ func TestAMissingSudoSaysSoRatherThanGoingQuiet(t *testing.T) {
 	out, _ := cmd.CombinedOutput()
 
 	if !strings.Contains(string(out), "no sudo on PATH") {
-		t.Errorf("hostveil ran unprivileged without saying why:\n%s", out)
+		t.Errorf("Hostveil ran unprivileged without saying why:\n%s", out)
 	}
 }
 
