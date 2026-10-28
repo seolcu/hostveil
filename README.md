@@ -341,10 +341,9 @@ The full model, including why each axis cap is the size it is, is on the
 All three are thin layers over one shared engine, so they behave identically.
 
 The TUI and the dashboard share six color themes: `hostveil` (the default),
-`onedark`, `gruvbox`, `nord`, `catppuccin` and `tokyonight`, and six screen arrangements
-(`console` is the default). Press `t` or `l` in the TUI to pick one and have
-it remembered, use the pickers in the dashboard's status bar, or set
-`--theme`/`--layout` or `HOSTVEIL_THEME`/`HOSTVEIL_LAYOUT` explicitly.
+`onedark`, `gruvbox`, `nord`, `catppuccin` and `tokyonight`. Press `t` in the
+TUI to pick one and have it remembered, use the picker in the dashboard's
+status bar, or set `--theme` or `HOSTVEIL_THEME` explicitly.
 
 The TUI and `scan` can also draw their status markers from a patched
 [Nerd Font](https://www.nerdfonts.com/): `--glyphs nerd`, or

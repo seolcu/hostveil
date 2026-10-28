@@ -339,11 +339,9 @@ Docker가 없는 호스트가 점수를 공짜로 받는 일은 없습니다. �
 셋 다 하나의 엔진 위에 얹은 얇은 층이라 동작이 같습니다.
 
 TUI와 대시보드는 `hostveil`(기본값), `onedark`, `gruvbox`, `nord`,
-`catppuccin`, `tokyonight`까지 여섯 가지 색상 테마를 함께 쓰고, `console`을 기본값으로
-하는 화면 배치 여섯 가지도 함께 씁니다. TUI에서 `t`나 `l`을 누르면 고른
-것을 기억하고, 대시보드는 상태 표시줄의 선택기를 쓰면 됩니다. `--theme`,
-`--layout`이나 `HOSTVEIL_THEME`, `HOSTVEIL_LAYOUT`으로 직접 지정할 수도
-있습니다.
+`catppuccin`, `tokyonight`까지 여섯 가지 색상 테마를 함께 씁니다. TUI에서
+`t`를 누르면 고른 테마를 기억하고, 대시보드는 상태 표시줄의 선택기를 쓰면
+됩니다. `--theme`이나 `HOSTVEIL_THEME`으로 직접 지정할 수도 있습니다.
 
 TUI와 `scan`은 패치된
 [Nerd Font](https://www.nerdfonts.com/)에서 상태 기호를 가져올 수도

@@ -18,7 +18,7 @@ import (
 // did not run. They had different indents, two columns and four, so the rail
 // drew two depths of hierarchy at once, which is no hierarchy at all.
 func TestEverySecondRailRowIsBranchedUnderItsDomain(t *testing.T) {
-	m := layoutModel("console", 100, 44)
+	m := layoutModel(100, 44)
 	rows := m.railRows(railWidth, 44)
 
 	var pairs, branched int
@@ -93,7 +93,7 @@ func TestTheRailBranchIsBudgetedInColumns(t *testing.T) {
 	// budget — so under this variable every one of them is over-wide for a
 	// reason that predates the branch and belongs to its own fix. See the skip
 	// in TestTheHeaderComposesRowsThatFitBeforeTheFrameClipsThem.
-	m := layoutModel("console", 100, 44)
+	m := layoutModel(100, 44)
 	var branched int
 	for i, row := range m.railRows(railWidth, 44) {
 		if !strings.HasPrefix(plain(row), railBranch) {
@@ -109,47 +109,10 @@ func TestTheRailBranchIsBudgetedInColumns(t *testing.T) {
 	}
 }
 
-// The inline block does not say again what the row above it just said.
-//
-// It is drawn immediately under the list row for the same finding, and that
-// row carries the severity and the id — so the detail view's header repeated
-// two of its three lines four columns to the right of where the reader had
-// just read them.
-//
-// What it keeps is what the row above cannot show. The remediation kind is on
-// no list row at all (the list marks only whether a finding is Auto-fixable,
-// so Review and Manual are indistinguishable there), and the service is
-// dropped from the cursor's row specifically — findingRow computes the suffix
-// in its non-cursor branch only.
-func TestTheInlineBlockDoesNotRepeatTheRowAboveIt(t *testing.T) {
-	m := layoutModel("inline", 120, 34)
-	m.cursor = 0
-	f := m.active[0]
-
-	block := m.inlineRows(120)
-	if len(block) == 0 {
-		t.Fatal("the inline block is empty")
-	}
-	body := plain(strings.Join(block, "\n"))
-
-	if strings.Contains(body, strings.ToUpper(f.Severity.String())) {
-		t.Errorf("the inline block repeats the severity the row above shows:\n%s", body)
-	}
-	if strings.Contains(body, strings.ToUpper(f.ID)) {
-		t.Errorf("the inline block repeats the id the row above shows:\n%s", body)
-	}
-	if !strings.Contains(body, strings.ToUpper(f.Remediation.String())) {
-		t.Errorf("the inline block drops the remediation kind, which no list row shows:\n%s", body)
-	}
-	if f.Service != "" && !strings.Contains(body, f.Service) {
-		t.Errorf("the inline block drops the service, which the cursor's row does not show:\n%s", body)
-	}
-}
-
 // And the full-screen detail keeps its header, because there is no row above
 // it there. The two share detailFactsRows and nothing else.
 func TestTheFullDetailKeepsItsHeader(t *testing.T) {
-	m := layoutModel("console", 120, 34)
+	m := layoutModel(120, 34)
 	m.mode = modeDetail
 	m.cursor = 0
 	f := m.active[0]
@@ -162,12 +125,12 @@ func TestTheFullDetailKeepsItsHeader(t *testing.T) {
 	}
 }
 
-// The facts stay in one copy across all three renderings. A second copy is a
+// The facts stay in one copy across both renderings. A second copy is a
 // second place for the AI box, the how-to, or the why-no-fix note to be
 // forgotten — which is what detailBodyRows' own note has said since the pane
 // was added.
-func TestTheThreeDetailRenderingsShareTheirFacts(t *testing.T) {
-	m := layoutModel("console", 120, 34)
+func TestTheDetailRenderingsShareTheirFacts(t *testing.T) {
+	m := layoutModel(120, 34)
 	m.cursor = 0
 	f := m.active[0]
 
@@ -177,7 +140,6 @@ func TestTheThreeDetailRenderingsShareTheirFacts(t *testing.T) {
 	}
 	for name, rows := range map[string][]string{
 		"the full-screen detail": m.detailBodyRows(f, 80),
-		"the inline block":       m.inlineRows(120),
 	} {
 		if !strings.Contains(plain(strings.Join(rows, "\n")), "HOW TO FIX") {
 			t.Errorf("%s does not carry the shared facts", name)

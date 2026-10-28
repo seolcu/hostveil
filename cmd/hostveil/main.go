@@ -298,10 +298,6 @@ TUI and dashboard flags:
                   nerd draws them from a patched Nerd Font; a terminal cannot
                   be asked what font it has, so this is opt-in. Also on scan,
                   and settable once with HOSTVEIL_GLYPHS.
-  --layout NAME   Screen arrangement for tui and serve: console (default),
-                  split, triage, railverdict, lanes, inline. The TUI's picker
-                  (press l) remembers your choice; --layout and
-                  HOSTVEIL_LAYOUT override it.
   --addr ADDR     serve only: host:port to bind the dashboard to (default
                   127.0.0.1:8787); the port is not optional. The dashboard
                   answers only requests addressed to localhost, so this cannot
@@ -339,7 +335,6 @@ Environment:
                        cached answer to "is there a newer release" once a day.
   HOSTVEIL_THEME=NAME  Color theme for the TUI and the dashboard
   HOSTVEIL_GLYPHS=SET  Symbol set for the TUI and scan: plain or nerd
-  HOSTVEIL_LAYOUT=NAME Screen arrangement for the TUI and the dashboard
   NO_COLOR=1           Disable colored output
 
   HOSTVEIL_AI_PROVIDER=NAME    Which AI backend 'explain --ai' and the AI

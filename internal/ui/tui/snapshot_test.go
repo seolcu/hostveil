@@ -21,8 +21,7 @@ import (
 // default: a typo would otherwise produce a full set of frames that look
 // right, are named after the theme asked for, and are drawn in another one.
 const (
-	snapshotThemeEnv  = "HOSTVEIL_SNAPSHOT_THEME"
-	snapshotLayoutEnv = "HOSTVEIL_SNAPSHOT_LAYOUT"
+	snapshotThemeEnv = "HOSTVEIL_SNAPSHOT_THEME"
 )
 
 func snapshotTheme(t *testing.T) theme.Theme {
@@ -36,18 +35,6 @@ func snapshotTheme(t *testing.T) theme.Theme {
 		t.Fatalf("%s=%q is not a theme; have %s", snapshotThemeEnv, id, strings.Join(theme.IDs(), ", "))
 	}
 	return th
-}
-
-func snapshotLayout(t *testing.T) string {
-	t.Helper()
-	id := os.Getenv(snapshotLayoutEnv)
-	if id == "" {
-		return ""
-	}
-	if _, ok := LookupLayout(id); !ok {
-		t.Fatalf("%s=%q is not an arrangement; have %s", snapshotLayoutEnv, id, strings.Join(LayoutIDs(), ", "))
-	}
-	return id
 }
 
 // dumpEveryMode writes one .ans per screen into dir, in the order a user
@@ -94,10 +81,10 @@ func dumpEveryMode(t *testing.T, dir string) {
 	rep := model.Report{Findings: findings, Score: model.ScoreReport(findings, states)}
 	delta := model.Delta{Resolved: findings[:2], New: findings[2:3], StillPresent: 12}
 
-	pal, lay := snapshotTheme(t), snapshotLayout(t)
+	pal := snapshotTheme(t)
 	newModel := func(md mode) *appModel {
 		m := &appModel{mode: md, width: W, height: H, report: rep, delta: delta,
-			selected: map[string]bool{}, status: "Scanning…", layout: lay}
+			selected: map[string]bool{}, status: "Scanning…"}
 		m.setTheme(pal)
 		m.rebuildActive()
 		return m
@@ -233,7 +220,7 @@ func dumpEveryMode(t *testing.T, dir string) {
 	dump("10-theme", th)
 
 	clean := &appModel{mode: modeList, width: W, height: H, selected: map[string]bool{},
-		report: model.Report{Score: model.ScoreReport(nil, states)}, layout: lay}
+		report: model.Report{Score: model.ScoreReport(nil, states)}}
 	clean.setTheme(pal)
 	clean.rebuildActive()
 	dump("11-clean", clean)

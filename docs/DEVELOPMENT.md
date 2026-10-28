@@ -166,17 +166,14 @@ HOSTVEIL_SNAPSHOT=/tmp/cli go test ./internal/clirender -run TestSnapshotDump
 HOSTVEIL_SCREENSHOT_ADDR=127.0.0.1:8788 go test ./internal/ui/web -run TestScreenshotServe -v
 ```
 
-A palette and an arrangement are the two things only a picture can review, and
-each hook was reachable in exactly one of each — so reviewing the other five of
-either meant clicking through a live dashboard on some host, which is the drift
-these hooks were written to remove. Both are selectable, and an unknown ID is a
-hard failure rather than a silent fall back to the default: a typo would
-otherwise produce a full set of frames named after the palette asked for and
-drawn in another.
+A palette is the one thing only a picture can review, so both hooks take a
+theme ID. An unknown ID is a hard failure rather than a silent fall back to the
+default: a typo would otherwise produce a full set of frames named after the
+palette asked for and drawn in another.
 
 ```bash
-HOSTVEIL_SNAPSHOT_THEME=nord    HOSTVEIL_SNAPSHOT_LAYOUT=lanes    …  # TUI
-HOSTVEIL_SCREENSHOT_THEME=nord  HOSTVEIL_SCREENSHOT_LAYOUT=lanes  …  # dashboard
+HOSTVEIL_SNAPSHOT_THEME=nord    …  # TUI
+HOSTVEIL_SCREENSHOT_THEME=nord  …  # dashboard
 ```
 
 Rendering a `.ans` to PNG is `scripts/ansi2png.py`. A capture of a non-default

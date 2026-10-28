@@ -45,16 +45,6 @@ type Server struct {
 	// in the browser is stored there and overrides it for that browser only,
 	// so two people pointed at the same dashboard can read it differently.
 	theme string
-	// layout is the arrangement the page starts in, resolved the same way and
-	// overridden the same way: the browser's own picker stores a choice in
-	// localStorage and that wins for that browser.
-	//
-	// It is served rather than compiled in for the reason the theme is. The
-	// dashboard had no way to be started in an arrangement at all — the only
-	// route to one was the picker, so `hostveil serve` in a kiosk, a
-	// screenshot script or a systemd unit always opened on the shipped
-	// default and had to be clicked.
-	layout string
 	// token gates every route. See newToken for why loopback alone is not
 	// enough of a boundary here.
 	token string
@@ -69,28 +59,15 @@ type Server struct {
 
 // Opts is what the dashboard is told before it starts, beyond the engine and
 // the address.
-//
-// It is a struct because the two IDs are adjacent same-typed strings and
-// transposing them fails silently in the worst available way: layoutJS and
-// theme.CSS both fall back to their registry's default for an ID they do not
-// recognise — deliberately, so a caller may pass whatever it has — so
-// `--theme gruvbox --layout lanes` handed over the wrong way round produces
-// the shipped theme and the shipped arrangement, with nothing logged and
-// nothing on screen to say the flags were read at all.
-//
-// internal/ui/tui/tui.go's Opts states the same rule and gives the same
-// reason. The dashboard was the caller that had not been brought to it.
 type Opts struct {
-	// Theme and Layout are IDs, resolved from --theme/--layout, the
-	// environment, or the remembered choice. An unknown or empty one falls
-	// back to that registry's default.
-	Theme  string
-	Layout string
+	// Theme is an ID resolved from --theme, the environment, or the
+	// remembered choice. An unknown or empty one falls back to the default.
+	Theme string
 }
 
 // New builds a web Server bound to addr (e.g. "127.0.0.1:8787").
 func New(engine *core.Engine, addr string, opts Opts) *Server {
-	return &Server{engine: engine, addr: addr, theme: opts.Theme, layout: opts.Layout, token: newToken()}
+	return &Server{engine: engine, addr: addr, theme: opts.Theme, token: newToken()}
 }
 
 // newToken mints the per-run access token.
@@ -137,11 +114,6 @@ func (s *Server) Handler() http.Handler {
 	// domains, severities, remediation kinds, scan states, score bands —
 	// comes from internal/model rather than from copies kept in app.js.
 	mux.HandleFunc("GET /model.js", s.handleModelJS)
-	// The layout picker, on the same pattern for the same reason: a blocking
-	// script in <head> that restores the choice before first paint. See
-	// layout.go — it is scaffolding for choosing an arrangement, not a
-	// setting the dashboard means to keep.
-	mux.HandleFunc("GET /layout.js", s.handleLayoutJS)
 	mux.HandleFunc("GET /api/result", s.handleResult)
 	mux.HandleFunc("GET /api/preview", s.handlePreview)
 	mux.HandleFunc("GET /api/history", s.handleHistory)
@@ -406,10 +378,6 @@ func (s *Server) handleThemeJS(w http.ResponseWriter, _ *http.Request) {
 	serveGenerated(w, "text/javascript; charset=utf-8", theme.JS(s.theme))
 }
 
-func (s *Server) handleLayoutJS(w http.ResponseWriter, _ *http.Request) {
-	serveGenerated(w, "text/javascript; charset=utf-8", layoutJS(s.layout))
-}
-
 func (s *Server) handleModelJS(w http.ResponseWriter, _ *http.Request) {
 	serveGenerated(w, "text/javascript; charset=utf-8", modelJS())
 }
@@ -418,10 +386,9 @@ func (s *Server) handleModelJS(w http.ResponseWriter, _ *http.Request) {
 // than one shipped in the binary.
 //
 // It exists for the Cache-Control line. What these routes serve depends on
-// flags resolved at startup — the palette on --theme, the arrangement on
-// --layout — so a browser that cached one would keep the previous run's
-// appearance and there is nothing in the URL to tell it apart. The four
-// handlers each set it by hand, which made it something a fifth route could
+// flags resolved at startup — the palette on --theme — so a browser that cached one would keep the previous run's
+// appearance and there is nothing in the URL to tell it apart. The handlers
+// each set it by hand, which made it something a fifth route could
 // omit with no test and no symptom until somebody restarted with a different
 // flag and got the old look.
 func serveGenerated(w http.ResponseWriter, contentType, body string) {

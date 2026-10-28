@@ -99,8 +99,7 @@ var defs = []def{
 // There is deliberately no arrow row. "→" appears once, inside the
 // evidence-change detail a delta prints, three call frames below anything
 // holding an Options — and the Nerd arrow is a slightly longer arrow. A row
-// nothing asks for is a row that goes stale unnoticed, which is the same
-// argument the layout picker's dead-entry test makes.
+// nothing asks for is a row that goes stale unnoticed.
 
 // Of returns the symbol as this set spells it. An unknown symbol returns
 // "?" rather than the empty string: a renderer that asks for something that

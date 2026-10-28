@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/seolcu/hostveil/internal/ui/tui"
 	"github.com/seolcu/hostveil/internal/ui/web"
 )
 
@@ -16,25 +15,15 @@ func cmdServe(ctx context.Context, args []string) int {
 	var addr string
 	fs.StringVar(&addr, "addr", "127.0.0.1:8787", "address to bind the dashboard to")
 	themeID := fs.String("theme", "", "color theme ("+themeList()+")")
-	layoutID := fs.String("layout", "", "screen arrangement ("+strings.Join(tui.LayoutIDs(), ", ")+")")
 	if code := parseAndElevate(fs, args); code >= 0 {
 		return code
 	}
 
-	// The dashboard serves these as its starting palette and arrangement; a
+	// The dashboard serves this as its starting palette; a
 	// choice made in the browser's own picker is remembered per browser and
 	// overrides them, so two people pointed at one dashboard can read it
 	// differently.
 	t, err := resolveTheme(*themeID)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "hostveil:", err)
-		return 2
-	}
-	// The registries are held identical by TestLayoutRegistriesMatchTheDashboard,
-	// so resolving through the terminal's is not a category error: it is the
-	// same six IDs, and it is what already owns the precedence and the
-	// remembered choice.
-	lay, err := resolveLayout(*layoutID)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 2
@@ -62,7 +51,7 @@ func cmdServe(ctx context.Context, args []string) int {
 	// offers an AI explanation on request. Construction does no I/O, and
 	// with no provider reachable the route degrades to the deterministic
 	// explanation plus a note, so this costs a host without AI nothing.
-	srv := web.New(buildEngineWithAI(true), addr, web.Opts{Theme: t.ID, Layout: lay.ID})
+	srv := web.New(buildEngineWithAI(true), addr, web.Opts{Theme: t.ID})
 	// The URL carries a one-off access token, because loopback keeps the
 	// dashboard off the network but not away from other accounts on this
 	// machine — and every route here applies fixes or reads a scan of

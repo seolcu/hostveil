@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/seolcu/hostveil/internal/ui/theme"
 	"github.com/seolcu/hostveil/internal/ui/tui"
@@ -14,17 +13,10 @@ import (
 func cmdTUI(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("tui", flag.ContinueOnError)
 	themeID := fs.String("theme", "", "color theme ("+themeList()+")")
-	layoutID := fs.String("layout", "", "screen arrangement ("+strings.Join(tui.LayoutIDs(), ", ")+")")
 	glyphSet := fs.String("glyphs", "", "symbol set ("+glyphList()+")")
 	if code := parseAndElevate(fs, args); code >= 0 {
 		return code
 	}
-	lay, err := resolveLayout(*layoutID)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "hostveil:", err)
-		return 2
-	}
-
 	t, err := resolveTheme(*themeID)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
@@ -46,7 +38,6 @@ func cmdTUI(ctx context.Context, args []string) int {
 		Initial: t,
 		Save:    func(id string) error { return theme.Save(dir, id) },
 	}
-	layOpts := tui.LayoutOpts{Initial: lay.ID, Save: saveLayoutPref}
 	// writeReport is the same atomic-write-plus-elevation-chown-back path
 	// `scan --output` uses. The TUI cannot do this itself: it has no way to
 	// tell whether it is running elevated, and the layering test forbids it
@@ -57,7 +48,7 @@ func cmdTUI(ctx context.Context, args []string) int {
 	// The advisory AI provider is wired in for the detail view's `e` key.
 	// Construction does no I/O; with no provider reachable the view shows a
 	// one-line note instead.
-	if err := tui.Run(ctx, buildEngineWithAI(true), tui.Opts{Theme: opts, Layout: layOpts, Export: exportOpts, Glyphs: gl}); err != nil {
+	if err := tui.Run(ctx, buildEngineWithAI(true), tui.Opts{Theme: opts, Export: exportOpts, Glyphs: gl}); err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1
 	}

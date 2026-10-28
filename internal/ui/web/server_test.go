@@ -41,7 +41,7 @@ func testServer(t *testing.T) (*Server, string) {
 		Runner:   checktest.ComposeProjects(map[string]string{"demo": path}),
 	})
 	engine.Scan(context.Background(), nil)
-	return New(engine, "127.0.0.1:0", Opts{Theme: "nord", Layout: "lanes"}), path
+	return New(engine, "127.0.0.1:0", Opts{Theme: "nord"}), path
 }
 
 // authedClient returns a client carrying the dashboard's access token in its
@@ -964,7 +964,7 @@ func TestListenAndServeIsReachableBeforeTheInitialScanFinishes(t *testing.T) {
 		Fixes:    fix.Default(),
 		Store:    history.NewStore(t.TempDir()),
 	})
-	s := New(engine, "127.0.0.1:0", Opts{Theme: "nord", Layout: "lanes"})
+	s := New(engine, "127.0.0.1:0", Opts{Theme: "nord"})
 
 	// Claim a free port up front: ListenAndServe resolves ":0" internally
 	// and does not hand the chosen port back, so the test needs one it

@@ -48,25 +48,22 @@ func TestEveryVariableHostveilReadsIsDocumented(t *testing.T) {
 
 // And `--help`, which is the reference a user reaches without a browser.
 //
-// The site pages were pinned and `--help` was not, so it drifted: --layout and
-// HOSTVEIL_LAYOUT existed, worked, and were documented in the README and on
-// the site, while the built-in help listed --theme and --glyphs and said
-// nothing about them. cmd/hostveil/layout.go calls HOSTVEIL_LAYOUT "the
-// counterpart of HOSTVEIL_THEME and HOSTVEIL_GLYPHS", which is exactly the
-// claim `--help` was contradicting.
+// The site pages were pinned and `--help` was not, so it drifted: flags and
+// variables existed, worked, and were documented on the site while the
+// built-in help said nothing about them.
 func TestEveryVariableHostveilReadsIsInTheBuiltInHelp(t *testing.T) {
 	help := readRepoFile(t, filepath.Join("cmd", "hostveil", "main.go"))
 	// Only the ones a person sets deliberately. The elevation guards and the
 	// debug switch are documented on the site; --help is a short page and
 	// listing every internal variable would bury the four that matter.
-	for _, name := range []string{"HOSTVEIL_THEME", "HOSTVEIL_GLYPHS", "HOSTVEIL_LAYOUT", "HOSTVEIL_NO_SUDO"} {
+	for _, name := range []string{"HOSTVEIL_THEME", "HOSTVEIL_GLYPHS", "HOSTVEIL_NO_SUDO"} {
 		if !strings.Contains(help, name) {
 			t.Errorf("`hostveil help` does not mention %s", name)
 		}
 	}
 	// And the flags those variables override, for the same reason: a flag
 	// missing from --help is a feature the only offline reference denies.
-	for _, flag := range []string{"--theme", "--glyphs", "--layout", "--addr"} {
+	for _, flag := range []string{"--theme", "--glyphs", "--addr"} {
 		if !strings.Contains(help, flag+" ") {
 			t.Errorf("`hostveil help` does not document %s", flag)
 		}
