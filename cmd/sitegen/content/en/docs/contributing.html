@@ -1,24 +1,24 @@
             <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">Docs</a> / Contributing</p>
             <h1>Contributing</h1>
-            <p class="lead">Hostveil is Go, with a small dependency tree and a strict architecture. This page is a quick orientation — the canonical developer guide is <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>docs/DEVELOPMENT.md</code></a>, and the demo VM is documented in <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>.</p>
+            <p class="lead">Hostveil is Go, with a small dependency tree and a strict architecture. This page is a quick orientation. The canonical developer guide is <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>docs/DEVELOPMENT.md</code></a>, and the demo VM is documented in <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>.</p>
 
             <h2>Start here</h2>
             <div class="code-block"><pre><code>git clone https://github.com/seolcu/hostveil.git
 cd hostveil
 go build ./cmd/hostveil     # produces ./hostveil
 go test ./...</code></pre></div>
-            <p>Before opening a PR, run the full suite CI runs — <code>go build ./...</code>, <code>go vet</code>, <code>gofmt -l .</code>, <code>go mod tidy</code>, and <code>go test -race ./...</code>. The exact commands and the pinned Go version are in <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>.</p>
+            <p>Before opening a PR, run the full suite CI runs: <code>go build ./...</code>, <code>go vet</code>, <code>gofmt -l .</code>, <code>go mod tidy</code>, and <code>go test -race ./...</code>. The exact commands and the pinned Go version are in <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>.</p>
             <div class="callout">
               <span class="callout-label">Linux tool, portable tests</span>
-              <p>Hostveil <strong>builds and its tests pass on any OS</strong>, but running the binary meaningfully needs Linux with the relevant tools present — use the demo VM, and keep it off your own machine.</p>
+              <p>Hostveil <strong>builds and its tests pass on any OS</strong>, but running the binary meaningfully needs Linux with the relevant tools present. Use the demo VM, and keep it off your own machine.</p>
             </div>
 
             <h2>How it's built</h2>
-            <p>The engine lives in <code>internal/core</code>; the CLI, TUI, and web UIs are thin layers over it. An import-lint <strong>test</strong> enforces that <code>ui/*</code> never imports <code>fix</code>, <code>history</code>, <code>check</code>, or <code>compose</code> — that is what keeps the three interfaces behaving identically. The full repository layout and architecture notes are in <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>.</p>
+            <p>The engine lives in <code>internal/core</code>; the CLI, TUI, and web UIs are thin layers over it. An import-lint <strong>test</strong> enforces that <code>ui/*</code> never imports <code>fix</code>, <code>history</code>, <code>check</code>, or <code>compose</code>. That is what keeps the three interfaces behaving identically. The full repository layout and architecture notes are in <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>.</p>
 
             <h2 id="extending">Extending it</h2>
-            <p>There is no plugin system, no rule file and no config file, and that is deliberate. The axis weights have to sum to 100 for the score to mean anything; every finding has to carry a remediation someone argued about, and the register of findings deliberately left unfixed is <em>prose in a doc comment</em> that tests parse; and the distribution story is one signed static binary. A rule format would put all three behind a file nobody signs.</p>
-            <p>So extending Hostveil means writing Go and rebuilding — and the three things you might want to add differ in size by an order of magnitude.</p>
+            <p>There is no plugin system, no rule file and no config file, and that is deliberate. The axis weights have to sum to 100 for the score to mean anything; every finding has to carry a remediation someone argued about, and the register of findings left unfixed on purpose is <em>prose in a doc comment</em> that tests parse; and the distribution story is one signed static binary. A rule format would put all three behind an unsigned file.</p>
+            <p>So extending Hostveil means writing Go and rebuilding, and the three things you might want to add differ in size by an order of magnitude.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>What you are adding</th><th>What it takes</th></tr></thead>
@@ -29,7 +29,7 @@ go test ./...</code></pre></div>
                 </tbody>
               </table>
             </div>
-            <p>A new domain is one package implementing <code>Checker</code> — and then:</p>
+            <p>A new domain is one package implementing <code>Checker</code>, and then:</p>
             <ul>
               <li>a row in <code>sourceDefs</code>, which carries the domain&rsquo;s name, label, axis and <strong>weight</strong>;</li>
               <li>a <strong>rebalance</strong>: the weights sum to exactly 100 and a test enforces it, so a new domain is always funded by taking points from existing ones, and each transfer wants an argument;</li>
@@ -42,7 +42,7 @@ go test ./...</code></pre></div>
             <p>Around eleven tests fail until each of those is done, most of them in the documentation guards. That is the intended experience: the tests are the checklist, and they are the reason the docs describe the tool that exists.</p>
 
             <h2>Running it for real: the demo VM</h2>
-            <p><code>demo/</code> is a code-defined, deliberately vulnerable Ubuntu server; Hostveil is built from your working tree <em>inside</em> the VM, so it always reflects your current code. Bring it up with <code>./run.sh up</code> and scan with <code>./run.sh scan</code>. Per-platform provider setup, the 5-minute demo script, the reset workflow, and troubleshooting all live in <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>.</p>
+            <p><code>demo/</code> is a code-defined Ubuntu server, vulnerable by design; Hostveil is built from your working tree <em>inside</em> the VM, so it always reflects your current code. Bring it up with <code>./run.sh up</code> and scan with <code>./run.sh scan</code>. Per-platform provider setup, the 5-minute demo script, the reset workflow, and troubleshooting all live in <a href="https://github.com/seolcu/hostveil/blob/main/demo/README.md"><code>demo/README.md</code></a>.</p>
 
             <div class="docs-pager">
               <a class="button secondary" href="troubleshooting">← Troubleshooting</a>

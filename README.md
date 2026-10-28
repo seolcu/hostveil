@@ -22,8 +22,8 @@ backed up, and reversible with one command.
 
 ---
 
-Most self-hosted boxes — Jellyfin, Nextcloud, a game server, a local LLM, a
-self-hosted AI agent like OpenClaw or Hermes Agent — run on whatever defaults
+Most self-hosted boxes (Jellyfin, Nextcloud, a game server, a local LLM, a
+self-hosted AI agent like OpenClaw or Hermes Agent) run on whatever defaults
 the install left behind, and one bad default is
 enough to lose the box. Point Hostveil at one and it checks the places that
 matter most, gives you a single 0–100 score, describes each problem without
@@ -32,7 +32,7 @@ for file changes.
 
 ## Does it actually work?
 
-The September 11, 2026 rerun measured a deliberately weakened Ubuntu VM
+The September 11, 2026 rerun measured an Ubuntu VM weakened on purpose
 with Lynis, Docker's CIS benchmark, a TCP scan from a container on the Docker
 bridge, and the kernel's listening sockets. The seed runs Nextcloud with
 PostgreSQL, Jellyfin with Redis, and Portainer with Watchtower, with root SSH
@@ -77,8 +77,8 @@ file was restored.
 
 ## How it compares
 
-Most server-hardening tools are auditors — a report, and the fixing left to
-you. Hostveil closes that loop and applies the fix itself.
+Most server-hardening tools are auditors: they write a report and leave the
+fixing to you. Hostveil closes that loop and applies the fix itself.
 
 - **[Lynis](https://github.com/CISOfy/lynis)** is a thorough, expert-oriented
   host auditor. It prints a long list of suggestions but doesn't apply them,
@@ -105,17 +105,17 @@ column is what you pass to `hostveil fix` and `hostveil explain`.
 | --- | --- | --- | --- |
 | **Docker / Compose** | `compose.*` | Privileged mode, Docker socket mounts, exposed datastores and admin panels, host networking, unsafe bind mounts, shared PID and IPC namespaces, writable root filesystems, missing no-new-privileges, hardcoded secrets, and more. Your Compose files are audited natively, and so are containers started with a plain `docker run` | Docker |
 | **SSH** | `ssh.*` | Root login, password authentication, empty passwords, weak brute-force limits, login grace time, gateway ports, host-based and keyboard-interactive auth, X11 forwarding. Parsed from `sshd_config` directly, following `Include` into `sshd_config.d/`. Reading stops at the first `Match` block and the domain reports partial coverage, because a directive that applies to some connections is not a statement about the host | — |
-| **Firewall** | `firewall.*` | Whether ufw, firewalld, nftables or iptables is actually active, and whether published container ports are quietly bypassing it | — |
+| **Firewall** | `firewall.*` | Whether ufw, firewalld, nftables or iptables is actually active, and whether published container ports bypass it | — |
 | **Auto-updates** | `updates.*` | Whether unattended-upgrades (apt) or dnf-automatic (dnf) is enabled | — |
 | **Exposed services** | `ports.*` | Host processes listening on a non-loopback address, read from `ss`. This is the natively installed database, admin panel or app that a Compose audit cannot see | `ss` |
-| **Accounts** | `accounts.*` | Who can become root, and what stands in their way: non-root accounts carrying root's UID (0), login accounts with an empty password, and accounts a sudo rule lets run anything as root without being asked for one — the rule cloud and VM images ship so the first login works. sudo itself is asked what each account may actually run | root (for `/etc/shadow` and sudo) |
+| **Accounts** | `accounts.*` | Who can become root, and what stands in their way: non-root accounts carrying root's UID (0), login accounts with an empty password, and accounts a sudo rule lets run anything as root without being asked for one, which is the rule cloud and VM images ship so the first login works. sudo itself is asked what each account may actually run | root (for `/etc/shadow` and sudo) |
 | **File permissions** | `fileperms.*` | Over-permissive modes on `/etc/shadow`, `/etc/passwd`, `/etc/group`, `sshd_config`, and SSH host private keys | — |
 | **AI agent runtimes** | `agent.*` | Self-hosted agent runtimes, OpenClaw, Hermes Agent and Goose: a gateway reachable off-host, authentication turned off on one that is, unrestricted shell and elevated tools, a disabled sandbox, and loose permissions on the config and the API keys beside it | — |
 | **Kernel hardening** | `sysctl.*` | Eight kernel parameters read straight from `/proc/sys`: the quiet knobs that stop a local foothold from becoming root and a spoofed packet from becoming a route. No `sysctl` binary needed | — |
 | **Docker daemon** | `dockerd.*` | The daemon underneath your containers. An API served over TCP without TLS client verification is unauthenticated root for anyone who can reach the port; Hostveil also checks for a world-writable socket, who holds the socket's group, and the defaults for no-new-privileges, userns-remap and live-restore | Docker |
 | **Service hardening** | `systemd.*` | The units you installed yourself, read as systemd's own *effective* configuration: whether a service can gain privileges through setuid, write to `/usr` and `/etc`, read every user's home directory, or share `/tmp` with the rest of the host. Distribution units are left to the distribution | systemd |
-| **Reverse proxy** | `proxy.*` | The thing on 443 that everything else is behind. nginx read from `/etc/nginx`, following `include` into `conf.d` and `sites-enabled`, for deprecated TLS versions and directory listing; Caddy read from `/etc/caddy` or a container's mounted Caddyfile, for an admin API reachable off loopback — no authentication, and it can replace the whole configuration — and for `file_server browse`; Traefik read from your Compose files, for the dashboard served in insecure mode — an unauthenticated page listing every backend address behind the proxy, and the setting nearly every Traefik tutorial tells you to add | — |
-| **Proxmox VE host** | `proxmox.*` | The hypervisor every guest trusts, read only on a host with `/etc/pve`: a web interface on 8006 that accepts a login from any address, root@pam logging in with a password alone, and an enterprise repository enabled without a subscription — so Proxmox's own packages silently stop updating while Debian's keep arriving. The datacenter firewall is counted once, by the firewall domain | a Proxmox VE host |
+| **Reverse proxy** | `proxy.*` | The thing on 443 that everything else is behind. nginx read from `/etc/nginx`, following `include` into `conf.d` and `sites-enabled`, for deprecated TLS versions and directory listing; Caddy read from `/etc/caddy` or a container's mounted Caddyfile, for an admin API reachable off loopback (no authentication, and it can replace the whole configuration) and for `file_server browse`; Traefik read from your Compose files, for the dashboard served in insecure mode — an unauthenticated page listing every backend address behind the proxy, and the setting nearly every Traefik tutorial tells you to add | — |
+| **Proxmox VE host** | `proxmox.*` | The hypervisor every guest trusts, read only on a host with `/etc/pve`: a web interface on 8006 that accepts a login from any address, root@pam logging in with a password alone, and an enterprise repository enabled without a subscription, so Proxmox's own packages stop updating while Debian's keep arriving. The datacenter firewall is counted once, by the firewall domain | a Proxmox VE host |
 | **Single-node Kubernetes** | `kube.*` | One box running one k3s or k0s node, with k3s's settings resolved across all four of its layers (config.yaml, its drop-ins, the service environment file, the command line): a cluster-admin kubeconfig or join token readable by every account, `anonymous-auth=true` on the API server or kubelet, and Secrets stored unencrypted | k3s or k0s |
 | **Forensic readiness** | `forensic.*` | Whether the host keeps the evidence an investigation would need: a journal that survives reboots and keeps 90 days, auth and web logs rotated for 90 days, auditd recording what the web server's account executes, a synchronised clock, request sizes in the access log, and a copy of the logs off the host | — |
 | **Image CVEs** *(optional)* | `cve.*` | Known vulnerabilities in the images your Compose services run | Trivy |
@@ -126,38 +126,38 @@ misleadingly perfect result.
 
 <!-- hostveil:counts -->
 Hostveil can report **192 findings** across those domains, and **180 of them
-carry a fix** — 75 Hostveil will apply unattended, 105 only after you have read
+carry a fix**: 75 Hostveil will apply unattended, 105 only after you have read
 the diff.
 <!-- /hostveil:counts -->
 
 The rest are Manual on purpose, and each one is named in the register
 in [`internal/fix/register.go`](internal/fix/register.go) with the reason
-Hostveil will not touch it. Manual by decision, never Manual because nobody
-looked — a test fails the build on the difference.
+Hostveil will not touch it, and a test fails the build when a Manual finding
+has no reason written down.
 
 ## How it's tested
 
 Hostveil runs as root and edits configuration files on servers people depend
 on. That is a lot to ask, so this is what stands behind it.
 
-- **There is more test code in this repository than product code.** Nobody
-  targets the ratio. It is what auditing an operating system honestly costs,
-  and a test keeps the test code ahead of the product code.
+- **There is more test code in this repository than product code.** Auditing an
+  operating system thoroughly takes that much test code, and a test keeps it
+  ahead of the product code.
 - **[`internal/docs/`](internal/docs) fails the build when a published page
   drifts from the code.** Every domain table, every finding ID in a
-  screenshot, every figure on the measured-results page — checked against
+  screenshot, every figure on the measured-results page is checked against
   what the program actually does.
 - **5 fuzz targets run nightly**, five minutes each, over the config editors
   and parsers that rewrite your files.
-- **Every pull request drives the real binary end to end** — scan, fix,
-  history, rollback, rescan — inside a seeded Debian container.
+- **Every pull request drives the real binary end to end** (scan, fix,
+  history, rollback, rescan) inside a seeded Debian container.
 - **Every release target is cross-compiled on every pull request**, so a break
   appears while it is still a pull request.
 - **[`demo/`](demo/README.md) is a Vagrant VM** seeded to be vulnerable, so you
   can watch a hardening tool edit a server before you let it near one of yours.
 
 None of that answers whether the fixes change anything real. That is what the
-harness in [`scripts/measure/`](scripts/measure) is for — see the section
+harness in [`scripts/measure/`](scripts/measure) is for; see the section
 above.
 
 ## Install
@@ -174,7 +174,7 @@ sudo apt install ./hostveil_<version>_linux_amd64.deb   # or dnf install ./hostv
 ```
 
 Either route puts the same binary at the same path (`/usr/bin/hostveil`).
-Docker and `iproute2` are recommended but not required — without them, those
+Docker and `iproute2` are recommended but not required. Without them, those
 domains report N/A and the rest of the scan runs. To build it yourself you need
 Go 1.26 or later:
 
@@ -185,7 +185,7 @@ go install github.com/seolcu/hostveil/cmd/hostveil@latest
 Trivy is optional, for image CVE scanning. `hostveil update` and
 `hostveil uninstall` handle upgrades and removal themselves, however you
 installed it. Releases are checksummed and carry a signed build provenance
-attestation and an SBOM — see [Installation](https://hostveil.seolcu.com/docs/installation)
+attestation and an SBOM. See [Installation](https://hostveil.seolcu.com/docs/installation)
 for verifying a download before you run it.
 
 ## Usage
@@ -211,7 +211,7 @@ hostveil uninstall       # remove it, keeping your checkpoints
 ```
 
 Some checks read root-owned files, and applying a fix needs root, so Hostveil
-re-runs itself under `sudo` when it has to — the same password prompt as
+re-runs itself under `sudo` when it has to, with the same password prompt as
 `sudo hostveil`. `version` and `help` never prompt. For scripts and CI, set
 `HOSTVEIL_NO_SUDO=1`; the root-only domains are skipped with a message saying
 so.
@@ -243,8 +243,8 @@ Other commands exit 0 on success, 1 on failure and 2 on a usage error.
 ### When something looks wrong
 
 `HOSTVEIL_DEBUG=1` traces every command Hostveil runs against the host to
-stderr — what ran, how long it took, and whether it failed. Command *output*
-is never logged, deliberately: `docker inspect` prints the resolved
+stderr: what ran, how long it took, and whether it failed. Command *output*
+is never logged, because `docker inspect` prints the resolved
 environment of every container, and a trace that included it would leak
 credentials as a matter of routine.
 
@@ -272,11 +272,11 @@ Review ones too, each through its first alternative.
 **Applying a fix is not always a change the host has seen, and the score
 knows the difference.** A Compose file is read when the container is
 recreated, a systemd drop-in when the unit is reloaded, a sysctl drop-in at
-the next boot — until then the finding stays charged and its row is marked
+the next boot. Until then the finding stays charged and its row is marked
 `PEND`, and each fix names the command that puts it in force.
 
 A finding is Auto only when all three hold: it's **reversible** (a
-checkpoint restores exactly what changed — a fix that runs a command has
+checkpoint restores exactly what changed; a fix that runs a command has
 nothing to store, so it's never Auto), **recoverable in practice**
 (nothing that can cut off your own access, like SSH auth or firewall policy,
 even if the edit itself reverses cleanly), and **unambiguous** (exactly one
@@ -295,7 +295,7 @@ them can be undone from any of them.
 The score is one number between 0 and 100, built so it cannot flatter a host.
 Each detection domain is an axis with a fixed share of the 100; a domain that
 did not run is reported N/A and the remaining caps are renormalized over it,
-so a host without Docker is not quietly handed free points. If nothing ran at
+so a host without Docker gets no free points. If nothing ran at
 all, the score is N/A.
 
 Inside an axis, each finding takes a share of what is left, so the tenth
@@ -310,11 +310,11 @@ Severity answers one question: how urgent a finding is.
 | **Medium** | A boundary that gives way to a foothold, a guessed credential, or a local account. | An eighth |
 | **Low** | Defence in depth. No known path today. | A sixteenth |
 
-Two adjustments sit on top: the same finding ID repeated on one axis is
-damped harmonically, so four services missing the same setting count as one
-mistake made four times; and a finding nothing can
-fix yet (an unpatched CVE) counts a quarter, since charging it in full would
-pin a well-maintained host's axis at 0. The overall score also gets a name in
+The same finding ID repeated on one axis is damped harmonically, so four
+services missing the same setting count as one mistake made four times. A
+finding nothing can fix yet (an unpatched CVE) is charged in full: the risk is
+the same whether or not a patch exists, so a host carrying one may never reach
+100 on the Vulnerabilities axis. The overall score also gets a name in
 every interface: 80 and above is *in good shape*, 50 to 79 *middling*, 25 to
 49 *exposed*, below 25 *wide open*.
 
@@ -328,13 +328,13 @@ The full model, including why each axis cap is the size it is, is on the
        alt="Hostveil's terminal UI: the same score and per-domain meters over a keyboard-driven findings list">
 </p>
 
-- **TUI** — keyboard-driven, and what you get when you run `hostveil` on a
+- **TUI**: keyboard-driven, and what you get when you run `hostveil` on a
   terminal.
-- **Web** — `hostveil serve`, a localhost-bound dashboard. It prints a URL
+- **Web**: `hostveil serve`, a localhost-bound dashboard. It prints a URL
   carrying a one-off access token; open that exact URL. Loopback keeps the
   dashboard off the network but not away from other accounts on the same
   machine, and it runs as root. For remote access, forward the port over SSH.
-- **CLI** — scriptable `scan` / `fix` / `rollback` with `--json` output.
+- **CLI**: scriptable `scan` / `fix` / `rollback` with `--json` output.
 
 All three are thin layers over one shared engine, so they behave identically.
 
@@ -356,26 +356,25 @@ screenshots and Nerd Font details.
 `hostveil explain <id> --ai` adds a plain-language explanation from an AI
 model. The default provider is Ollama, running on your own machine, so
 nothing leaves your host. Set `HOSTVEIL_AI_PROVIDER=anthropic` or `openai` to
-use an external API instead — useful on a machine too small to run a local
-model — with `ANTHROPIC_API_KEY` or `HOSTVEIL_OPENAI_API_KEY` for
+use an external API instead (useful on a machine too small to run a local
+model) with `ANTHROPIC_API_KEY` or `HOSTVEIL_OPENAI_API_KEY` for
 credentials; see `hostveil explain --help` for the full list of variables.
 Only a finding's title, description, suggested fix, and service name are ever
-sent — never raw evidence. AI is strictly advisory and never applies changes.
+sent. Raw evidence never is. AI is strictly advisory and never applies changes.
 Every explanation, score and fix works with no AI at all.
 
 **The one request Hostveil makes on its own** is a once-a-day check of the
 GitHub releases page, to notice that a newer version exists. It sends nothing
 about your host and the answer is cached; `HOSTVEIL_NO_UPDATE_CHECK=1` turns
-it off. Nothing else in Hostveil contacts the network unless you ask it to —
+it off. Nothing else in Hostveil contacts the network unless you ask it to:
 `update`, and Trivy pulling vulnerability data during a CVE scan.
 
 ## Roadmap
 
-A new detection domain is a bigger change than it looks — a new axis, funded
-by taking weight from every existing one — so it ships as a named release, not
-a line in a patch note. Solid is shipped, dashed is planned but not scheduled,
-and the boxed list at the bottom is not on this line at all — those items were
-never headed anywhere to fall off of.
+A new detection domain is a bigger change than it looks (a new axis, funded
+by taking weight from every existing one) so it ships as a named release. Solid is shipped, dashed is planned but not scheduled,
+and the boxed list at the bottom sits off the line: those items were ruled
+out from the start.
 
 ```mermaid
 graph TD

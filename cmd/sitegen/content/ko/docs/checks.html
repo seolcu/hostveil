@@ -27,7 +27,7 @@
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">192</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">180</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">105</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 일부러 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 유출된 비밀값은 그것을 발급한 쪽에서 바꿔야 하고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 모두 <em>판단</em>을 거쳐 Manual로 남긴 것이고, 이유가 빠진 항목이 생기면 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 레지스트리에서 계산한 값입니다.</p>
+            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">192</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">180</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">105</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 판단을 거쳐 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 유출된 비밀값은 그것을 발급한 쪽에서 바꿔야 하고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 모두 <em>판단</em>을 거쳐 Manual로 남긴 것이고, 이유가 빠진 항목이 생기면 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 레지스트리에서 계산한 값입니다.</p>
             <div class="ledger-bar-group">
               <p class="ledger-bar-title"><span data-counted="findings.total">192</span>개 발견 항목의 처리 방식</p>
               <div class="ledger-bar">
@@ -253,7 +253,7 @@
 
             <h2 id="proxy">리버스 프록시 <code>proxy.</code></h2>
             <p>이 도구의 사용자가 가장 갖고 있을 법하고 가장 설정해 두지 않았을 법한 구성 요소입니다. 여기 나머지 전부가 443번에서 응답하는 그것 뒤에 있습니다. 표면이 둘인 이유는 사람들이 프록시를 굴리는 방식이 둘이기 때문입니다. 패키지로 설치한 nginx와 Caddy는 <code>/etc/nginx</code>와 <code>/etc/caddy</code>에서 읽고, <code>include</code>와 <code>import</code>가 끌어오는 파일까지 따라갑니다. 컨테이너로 띄운 Traefik과 Caddy는 컨테이너 영역이 이미 찾아 둔 Compose 파일에서 읽습니다. 컨테이너의 Caddyfile은 바인드 마운트를 거쳐 읽습니다. JSON으로 설정한 Caddy는 점검하지 못했다고 보고합니다. 폐기된 TLS 버전은 nginx만 점검합니다. Caddy는 TLS 1.2보다 오래된 버전을 아예 받지 않습니다.</p>
-            <p>다음 세 가지는 <em>일부러</em> 점검하지 않습니다. 평문 HTTP로 서빙하는 프록시, 빠진 보안 헤더, 인증서 관련 항목입니다. 평문 HTTP는 HTTPS로 리다이렉트만 하는 vhost와 이미 TLS를 끝낸 무언가 뒤에 있는 프록시가 둘 다 올바른데 설정만 봐서는 구분되지 않기 때문입니다. 빠진 보안 헤더는 있으면 좋지만 그것 때문에 침해당하지는 않기 때문입니다. 인증서 관련 항목은 만료와 발급자가 네트워크에 대한 사실이기 때문입니다.</p>
+            <p>다음 세 가지는 점검 대상에서 뺐습니다. 평문 HTTP로 서빙하는 프록시, 빠진 보안 헤더, 인증서 관련 항목입니다. 평문 HTTP는 HTTPS로 리다이렉트만 하는 vhost와 이미 TLS를 끝낸 무언가 뒤에 있는 프록시가 둘 다 올바른데 설정만 봐서는 구분되지 않기 때문입니다. 빠진 보안 헤더는 있으면 좋지만 그것 때문에 침해당하지는 않기 때문입니다. 인증서 관련 항목은 만료와 발급자가 네트워크에 대한 사실이기 때문입니다.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>표시 대상</th><th>심각도</th><th>수정</th></tr></thead>
@@ -420,7 +420,7 @@
                 </tbody>
               </table>
             </div>
-            <p><code>dockerd.group-members</code>는 그룹을 가진 계정이 사람일 때 <span class="sev medium">MEDIUM</span>, 그중 하나라도 서비스 계정(시스템 UID이거나 대화형 로그인이 없는 계정)이면 <span class="sev high">HIGH</span>입니다. CI 러너나 모니터링 에이전트에게 root가 될 능력을 일부러 주는 사람은 없고, 한 번도 로그인하지 않는 자격 증명은 아무도 지켜보지 않는 자격 증명입니다.</p>
+            <p><code>dockerd.group-members</code>는 그룹을 가진 계정이 사람일 때 <span class="sev medium">MEDIUM</span>, 그중 하나라도 서비스 계정(시스템 UID이거나 대화형 로그인이 없는 계정)이면 <span class="sev high">HIGH</span>입니다. CI 러너나 모니터링 에이전트가 root가 될 수 있도록 의도하는 경우는 드뭅니다. 한 번도 로그인하지 않는 자격 증명은 지켜보는 사람도 없습니다.</p>
             <p>루프백 전용 TCP 소켓은 표시하지 않습니다. 유닉스 소켓이 닿지 않던 곳에 닿지 않고, 데몬 앞에 프록시를 두는 문서화된 방법이기 때문입니다. <strong>rootless</strong>로 실행 중인 데몬은 <code>userns-remap</code>과 <code>group-members</code>가 억제됩니다. API 항목은 그대로 <span class="sev high">HIGH</span>입니다. rootless는 피해 범위를 그 사용자의 컨테이너로 한정하고 그 차이는 설명문에 적히지만, 포트에 닿기는 똑같이 쉽기 때문입니다. <code>live-restore</code>는 Docker가 지원하지 않는 swarm 노드에서 억제됩니다.</p>
 
             <h2 id="systemd">서비스 하드닝 <code>systemd.</code></h2>
@@ -491,10 +491,10 @@
             <p>각 항목은 심각도별 개수와 가장 심각한 CVE 몇 개를 함께 보여줍니다. 전체 취약점 ID 목록은 항목의 evidence에 들어 있으며 <code>hostveil scan --json</code>으로 확인할 수 있습니다.</p>
             <div class="callout">
               <span class="callout-label">왜 CVE 하나당 항목 하나가 아닌가</span>
-              <p>Trivy는 패키지가 <code>3.0.11-1~deb12u2</code> 버전에 도달해야 한다고 알려줍니다. 이건 이미지 <em>안</em>에 있는 OS 패키지 버전이지 이미지 태그가 아니고, 둘 사이를 잇는 매핑은 존재하지 않습니다. 개별 CVE 수정을 만들려면 그 매핑을 지어내야 합니다. 애초에 CVE 하나에 대해 할 수 있는 일이 전체에 대해 할 일과 다르지 않으므로, 정직한 단위는 이미지입니다. 이미 사용자가 고른 태그를 다시 받는 데는 버전 매핑이 필요 없고, 약속하는 것도 "태그를 다시 해석한다"까지일 뿐 특정 CVE가 사라진다고 말하지 않습니다. 다이제스트로 고정된 이미지에는 수정이 붙지 않습니다. 다이제스트를 pull해봐야 아무것도 바뀌지 않기 때문입니다.</p>
+              <p>Trivy는 패키지가 <code>3.0.11-1~deb12u2</code> 버전에 도달해야 한다고 알려줍니다. 이건 이미지 <em>안</em>에 있는 OS 패키지 버전이지 이미지 태그가 아니고, 둘 사이를 잇는 매핑은 존재하지 않습니다. 개별 CVE 수정을 만들려면 그 매핑을 지어내야 합니다. CVE 하나에 대해 할 수 있는 일이 전체에 대해 할 일과 같으므로, 조치와 맞는 단위는 이미지입니다. 이미 사용자가 고른 태그를 다시 받는 데는 버전 매핑이 필요 없고, 약속하는 것도 "태그를 다시 해석한다"까지일 뿐 특정 CVE가 사라진다고 말하지 않습니다. 다이제스트로 고정된 이미지에는 수정이 붙지 않습니다. 다이제스트를 pull해봐야 아무것도 바뀌지 않기 때문입니다.</p>
             </div>
             <div class="callout">
-              <span class="callout-label">"아직 패치가 없음"에 대한 솔직함</span>
+              <span class="callout-label">"아직 패치 없음"도 그대로 보고합니다</span>
               <p>패치가 없는 취약점은 수정 가능한 쪽에 섞거나 버리지 않고 별도 항목으로 남깁니다. 이걸 뭉개버리면 취약점이 <em>전부</em> 미패치인 이미지는 리포트에서 통째로 사라지고, Hostveil은 그저 손쓸 방법이 없을 뿐인 호스트를 깨끗하다고 말하게 됩니다. 그래서 <strong>Unavailable</strong>이라는 정식 상태로 모델링합니다.</p>
             </div>
 

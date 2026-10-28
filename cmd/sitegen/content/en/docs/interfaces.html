@@ -43,7 +43,7 @@
 
             <h3 id="row">What a row says</h3>
             <p>Each row carries the severity, the kind of fix, the finding id, the title, and the service it is about. The kind column is the one to scan down: <code>AUTO</code> in green means Hostveil can apply it unattended, <code>REVIEW</code> in the accent means it will ask you to choose, and <code>MANUAL</code> or <code>N/A</code> in grey mean there is no button to press.</p>
-            <p>A fifth value appears only after you have applied something: <code>PEND</code>, in the accent. The fix is written and the host has not read it yet &mdash; a Compose file waiting on a recreate, a systemd drop-in waiting on a reload. The row stays on the list because <a href="scoring#limits">the score still charges it</a>, and it stops being markable, because there is nothing left to apply. The sentence under the finding names the command that puts it in force.</p>
+            <p>A fifth value appears only after you have applied something: <code>PEND</code>, in the accent. The fix is written and the host has not read it yet: a Compose file waiting on a recreate, or a systemd drop-in waiting on a reload. The row stays on the list because <a href="scoring#limits">the score still charges it</a>, and it stops being markable, because there is nothing left to apply. The sentence under the finding names the command that puts it in force.</p>
 
             <h2>Web: the localhost dashboard</h2>
             <p>Serve the same scan over HTTP when a browser is better for review:</p>

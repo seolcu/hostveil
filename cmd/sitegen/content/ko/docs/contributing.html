@@ -7,7 +7,7 @@
 cd hostveil
 go build ./cmd/hostveil     # produces ./hostveil
 go test ./...</code></pre></div>
-            <p>PR를 열기 전에 CI가 실행하는 전체 점검을 돌리세요 — <code>go build ./...</code>, <code>go vet</code>, <code>gofmt -l .</code>, <code>go mod tidy</code>, 그리고 <code>go test -race ./...</code>입니다. 정확한 명령과 고정된 Go 버전은 <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>에 있습니다.</p>
+            <p>PR를 열기 전에 CI가 실행하는 전체 점검을 돌리세요. <code>go build ./...</code>, <code>go vet</code>, <code>gofmt -l .</code>, <code>go mod tidy</code>, 그리고 <code>go test -race ./...</code>입니다. 정확한 명령과 고정된 Go 버전은 <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>에 있습니다.</p>
             <div class="callout">
               <span class="callout-label">리눅스 도구, 이식 가능한 테스트</span>
               <p>Hostveil은 <strong>어떤 OS에서도 빌드되고 테스트가 통과</strong>하지만, 바이너리를 의미 있게 실행하려면 관련 도구가 설치된 리눅스가 필요합니다. 본인의 머신에서 돌리지 말고 데모 VM을 사용하세요.</p>
@@ -17,7 +17,7 @@ go test ./...</code></pre></div>
             <p>엔진은 <code>internal/core</code>에 있고, CLI·TUI·웹 UI는 그 위의 얇은 계층입니다. import-lint <strong>테스트</strong>가 <code>ui/*</code>가 <code>fix</code>, <code>history</code>, <code>check</code>, <code>compose</code>를 절대 import하지 않도록 강제하며, 이것이 세 인터페이스를 동일하게 동작하게 만듭니다. 전체 저장소 구조와 아키텍처 설명은 <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>에 있습니다.</p>
 
             <h2 id="extending">확장하기</h2>
-            <p>플러그인 시스템도, 룰 파일도, 설정 파일도 없습니다. 의도한 결정입니다. 점수가 의미를 가지려면 축 가중치의 합이 100이어야 하고, 모든 발견 항목은 누군가 따져 본 조치를 달고 있어야 하며 — 일부러 수정을 붙이지 않은 항목들의 명부는 테스트가 파싱하는 <em>주석 속 산문</em>입니다 — 배포의 전부는 서명된 정적 바이너리 하나입니다. 룰 형식은 이 세 가지를 아무도 서명하지 않는 파일 뒤로 밀어 넣게 됩니다.</p>
+            <p>플러그인 시스템도, 룰 파일도, 설정 파일도 없습니다. 의도한 결정입니다. 점수가 의미를 가지려면 축 가중치의 합이 100이어야 하고, 모든 발견 항목은 누군가 따져 본 조치를 달고 있어야 하며, 배포의 전부는 서명된 정적 바이너리 하나입니다. 판단을 거쳐 수정을 붙이지 않은 항목들의 명부도 테스트가 파싱하는 <em>주석 속 산문</em>입니다. 룰 형식은 이 세 가지를 서명 없는 파일 뒤로 밀어 넣게 됩니다.</p>
             <p>그래서 Hostveil을 확장한다는 것은 Go를 쓰고 다시 빌드한다는 뜻이고, 추가하고 싶을 만한 세 가지는 규모가 자릿수만큼 다릅니다.</p>
             <div class="docs-table-wrap">
               <table>
