@@ -544,8 +544,12 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          # openclaw's package declares node >=24.16.
+          # openclaw's package declares a minimum patch release of node 24
+          # that it raises without notice (24.16, then 24.22.1), and "24"
+          # alone means whichever 24.x the runner image cached. Same reason
+          # setup-go asks for the newest.
           node-version: "24"
+          check-latest: true
 
       - name: Build
         run: |
