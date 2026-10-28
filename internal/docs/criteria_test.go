@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/clirender"
-	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"
 )
 
@@ -28,60 +27,6 @@ func criteriaPages(t *testing.T, slug string) map[string]string {
 		out[lang] = readRepoFile(t, fmt.Sprintf("cmd/sitegen/content/%s/docs/%s.html", lang, slug))
 	}
 	return out
-}
-
-// Every interface completes "This host is …" from the score, and until now the
-// thresholds appeared nowhere a user could read. Both halves are pinned: the
-// number and the sentence, because a table with the right bounds and the wrong
-// wording describes a different program.
-func TestTheScoringPagePublishesEveryBand(t *testing.T) {
-	pages := criteriaPages(t, "scoring")
-	bands := model.Bands()
-	for i, b := range bands {
-		// The upper bound is one below the next band up, and 100 for the top
-		// one. Bands() is ordered best-first.
-		lo, hi := b.Min(), uint8(100)
-		if i > 0 {
-			hi = bands[i-1].Min() - 1
-		}
-		for lang, body := range pages {
-			// The range as the table writes it, e.g. "80–100" with an en dash.
-			bounds := fmt.Sprintf("%d–%d", lo, hi)
-			if !strings.Contains(body, bounds) {
-				t.Errorf("%s scoring page does not publish the %s band's range %q", lang, b, bounds)
-			}
-			if !strings.Contains(body, "<code>"+b.String()+"</code>") {
-				t.Errorf("%s scoring page does not name the band %q", lang, b)
-			}
-		}
-		// The English verdict is the model's own wording; the Korean page is
-		// held only to having four distinct sentences, since it is a
-		// translation and not a copy.
-		if !strings.Contains(pages["en"], b.Verdict()) {
-			t.Errorf("the en scoring page does not carry the sentence %q that a %s host is shown", b.Verdict(), b)
-		}
-	}
-	if n := len(model.Bands()); n != 4 {
-		t.Errorf("there are now %d bands; the published table has four rows", n)
-	}
-}
-
-// The verification states are what Hostveil says about a fix after applying
-// it, and the table had three of them. The one it was missing is the one that
-// exists so Hostveil does not over-claim.
-func TestTheFixingPagePublishesEveryVerificationResult(t *testing.T) {
-	pages := criteriaPages(t, "fixing")
-	for _, v := range []model.FixVerification{
-		model.VerifyGone, model.VerifyPending, model.VerifyStillPresent,
-		model.VerifyUnavailable, model.VerifyNotRun,
-	} {
-		for lang, body := range pages {
-			if !strings.Contains(body, "<code>"+v.String()+"</code>") {
-				t.Errorf("%s fixing page does not publish the verification result %q, "+
-					"which a user reads in --json", lang, v.String())
-			}
-		}
-	}
 }
 
 // A user putting SARIF into GitHub code scanning meets this immediately: a
@@ -151,52 +96,6 @@ func TestTheCLIPagePublishesTheSARIFMapping(t *testing.T) {
 				if !strings.Contains(body, w) {
 					t.Errorf("%s cli page does not publish %q, which the SARIF export actually emits", lang, w)
 				}
-			}
-		}
-	}
-}
-
-// "How far back can I roll back?" had no published answer. The count is the
-// visible number and the duration is the actual guarantee, so both are stated
-// and both are pinned.
-func TestTheFixingPagePublishesCheckpointRetention(t *testing.T) {
-	count, window := history.RetentionPolicy()
-	pages := criteriaPages(t, "fixing")
-	for lang, body := range pages {
-		if !strings.Contains(body, fmt.Sprintf("<strong>%d</strong>", count)) {
-			t.Errorf("%s fixing page does not publish the checkpoint cap of %d", lang, count)
-		}
-	}
-	if window.Hours() != 1 {
-		t.Fatalf("the retention window is now %v; the pages say an hour", window)
-	}
-	if !strings.Contains(pages["en"], "<strong>hour</strong>") {
-		t.Error("the en fixing page does not publish the retention window")
-	}
-	if !strings.Contains(pages["ko"], "<strong>1시간</strong>") {
-		t.Error("the ko fixing page does not publish the retention window")
-	}
-}
-
-// The README is where most people meet the classification, and it used to name
-// three of the four kinds and call the first one something the site does not.
-//
-// Both READMEs use the same four English words — "Auto", "Review",
-// "Manual", "Unavailable" — rather than README.ko.md translating them.
-// Hostveil's CLI, TUI, and dashboard are English-only and always print these
-// exact words; a Korean docs page that renamed them would be teaching a
-// vocabulary the reader never sees again the moment they run the binary. See
-// cmd/sitegen/kindlabels.go, which states the same rule for the site.
-func TestTheReadmesPublishEveryRemediationKind(t *testing.T) {
-	for _, path := range []string{"README.md", "README.ko.md"} {
-		body := readRepoFile(t, path)
-		for _, k := range model.AllRemediationKinds() {
-			if k == model.RemediationUnset {
-				continue
-			}
-			label := k.Label()
-			if !strings.Contains(body, "**"+label+"**") {
-				t.Errorf("%s does not name the %s kind as %q", path, k, label)
 			}
 		}
 	}

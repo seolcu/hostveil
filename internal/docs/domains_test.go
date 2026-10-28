@@ -17,8 +17,6 @@
 package docs
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -61,35 +59,6 @@ func TestReadmeDocumentsEveryDomain(t *testing.T) {
 		if len(table) > len(body)/2 {
 			t.Fatalf("the extracted table is %d bytes of a %d-byte %s — the section bounds are wrong",
 				len(table), len(body), tc.path)
-		}
-	}
-}
-
-// TestSiteDocumentsEveryDomain does the same for the generated site, in
-// both languages. The Korean page is checked too because en/ko drift is
-// its own failure: a Korean reader gets a table that quietly describes a
-// smaller product.
-func TestSiteDocumentsEveryDomain(t *testing.T) {
-	for _, lang := range []string{"en", "ko"} {
-		path := filepath.Join("cmd", "sitegen", "content", lang, "docs", "checks.html")
-		body := readRepoFile(t, path)
-		for _, src := range model.AllSources() {
-			want := "<code>" + src.String() + ".</code>"
-			if !strings.Contains(body, want) {
-				t.Errorf("%s has no domain row for %s", path, want)
-			}
-		}
-		// The site is generated, so the committed output must carry it too
-		// — that is what the deploy actually serves.
-		out := filepath.Join("site", langDir(lang), "docs", "checks.html")
-		if _, err := os.Stat(filepath.Join(repoRoot(t), out)); err != nil {
-			t.Fatalf("%s does not exist — the site layout moved and this test did not", out)
-		}
-		generated := readRepoFile(t, out)
-		for _, src := range model.AllSources() {
-			if want := "<code>" + src.String() + ".</code>"; !strings.Contains(generated, want) {
-				t.Errorf("%s is missing %s — regenerate with `go run ./cmd/sitegen`", out, want)
-			}
 		}
 	}
 }

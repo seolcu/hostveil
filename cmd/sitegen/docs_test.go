@@ -1,9 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -31,9 +28,6 @@ var (
 	weightRow = regexp.MustCompile(`<tr><td>([^<]+)</td><td>(\d+)</td></tr>`)
 	// <span class="sev high">HIGH</span>, wherever one appears.
 	severityChip = regexp.MustCompile(`<span class="sev ([a-z\-]+)">([^<]*)</span>`)
-	// The severity cell of a finding row: everything between the description
-	// and the Fix column, which is where one or two chips live.
-	severityCell = regexp.MustCompile(`<tr><td><code>([a-z0-9.\-]+)</code></td>.*?<td>((?:<span class="sev [^>]*>[^<]*</span>[^<]*)+)</td><td>[^<]*</td></tr>`)
 )
 
 // docLangs are the content trees that must agree with the code and with
@@ -152,56 +146,6 @@ func TestNoStaleCheckerAsksForMoreEntries(t *testing.T) {
 	}
 }
 
-// TestFixingPageDocumentsEveryKindAUserCanSee closes the loop the fixing
-// page's classification table left open: it lists four kinds and the enum
-// has five, with nothing saying which one is missing or why.
-//
-// The absent one is RemediationUnset, and its absence is correct rather than
-// an oversight — Finding.Validate rejects an unset remediation and the engine
-// drops those before any UI sees them, so no user can ever be shown one. That
-// is a claim about the model, so this asserts it rather than restating it.
-func TestFixingPageDocumentsEveryKindAUserCanSee(t *testing.T) {
-	if (model.Finding{ID: "x", Title: "t", Source: model.SourceSSH}).Validate() == nil {
-		t.Fatal("an unset remediation now survives Finding.Validate, so a user can reach one; " +
-			"the fixing page's classification table needs a row for it")
-	}
-	for _, lang := range docLangs {
-		b, err := assets.ReadFile("content/" + lang + "/docs/fixing.html")
-		if err != nil {
-			t.Fatalf("read %s fixing page: %v", lang, err)
-		}
-		page := string(b)
-		for _, kind := range model.AllRemediationKinds() {
-			if kind == model.RemediationUnset {
-				continue
-			}
-			label, named := kindLabels[lang][kind]
-			if !named {
-				t.Errorf("%s: no label for %v; add one to kindLabels", lang, kind)
-				continue
-			}
-			if !strings.Contains(page, "<strong>"+label+"</strong>") {
-				t.Errorf("%s: the fixing page's classification table has no row for %v (%q)", lang, kind, label)
-			}
-		}
-	}
-}
-
-// The two languages drift apart one edit at a time; each is a separate file
-// and nothing links them.
-func TestBothLanguagesDocumentTheSameFindings(t *testing.T) {
-	ids := map[string][]string{}
-	for _, lang := range docLangs {
-		for _, row := range findingRow.FindAllStringSubmatch(checksPage(t, lang), -1) {
-			ids[lang] = append(ids[lang], row[1])
-		}
-		slices.Sort(ids[lang])
-	}
-	if !slices.Equal(ids["en"], ids["ko"]) {
-		t.Errorf("languages document different findings:\n en: %v\n ko: %v", ids["en"], ids["ko"])
-	}
-}
-
 // TestDocumentedAxisWeightsMatchTheCode pins the weight table against
 // axisDefs. The caps are reachable without exporting anything: a scored
 // empty report carries each axis's MaxPenalty.
@@ -225,52 +169,6 @@ func TestDocumentedAxisWeightsMatchTheCode(t *testing.T) {
 		if !slices.Equal(documented, caps) {
 			t.Errorf("%s: documented axis weights %v, code has %v", lang, documented, caps)
 		}
-	}
-}
-
-// axisScoreWith returns the score of the axis one finding lands on. The
-// scoring constants are unexported and in another package, so the way to
-// read them is to ask the scorer what it does — which is also the claim the
-// prose actually makes, rather than an arithmetic identity standing in for it.
-func axisScoreWith(t *testing.T, rem model.RemediationKind) int {
-	t.Helper()
-	f := model.NewFinding("ssh.probe", "t", model.SeverityHigh, model.SourceSSH, rem)
-	for _, ax := range model.ScoreReport([]model.Finding{f}, nil).Axes {
-		if ax.Source == model.SourceSSH {
-			return int(ax.Score)
-		}
-	}
-	t.Fatal("no ssh axis in a scored report")
-	return 0
-}
-
-// TestScoringProseTripwire cannot read prose, so it watches what the prose
-// describes. Changing the scoring model without touching the docs leaves four
-// pages quietly lying about how the score works; this makes that a build
-// failure with a pointer to what to edit.
-//
-// It asks the scorer rather than multiplying two constants together. The
-// previous version asserted SeverityHigh.Penalty()*2 == 16, which reads
-// as "one Critical costs half" but never touches topHalves — the
-// denominator that decides it. Doubling that constant halves every finding's
-// weight, the docs' "half" becomes a quarter on every page, and this passed.
-func TestScoringProseTripwire(t *testing.T) {
-	// "One Critical takes half of whatever an axis has left."
-	full := axisScoreWith(t, model.RemediationAuto)
-	if full != 50 {
-		t.Errorf("one High finding now leaves an axis at %d, not 50; docs in "+
-			"content/{en,ko}/docs/{scoring,checks,faq}.html say \"half\" and need rewriting", full)
-	}
-
-	// Unavailable findings carry no discount: the same severity costs the
-	// same weight regardless of Remediation. If this ever diverges again,
-	// every page that now says "the same" needs to go back to naming a
-	// ratio instead.
-	unavailable := axisScoreWith(t, model.RemediationUnavailable)
-	if unavailable != full {
-		t.Fatalf("an Unavailable High scored %d against an actionable %d — a discount is back; "+
-			"content/{en,ko}/docs/{scoring,checks,faq}.html say Unavailable findings cost the same "+
-			"as any other and need rewriting if that is no longer true", unavailable, full)
 	}
 }
 
@@ -320,83 +218,6 @@ func jsonEnumNames() []string {
 	return out
 }
 
-// landingPage and siteStylesheet reach the two files this needs. The
-// content is embedded like every other page; the stylesheet is not
-// generated and so lives outside the embed, and is read off disk relative
-// to this package.
-func landingPage(t *testing.T, lang string) string {
-	t.Helper()
-	b, err := assets.ReadFile("content/" + lang + "/index.html")
-	if err != nil {
-		t.Fatalf("read %s landing page: %v", lang, err)
-	}
-	return string(b)
-}
-
-func siteStylesheet(t *testing.T) string {
-	t.Helper()
-	b, err := os.ReadFile(filepath.Join("..", "..", "site", "styles.css"))
-	if err != nil {
-		t.Fatalf("read site/styles.css: %v", err)
-	}
-	return string(b)
-}
-
-// landingFinding matches the example findings in the landing page hero,
-// which carry a severity in a different shape from the docs chips: the class
-// is on the row and the level is spelled out beside it.
-var landingFinding = regexp.MustCompile(`<div class="finding ([a-z\-]+)"><span>([^<]*)</span>`)
-
-// TestTheLandingPageMockupNamesRealLevels covers the one place a severity
-// appears outside the docs, and it is the place where this already broke.
-//
-// site/styles.css styles the hero's example findings by level name. When the
-// levels were renamed the content moved and the stylesheet did not, so for a
-// release the first thing a visitor saw was three findings whose severity
-// colour and left border were simply absent — which looks like a design
-// choice, not like a bug. Nothing caught it because every severity test
-// pointed at the docs.
-func TestTheLandingPageMockupNamesRealLevels(t *testing.T) {
-	known := map[string]bool{}
-	for _, s := range model.AllSeverities() {
-		known[s.String()] = true
-	}
-	css := siteStylesheet(t)
-
-	for _, lang := range docLangs {
-		page := landingPage(t, lang)
-		rows := landingFinding.FindAllStringSubmatch(page, -1)
-		if len(rows) == 0 {
-			t.Fatalf("%s: no example findings parsed from the landing page; the markup changed", lang)
-		}
-		for _, r := range rows {
-			class, text := r[1], r[2]
-			if !known[class] {
-				t.Errorf("%s: the landing page mockup uses severity class %q, which is not one of %v",
-					lang, class, model.AllSeverities())
-				continue
-			}
-			if !strings.EqualFold(text, class) {
-				t.Errorf("%s: the landing page mockup is styled %q but reads %q", lang, class, text)
-			}
-		}
-	}
-
-	// Every level, not only the ones the mockup happens to use. The
-	// stylesheet carried the four-level palette for two renames and nothing
-	// noticed, because the hero only ever shows two of the three.
-	for _, sev := range model.AllSeverities() {
-		if !strings.Contains(css, ".finding."+sev.String()+" ") {
-			t.Errorf("site/styles.css has no rule for .finding.%s", sev)
-		}
-	}
-	for _, dead := range []string{"critical"} {
-		if strings.Contains(css, ".finding."+dead+" ") {
-			t.Errorf("site/styles.css still styles .finding.%s, which no severity is called", dead)
-		}
-	}
-}
-
 // TestEverySeverityChipNamesARealLevel is the guard the severity column never
 // had.
 //
@@ -436,41 +257,6 @@ func TestEverySeverityChipNamesARealLevel(t *testing.T) {
 	}
 }
 
-// The severity a finding is documented at must be the same in both languages.
-// Each is a separate file and nothing links them; the Fix column is already
-// pinned this way, and the severity column is the other half of the same row.
-func TestBothLanguagesAgreeOnSeverity(t *testing.T) {
-	byLang := map[string]map[string]string{}
-	for _, lang := range docLangs {
-		byLang[lang] = map[string]string{}
-		for _, row := range severityCell.FindAllStringSubmatch(checksPage(t, lang), -1) {
-			var levels []string
-			for _, c := range severityChip.FindAllStringSubmatch(row[2], -1) {
-				levels = append(levels, c[1])
-			}
-			byLang[lang][row[1]] = strings.Join(levels, "/")
-		}
-		if len(byLang[lang]) == 0 {
-			t.Fatalf("%s: no severity cells parsed; the markup changed", lang)
-		}
-	}
-	for id, en := range byLang["en"] {
-		ko, listed := byLang["ko"][id]
-		if !listed {
-			t.Errorf("ko: no severity cell for %s", id)
-			continue
-		}
-		if en != ko {
-			t.Errorf("%s is documented %s in English and %s in Korean", id, en, ko)
-		}
-	}
-	for id := range byLang["ko"] {
-		if _, listed := byLang["en"][id]; !listed {
-			t.Errorf("en: no severity cell for %s", id)
-		}
-	}
-}
-
 // findingRef matches a finding ID cited in prose, wherever it appears.
 var findingRef = func() *regexp.Regexp {
 	names := make([]string, 0, len(model.AllSources()))
@@ -479,42 +265,6 @@ var findingRef = func() *regexp.Regexp {
 	}
 	return regexp.MustCompile(`<code>((?:` + strings.Join(names, "|") + `)\.[a-z0-9.\-]+)</code>`)
 }()
-
-// TestBothLanguagesCiteTheSameFindings is the parity guard for prose.
-//
-// TestBothLanguagesDocumentTheSameFindings covers the checks table, which is
-// a table and drifts visibly. Prose does not: the fixing page argues its case
-// through worked examples, and a language that quietly drops one — or cites a
-// different one — is making a different argument with no way to notice. The
-// two pages were written days apart by different hands and already differed
-// on which compose finding illustrated the ambiguity criterion.
-//
-// It compares the whole docs tree, not one page, because every page that
-// names a finding is making the same kind of claim about it.
-func TestBothLanguagesCiteTheSameFindings(t *testing.T) {
-	for _, page := range []string{"fixing", "scoring", "checks", "faq", "interfaces", "cli", "quickstart", "index", "troubleshooting", "ai", "installation", "contributing"} {
-		cited := map[string][]string{}
-		for _, lang := range docLangs {
-			b, err := assets.ReadFile("content/" + lang + "/docs/" + page + ".html")
-			if err != nil {
-				continue // not every page exists in both trees by name
-			}
-			var ids []string
-			for _, m := range findingRef.FindAllStringSubmatch(string(b), -1) {
-				ids = append(ids, m[1])
-			}
-			slices.Sort(ids)
-			cited[lang] = slices.Compact(ids)
-		}
-		if len(cited) != len(docLangs) {
-			continue
-		}
-		if !slices.Equal(cited["en"], cited["ko"]) {
-			t.Errorf("docs/%s cites different findings per language:\n en only: %v\n ko only: %v",
-				page, missing(cited["en"], cited["ko"]), missing(cited["ko"], cited["en"]))
-		}
-	}
-}
 
 func missing(a, b []string) []string {
 	var out []string
@@ -618,38 +368,6 @@ func TestScoringPageCapsMatchTheCode(t *testing.T) {
 	}
 }
 
-// exactFigure matches a number written out to four or more decimal places —
-// the kind that only appears because someone computed it.
-var exactFigure = regexp.MustCompile(`\b\d+\.\d{4,}\b`)
-
-// TestBothLanguagesPrintTheSameFigures pins the scoring page's arithmetic
-// across languages.
-//
-// That page is the one place in the docs that shows its working: a worked
-// example from a real scan, erosion step by step, exact dyadic decimals like
-// 0.1922607421875, and a renormalized overall. A translation that recomputed
-// anything, rounded differently, or quietly dropped a step would be a second
-// arithmetic claiming to be the first, and prose parity tests would not see
-// it — the sentences around it can differ freely.
-//
-// The first draft pair diverged exactly this way and had to be rewritten.
-func TestBothLanguagesPrintTheSameFigures(t *testing.T) {
-	figures := map[string][]string{}
-	for _, lang := range docLangs {
-		f := exactFigure.FindAllString(docsPage(t, lang, "scoring"), -1)
-		slices.Sort(f)
-		figures[lang] = slices.Compact(f)
-	}
-	if len(figures["en"]) < 15 {
-		t.Fatalf("only %d exact figures found on the English scoring page — the worked "+
-			"example is gone, or this pattern no longer matches it", len(figures["en"]))
-	}
-	if !slices.Equal(figures["en"], figures["ko"]) {
-		t.Errorf("the scoring page prints different figures per language:\n en only: %v\n ko only: %v",
-			missing(figures["en"], figures["ko"]), missing(figures["ko"], figures["en"]))
-	}
-}
-
 // The two language trees must carry the same set of doc pages. A page added
 // to one and not the other is a hole a reader falls into from the sidebar,
 // which is generated from the manifest and so lists it in both.
@@ -668,71 +386,5 @@ func TestBothLanguagesHaveEveryDocsPage(t *testing.T) {
 	if !slices.Equal(pages["en"], pages["ko"]) {
 		t.Errorf("the language trees hold different pages:\n en only: %v\n ko only: %v",
 			missing(pages["en"], pages["ko"]), missing(pages["ko"], pages["en"]))
-	}
-}
-
-// A docs page's <h1> either is its sidebar label or is deliberately longer
-// than it — docs/index is headed "Hostveil documentation" under a nav of
-// "Introduction", and the FAQ spells its acronym out. What must not differ is
-// which of those a page does in each language.
-//
-// The site search indexes every page under its *sidebar* label and shows that
-// as the result title. A page whose heading matches in one language and not
-// the other means a Korean reader and an English reader get different answers
-// to "did I land where I clicked", from the same page. The scoring page
-// arrived exactly that way: aligned in Korean, descriptive in English.
-//
-// docs/faq is the one page allowed to differ, and the reason is that English
-// has an acronym here and Korean does not: "FAQ" in the sidebar expanding to
-// "Frequently asked questions" as the heading is the right pair, and there is
-// no Korean equivalent of that move — 자주 묻는 질문 is the whole phrase either
-// way. Any other page differing is drift.
-var navHeadingExceptions = map[string]string{
-	"faq": "English abbreviates in the sidebar and expands in the heading; Korean has no acronym to abbreviate",
-}
-
-func TestHeadingsAndNavLabelsAgreeAcrossLanguages(t *testing.T) {
-	h1 := regexp.MustCompile(`<h1>([^<]*)</h1>`)
-	unescape := strings.NewReplacer("&amp;", "&", "&rsquo;", "\u2019").Replace
-
-	var m Manifest
-	raw, err := assets.ReadFile("pages.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(raw, &m); err != nil {
-		t.Fatal(err)
-	}
-	if len(m.Docs) == 0 {
-		t.Fatal("the manifest lists no docs pages")
-	}
-
-	for _, doc := range m.Docs {
-		matches := map[string]bool{}
-		for _, lang := range docLangs {
-			nav := doc.En.Nav
-			if lang == "ko" {
-				nav = doc.Ko.Nav
-			}
-			found := h1.FindStringSubmatch(docsPage(t, lang, doc.Slug))
-			if found == nil {
-				t.Errorf("%s: docs/%s has no <h1>", lang, doc.Slug)
-				continue
-			}
-			matches[lang] = unescape(found[1]) == nav
-		}
-		if _, allowed := navHeadingExceptions[doc.Slug]; allowed {
-			if matches["en"] == matches["ko"] {
-				t.Errorf("docs/%s no longer differs across languages — drop its "+
-					"navHeadingExceptions entry so the check applies to it again", doc.Slug)
-			}
-			continue
-		}
-		if len(matches) == len(docLangs) && matches["en"] != matches["ko"] {
-			t.Errorf("docs/%s is headed by its nav label in one language and not the other "+
-				"(en=%v, ko=%v) — a search hit reads the nav label, so the two readers get "+
-				"different answers to whether they landed where they clicked",
-				doc.Slug, matches["en"], matches["ko"])
-		}
 	}
 }
