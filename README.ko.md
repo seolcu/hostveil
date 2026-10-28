@@ -195,7 +195,6 @@ hostveil rollback <id>   # 이미 적용한 수정을 되돌리기
 hostveil history         # 적용된 수정과 롤백 ID 목록
 hostveil history --scans # 저장된 모든 스캔의 점수, 오래된 것부터
 hostveil diagnostics     # 버전·배포판·크래시·스캔 정보를 파일 하나로 정리 (전송 기능 없음)
-hostveil fleet web1 db1  # 여러 호스트를 SSH로 스캔해 점수를 나란히 표시 (--sudo, --tui)
 hostveil explain <id>    # 발견 항목 설명 (--ai로 AI 2차 소견 추가)
 hostveil export --format markdown --output report.md  # json, sarif, docx, pdf도 가능
 hostveil ai-context "개인 미디어 서버, 안정성보다 최신 패치가 중요함"
@@ -385,8 +384,7 @@ graph TD
     v4 --> v5["3.22.0: 리버스 프록시"]
     v5 --> v6["3.30.0: Proxmox VE 호스트"]
     v6 --> v7["3.31.0: 단일 노드 쿠버네티스"]
-    v7 --> v8["3.32.0: SSH 플릿 뷰"]
-    v8 -.-> n1["에이전트 런타임 확대"]
+    v7 -.-> n1["에이전트 런타임 확대"]
     n1 -.-> n2["리버스 프록시 확대"]
     n2 -.-> n3["배포판 커버리지 확대"]
     n3 -.-> e4(["다국어 지원"])
@@ -404,7 +402,7 @@ graph TD
     classDef notplanned fill:#101816,stroke:#516057,stroke-width:1px,stroke-dasharray:4 3,color:#9aa89f
     classDef npTitle fill:#07100f,stroke:#31413b,color:#9aa89f
 
-    class v1,v2,v3,v4,v5,v6,v7,v8 shipped
+    class v1,v2,v3,v4,v5,v6,v7 shipped
     class n1,n2,n3 next
     class e4 exploring
     class x1,x2,x3,x4 notplanned
