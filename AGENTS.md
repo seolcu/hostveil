@@ -1,303 +1,140 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in this repository. Claude Code, OpenCode and Codex all read this file directly, so it is the one place project guidance lives — do not add a separate Claude-specific file that duplicates or imports it.
-
-`internal/docs/agents_test.go` checks the mechanical claims below against the code — that referenced paths and symbols exist, that the checker count and lint list match. Reword the prose freely; renaming something this file names will fail the build until the sentence is updated too.
+Guidance for AI coding agents (Claude Code, OpenCode and Codex all read this file directly; do not add a Claude-specific copy). Rules only. The reasoning behind each lives in the doc comment or test it names, and the history lives in git.
 
 ## What this is
 
-Hostveil is a single-binary guided hardening tool for self-hosted Linux servers: it scans a host, merges findings into one 0–100 score, explains them in plain language, and applies fixes with preview, backup, and rollback. Go 1.26, GPL-3.0, no config file, no cloud.
+Hostveil is a single-binary guided hardening tool for self-hosted Linux servers: it scans a host, merges findings into one 0–100 score, explains them, and applies fixes with preview, backup and rollback. Go 1.26, GPL-3.0, no config file, no cloud.
 
 ## Commands
 
 ```bash
-go build ./cmd/hostveil     # produces ./hostveil
-go test ./...
-go test -race ./...         # what CI runs
-go test ./internal/check/ssh -run TestName        # single test
-go test ./internal/compose -run FuzzEdit -fuzz FuzzEdit   # fuzz targets: FuzzEdit, FuzzParse, FuzzParseTrivy, FuzzUnified, FuzzJSON5Edit
-scripts/bench.sh            # benchmarks (there is intentionally no Makefile)
-scripts/gate.sh             # the full local CI gate, step by step (-fast skips race and cross-compile)
-go run ./cmd/sitegen        # regenerate site/ — required whenever cmd/sitegen/ changes
+go build ./cmd/hostveil                                   # produces ./hostveil
+go test ./internal/check/ssh -run TestName                # single test
+go test ./internal/compose -run FuzzEdit -fuzz FuzzEdit   # fuzz: FuzzEdit, FuzzParse, FuzzParseTrivy, FuzzUnified, FuzzJSON5Edit
+go run ./cmd/sitegen                                      # regenerate site/, the counts and the READMEs
+scripts/gate.sh                                           # the full CI gate, step by step (-fast skips race and cross-compile)
 ```
 
-Full CI gate, run all of these before sending a change — `scripts/gate.sh` runs every one of them and names each step that fails:
+Run `scripts/gate.sh` before every push. Do not hand-chain the steps: `gofmt -l .` exits 0 either way, and a chain hides which step failed.
 
-```bash
-go build ./... && go vet ./... && gofmt -l . && go mod tidy && go test -race ./...
-golangci-lint run ./...
-go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
-go run ./cmd/sitegen && git diff --exit-code site/ cmd/sitegen/content/ README.md README.ko.md
-(cd scripts && sha256sum -c install.sh.sha256)   # regenerate the .sha256 if install.sh changed
-go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12   # only if you touched .github/workflows/
-find . -name '*.sh' -not -path './.git/*' -print0 | xargs -0 shellcheck   # only if you touched a shell script
-go run github.com/goreleaser/goreleaser/v2@latest check     # only if you touched .goreleaser.yaml
-```
+- golangci-lint must be the **released binary** (gate.sh fetches it). `go run …@v2.12.2` refuses this toolchain and lints nothing.
+- If `go version` carries a distro suffix (`go1.26.5-X:nodwarf5`), a local govulncheck skips the standard library. Only CI's result counts then.
+- Only if touched: `actionlint` for `.github/workflows/`, `shellcheck` for shell scripts, `goreleaser check` for `.goreleaser.yaml`, and regenerate `scripts/install.sh.sha256` for `install.sh`.
 
-Run it through the script rather than as a chain. `gofmt -l .` exits 0 whether or not it lists files, so the line above only gates on formatting when it is wrapped in `test -z "$(gofmt -l .)"` — and once it is, a chain stops there and prints nothing, so the race tests after it silently never run and the run looks clean. That is how a local gate passed and CI then failed the formatting of a file nobody had looked at.
+CI also cross-compiles every release target and runs e2e (`.github/workflows/e2e.yml`): the real binary through scan → fix → history → rollback → rescan in a seeded container, plus the individual-only fixes on the runner VM (`scripts/e2e/individual.sh`). Debug e2e scenarios locally with `scripts/e2e/vm.sh run <scenario>` (KVM, `HOSTVEIL_BIN` for your own binary, `HOSTVEIL_E2E_DISTRO=fedora`), not by round-tripping CI.
 
-**A local govulncheck can pass on a toolchain whose standard library it never looked at.** It reads the version out of the Go that built it, and a distribution's patched build reports something like `go1.26.5-X:nodwarf5` — which does not parse as a release, so the standard library is quietly dropped from the scan and the run says *"No vulnerabilities found."* Fedora, Debian and RHEL all ship Go that way. This is not hypothetical: a local gate came back clean while CI failed the same commit on five standard-library vulnerabilities. Check with `go version`; if it carries a suffix, that clean result covers your dependencies and nothing else, and CI is the one that actually looked. The workflows pass `check-latest: true` to `setup-go` for the other half of the same problem — without it `go-version: "1.26"` means whatever 1.26.x the runner image cached, not the newest.
-
-Lint config (`.golangci.yaml`) enables only staticcheck, ineffassign, misspell, gosec, nolintlint. gosec is scoped to shipped code — a test writing a fixture into `t.TempDir` is describing its own scaffolding — and every suppression under it names the rule and says why. It was switched on because twenty `//nolint` directives were silencing linters that were not enabled anywhere, which made eighteen carefully written justifications decoration; `nolintlint` catches the next one that stops suppressing anything, and `internal/docs/nolint_test.go` catches the case it cannot see — a directive naming a linter the config does not run at all.
-`golangci-lint` has to be the released binary, not `go run …@v2.12.2`. The published module is built against an older toolchain than this one targets, and `go run` refuses before it reads the config — *"the Go language version (go1.25) used to build golangci-lint is lower than the targeted Go version"* — so the command that looks like it lints actually lints nothing, and the first thing that catches the staticcheck finding is CI. Fetch the release the way CI's action does:
-
-```bash
-curl -fsSL https://github.com/golangci/golangci-lint/releases/download/v2.12.2/golangci-lint-2.12.2-linux-amd64.tar.gz \
-  | tar xz -C /tmp && /tmp/golangci-lint-2.12.2-linux-amd64/golangci-lint run ./...
-```
-
-CI runs a superset of that gate: every release target is cross-compiled (`GOOS`/`GOARCH` for linux and darwin on amd64 and arm64, so a break is caught on the pull request rather than during a release), every shell script in the repository is shellchecked, `.goreleaser.yaml` is validated with `goreleaser check` — the cross-compile covers what goreleaser builds, and that covers what it is told to build, which nothing reads until a tag exists and the release is already public — and coverage is reported into the job summary without gating. Two workflows run on their own schedule rather than against a diff — `.github/workflows/nightly.yml` re-runs govulncheck and gives each fuzz target five minutes, and `.github/workflows/e2e.yml` drives the real binary through scan → fix → history → rollback → rescan inside a seeded Debian container, which is the only place the apply and rollback machinery meets a real filesystem. Its `individual-fixes` job covers what no batch ever runs — the individual-only fixes, through `scripts/e2e/individual.sh` — on the runner VM itself, because those need a Docker daemon and systemd as PID 1, including the one promise only a real daemon can test: a restart that fails puts the original file back and starts the daemon again.
-
-A workflow is YAML, so nothing in it can be held to the code by a compiler, and the lists inside one go stale silently rather than loudly. Three are pinned by tests in `internal/docs` and will fail the build when they drift: the fuzz matrix against every `Fuzz*` target that exists, CI's cross-compile loop against the goos/goarch product in `.goreleaser.yaml`, and the domain selection in `e2e.yml` against the name `model.ScanState` actually marshals. That last one is why they exist — it selected on the enum's old integer, matched no domain after the encoding changed to names, and the step asserting that a skipped domain is never scored 100 passed on every pull request without once looking at one.
-
-### Measuring that it works
-
-E2E proves the score goes up after `fix --all`, which proves only that Hostveil is self-consistent — the same code decides what a finding is, what fixing it means, and what the number should be afterwards. `scripts/measure/run.sh` is the answer to that: it runs Lynis, the CIS Docker Benchmark and a TCP scan from a container off the host, before the fixes and after them, again after the services are restarted into them, again after Review fixes (including actions marked not reversible) have been accepted too — which is the path an operator actually takes, and the one `fix --all` never measures because it applies Auto fixes only — and again after rolling back every checkpoint, and writes one JSON document. `scripts/measure/control.sh` hardens a host from the CIS Benchmarks *without* Hostveil, so the harness can also ask whether the score responds to somebody else's standard.
-
-`seed.sh` builds that host, and it goes through a distribution seam — package manager, service manager, and the handful of paths that differ — rather than calling `apt-get` and `systemctl` directly, which is the only reason every published measurement so far was taken on Ubuntu. Debian, Fedora and Alpine resolve through it; anything else stops the script rather than seeding a host nobody can interpret. **A weakness the distribution cannot express is recorded, never skipped**: Alpine ships no unattended-upgrade mechanism, so its updates axis reads better for a reason that is about Alpine and not about Hostveil, and the measurement JSON says so under its `seeded` key, which `report.py` fills from the manifest `seed.sh` leaves behind. The weaknesses every distribution *can* express are `require`d, and a missing one exits non-zero — a host that was never made bad measures Hostveil finding nothing.
-
-It edits the host it runs on. Use the demo VM or a container, never your own machine. Committed results live in `docs/measurements/`, and the numbers on `cmd/sitegen/content/*/docs/measurements.html` are pinned against them by `internal/docs/measurements_test.go`.
-
-`run.sh -c` runs `check.py`: the score must improve, fixes must change at least one watched path, and fix or checkpoint rollback failures are rejected. Full file restoration is required when no irreversible Review action ran. When Review includes actions marked not reversible, residue and unobserved before-states are allowed, so exit 0 does not mean 100% restoration. Publish the measured fidelity and remaining paths, not an unconditional rollback claim. The control mode (`run.sh -C`) measures its own baseline before applying `control.sh`; never run that script manually first.
-
-The published figures now use the final September 11 raw rerun, whose profile is `cisc-w2026-seeded-v2`. `internal/docs/measurements_test.go` selects by `measured_at` among the published seeded profiles; register any new publication profile there so a named experiment cannot silently leave the site citing an older run. Update both READMEs, both landing pages and both measurement pages together, with control figures citing their own raw file. Keep the original measurement files unchanged.
-
-The one thing to know before editing the harness: **rollback fidelity is judged against hashes taken before the fixes ran, on paths Hostveil's own scan named.** Comparing a restored file against its checkpoint instead would ask whether Hostveil agrees with itself, which it always will.
-
-### Running it for real
-
-The binary builds and tests everywhere, but only *runs* meaningfully on Linux with docker/ssh/ufw present. Don't run it against your own machine — use the Vagrant demo VM, which rsyncs your working tree in and rebuilds:
-
-```bash
-cd demo && ./run.sh up      # then: ./run.sh scan | web | shell | reset | halt
-```
-
-The repo syncs on `up`/`reload` but **not** on `provision` — re-sync after editing code. See `demo/README.md` and `docs/DEVELOPMENT.md`.
-
-The individual-only fix scenarios have a faster loop than CI. `scripts/e2e/vm.sh run dockerd ufw` builds the binary, boots a throwaway Ubuntu 24.04 VM under KVM — the release the `ubuntu-latest` runner uses — and runs `scripts/e2e/individual.sh` in it, and `scripts/e2e/vm.sh ssh` gets you into the VM exactly as a failure left it; `reset` throws the run away in seconds, because the first boot keeps its provisioned disk. Run a scenario there before pushing it. The scenarios that found 3.33.1–3.33.3's bugs were debugged in CI instead: thirteen round trips of two to six minutes, eight of them failures, two of which only added diagnostics to read on the next one. The same pre-fix binary fails the same way in the VM in about ten seconds. `HOSTVEIL_BIN` runs a binary you built yourself, which is how to show a scenario catches the bug it was written for. `HOSTVEIL_E2E_DISTRO=fedora` boots Fedora 44 instead, and CI's `individual-fixes-fedora` job runs the same VM on the runner under KVM — the only real Fedora host the project has; the distros job only scans a container. Its first run found the updates domain wrong four ways on dnf5, every one of them right against the fake runner.
-
-## Repository metadata
-
-The About box and the topics are the only published surface with no copy in
-this repository, so they are the one place nothing here can hold to the code.
-`CITATION.cff` is the closest thing to an owner: its `abstract` is the English
-description and its `keywords` are the topic list, and
-`TestCitationKeywordsAreTopicShaped` keeps every entry to a shape GitHub will
-accept — one it will not is dropped silently, leaving fewer topics than the
-list says.
-
-Applying them is by hand, because a workflow would need a token with `repo`
-scope stored permanently to automate a change made about once a year:
-
-```bash
-gh repo edit --description "<CITATION.cff's abstract, first sentence>" \
-  --add-topic security --add-topic hardening   # …the rest of keywords:
-```
-
-`gh` cannot set the **social preview image** at all — there is no REST endpoint
-for it. Settings → General → Social preview, and the file to upload is
-`site/assets/social-preview.png` — drawn by `scripts/social-preview.py` from
-the site's own palette and the geometry of `internal/ui/web/assets/mark.svg`,
-rather than photographed, because a card is rendered at a fraction of its size
-and a screenshot is unreadable there. It is what every link to this repository
-unfurls as, on every platform, so an empty one is a grey card carrying whatever
-the description says, and the website's `og:image` points at the same file. The
-same script draws the README banners (`site/assets/banner-light.png` and its siblings, a light and a
-dark one per language, which the READMEs pick between with `<picture>`). Re-run
-it after changing the palette, the mark or the slogan; any finding id drawn on
-the card is held to the real ones by `internal/docs/fixtures_test.go`, the same
-guard that covers the two screenshots.
-
-Topics are not decoration here: a repository with none appears on no topic page
-and is findable only by its own name.
-
-## Releasing
-
-Releases are cut by hand — by a maintainer or by an agent working in this repo — and the tag is what starts the pipeline. There is no release-please and no release pull request.
-
-It used to work the other way, and the reason it does not is worth keeping: release-please opened the release pull request with the default `GITHUB_TOKEN`, and GitHub does not start workflow runs for events created by that token. So the release pull request carried **no CI checks at all**, the `main` ruleset requires `build` and `lint`, and every single release therefore had to be forced through an admin bypass. That is not automation; it is a manual step wearing a costume.
-
-### When to cut a release
-
-Release when **all** of these hold. If any is false, say so and stop rather than releasing anyway.
-
-1. `origin/main` passes the full CI gate below, run locally, at the exact commit being tagged.
-2. There is at least one user-visible change since the last tag. A release containing only refactors, test changes, or CI edits is noise for everyone who has to read the changelog.
-3. Nothing on main is known-broken or half-finished — no feature landed in pieces with the rest still open.
-4. The version follows from the conventional-commit subjects since the last tag, computed and not guessed: any `feat` → **minor**, otherwise → **patch**.
-
-A **major** bump is never automatic and never an agent's decision. It requires a human saying so explicitly, in words, for that release.
-
-### How to cut one
-
-```bash
-git checkout main && git pull
-go build ./... && go vet ./... && gofmt -l . && go mod tidy && go test -race ./...
-golangci-lint run ./...   # the released binary — see the note above
-go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
-go run ./cmd/sitegen && git diff --exit-code site/ cmd/sitegen/content/ README.md README.ko.md
-
-git log --oneline "$(git describe --tags --abbrev=0)"..main   # what is going in
-```
-
-Write the changelog entry into **both** `CHANGELOG.md` and `CHANGELOG.ko.md` — grouped `### Features` / `### Bug Fixes` (`### 새 기능` / `### 버그 수정`), newest version first, matching the existing shape — and land them on main through a normal pull request. `TestBothChangelogsCoverTheSameReleases` fails the build when a version appears in one and not the other, because nothing else would: the release is already out by the time anyone notices, and a missing entry looks exactly like a release with nothing to say. Korean coverage starts at 3.20.1 and older releases are deliberately not backfilled.
-
-If the release ships something the [Roadmap page](https://hostveil.seolcu.com/docs/roadmap) listed under "Next up" or "Under exploration," move that item into "How coverage has grown so far" in the same pull request, in both `cmd/sitegen/content/en/docs/roadmap.html` and `cmd/sitegen/content/ko/docs/roadmap.html`, and give it a `data-shipped="X.Y.Z"` marker with the version being released. `TestRoadmapShippedItemsAreRealReleases` fails the build if that version is not in `CHANGELOG.md`, and `TestBothRoadmapsClaimTheSameShippedReleases` fails it if the two languages disagree about what has shipped — the same shape of check as the changelog parity above, because a roadmap that claims something shipped without touching the changelog is making a claim nothing backs.
-
-The release notes are the same two languages in one body — English first, then a `<details>` block for the Korean — because a release has one description and half the readership of this project reads Korean. Where a change is easier to show than to describe, capture it: `scripts/ansi2png.py` renders terminal output into Hostveil's own palette, the same tool `site/assets/tui.png` comes from, and the images live under `site/assets/releases/`, one directory per version, so the notes can link them by URL. Capture a real run rather than composing a picture of one — the before/after images for 3.20.1 are two containers running two builds of the binary.
-
-Then create the release, which creates the tag:
-
-```bash
-gh release create v3.2.0 --target "$(git rev-parse origin/main)" --title v3.2.0 --notes-file notes.md
-```
-
-Pushing that tag starts `.github/workflows/release.yml`, which re-runs the full gate against the tagged commit, refuses the tag if it is not an ancestor of `origin/main`, and then lets goreleaser attach the archives, checksums, SBOMs, and provenance attestation. If any of that fails the release is demoted to a draft, which keeps `install.sh` users on the last good version — it resolves the version by following the `/releases/latest` redirect, and a draft is not "Latest".
-
-`--target` is not optional. **`v3.0.0` was published from a commit that was never on main**, pointing every `install.sh` user at abandoned code. The `release-tags` ruleset does *not* prevent a repeat: it forbids **updating and deleting** a `v*` tag, not creating one on the wrong commit. The `verify-on-main` job in the release workflow is what actually blocks that now.
-
-Never move or delete a published tag. That the ruleset does enforce, and installers and the provenance attestation both assume a tag is immutable.
-
-### When Actions is down
-
-The tag is what starts the pipeline, so a release cut while GitHub Actions
-cannot allocate runners is a release with no archives — and because
-`install.sh` resolves the version by following `/releases/latest`, publishing
-one breaks every new install until the workflow eventually runs.
-
-So do not create the tag. Cut a **draft** instead, which does not create one:
-
-```bash
-gh release create v3.12.0 --draft --target "$(git rev-parse origin/main)" \
-  --title v3.12.0 --notes-file notes.md
-```
-
-`/releases/latest` keeps resolving to the previous release, and installs keep
-working. When Actions is back, `gh release edit v3.12.0 --draft=false`
-publishes it: that creates the tag, which starts `release.yml`, which attaches
-the archives, checksums, SBOMs and the provenance attestation.
-
-A run that failed because no runner was ever allocated — the annotation says
-*"The job was not acquired by Runner of type hosted"* — is re-run with
-`gh run rerun <id>`. Re-tagging is not an option and does not need to be: the
-tag is immutable and the workflow reads it rather than the other way round.
-
-The same outage will hold up the pull requests the release is made of.
-Merging those with `--admin` is a judgement call and the bar is the gate
-itself: run it locally against the *merged* result, not against each branch —
-`go build ./... && go vet ./... && gofmt -l . && go mod tidy && go test -race
-./...`, the released `golangci-lint`, govulncheck, actionlint, shellcheck,
-`goreleaser check`, and
-`go run ./cmd/sitegen && git diff --exit-code site/`. What CI gives that a
-local run does not is the attestation, and that is attached at release time by
-the workflow either way.
-
-**Land a pull request before starting the next one that touches the same files.** Merges are squashed, so a branch stacked on another carries commits main will never have; after the base merges, move the branch with `git rebase --onto origin/main <the base branch's old tip>` — the old tip, not the base branch's name, which after its own rebase points somewhere else. Eight stacked pull requests went through that once, with two conflicts, both in lists that are now generated.
-
-**Version numbers come from pull request titles.** Merges to main are squashed and the title becomes the commit subject, which is the only record of what a change was when the release is cut. The title must be conventional: `feat(site): …`, `fix(model): …`. Put the component in the *scope*, never the type — `site:` and `check/cve:` parse as types with no bump rule, so the change reads as a patch and drops out of the changelog.
-
-The scope is not free text. `.github/workflows/pr-title.yml` accepts only `core`, `model`, `check`, `cve`, `compose`, `fix`, `platform`, `history`, `ai`, `ui`, `tui`, `web`, `cmd`, `sitegen`, `site`, `demo`, `docs`, `install`, `ci`, `release`, `deps`. A path-shaped scope like `check/ssh` is rejected and the pull request cannot merge until the title is edited, so name the package, not the subpackage: a change to `internal/check/ssh` is `fix(check):`. Commits on your own branch are unconstrained.
-
-The version string lives in exactly one place, `cmd/hostveil/main.go`, and is overwritten at build time by goreleaser's ldflags. Nothing in the release pipeline rewrites Go source, and `scripts/install.sh` resolves the version at runtime rather than being stamped. The git tag is the version of record.
+Never run the binary against your own machine. Use the demo VM: `cd demo && ./run.sh up` (see `demo/README.md`; the repo syncs on `up`/`reload`, not on `provision`).
 
 ## Architecture
 
-The central rule: **one engine, three thin UIs.** `internal/core.Engine` owns all scanning, scoring, classification, preview, apply, and rollback. CLI, TUI, and web are rendering layers over it, so a fix applied anywhere behaves identically and is reversible anywhere.
+**One engine, three thin UIs.** `internal/core.Engine` owns scanning, scoring, classification, preview, apply and rollback. CLI, TUI and web only render it. UIs may import `core`, `model`, `internal/ui/theme` and `internal/glyph`, never `internal/fix`, `internal/history`, `internal/check` or `internal/compose` (`internal/ui/uitest.AssertThinUI`).
 
-This is enforced structurally: `internal/ui/tui/layering_test.go` and `internal/ui/web/layering_test.go` parse imports and fail if production UI code imports `internal/fix`, `internal/history`, `internal/check`, or `internal/compose`. UIs may import only `core`, `model`, and the presentation-only `internal/ui/theme` and `internal/glyph` — the check is a denylist of those four packages, living in `internal/ui/uitest.AssertThinUI` and called from both UI packages so neither half can drift from the other. (v2's duplicated-fix-logic failure is what these tests exist to prevent.)
+Flow: `cmd/hostveil/app.go` builds the engine (every checker + `fix.Default()`) → `Engine.Scan` detects `platform.Env`, runs checkers concurrently behind `platform.NewScanCache`, validates and classifies findings, scores, diffs against the last scan, persists.
 
-Flow: `cmd/hostveil/app.go` builds the one engine (all sixteen checkers + `fix.Default()`) → `Engine.Scan` detects `platform.Env`, runs the checker registry concurrently, validates and classifies findings, scores, diffs against the last saved scan, persists.
+### Seams
 
-### Key seams
+- **`internal/platform`** is the only door to the OS. Inject `CommandRunner`; never call `os/exec` in a checker or fix. Runners must be concurrency-safe. `DefaultRunner` pins `LC_ALL=C` and a default timeout. Any parser that matches words assumes C locale.
+- **`internal/check`**: a `Checker` is `Source()` / `Available()` / `Check()` and is strictly read-only. A missing dependency means `Available() = (false, reason)`, which marks the domain Skipped. Test against `internal/check/checktest`, not a hand-written fake.
+  - Adding a domain: one package under `internal/check/`, a `model.Source` const plus its row in `sourceDefs` (`internal/model/source.go`, caps must still sum to 100), registration in `cmd/hostveil/app.go` in `AllSources()` order, the domain regex in `internal/docs/findings_test.go`, the README and both `checks.html` files, then `go run ./cmd/sitegen`.
+- **`internal/fix`**: a `Fix` is a set of `Action`s.
+  - Edit actions carry a **pure** `Transform(in []byte) ([]byte, error)` used by both preview and apply. Keep it pure.
+  - Exec actions are argv lists, never a shell.
+  - Shape: Auto has exactly one action. Review has ≥1 independent alternatives, and a single-action Review carries a `Warning`.
+  - `EffectiveKind` floors any exec fix to Review.
+- **`internal/model`** holds pure value types. Build findings with `NewFinding(...)`. Every enum is a table keyed by constant value, never slice position. Wire enums marshal as names and still unmarshal legacy integers; `legacySeverities` keeps every name ever written to a snapshot.
+- **`internal/ui/theme`** is the only place a color is written. Never put a hex in `view.go` or `app.css`. Check palette changes against `internal/ui/tui/quantize_test.go`, because SSH sessions render in 256 colours.
 
-- **`internal/platform`** — the only door to the OS. `CommandRunner` (Run/LookPath) is injected everywhere, so checkers and fixes are unit-tested against a fake runner with no real host. Never call `os/exec` directly in a checker or fix. Implementations must be safe for concurrent use: checkers run together and the CVE checker scans images in parallel, and `platform.ScanCache` wraps the runner for the duration of a scan. `DefaultRunner` bounds every command with `platform.DefaultTimeout` unless the caller set a deadline of its own (the CVE checker does, to give Trivy minutes) — an unbounded command is how one wedged Docker daemon used to hang an entire scan behind the single-flight cache. **`DefaultRunner` also pins `LC_ALL=C`, and every parser here depends on it.** Anything matching a word rather than a number is reading translated text otherwise: the runner inherits the operator's environment, `sudo` keeps `LANG` and `LC_*` by default, and apt's `[upgradable from: %s]` is translated in twenty-one locales — so a German host's pending-security-update count came out zero however many were waiting. `LC_ALL` and not `LANG`, because gettext honours `LANGUAGE` over `LANG` and a desktop's `LANGUAGE=de:en` would still win; `LANGUAGE` is ignored when the locale is C. Do not add a parser that matches a message a tool might translate without checking it against `LC_ALL=C` first.
-- **`internal/check`** — `Checker` is `Source()` / `Available()` / `Check()`. Checkers are strictly read-only. A missing dependency returns `Available() = (false, reason)` → domain recorded **Skipped**, never an error; a panic in one checker degrades only that domain. Adding a detection domain = one package under `internal/check/` implementing `Checker`, plus a `model.Source` const and one row in `sourceDefs` (`internal/model/source.go`) carrying its name, short label, axis ID, axis label, and cap. That row is the whole description: `String()`, `Label()`, `Valid()`, `AllSources()`, and the scoring axis are all projections of it, and the dashboard's copies are generated from it. It used to be six hand-maintained tables and the record shows nobody kept them in step — the domain table fell a release behind and took a filter chip with it, then the axis-label copy fell two behind. Outside `internal/model` you still need: the checker registration in `cmd/hostveil/app.go` (whose order is held to `AllSources()` by `TestCheckerRegistrationMatchesSourceOrder`), the domain-name regex in `internal/docs/findings_test.go`, the README and both `checks.html` files with `site/` regenerated, and a rebalance so the caps still sum to 100. `TestEverySourceConstHasATableRow` walks the const range rather than `AllSources()`, which is the only way a const declared without a row is visible at all — every test that iterates `AllSources()` passes vacuously when a domain is missing from it. Test the new checker against `internal/check/checktest` rather than a hand-written fake runner: a fixture that spells a command's argv out again does not fail when the real argv changes, it falls through to the fake's unscripted-command error — which every checker reads as a tool that would not answer, the same value a genuinely broken host produces. So the test goes on passing while covering the opposite case. `checktest.Docker` and `checktest.Runner.Listeners` script through `platform.DockerProbeArgv` and `platform.ListenersArgv`, which is the only reason those are exported.
-- **`internal/fix`** — a `Fix` is a set of `Action`s. Edit actions carry a **pure `Transform(in []byte) ([]byte, error)`** — bytes in, bytes out, no disk writes — used by *both* preview (diff only) and apply (write). Preserve that purity; it's what makes previewing safe. Exec actions carry argv lists (no shell). `Validate` enforces shape on the kind a fix *declares*: Auto = exactly 1 action, Review = ≥1 action, each an *independent alternative* (not sequential steps), and a Review with a single action must carry a `Warning` — that is the shape a risky-but-mechanical fix takes, offered with its risk stated rather than declined to Manual. What a user is shown is `EffectiveKind`, which floors an exec fix to Review whatever it declared — so `firewall.inactive` reaches the screen as a Review with one alternative, having been declared Auto because one action is its shape. That is the exec floor doing its job, not a hole in `Validate`.
-- **`internal/model`** — pure value types, no I/O. Build findings via `NewFinding(id, title, severity, source, remediation, opts...)`; required args make zero-value footguns unrepresentable, and `Validate()` runs over every finding post-scan so malformed ones never reach a UI. Every enum here — `Source`, `Severity`, `RemediationKind`, `ScanState`, `Band` — is one table with a row per constant and a lookup keyed by the constant's **value**, never by slice position. The four that cross a wire **marshal as names** (`Band` never leaves the process, and is the one whose lookups still scan its table rather than going through `enum.go`), so the numbering is no longer a compatibility surface, but unmarshalling still accepts the integers older snapshots hold and that is where a position-indexed lookup would surface — as a previous scan whose findings had all changed domain. `Severity` is the one whose ordinals were remapped (four levels to three), so it carries its own legacy table and its integer path is *always* the old scale: the release that introduced names is the last one that ever wrote a number. `internal/ui/web` still generates `/model.js`, because a name is not a label, an abbreviation, a CSS class or a fixability bit — what the tables stopped carrying is the numbering, plus one `rank` per row, because sorting by name is not sorting by severity.
-- **`internal/ui/theme`** — the only place a color is written down. It holds every palette as thirteen semantic roles, and both UIs read from it: the TUI builds lipgloss styles via `newStyles`, and the dashboard's `/themes.css` and `/theme.js` are generated by `theme.CSS` and `theme.JS` at request time. The palettes used to be duplicated by hand in `view.go` and `app.css`, each claiming in a comment to match the other; do not put a hex back into either file. The package is pure data and string formatting — no lipgloss, no `image/color` — which is what lets the web UI depend on it. The remembered choice (`theme.Load`/`Save`) is a one-line file in the state directory, resolved in `cmd/hostveil/theme.go` because `internal/ui` may not import `internal/history`.
+### Invariants
 
-### Invariants worth knowing
-
-- **Remediation is settled by whichever source is more cautious.** `Engine.classify` resolves the checker's declared `Remediation` against the registered fix's `Kind` through `resolvedKind`, which is a plain max over an enum ordered by caution (Unset < Auto < Review < Manual < Unavailable). The registry decides *whether a fix exists* — a fixable-but-unregistered finding is demoted to Manual, so a UI can never show a fix button that leads nowhere. The checker decides *how much human judgment it needs*, and a fix registered as Auto (a statement about its shape: one mechanical action) can't talk it down. **Plain max, in both directions**: it used to special-case the unfixable end and hand a checker's Manual straight back to the registry, which is the inverse of the rule this line states — and the two places that rely on the rule by name (`internal/check/compose`'s runtime-only findings, `internal/fix/compose.go`'s digest-pinned refusal) were saved instead by their builders erroring. Correct by accident, from the layer not making the claim. Every UI-facing path must run the *same* resolution: `PreviewFix` applied only the checker-versus-registry half, so an exec fix a finding carried as Review previewed as "Auto".
-- **Auto means safe to apply unattended**, which requires all of: reversible (a file edit, so apply writes a restore checkpoint — exec actions are never Auto, and `fix.Fix.EffectiveKind` enforces that rather than trusting each checker to declare Review by hand), recoverable in practice (nothing that can sever the operator's own access to the host, even if the edit itself reverts cleanly), and unambiguous (one correct remediation that can't break a legitimate config). Anything else is Review, or Manual when there is no safe action at all. The full standard, and the list of findings deliberately left unfixed with reasons, is the doc comment on `fix.Default()` in `internal/fix/register.go`; `TestKnownUnregisteredFindings` pins it. `EffectiveKind` lives on the fix rather than in the engine because it is a statement about the fix's shape and nothing else — which is what lets `cmd/sitegen`'s docs tests ask the registry what a user will actually be shown, using `internal/fix/fixtest` to build from.
-- **Finding IDs are namespaced by `Source.String()`**: `ssh.rootlogin`, `compose.ds016`, `cve.*`. The fix registry matches exact IDs or globs against these. `Finding.Key()` = `source|id|service`.
-- **Scoring renormalizes over domains that ran.** `model.ScoreReport`'s axis caps sum to 100; a skipped domain (e.g. no Trivy) is marked N/A and excluded rather than scored 100, so a partial scan is never a falsely perfect result. The axes are projected from `sourceDefs`, so adding a domain means giving its row a cap and rebalancing the others.
-- **A cap is a weight, never a threshold.** Findings erode an axis *multiplicatively* — each takes a share of what is left (`remaining *= 1 - weight(f)`), anchored on one High finding costing half. Summing severities and clamping, the model this replaced, meant two top-level findings exhausted most axes and every finding after that was free: a host with 27 container findings scored the same as one with 3, and both CVE and container sat pinned at 0. Keep `Score` derived from `remaining` rather than from the rounded `Penalty`, or a small-cap axis loses its resolution. Repeats of one finding *ID* on one axis are damped harmonically — the second instance costs half its weight, the third a third — because a compose file where four services miss the same line is one line missing, and without it an axis was pinned at zero for running more services rather than worse ones. Within an ID the heaviest instance pays full price, which is what keeps the score independent of the order findings arrive in.
-- **Severity answers how urgent, not how bad.** Three levels — `high` (reachable now, from off-host, by someone holding nothing), `medium` (gives way to a foothold, a guessed credential, or a local account), `low` (no known path today). The definitions are the taxonomy; the names only carry the order, which is the one job a name has on a chip, in a SARIF level, or in one line of `--json`. They replaced Critical/High/Medium/Low, which came from Trivy so a CVE's rating could pass through — vulnerabilities are rolled up per image now, so what reaches a finding is `group.worst()`, one level for the whole image rather than a rating per CVE, and a config file cannot answer "how bad". **`high` is exactly Critical ∪ High**, which is what keeps `scan`'s exit code and the SARIF level mapping meaning what they always did — `TestTheGateStillMeansWhatItMeant` and `TestSARIFLevelsStillMeanWhatTheyMeant` pin that against the *old ordinals*, read back through the legacy unmarshal, because the old constants no longer exist to name. Two renames have now happened and the second is the one that bites: a level renamed is invisible to the compiler and to every test that builds its input from the tables, and what does not move with them is the snapshot the last scan wrote — so `legacySeverities` carries every name that has ever been written to a snapshot — `exposed`/`weak`/`hardening` from the interim naming, which never reached a release but did reach the disks of anyone running from main, plus `critical` — and `TestASnapshotFromTheInterimNamesStillReads` holds a fixture written out by hand. A conditional escalation that no longer changes the level is not information lost: `dockerd`'s rootless case and `agent`'s observed-listener case both collapsed, because blast radius and confidence are not urgency, and both still report the difference in the description and the evidence. A checker must not enumerate the scale for itself either — `internal/check/cve` did, kept the four-level list through the merge, and counted the merged level twice.
-- **A score with no axis behind it is not a perfect score.** `ScoreBreakdown.Applicable` is false when every domain was skipped or failed, and all three UIs render N/A instead of a number. The per-axis flag already stopped a skipped domain scoring 100; without this the same lie survived in the aggregate, since renormalizing over zero caps fell out at a clean 100 for a host nobody could look at.
-- **The score charges every risk in full, and publishes the headroom separately.** `ScoreBreakdown.AfterFixes` (and the per-axis one) is the score recomputed with every fix Hostveil *offers* — Auto and Review both — treated as applied, and it is one more call to the same function rather than a second scoring rule, because the loop already skips a finding that is fixed and in force. It exists because the score alone was being read as a verdict on the effort: a container axis still at 2 after `fix --all` looks like a tool that did nothing, when what is standing is Manual by design. The alternative was to discount `RemediationManual` findings the way the score once discounted unfixable ones, and it is the wrong trade: Manual means Hostveil will not do it unattended, not that the operator cannot — unlike a CVE with no upstream patch, which nobody can fix. Every UI hides the figure when it equals the score or the axis is N/A, because an arrow pointing at where it started says the fixes are worth nothing.
-- **Applied is not in force, and only one of them may move the score.** `Engine.applyFix` used to `markFixed` and `rescore` before anything had looked at the host, so a compose fix that writes a file the running container has not been recreated from raised the number, and the re-check underneath it printed "still reported" against a score that had already credited it. `model.Finding.Pending` separates the two: the finding stays charged until the change is in force, while `Fixed` keeps meaning that Hostveil applied something — which is what stops a batch re-applying it. Ask `Finding.Active()` for whether a risk is standing and `IsAutoFixable()` for whether the batch would act; `internal/docs/pending_test.go` fails the build on a production file that reads `.Fixed` in a condition without saying why, because the two predicates agree on every report a unit test builds and diverge only after a real apply. Pending is set from `fix.Action.TakesEffectOn` — the fix's own declaration, so the answer is identical on the batch path, which does not verify — and *monotonically* upgraded by `VerifyStillPresent`, never by `VerifyUnavailable`: "could not look" is not evidence, and letting it count would make re-checking more pessimistic than not re-checking, so applying fixes one at a time would score below `fix --all` over the same set. `withOfferedFixesApplied` clears it, so the headroom still answers "once the fixes have done their work". This is a within-session correction only. A rescan rebuilds findings from the checkers, so for a domain whose checker reads the artifact rather than the running state the scan after a fix still reports it gone — the gap `TakesEffectOn` describes rather than closes, and the reason `scripts/measure/run.sh` has a phase for after the services are restarted.
-
-- **`RemediationUnavailable` findings are charged in full, the same as any other finding.** This used to be discounted by a fixed divisor (a constant named "unavailableRelief", now gone), on the argument that every image ships CVEs with no upstream patch and charging those in full pins the axis at 0 for a perfectly maintained host. That relief was removed as a deliberate simplification: unlike `topHalves`'s HIGH-costs-half anchor or the harmonic `1/n` repeat damping, it was a tuned constant with no principled derivation behind the number 4 specifically. The consequence is real and was accepted knowingly — a host with even one un-patchable CVE may never reach 100 on that axis — because the risk itself is real, and the model no longer carries a special case whose only justification was the size it was tuned to.
-- **The one place that asks what operating system this is, is `platform.AuditableOS`.** Hostveil publishes darwin archives and every detection rule in it is about Linux. Most domains work that out themselves — no `/proc/sys`, no systemd, no `apt-get`, no `ss` — and skip cleanly. Four did not, because they probe something that *exists* on macOS and means something else there, and each turned "I could not look" into an answer: `firewall` probes only ufw/firewall-cmd/nft/iptables, so on a Mac nothing failed and the absence of a failure read as the absence of a firewall — a top-severity `firewall.inactive` on every Mac, whose packet filter is pf; `accounts` read the stub `/etc/passwd` macOS ships (the real database is Open Directory) and then advised re-running with sudo for an `/etc/shadow` that does not exist; `agent` enumerated homes out of that same file keeping uid 0 and 1000..65533, found only `/var/root` because macOS accounts start at 501, and reported "no agent runtime" about a host whose `/Users` it never opened; `proxy` reads `/etc/nginx`, which Homebrew's nginx does not use — its configuration lives under the Homebrew prefix instead — so it reported a clean proxy on a Mac running one, deciding from a config file it never opened. The result was not always an N/A score — `firewall` and `fileperms` are unconditionally available, so a Mac produced a plausible number resting on a false finding, while `proxy`'s failure runs the other way, a false-clean axis. `internal/docs/auditableos_test.go` pins which four consult the gate and why, by reading their `Available` from the AST: on Linux the gate returns true and a checker that stopped calling it would behave identically, so nothing else would notice.
-- **A checker must never let "I couldn't look" pass for "nothing there."** The two score identically and mean opposite things, which is how a non-root scan once reported a perfect CVE score. So: `Available()` probes the *capability*, not just the binary (`platform.DockerReachable`, not `Has(r, "docker")`); a checker that covered only part of its ground returns its findings plus a `check.PartialError` (→ `ScanDegraded`); one that covered none returns an ordinary error (→ `ScanError`, axis excluded). Degraded axes *are* scored, flagged via `ScoreAxis.Degraded`, and every UI must render that flag — a total failure dressed as Degraded would restore the false 100 by another route. A domain that can have more than one blind spot must report all of them rather than the first: `check.Coverage` counts them (compose, cve, dockerd, fileperms use it), and a checker with a single possible gap builds a `check.PartialError` directly. What is never allowed is keeping one gap and discarding another. Both container checkers did, so a host with an unparsed compose file *and* an unreachable daemon was told about only one of them while the counters under-reported what went unexamined — and `firewall` went on doing it for another release behind a comment saying one reason was enough. Match on `errors.As`, not a type assertion: a wrapped `PartialError` that falls through reads as a total failure and takes the domain's findings with it. Two ways this keeps going wrong. **Exit 0 is not the same as an answer**: `systemctl show missing.service --property=ExecStart` succeeds and prints nothing, so `err == nil` there means the unit was not read rather than read-and-empty — ask for `LoadState` and require `loaded`. **Ask the tool that owns a layered configuration for the effective value instead of re-deriving it**: `internal/compose.Discover` runs `docker compose -f … config` because docker *appends* port mappings across files rather than replacing them, so a base binding redis to loopback plus an override publishing it is exposed — and reading the first of `ConfigFiles` reported it clean, on the very common host that has a compose override file. Where the merge cannot be resolved and there is more than one file, that is a coverage gap, never a guess from one of them. And **when one source substitutes for another, check the substitution runs the direction you think**: `dockerd`'s config merge held that losing *both* daemon.json and the unit was a gap, which never fired on the ordinary host, because an absent daemon.json is a complete answer about that file and says nothing about the unit where every package puts the listening socket.
-- **An edit fix may declare a validator, and it runs before anything is written.** `fix.Action.VerifyCmd` is argv containing `fix.VerifyPathToken`; `Engine.runEditValidator` stages the *original* and the *transformed* bytes in a temp dir and runs the command on each. Only a validator that accepts the original is trusted to reject the replacement — `sshd -t` needs to read the host keys, so where it cannot it fails on every config including the one in service, and without that control run the checker's own inability would block a correct fix. Checking before the write means a rejected fix leaves no file to restore and no checkpoint to explain. Every SSH fix carries `sshd -t`, because sshd keeps serving from the config it already loaded: a broken file looks like nothing at all until the next restart, and repairing it then needs the access it just removed.
-- **Writing a config file is not the same as changing the value, and a fix that confuses the two is worse than no fix.** Layered configuration has a precedence order, so the file a fix creates is not necessarily the file that decides the outcome — and a fix that writes the wrong one still reports success, still records a checkpoint, and is contradicted at the next restart with nothing anywhere to explain it. Two checkers already carry the resolution rather than guessing: `internal/check/ssh` resolves `Include` so a finding names the file the directive is really in, and `internal/check/sysctl/origin.go` replays systemd-sysctl's own ordering (every `sysctl.d` directory merged into one list sorted by file name, then `/etc/sysctl.conf` last) so the finding names the assignment that wins. The fix reads that back and edits it — see `persistSysctl` in `internal/fix/sysctl.go`. Where the winning file belongs to a package (`/usr/lib`) or to the boot (`/run`), Hostveil declines to edit it and says the drop-in will not take effect, because an upgrade would undo the change without passing through history. This is not hypothetical: Ubuntu ships `/etc/sysctl.d/99-sysctl.conf` as a symlink to `/etc/sysctl.conf`, so `60-hostveil-*.conf` lost to it on every Ubuntu host.
-- **Apply order is always backup → write, and the backup is the whole checkpoint.** `applyEdit` validates, then writes the blobs *and* the metadata, and only then touches the host — which is precisely what lets `Store.List` skip a directory with no metadata below: a `Save` that did not finish means nothing on the host changed. The reverse needs handling too, and did not get it for a while: a write that fails after a successful backup leaves a checkpoint describing a change that never landed, so `applyEdit` discards it. `applyMode` is the same order and *keeps* its checkpoint on failure, because its writes are partial by nature and the paths that did change are still worth undoing. `applyExec` is the odd one — commands run first and the record is written after, with no backup at all, because there is nothing file-backed to restore. An edit with `fix.Action.AfterWrite` — the restart that puts a daemon's config in force — runs those commands only after the write, and if they fail the engine restores the original and runs them again, so a daemon that refuses the new file is brought back under the old one rather than left down; the checkpoint keeps the commands as `AfterRestore` so a rollback restarts it too. The exception is `fix.Action.Irreversible` — k3s Secrets encryption, whose key rotation makes putting the old file back the unsafe direction — which is recorded in history with no files, cannot be rolled back, and on a failed step is reported where it stopped rather than undone. The write itself goes through `platform.WriteFileAtomic` — temp file beside the target, then rename — because `os.WriteFile` truncates first, and a crash between truncate and write leaves a zero-length `sshd_config` whose backup you now need SSH to reach. `preserveOwner` carries uid/gid across the rename; Hostveil runs as root, so skipping it would hand the operator's own compose file to root.
-- **One fix at a time, and a scan is a fix for this purpose.** `Engine.applyMu` serializes apply, batch, rollback, and scan. `applyEdit` is a read-modify-write and the dashboard serves concurrently, so without it two fixes to one compose file each read the original and the later write erased the earlier one — while both checkpoints recorded success and both findings were marked Fixed. `ApplyFix` takes the lock and `applyFix` is the unlocked body, because `ApplyBatch` loops and `sync.Mutex` is not reentrant.
-- **`Engine.Current()` returns a snapshot, not a view.** `Report` is a struct but `Findings` is a slice, so returning it by value shared the backing array that `markFixed` writes into — `go test -race` caught it as a write in `markFixed` against `json.Encoder` in the dashboard's `/api/result`. It clones.
-- **Checkers are read-only, so the scan runs them behind one cache.** `Engine.Scan` wraps the runner in `platform.NewScanCache`, which single-flights identical commands for that scan. Several checkers independently want the same facts (compose and CVE both enumerate projects and inspect standalone containers; ports re-probes the firewall), and each ran twice, concurrently. Fixes deliberately use the *uncached* `e.runner`: an exec fix mutates the host, and a cached result would mean the second `ufw allow` silently never happened. A `CommandRunner` must therefore be concurrency-safe.
-- **Checkpoints are capped by count *and* held by age (`maxCheckpoints`, `minRetention`).** They are backups, so the cap is far looser than `maxScans`, and it alone cannot state the guarantee that matters — pruning a checkpoint moments after writing it makes a fix unrollbackable the instant it is applied. Pruning runs on every save, so the cap used to be answered by picking a number bigger than a `fix --all` was expected to produce; a host with a hundred compose services exceeds it in one batch, because `no-new-privileges` and a missing restart policy are both Auto and both fire on nearly every stock service. Nothing younger than `minRetention` is discarded, however much arrives at once. Oldest-first is load-bearing for the rule below: the entry that matters for a path is the newest one, so trimming the other end would make an untouched file look edited. Pruning reads directory names only; going through `List()` would re-parse every checkpoint on every applied fix.
-- **Rollback declines rather than clobbers.** The checkpoint records the SHA-256 of what the fix wrote (`Checkpoint.AppliedSHA256`), and `Store.Rollback` refuses if the file no longer hashes to something *some* checkpoint recorded writing — rollback keeps no backup of its own, so overwriting an operator's later edits is unrecoverable. The test is membership across all checkpoints, not equality with this one: two fixes to the same file (`fix --all` over one compose file) legitimately leave the second fix's content in place. `core.IsExternalEdit` exists so UIs can tell a declined rollback from a failed one without importing `internal/history`, which the layering tests forbid.
-- **The recovery layer is the one place that cannot afford a torn write.** Every write in `internal/history` goes through `platform.WriteFileAtomic` (temp beside the target, fsync, rename), and each checkpoint's metadata file is written *last*, so a checkpoint exists exactly when its metadata does. `BackedFile.BlobSHA256` records the hash of the backup itself — `AppliedSHA256` answers the different question of whether the operator has edited the file since — and rollback verifies every blob before writing any of them, because restoring a truncated sshd_config over a working one is the outcome the whole layer exists to prevent. A blob with no recorded hash predates the field and still restores: "cannot tell" is not "corrupt". `Store.List` returns a `*DamagedError` **alongside** the checkpoints it could read rather than dropping the unreadable ones silently; `core.IsIncompleteHistory` is how a UI tells an incomplete list from a failed one. Damage is metadata that exists and cannot be read — a fix that *was* applied and can no longer be undone. A checkpoint directory with **no metadata file at all** is the opposite thing: a `Save` that never finished, and since apply order is backup → write, one that never finished means nothing on the host changed. `List` skips those and `discardUnfinished` removes them on `Save`'s own error paths, because reporting them told the operator their recovery history was damaged over a directory whose absence would have changed nothing — and it took a full disk, not a crash, to produce one permanently.
-- **`internal/compose/edit.go` does minimal text-edit YAML surgery** so a one-line change stays a one-line diff, then verifies the result round-trips byte-identically through yaml.v3 and falls back to a full re-encode otherwise. Correctness never depends on the text surgery — keep that fallback. **`internal/json5` is the same idea with the fallback deliberately absent**, because re-encoding JSON5 through `encoding/json` deletes the operator's comments, which is the damage the package exists to prevent — so a rendering it cannot prove correct is an error and the fix is not offered. It only replaces the value at a key path that already exists: no insert, no delete, which is what keeps "where does a new key go among somebody's comments" out of the code. It is also the only parser for these configs — `internal/check/agent` reads through it too, because two tolerant parsers are two answers to whether a key is set.
-- **An edit whose path is inside a user's home sets `fix.Action.NoFollow`.** The account owns every component of that path while Hostveil runs as root, so the read must refuse a symlink: a preview renders whatever it read into a diff, and root reading an arbitrary file on someone's behalf is the whole exposure. The write never needed it — `WriteFileAtomic` renames over a link rather than through it. It is opt-in because a symlinked target is load-bearing elsewhere: Ubuntu ships `/etc/sysctl.d/99-sysctl.conf` as a link to `/etc/sysctl.conf`, which is exactly the file `persistSysctl` resolves to and edits on purpose.
-- **The dashboard's routes name their methods, and every route needs the token.** `internal/ui/web` binds to loopback and checks the Host header, but that stops the network, not the other accounts on the machine — and `serve` auto-elevates, so the dashboard applies fixes as root. Two things follow. Mutating routes are registered as `POST /api/…`: the guard used to check the origin of POSTs only while handlers ignored the method, so a cross-origin `<img src=".../api/fix/all">` applied every Auto fix on the host. And `Server.token` (in the printed URL, then a `SameSite=Strict` cookie) gates everything, so a local unprivileged user cannot curl root into editing files. Origin comparison parses the URL — prefix-trimming credited `http://127.0.0.1:8787.evil.example.com`.
-- **Auto-elevation**: `cmd/hostveil/elevate.go` re-execs under sudo for root-benefiting commands. `HOSTVEIL_NO_SUDO=1` opts out (scripts/CI). The re-exec loop guard keys on **`SUDO_USER`**, not on a variable of Hostveil's own: sudo's `env_reset` drops anything `env_keep` does not name, so the `HOSTVEIL_ELEVATED=1` this used to pass through never reached the child and the guard could not fire. `SUDO_USER` is set by sudo itself, and set even when the target is not root — which is the case worth catching, since that one looped. `HOSTVEIL_ELEVATED=1` is still honoured for a wrapper that sets it. `version`/`help` never prompt.
-- **A palette is an input to a quantiser, not a set of colours anyone sees.** Hostveil's subject is servers, servers are reached over SSH, and SSH does not forward `COLORTERM` — so `colorprofile` degrades the TUI to xterm-256 on nearly every real session. `ansi.Convert256` maps a colour into the 6×6×6 cube by truncating each channel and then returns the nearest *greyscale* entry instead where that is closer in HSLuv, which its own source flags as a deliberate departure from tmux. One Dark's Crit sat exactly there: `#e17079` came out as flat grey 246, so the severity meaning "reachable now, from off-host, by someone holding nothing" was drawn in a grey on every SSH session Hostveil has ever had. `internal/ui/tui/quantize_test.go` holds every theme to what a 256-colour terminal actually renders — the heats and the accent must land on the cube, and no two roles may collapse onto one index (which caught a second, unrelated collision in Nord). Adjust a palette hex and read that test's output before trusting the hex.
+- **Remediation is a plain max** over Unset < Auto < Review < Manual < Unavailable, between the checker's declaration and the registered fix (`Engine.classify`). A fixable finding with no registered fix becomes Manual. Every UI path uses the same resolution.
+- **Auto means safe unattended**: reversible (a file edit with a checkpoint), cannot sever operator access, and unambiguous. Exec is never Auto. The standard and the declined list are the doc comment on `fix.Default()` in `internal/fix/register.go`, pinned by `TestKnownUnregisteredFindings`.
+- **Finding IDs are namespaced** by `Source.String()` (`ssh.rootlogin`, `compose.ds016`). `Finding.Key()` is `source|id|service`.
+- **Scoring**
+  - Axis caps sum to 100, and scoring renormalizes over domains that ran. A skipped domain is N/A, never 100. `ScoreBreakdown.Applicable` is false when nothing ran, and every UI shows N/A.
+  - A cap is a weight. Findings erode an axis multiplicatively, with one High costing half. Repeats of one ID on one axis are damped harmonically. Keep `Score` derived from `remaining`.
+  - `RemediationUnavailable` findings are charged in full.
+  - `ScoreBreakdown.AfterFixes` is the same function with offered fixes treated as applied. UIs hide it when it equals the score.
+- **Severity is urgency**:
+  - `high`: reachable now, from off-host, with nothing held.
+  - `medium`: needs a foothold, a credential or a local account.
+  - `low`: no known path.
+  - `high` equals the old Critical ∪ High (`TestTheGateStillMeansWhatItMeant`). Checkers must not enumerate the scale themselves.
+- **Applied is not in force.** `Finding.Pending` keeps a finding charged until the change takes effect (`fix.Action.TakesEffectOn`, upgraded only by `VerifyStillPresent`). Use `Finding.Active()` and `IsAutoFixable()`, not `.Fixed` (`internal/docs/pending_test.go`).
+- **"Couldn't look" never passes for "nothing there."**
+  - `Available()` probes the capability (`platform.DockerReachable`), not the binary.
+  - Partial coverage returns findings plus `check.PartialError`, which marks the domain Degraded. Degraded axes are scored and every UI shows the flag. Total failure is an ordinary error, and the axis is excluded.
+  - Report every blind spot with `check.Coverage`. Match with `errors.As`.
+  - Exit 0 is not an answer: require `LoadState=loaded` from systemctl.
+  - Ask the owning tool for effective layered config (`docker compose config`), and treat an unresolvable merge as a coverage gap.
+- **OS gate**: `platform.AuditableOS` is the one place that asks whether this is Linux. The checkers that probe things existing on macOS consult it (`internal/docs/auditableos_test.go`).
+- **Write the file that wins.** Resolve layered config precedence before editing (`internal/check/ssh` resolves `Include`; `internal/check/sysctl/origin.go` replays systemd-sysctl order, used by `persistSysctl`). Decline to edit package-owned (`/usr/lib`) or boot (`/run`) files.
+- **Validators run before the write.** `fix.Action.VerifyCmd` (with `fix.VerifyPathToken`) runs on both the original and the transformed bytes, and is trusted only if it accepts the original. Every SSH fix carries `sshd -t`.
+- **Apply order**
+  - Validate → backup (blobs + metadata) → write via `platform.WriteFileAtomic`, keeping ownership.
+  - A failed write discards its checkpoint (`applyEdit`). `applyMode` keeps a partial one. `applyExec` records after running.
+  - `fix.Action.AfterWrite` commands run after the write. If they fail, the original is restored and the commands rerun.
+  - `fix.Action.Irreversible` records no files and cannot roll back.
+  - Home-directory paths set `fix.Action.NoFollow`.
+- **`Engine.applyMu` serializes** apply, batch, rollback and scan. `ApplyFix` locks; `applyFix` is the unlocked body. `Engine.Current()` returns a clone.
+- **Fixes use the uncached runner.** Only checkers go through the scan cache.
+- **History** (`internal/history`)
+  - Every write is atomic, and metadata is written last.
+  - Blobs are verified (`BackedFile.BlobSHA256`) before any restore.
+  - `Store.Rollback` refuses when the file's hash matches no checkpoint's `AppliedSHA256`, which means an external edit (`core.IsExternalEdit`).
+  - `Store.List` returns `*DamagedError` alongside readable checkpoints (`core.IsIncompleteHistory`) and skips directories with no metadata.
+  - Pruning is by count and age (`maxCheckpoints`, `minRetention`), oldest first, by directory name.
+- **Config editors**: `internal/compose/edit.go` does text surgery and keeps the yaml.v3 re-encode fallback. `internal/json5` has no fallback (it would delete comments), only replaces existing keys, and is the only JSON5 parser.
+- **Dashboard security**: mutating routes are `POST /api/…`, every route needs `Server.token`, and Origin is compared by parsed URL.
+- **Elevation**: `cmd/hostveil/elevate.go` re-execs under sudo. The loop guard keys on `SUDO_USER`. `HOSTVEIL_NO_SUDO=1` opts out.
 - State lives in `/var/lib/hostveil` as root, `~/.local/share/hostveil` otherwise.
+- `internal/ai` is optional and advisory. Everything must work with `ai.Noop`.
 
 ## Website
 
-`site/**/*.html` is **generated — never hand-edit it.** Source of truth is `cmd/sitegen/`: `pages.json` (metadata, **plain text** — the generator HTML-escapes it, so write `Fixing & rollback`), `templates/*.tmpl`, `content/{en,ko}/` (raw HTML fragments). Regenerate with `go run ./cmd/sitegen` and commit the output; CI fails if `site/` drifts. CSS/JS and `site/assets/` are *not* generated — edit directly, with the one exception below.
+- `site/**/*.html` is generated. Edit `cmd/sitegen/` (`pages.json` is plain text, `templates/*.tmpl`, `content/{en,ko}/`), run `go run ./cmd/sitegen` and commit the output. CSS, JS and `site/assets/` are edited directly.
+- The checks page counts, the `data-counted` figures and the README counts (between `<!-- hostveil:counts -->` markers) are computed by `cmd/sitegen/counts.go`. Never type them.
+- `site/assets/fonts/` is a Hangul subset made by `scripts/korean-subset.py`. Re-run it after editing Korean copy, after sitegen (`TestEveryKoreanSyllableOnTheSiteHasAGlyph`).
+- `scripts/social-preview.py` draws the social card and the README banners, and `scripts/ansi2png.py` renders terminal captures. Re-run them after palette, mark or slogan changes.
 
-### The checks page counts itself
+## Copy rules (site, READMEs, changelogs, release notes, UI text)
 
-The checks table's Fix column, every `data-counted` findings figure on that page, the bar widths under them and the counts sentence in both READMEs (between `<!-- hostveil:counts -->` markers) are computed, not typed. `go run ./cmd/sitegen` works them out from `fix.Default()` and writes them back into `cmd/sitegen/content/*/docs/checks.html` and the READMEs as well as into `site/` — `cmd/sitegen/counts.go`. After registering or declining a fix, that one command is the whole of the docs work; what is left for a person is the row itself when a finding is new, and the decline reason when a fix is withdrawn, because both are sentences someone has to mean. It used to be ten hand edits per fix, every one of them caught by a test and none of them made by one.
+- No "A, not B" contrast, and none of its relatives ("not just X", "rather than X" as a flourish), in English or Korean. Say A and why. Code doc comments are exempt.
+- No em dashes in prose. Korean copy has none at all. A dash meaning "none" in a table, or a quoted UI label, is fine.
+- Avoid model-cluster words: *deliberately, honest(ly), quietly, plainly, genuinely, load-bearing, outright*, a rhetorical *nobody*, "worth noting". In Korean avoid 일부러, 정직하게, 조용히, "짚어 둘 만합니다". No "seamless/robust/powerful", no closing "Overall,".
+- **Korean is written in Korean, not translated.** Use 합니다체 throughout. Use short sentences and do not stack clauses. Do not open with 그리고/그런데. `당신` is fine where the sentence is about the reader. FAQ answers state the answer directly.
 
-The registry can report the kind a user is shown because `fix.checkerDeclaresReview` floors to Review the fixes whose checker always asks for one. A checker whose declaration depends on the finding cannot be floored there; `agent.exec-unrestricted` is the one, and `dependsOnFinding` in `counts.go` says what the table shows for it.
+## Releasing
 
-### The Korean pages carry a font
+Cut by hand. The tag starts `.github/workflows/release.yml`. Release only when all of these hold:
 
-The site is set in the reader's system face, and that face answers for Hangul differently on every machine — Apple SD Gothic Neo on a Mac, Malgun Gothic on Windows, and on Linux whatever the distribution installed, often under a name the stack did not ask for: `"Noto Sans KR"` is the Google Fonts name, and what a distribution registers is `"Noto Sans CJK KR"`. Before the brand moved to a sans, the Latin was Georgia and monospace, neither has a Hangul glyph, and the monospace stack's generic fallback is how the Korean labels once came out in fixed-width Hangul.
+1. `origin/main` passes `scripts/gate.sh` at the exact commit.
+2. There is at least one user-visible change since the last tag.
+3. Nothing on main is half-finished.
+4. The version follows from the commit subjects: any `feat` means minor, otherwise patch. A **major bump only on a human's explicit word.**
 
-`site/korean.css` answers that, and `cmd/sitegen` links it from the Korean pages only. It declares one face, Noto Sans KR, `unicode-range`d to the Hangul blocks so Latin still resolves to the system face and an English page — which contains three Hangul syllables, the 한국어 switcher — downloads none of it, and puts it at the front of `--font-body` so a Mac's own cascade does not answer first. Alongside the face it retunes what does not transfer between the scripts: `word-break: keep-all`, looser leading, one tracking value for the uppercase labels, and no uppercasing at all on a Korean label, where it only ever reached the Latin name inside one.
+Steps:
 
-The body used to be a Korean serif (Nanum Myeongjo, and Noto Serif KR before it) chosen to sit beside Georgia. It went when Georgia did: a second Korean face would now only be a second voice.
+- Write the entry in both `CHANGELOG.md` and `CHANGELOG.ko.md` (`### Features`/`### Bug Fixes`, `### 새 기능`/`### 버그 수정`) and land it through a PR. Do the same with roadmap items moving to shipped, marked with `data-shipped="X.Y.Z"` in both languages.
+- Write the release notes in English, then the Korean inside `<details>`. Images go under `site/assets/releases/<version>/`.
+- Create the release:
 
-`site/assets/fonts/` **is** generated, by `scripts/korean-subset.py` (`pip install fonttools brotli`). The faces are subsets carrying the site's own repertoire — about 800 of Korean's 11,172 syllables, which is what gets a weight to 50KB rather than megabytes — and a subset is the one asset that is wrong *silently*: one new Korean sentence with one syllable that was not there when it ran, and that character alone falls back to a system font mid-word, correct on either side, invisible in a diff. So the script writes `coverage.txt` beside the fonts and `internal/docs/koreanfont_test.go` reads it back — `TestEveryKoreanSyllableOnTheSiteHasAGlyph` is the one that matters; the others hold the fonts to the manifest, keep the retracked-label list in step with the two stylesheets, and keep the stylesheet off the English pages. **Re-run the script after editing Korean copy**, and note the order: it reads `site/ko/`, so `go run ./cmd/sitegen` comes first.
+```bash
+gh release create vX.Y.Z --target "$(git rev-parse origin/main)" --title vX.Y.Z --notes-file notes.md
+```
 
-The woff2 output is not byte-reproducible across fonttools and brotli versions, which is why the fonts are not part of the `git diff --exit-code site/` gate. Coverage is what is pinned, and that does not depend on either.
+- `--target` is mandatory. Never move or delete a published tag.
+- If Actions cannot allocate runners, create the release with `--draft` (no tag is created) and publish it later with `gh release edit vX.Y.Z --draft=false`.
 
-### No "A, not B"
+## Pull requests
 
-Do not write the contrast "A, not B" — "a guide, not another report", "Clean, not a hollow 100", "보고서가 아닌 가이드", "B가 아니라 A" — in any copy, English or Korean: the site, the READMEs, release notes, the dashboard's and the TUI's text. It only works when the reader was already thinking B. Generated copy reaches for it where nobody was, so it reads as an answer to a question no one asked, and it is the most recognisable tell of machine-written prose there is. Say A, and say why A is true. If B really is the mistake a reader is about to make, name the mistake as its own sentence with the reason ("A skipped domain is not scored. A score of 100 would claim it was checked.").
+- **Titles are conventional and become the squashed commit subject**, which drives the version and the changelog. Put the component in the scope: `fix(check): …`. The scope must be one of `.github/workflows/pr-title.yml`'s allowlist (package names, never paths like `check/ssh`).
+- Land a PR before starting the next one that touches the same files. To move a stacked branch, use `git rebase --onto origin/main <old base tip>`.
+- The version string lives only in `cmd/hostveil/main.go` and is overwritten by goreleaser ldflags.
+- Repository topics come from `CITATION.cff` `keywords` and are applied by hand with `gh repo edit`. The social preview image (`site/assets/social-preview.png`) is uploaded by hand in Settings.
 
-The same goes for its relatives: "not just X", "rather than X" as a flourish, and a heading built on either. A doc comment explaining why the code takes one path over another is a different thing and is exempt.
+## Measurement harness
 
-### Other tells of machine-written copy
+`scripts/measure/run.sh` measures Hostveil with Lynis, the CIS Docker Benchmark and a TCP scan, before and after fixes, restarts, Review fixes and rollback. `-c` runs `check.py`; `-C` runs the CIS control. It edits the host it runs on, so use a VM. Rollback fidelity is judged against hashes taken before the fixes, on paths the scan named.
 
-"A, not B" is the worst of a family. The rest come from the patterns Wikipedia's [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) guide collects, and from Korean write-ups on LLM prose. They apply to the same copy as the rule above. A single instance proves nothing; what reads as generated is the density.
-
-- **Em dashes in prose.** Use a comma, a colon, parentheses or a new sentence. Korean copy has none at all. A dash is still right in a table cell that means "none", and in a quoted UI label that contains one ("Applied — not in force yet" is the dashboard's own text, so the docs quote it exactly).
-- **Vocabulary that clusters in model output.** In English: *deliberately*, *honest/honestly*, *quietly*, *plainly*, *genuinely*, *load-bearing*, *outright* used for emphasis, and a rhetorical *nobody* ("a question nobody asked"). Signposts like "worth noting", "worth stating plainly" and "the interesting answer is". In Korean: 일부러, 정직하게, 조용히, "짚어 둘 만합니다", "분명히 적어 둡니다". The literal sense is fine: a journal *survives* a reboot, and an unknown value is *silently* ignored. The tell is a word used to sound considered.
-- **Promotional and summary filler.** No "seamless", "robust", "powerful". No closing "Overall,". No sentence whose only job is to say the previous one mattered.
-
-These were swept out of the docs and READMEs once. Check new copy against this list before it lands.
-
-### Korean copy is written in Korean
-
-`content/ko/**`, `README.ko.md` and `CHANGELOG.ko.md` are not renderings of the English text — they are their own sentences that happen to say the same thing. An agent drafting them by translating the English paragraph clause-for-clause produces fluent, grammatical Korean that a native reader still flags on sight, because the tell isn't grammar, it's rhythm: English sentence shape surviving the trip. The specific habits to watch for, because they are exactly the ones an LLM defaults to —
-
-- **`당신`은 써도 된다.** Apple Korea's own product pages address the reader as `당신` ("당신의 데이터", "당신만이"), and that register is the model for this site. Use it where the sentence is about the reader. What still gives a translation away is `당신의` stacked on every noun because the English had "your" there; write the sentence the way Korean would say it and the address will appear where it belongs.
-- **em-dash을 남용하지 말 것.** English uses `—` for asides, appositives, and parenthetical qualification constantly; Korean prose doesn't reach for it nearly as often. Where the English draft leans on one, prefer ending the sentence and starting the next, or `즉`/쉼표. A Korean paragraph with an em-dash every line or two is a paragraph that was translated one sentence at a time.
-- **한 문장에 절을 쌓지 말 것.** English comfortably chains three or four clauses with "and," "which," "while." Korean technical writing reads better as several short declarative sentences than as one long one carrying the same clause count — split rather than translate the connectors (-고, -며, -면서) literally.
-- **"그리고"/"그런데"로 문장을 열지 말 것**, and don't reach for a sentence fragment for emphasis — both read as an English rhetorical habit (leading "And…", a one-word sentence for punch) transplanted rather than composed.
-- **합니다체로 통일하고, 반말투를 섞지 말 것.** A single 해요체/반말 sentence dropped into an otherwise formal paragraph (translating an English aside or a contraction too literally) is a register break a fluent reader trips on immediately.
-- FAQ-shaped content answers directly — Korean FAQs don't open with "그건 물어볼 만한 질문입니다" the way an English blog post opens with "That's a fair question." State the answer.
-
-None of this is enforced by a test — prose quality doesn't pin the way a domain table does — so it's a standing instruction for whoever (human or agent) writes Korean copy here, not a one-time cleanup.
-
-## AI
-
-`internal/ai` is optional and strictly advisory (local Ollama, `explain --ai`). It never applies changes; every score, explanation, and fix must work with `ai.Noop`.
+Committed results live in `docs/measurements/`. Never edit them. Site figures are pinned to them by `internal/docs/measurements_test.go`; register new publication profiles there.

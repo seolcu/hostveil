@@ -124,7 +124,7 @@ func TestTheDefaultThemeIsDocumentedAsTheDefault(t *testing.T) {
 }
 
 // koNumberWords is the Korean half; the English half is numberWords in
-// agents_test.go, read backwards. A registry that grows past either table
+// helpers_test.go, read backwards. A registry that grows past either table
 // fails loudly here rather than silently going unchecked, which is the
 // failure a lookup with a fallback would produce.
 var koNumberWords = map[int]string{

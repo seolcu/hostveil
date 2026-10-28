@@ -22,14 +22,10 @@ go build ./cmd/hostveil     # produces ./hostveil
 go test ./...               # unit + fuzz + property tests
 ```
 
-Before sending a change, the same checks CI runs:
+Before sending a change, run the same gate CI does:
 
 ```bash
-go build ./...
-go vet ./...
-gofmt -l .                  # must print nothing
-go mod tidy                 # must leave go.mod/go.sum unchanged
-go test -race ./...
+scripts/gate.sh             # -fast skips the race detector and cross-compile
 ```
 
 > **Hostveil is a Linux tool.** It reads host configuration

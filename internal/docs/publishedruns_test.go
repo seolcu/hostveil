@@ -124,7 +124,7 @@ type proseClaim struct {
 
 // spelledOut renders a figure the way the prose spells it.
 //
-// The English half inverts agents_test.go's numberWords rather than restating
+// The English half inverts helpers_test.go's numberWords rather than restating
 // the same twenty words beside it — two tables of one vocabulary is two places
 // for it to drift, which is the argument this whole file is making about
 // figures. The Korean half has no existing table to borrow and covers only the
