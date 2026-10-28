@@ -61,7 +61,7 @@ func (t *TraceRunner) LookPath(name string) (string, error) {
 func (t *TraceRunner) logf(format string, a ...any) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	fmt.Fprintf(t.w, "Hostveil[trace] "+format+"\n", a...)
+	fmt.Fprintf(t.w, "hostveil[trace] "+format+"\n", a...)
 }
 
 func outcome(err error, n int) string {

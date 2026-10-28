@@ -109,7 +109,7 @@ func TestTraceLinesAreNotInterleaved(t *testing.T) {
 		t.Fatalf("got %d lines from 50 commands", len(lines))
 	}
 	for _, l := range lines {
-		if !strings.HasPrefix(l, "Hostveil[trace] run  docker ps") {
+		if !strings.HasPrefix(l, "hostveil[trace] run  docker ps") {
 			t.Fatalf("a line was torn: %q", l)
 		}
 	}
