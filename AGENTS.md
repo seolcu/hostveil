@@ -275,6 +275,16 @@ Do not write the contrast "A, not B" — "a guide, not another report", "Clean, 
 
 The same goes for its relatives: "not just X", "rather than X" as a flourish, and a heading built on either. A doc comment explaining why the code takes one path over another is a different thing and is exempt.
 
+### Other tells of machine-written copy
+
+"A, not B" is the worst of a family. The rest come from the patterns Wikipedia's [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) guide collects, and from Korean write-ups on LLM prose. They apply to the same copy as the rule above. A single instance proves nothing; what reads as generated is the density.
+
+- **Em dashes in prose.** Use a comma, a colon, parentheses or a new sentence. Korean copy has none at all. A dash is still right in a table cell that means "none", and in a quoted UI label that contains one ("Applied — not in force yet" is the dashboard's own text, so the docs quote it exactly).
+- **Vocabulary that clusters in model output.** In English: *deliberately*, *honest/honestly*, *quietly*, *plainly*, *genuinely*, *load-bearing*, *outright* used for emphasis, and a rhetorical *nobody* ("a question nobody asked"). Signposts like "worth noting", "worth stating plainly" and "the interesting answer is". In Korean: 일부러, 정직하게, 조용히, "짚어 둘 만합니다", "분명히 적어 둡니다". The literal sense is fine: a journal *survives* a reboot, and an unknown value is *silently* ignored. The tell is a word used to sound considered.
+- **Promotional and summary filler.** No "seamless", "robust", "powerful". No closing "Overall,". No sentence whose only job is to say the previous one mattered.
+
+These were swept out of the docs and READMEs once. Check new copy against this list before it lands.
+
 ### Korean copy is written in Korean
 
 `content/ko/**`, `README.ko.md` and `CHANGELOG.ko.md` are not renderings of the English text — they are their own sentences that happen to say the same thing. An agent drafting them by translating the English paragraph clause-for-clause produces fluent, grammatical Korean that a native reader still flags on sight, because the tell isn't grammar, it's rhythm: English sentence shape surviving the trip. The specific habits to watch for, because they are exactly the ones an LLM defaults to —

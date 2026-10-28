@@ -111,7 +111,7 @@ var chrome = map[string]Strings{
 		SidebarAria: "문서 내비게이션", SidebarToggle: "문서 메뉴",
 		SearchPlaceholder: "문서 검색…", SearchAria: "문서 검색", SearchResultsAria: "검색 결과",
 		GroupGettingStarted: "시작하기", GroupGuide: "가이드", GroupReference: "레퍼런스",
-		FooterTagline: "셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화.", FooterNavAria: "푸터 링크",
+		FooterTagline: "셀프호스팅 리눅스 서버를 위한 보안 강화.", FooterNavAria: "푸터 링크",
 		FooterDocs: "문서", FooterReleases: "릴리스",
 		FooterChangelog: "변경 이력",
 		LightboxAria:    "확대된 스크린샷",

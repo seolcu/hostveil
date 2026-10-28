@@ -4,11 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Hostveil — guided security hardening for self-hosted Linux servers</title>
-    <meta name="description" content="Hostveil scans your Linux home server for the security mistakes that get self-hosters hacked — Docker Compose, SSH, firewall, auto-updates — explains them in plain language, and fixes them with preview, backup, and one-command rollback.">
+    <meta name="description" content="Hostveil scans your Linux home server for the security mistakes that get self-hosters hacked (Docker Compose, SSH, firewall, auto-updates), explains them in plain language, and fixes them with preview, backup, and one-command rollback.">
     <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
     <meta property="og:title" content="Hostveil — guided hardening for self-hosters">
-    <meta property="og:description" content="One local binary that finds the security mistakes on your Linux home server, explains them plainly, and fixes them safely — preview, backup, and rollback. Optional CVE scan and local AI.">
+    <meta property="og:description" content="One local binary that finds the security mistakes on your Linux home server, explains them in plain language, and fixes them safely with preview, backup, and rollback. Optional CVE scan and local AI.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://hostveil.seolcu.com/">
     <meta property="og:image" content="https://hostveil.seolcu.com/assets/social-preview.png">
@@ -81,7 +81,7 @@
           <div class="hero-copy">
             <p class="eyebrow">Guided security hardening for self-hosters</p>
             <h1>Quiet security for the servers you run.</h1>
-            <p class="lede">Hostveil finds the misconfigurations that get self-hosted Linux servers hacked, explains them in plain language, and fixes them — with a preview, a backup, and one-command rollback.</p>
+            <p class="lede">Hostveil finds the misconfigurations that get self-hosted Linux servers hacked, explains them in plain language, and fixes them with a preview, a backup, and one-command rollback.</p>
             <div class="hero-actions" aria-label="Primary actions">
               <a class="button primary" href="#install">Install</a>
               <a class="button secondary" href="https://github.com/seolcu/hostveil">Source</a>
@@ -109,7 +109,7 @@
 
       <section class="trust-strip" aria-label="Project facts">
         <div class="container stats-grid">
-          <div><strong>1 binary</strong><span>No SaaS, no database, no account — it runs on the host you control</span></div>
+          <div><strong>1 binary</strong><span>No SaaS, no database, no account. It runs on the host you control.</span></div>
           <div><strong>Native checks</strong><span>SSH, firewall, and updates without extra tools</span></div>
           <div><strong>Signed releases</strong><span>An SBOM and build provenance on every archive</span></div>
           <div><strong>Rollback ready</strong><span>Every fix backs up first and can be undone</span></div>
@@ -127,7 +127,7 @@
             <article class="feature-card">
               <span class="card-kicker">Plain language</span>
               <h3>Understand the risk without the jargon.</h3>
-              <p>Each finding says what is wrong, why it matters, and how to fix it — in one scored 0–100 snapshot across every checked area.</p>
+              <p>Each finding says what is wrong, why it matters, and how to fix it. Every checked area adds up to one 0–100 score.</p>
             </article>
             <article class="feature-card">
               <span class="card-kicker">Fix with a safety net</span>
@@ -142,7 +142,7 @@
             <article class="feature-card accent-card">
               <span class="card-kicker">Optional, on your terms</span>
               <h3>Add CVE scanning and local AI when you want.</h3>
-              <p>Trivy image scanning is used if present and skipped cleanly if not. AI explanations are opt-in and default to a local model — nothing leaves the host.</p>
+              <p>Trivy image scanning is used if present and skipped cleanly if not. AI explanations are opt-in and default to a local model, so nothing leaves the host.</p>
             </article>
           </div>
         </div>
@@ -153,12 +153,12 @@
           <div>
             <p class="eyebrow">Coverage</p>
             <h2>The home-server mistakes that actually get you hacked.</h2>
-            <p>Exposed databases, a Docker socket handed to a container, root SSH login, no firewall, unpatched packages — Hostveil checks the highest-impact paths together, deeply.</p>
+            <p>Exposed databases, a Docker socket handed to a container, root SSH login, no firewall, unpatched packages. Hostveil checks the paths that matter most, together and in depth.</p>
           </div>
           <div class="check-stack">
             <article>
               <strong>Docker &amp; Compose</strong>
-              <p>Privileged mode, host networking, Docker socket mounts, exposed datastores and admin panels, missing no-new-privileges, unsafe bind mounts, and hardcoded secrets — from a native audit of your Compose files.</p>
+              <p>Privileged mode, host networking, Docker socket mounts, exposed datastores and admin panels, missing no-new-privileges, unsafe bind mounts, and hardcoded secrets, found by a native audit of your Compose files.</p>
             </article>
             <article>
               <strong>SSH, firewall &amp; updates</strong>
@@ -166,7 +166,7 @@
             </article>
             <article>
               <strong>Image CVEs (optional)</strong>
-              <p>When Trivy is installed, Hostveil scans the images your Compose services run and models "no patch available yet" as a first-class state — no misleading perfect score when the scan didn't run.</p>
+              <p>When Trivy is installed, Hostveil scans the images your Compose services run and models "no patch available yet" as a first-class state. A scan that didn't run never shows up as a perfect score.</p>
             </article>
           </div>
         </div>
@@ -181,11 +181,11 @@
           </div>
           <div class="screens-grid">
             <figure class="screenshot-card" data-lightbox="tui" role="button" tabindex="0" aria-label="Enlarge TUI screenshot">
-              <img src="assets/tui.png" alt="Hostveil terminal UI — findings with severity filters and multi-select" width="1194" height="609" loading="lazy">
+              <img src="assets/tui.png" alt="Hostveil terminal UI: findings with severity filters and multi-select" width="1194" height="609" loading="lazy">
               <figcaption><strong>TUI</strong><span>Keyboard-driven findings with severity and domain filters, multi-select, plain-language detail, and fix preview.</span></figcaption>
             </figure>
             <figure class="screenshot-card" data-lightbox="web" role="button" tabindex="0" aria-label="Enlarge Web UI screenshot">
-              <img src="assets/web.png" alt="Hostveil web dashboard — score, coverage notice, filter chips, and the overview of the scan" width="1500" height="760" loading="lazy">
+              <img src="assets/web.png" alt="Hostveil web dashboard: score, coverage notice, filter chips, and the overview of the scan" width="1500" height="760" loading="lazy">
               <figcaption><strong>Web UI</strong><span>Localhost dashboard: score and per-domain axes, what changed since the last scan, filter chips, and an overview that reads the scan back to you.</span></figcaption>
             </figure>
           </div>
@@ -262,7 +262,7 @@
           <div class="section-heading">
             <p class="eyebrow">Roadmap</p>
             <h2>Coverage doesn&rsquo;t stop here.</h2>
-            <p>Four detection domains have shipped as named releases so far. More are next &mdash; and a few things are ruled out on purpose.</p>
+            <p>Four detection domains have shipped as named releases so far. More are next, and a few things are ruled out on purpose.</p>
           </div>
           <ol class="rt-track">
             <li><span class="rt-version">3.1.0</span><span class="rt-label">AI agent runtimes</span></li>
@@ -297,7 +297,7 @@
           <div>
             <p class="eyebrow">Install</p>
             <h2>One command, then scan.</h2>
-            <p>The installer downloads the release binary, verifies checksums, and installs Hostveil. Trivy is optional — install it later if you want image CVE scanning.</p>
+            <p>The installer downloads the release binary, verifies checksums, and installs Hostveil. Trivy is optional. Install it later if you want image CVE scanning.</p>
             <div class="button-row">
               <a class="button primary" href="https://github.com/seolcu/hostveil/releases/latest">Latest release</a>
               <a class="button secondary" href="/docs/">Docs</a>
