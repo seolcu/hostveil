@@ -1,10 +1,9 @@
 // The community-health files are read by GitHub and by people, never by the
-// compiler, so like AGENTS.md they go stale silently — with the extra hazard
+// compiler, so they go stale silently — with the extra hazard
 // that GitHub degrades a malformed file instead of rejecting it. An issue
 // form with a YAML error falls back to a blank editor, which quietly reopens
 // the exact hole `blank_issues_enabled: false` exists to close: security
-// reports arriving as public issues. Same policy as agents_test.go — check
-// what is mechanical, never the prose.
+// reports arriving as public issues. Check what is mechanical, never the prose.
 package docs
 
 import (
@@ -171,36 +170,6 @@ func TestReadmeLocalReferencesExist(t *testing.T) {
 				t.Errorf("%s references %q, which does not exist", path, ref)
 			}
 		}
-	}
-}
-
-// TestPRTemplateGateMatchesAgentsMd pins the CI-gate commands the pull
-// request template tells a contributor to run to the ones AGENTS.md
-// documents. The template repeats them because a contributor sees it at the
-// exact moment the commands matter; repetition is only safe while this keeps
-// the copies identical — a version bumped in one file and not the other has
-// contributors running a gate CI no longer runs.
-func TestPRTemplateGateMatchesAgentsMd(t *testing.T) {
-	tmpl := readRepoFile(t, filepath.Join(".github", "pull_request_template.md"))
-	agents := agentsMD(t)
-
-	blocks := fencedBlock.FindAllString(tmpl, -1)
-	if len(blocks) == 0 {
-		t.Fatal("the pull request template no longer has a fenced command block")
-	}
-	checked := 0
-	for _, line := range strings.Split(strings.Trim(blocks[0], "`"), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		checked++
-		if !strings.Contains(agents, line) {
-			t.Errorf("the pull request template says to run %q, which AGENTS.md does not document", line)
-		}
-	}
-	if checked < 3 {
-		t.Fatalf("only %d gate commands extracted from the template — extraction is broken, not the doc", checked)
 	}
 }
 

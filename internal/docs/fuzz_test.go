@@ -161,25 +161,3 @@ func TestOneFailingFuzzTargetDoesNotCancelTheOthers(t *testing.T) {
 			"first target to crash cancels the rest and their corpora are never uploaded")
 	}
 }
-
-// TestAgentsMdNamesEveryFuzzTarget.
-//
-// The line above the nightly matrix in AGENTS.md tells an agent which targets
-// exist, and it named three of the five. FuzzUnified and FuzzJSON5Edit were
-// fuzzed nightly and invisible to anyone reading the file that is supposed to
-// be the orientation — TestEveryFuzzTargetIsFuzzedNightly pins the workflow
-// against the source and nothing pinned the sentence beside it.
-//
-// It is the same shape as the drift AGENTS.md's own header warns about: "a
-// workflow is YAML, so nothing in it can be held to the code by a compiler".
-// A comment is not YAML and cannot be either.
-func TestAgentsMdNamesEveryFuzzTarget(t *testing.T) {
-	agents := readRepoFile(t, "AGENTS.md")
-	for name := range fuzzTargets(t) {
-		if !strings.Contains(agents, name) {
-			t.Errorf("AGENTS.md does not name the fuzz target %s.\n"+
-				"  It is the list an agent reads to know what exists, and a short list reads "+
-				"exactly like a complete one.", name)
-		}
-	}
-}
