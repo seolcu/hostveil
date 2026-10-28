@@ -13,6 +13,7 @@
 // and unambiguous — a path exists, a symbol is declared, a count matches, a
 // list matches — and nothing about the prose. Rewording an invariant must
 // never fail a build; renaming the thing it names must.
+
 package docs
 
 import (
@@ -26,36 +27,6 @@ import (
 	"strings"
 	"testing"
 )
-
-// repoRoot walks up from the test's directory to the module root, so the
-// tests read the real AGENTS.md rather than an embedded copy that could
-// itself drift.
-func repoRoot(t *testing.T) string {
-	t.Helper()
-	dir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			t.Fatal("could not find go.mod above the test directory")
-		}
-		dir = parent
-	}
-}
-
-func readRepoFile(t *testing.T, rel string) string {
-	t.Helper()
-	b, err := os.ReadFile(filepath.Join(repoRoot(t), rel))
-	if err != nil {
-		t.Fatalf("read %s: %v", rel, err)
-	}
-	return string(b)
-}
 
 func agentsMD(t *testing.T) string { return readRepoFile(t, "AGENTS.md") }
 
@@ -75,13 +46,6 @@ var (
 	// directory so flags and `./...` cannot match.
 	commandPath = regexp.MustCompile(`(?m)(?:^|\s)\.?/?((?:cmd|internal|demo|docs|scripts|site|test)/[A-Za-z0-9._/-]*)`)
 )
-
-func addUnique(out []string, s string) []string {
-	if s != "" && !slices.Contains(out, s) {
-		return append(out, s)
-	}
-	return out
-}
 
 // tokens returns every distinct inline-code span in AGENTS.md, with fenced
 // code blocks removed first.

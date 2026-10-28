@@ -145,9 +145,6 @@ has no reason written down.
 Hostveil runs as root and edits configuration files on servers people depend
 on. That is a lot to ask, so this is what stands behind it.
 
-- **There is more test code in this repository than product code.** Auditing an
-  operating system thoroughly takes that much test code, and a test keeps it
-  ahead of the product code.
 - **[`internal/docs/`](internal/docs) fails the build when a published page
   drifts from the code.** Every domain table, every finding ID in a
   screenshot, every figure on the measured-results page is checked against
