@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/url"
 	"os"
 	"path"
@@ -109,6 +110,7 @@ func Analyze(dir string) (*Result, *Manifest, error) {
 	an.loadPackages()
 	an.accounts()
 	an.ssh()
+	an.fail2ban()
 	an.web()
 	an.processes()
 	an.audit()
@@ -351,6 +353,130 @@ func (an *analysis) ssh() {
 			Detail: fmt.Sprintf("%d failed SSH logins from %d addresses, none followed by a success from the same address. "+
 				"Every server reachable from the internet receives these; on its own it shows only that someone tried.", total, len(failed)),
 			Count: total, First: firstFail, Last: lastFail, Evidence: ev})
+
+		// Nearly every failure from one address on the operator's own network
+		// means the guesses arrive through a proxy or a port forward. sshd
+		// and fail2ban see only the proxy, so a ban lands on it and the
+		// attackers behind it are never told apart.
+		if p := top[0]; total >= proxiedMinFailures && failed[p].fails*10 >= total*9 && internalAddr(p) {
+			an.add(Indicator{ID: "login.guessing-through-proxy", Verdict: Suspicious,
+				Title: "SSH password guessing arrives through a proxy on your own network",
+				Detail: fmt.Sprintf("%d of %d failed SSH logins came from %s, a private, CGNAT or loopback address. "+
+					"That is a proxy or port forward in front of sshd, and it hides the real sources: fail2ban "+
+					"can only ban the proxy. Rate-limit per source at the proxy, or forward the client address to sshd.",
+					failed[p].fails, total, p),
+				Count: failed[p].fails, First: failed[p].first, Last: failed[p].last, Evidence: failed[p].ev})
+		}
+	}
+}
+
+// proxiedMinFailures is how many failures a host must see before one
+// internal address carrying nearly all of them reads as a proxy rather than
+// a colleague mistyping a password.
+const proxiedMinFailures = 50
+
+var cgnat = &net.IPNet{IP: net.IPv4(100, 64, 0, 0), Mask: net.CIDRMask(10, 32)}
+
+// internalAddr reports whether addr is private, CGNAT (100.64/10, which
+// Tailscale uses) or loopback: an address on the operator's own network.
+func internalAddr(addr string) bool {
+	ip := net.ParseIP(addr)
+	return ip != nil && (ip.IsPrivate() || ip.IsLoopback() || cgnat.Contains(ip))
+}
+
+// --- fail2ban --------------------------------------------------------------
+
+// fail2banTime reads fail2ban's own "2006-01-02 15:04:05,000" prefix, which
+// it writes in the host's local time.
+func fail2banTime(line string) time.Time {
+	if len(line) < 19 {
+		return time.Time{}
+	}
+	t, err := time.ParseInLocation("2006-01-02 15:04:05", line[:19], time.Local)
+	if err != nil {
+		return time.Time{}
+	}
+	return t.UTC()
+}
+
+var fail2banLine = regexp.MustCompile(`\[([^\]]+)\]\s+(Found|Ban)\s+(\S+)`)
+
+// fail2ban reads what the jails matched from fail2ban's own log. The
+// counters `fail2ban-client status` prints start again at zero on every
+// restart, so they can read 0 for a jail that matched thousands of lines the
+// day before; the log keeps them.
+func (an *analysis) fail2ban() {
+	type jail struct{ found, bans int }
+	jails := map[string]*jail{}
+	internalBans := map[string]bool{}
+	var ev, internalEv []Evidence
+	var first, last time.Time
+	for _, a := range an.b.all("fail2ban-log") {
+		for i, line := range lines(an.b.text(a)) {
+			m := fail2banLine.FindStringSubmatch(line)
+			if m == nil {
+				continue
+			}
+			j := jails[m[1]]
+			if j == nil {
+				j = &jail{}
+				jails[m[1]] = j
+			}
+			if t := fail2banTime(line); !t.IsZero() {
+				if first.IsZero() || t.Before(first) {
+					first = t
+				}
+				if t.After(last) {
+					last = t
+				}
+			}
+			if m[2] == "Found" {
+				j.found++
+				continue
+			}
+			j.bans++
+			e := Evidence{Artifact: a.Path, Line: i + 1, Text: line}
+			if len(ev) < 3 {
+				ev = append(ev, e)
+			}
+			if internalAddr(m[3]) {
+				if !internalBans[m[3]] && len(internalEv) < 3 {
+					internalEv = append(internalEv, e)
+				}
+				internalBans[m[3]] = true
+			}
+		}
+	}
+	if len(jails) == 0 {
+		return
+	}
+	names := make([]string, 0, len(jails))
+	found, bans := 0, 0
+	for name, j := range jails {
+		names = append(names, fmt.Sprintf("%s: %d matched, %d bans", name, j.found, j.bans))
+		found += j.found
+		bans += j.bans
+	}
+	sort.Strings(names)
+	an.add(Indicator{ID: "bans.recorded", Verdict: Attempt,
+		Title: "fail2ban matched failures and banned addresses",
+		Detail: fmt.Sprintf("fail2ban's log records %d matched failures and %d bans (%s). "+
+			"These are counted from the log, which outlives a restart; `fail2ban-client status` counts only since "+
+			"the last one and can read 0 while this does not.", found, bans, strings.Join(names, "; ")),
+		Count: found, First: first, Last: last, Evidence: ev})
+
+	if len(internalBans) > 0 {
+		addrs := make([]string, 0, len(internalBans))
+		for a := range internalBans {
+			addrs = append(addrs, a)
+		}
+		sort.Strings(addrs)
+		an.add(Indicator{ID: "bans.internal-address", Verdict: Suspicious,
+			Title: "fail2ban banned an address on your own network",
+			Detail: fmt.Sprintf("fail2ban banned %s, a private, CGNAT or loopback address. When that address is a proxy "+
+				"or port forward, the ban blocks the proxy for everyone while the attackers behind it keep trying, "+
+				"and on any port the jail does not cover they are never blocked at all.", strings.Join(addrs, ", ")),
+			Count: len(addrs), Evidence: internalEv})
 	}
 }
 
