@@ -2,6 +2,7 @@ package triage
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -264,5 +265,57 @@ func TestSkeletonDotfilesAreNotBackdating(t *testing.T) {
 		if in.ID == IDPrefix+"file.timestamp-mismatch" {
 			t.Errorf("flagged %s", in.Detail)
 		}
+	}
+}
+
+// Guessing that all arrives from one address on the operator's own network
+// is a proxy in front of sshd, and fail2ban can only ban that proxy. Both
+// halves have to be told to the operator: the concentration in the SSH log,
+// and the ban on an internal address in fail2ban's log, counted from the log
+// because the status counters reset on restart.
+func TestGuessingThroughAProxyIsNamed(t *testing.T) {
+	h := newFakeHost(t)
+	var auth []string
+	for i := 0; i < 120; i++ {
+		auth = append(auth, "2026-10-20T10:00:00.000000+09:00 host sshd[9]: Invalid user admin from 100.91.99.24 port 4000")
+	}
+	auth = append(auth, "2026-10-20T10:05:00.000000+09:00 host sshd[9]: Failed password for root from 203.0.113.9 port 4000 ssh2")
+	h.write("/var/log/auth.log", authLines(auth...))
+	h.write("/var/log/fail2ban.log", authLines(
+		"2026-10-20 10:00:01,100 fail2ban.filter  [812]: INFO    [sshd] Found 100.91.99.24 - 2026-10-20 10:00:01",
+		"2026-10-20 10:00:02,100 fail2ban.filter  [812]: INFO    [sshd] Found 100.91.99.24 - 2026-10-20 10:00:02",
+		"2026-10-20 10:00:03,100 fail2ban.actions [812]: NOTICE  [sshd] Ban 100.91.99.24",
+	))
+
+	res, _, _ := h.run()
+	v := verdicts(res)
+	for _, id := range []string{"login.guessing-through-proxy", "bans.internal-address"} {
+		if v[id] != Suspicious {
+			t.Errorf("%s = %q, want suspicious; got %v", id, v[id], v)
+		}
+	}
+	if v["bans.recorded"] != Attempt {
+		t.Errorf("bans.recorded = %q, want attempt", v["bans.recorded"])
+	}
+	for _, in := range res.Indicators {
+		if in.ID == IDPrefix+"bans.recorded" && (in.Count != 2 || !strings.Contains(in.Detail, "sshd: 2 matched, 1 bans")) {
+			t.Errorf("bans.recorded counted %d: %s", in.Count, in.Detail)
+		}
+	}
+}
+
+// Guessing spread over the internet is ordinary, and must not be read as a
+// proxy however many attempts there are.
+func TestGuessingFromManyPublicAddressesIsNotAProxy(t *testing.T) {
+	h := newFakeHost(t)
+	var auth []string
+	for i := 0; i < 120; i++ {
+		auth = append(auth, fmt.Sprintf("2026-10-20T10:00:00.000000+09:00 host sshd[9]: Invalid user admin from 203.0.113.%d port 4000", i%50))
+	}
+	h.write("/var/log/auth.log", authLines(auth...))
+
+	res, _, _ := h.run()
+	if v := verdicts(res); v["login.guessing-through-proxy"] != "" || v["bans.recorded"] != "" {
+		t.Errorf("public guessing read as a proxy, or bans invented with no fail2ban log: %v", v)
 	}
 }
