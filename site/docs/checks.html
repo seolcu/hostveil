@@ -152,9 +152,9 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">193</strong> findings, and <strong data-counted="findings.fixable">181</strong> of them carry a fix: <span data-counted="findings.auto">76</span> it will apply unattended, <span data-counted="findings.review">105</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical (removing a Docker socket mount, which breaks the tool that needs it) is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Every one is Manual by <em>decision</em>, with the reason written down. A test fails the build when one is missing, and the counts in this paragraph are computed from the registry.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">194</strong> findings, and <strong data-counted="findings.fixable">181</strong> of them carry a fix: <span data-counted="findings.auto">76</span> it will apply unattended, <span data-counted="findings.review">105</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical (removing a Docker socket mount, which breaks the tool that needs it) is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Every one is Manual by <em>decision</em>, with the reason written down. A test fails the build when one is missing, and the counts in this paragraph are computed from the registry.</p>
             <div class="ledger-bar-group">
-              <p class="ledger-bar-title">How the <span data-counted="findings.total">193</span> findings resolve</p>
+              <p class="ledger-bar-title">How the <span data-counted="findings.total">194</span> findings resolve</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Auto</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:39%"></div></div>
@@ -168,7 +168,7 @@
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:7%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.manual">12</span>
+                <span class="ledger-bar-value" data-counted="findings.manual">13</span>
               </div>
             </div>
 
@@ -611,9 +611,11 @@
                 <tbody>
                   <tr><td><code>cve.outdated-image</code></td><td>Vulnerabilities that are already fixed upstream</td><td>Worst in that group</td><td><a href="#fix-cve.outdated-image">Review</a></td></tr>
                   <tr><td><code>cve.unpatched-image</code></td><td>Vulnerabilities nobody has published a fix for</td><td>Worst in that group</td><td>Unavailable</td></tr>
+                  <tr><td><code>cve.unpatched-host</code></td><td>Vulnerabilities in the host's own packages that your distribution has not fixed</td><td>Worst in that group</td><td>Unavailable</td></tr>
                 </tbody>
               </table>
             </div>
+            <p>Trivy also scans the host's own operating system packages, with or without Docker. A host package with a published fix is already reported as <code>updates.pending-security</code>, so this scan reports only what your distribution has not fixed yet, and leaves out what it has marked as one it will not fix.</p>
             <p>Each finding names the severity counts and its worst few CVEs. The complete list of vulnerability IDs is in the finding's evidence. Use <code>hostveil scan --json</code> to read it.</p>
             <div class="callout">
               <span class="callout-label">Why not one finding per CVE</span>

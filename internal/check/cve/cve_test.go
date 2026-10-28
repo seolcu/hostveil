@@ -27,25 +27,76 @@ func TestCVESkipsWithoutTrivy(t *testing.T) {
 	}
 }
 
-func TestCVEAvailableWithBothTools(t *testing.T) {
-	ok, _ := New().Available(context.Background(), platform.Env{Runner: checktest.New().Only("trivy", "docker").Docker("27.0.3")})
+func TestCVEAvailableWithTrivyAlone(t *testing.T) {
+	ok, _ := New().Available(context.Background(), platform.Env{Runner: checktest.New().Only("trivy")})
 	if !ok {
-		t.Error("should be available with trivy and docker present")
+		t.Error("should be available with trivy present: the host's own packages are there to scan")
 	}
 }
 
 // The bug this guards: the docker CLI on PATH says nothing about whether this
 // user may talk to the socket. Treating presence as reachability let the scan
 // proceed, fail on every image, and report zero vulnerabilities — which scores
-// as a perfect 100 on a host that was never actually scanned.
-func TestCVESkipsWhenDaemonUnreachable(t *testing.T) {
-	r := checktest.New().Only("trivy", "docker").DockerDown("permission denied while trying to connect to the Docker daemon socket")
-	ok, reason := New().Available(context.Background(), platform.Env{Runner: r})
-	if ok {
-		t.Fatal("should skip when the Docker daemon cannot be reached")
+// as a perfect 100 on a host that was never actually scanned. The host's
+// packages are still scanned, so the axis is Degraded and says why.
+func TestCVEUnreachableDaemonIsAGapNotAClean(t *testing.T) {
+	r := &scriptRunner{dockerDown: true}
+	_, err := New().Check(context.Background(), platform.Env{Runner: r})
+	var partial *check.PartialError
+	if !errors.As(err, &partial) {
+		t.Fatalf("an unreachable daemon must degrade the axis, got %v", err)
 	}
-	if !strings.Contains(reason, "sudo") {
-		t.Errorf("reason should tell the user how to fix it, got %q", reason)
+	if !strings.Contains(err.Error(), "sudo") {
+		t.Errorf("the gap should tell the user how to fix it, got %q", err)
+	}
+}
+
+// No docker at all means no images, which is a complete answer: only the
+// host's packages are scanned, and nothing is missing.
+func TestCVEWithoutDockerScansTheHostOnly(t *testing.T) {
+	r := &scriptRunner{noDocker: true, host: hostUnpatched}
+	fs, err := New().Check(context.Background(), platform.Env{Runner: r})
+	if err != nil {
+		t.Fatalf("a host without docker is fully covered by the host scan: %v", err)
+	}
+	if len(fs) != 1 || fs[0].ID != "cve.unpatched-host" {
+		t.Fatalf("want one cve.unpatched-host, got %v", fs)
+	}
+}
+
+// hostUnpatched is Caddy 2.6.2 on Ubuntu noble, the case #862 reported, plus
+// the two kinds of entry the host scan must not report: one the distribution
+// has fixed (the updates domain charges it) and one it has decided not to.
+const hostUnpatched = `{"Results":[{"Vulnerabilities":[
+{"VulnerabilityID":"CVE-2026-27585","PkgName":"caddy","InstalledVersion":"2.6.2-6ubuntu0.24.04.3","Status":"affected","Severity":"HIGH"},
+{"VulnerabilityID":"CVE-2026-27589","PkgName":"caddy","InstalledVersion":"2.6.2-6ubuntu0.24.04.3","Status":"affected","Severity":"MEDIUM"},
+{"VulnerabilityID":"CVE-2026-1000","PkgName":"openssl","InstalledVersion":"3.0.13","FixedVersion":"3.0.13-0ubuntu3.5","Status":"fixed","Severity":"HIGH"},
+{"VulnerabilityID":"CVE-2026-2000","PkgName":"linux-image-6.8.0-41-generic","InstalledVersion":"6.8.0-41","Status":"will_not_fix","Severity":"HIGH"}]}]}`
+
+func TestTheHostScanReportsOnlyWhatTheDistributionHasNotFixed(t *testing.T) {
+	fs, err := parseHostTrivy([]byte(hostUnpatched))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fs) != 1 {
+		t.Fatalf("want one rollup, got %d", len(fs))
+	}
+	f := fs[0]
+	if f.ID != "cve.unpatched-host" || f.Remediation != model.RemediationUnavailable || f.Severity != model.SeverityHigh {
+		t.Errorf("got %s %v %v", f.ID, f.Remediation, f.Severity)
+	}
+	if f.Evidence["count"] != "2" || f.Evidence["packages"] != "caddy" {
+		t.Errorf("want caddy's two CVEs only, got count=%s packages=%s", f.Evidence["count"], f.Evidence["packages"])
+	}
+	if strings.Contains(f.Evidence["cves"], "CVE-2026-1000") || strings.Contains(f.Evidence["cves"], "CVE-2026-2000") {
+		t.Errorf("a fixed or will-not-fix entry leaked in: %s", f.Evidence["cves"])
+	}
+}
+
+func TestACleanHostScanProducesNoFinding(t *testing.T) {
+	fs, err := parseHostTrivy([]byte(`{"Results":[]}`))
+	if err != nil || len(fs) != 0 {
+		t.Errorf("got %v, %v", fs, err)
 	}
 }
 
@@ -66,6 +117,13 @@ type scriptRunner struct {
 	// warmErr fails the vulnerability-DB download, which is what an
 	// air-gapped host with a hand-seeded DB looks like.
 	warmErr bool
+	// host is the host package scan's output ("" means a clean host), and
+	// hostErr makes it fail.
+	host    string
+	hostErr bool
+	// noDocker removes docker from PATH; dockerDown leaves it on PATH with
+	// no daemon to answer.
+	noDocker, dockerDown bool
 
 	// The checker scans images concurrently, so this fake is called from
 	// several goroutines at once. Only the recording needs guarding — the
@@ -93,13 +151,29 @@ func (s *scriptRunner) trivyCalls() []string {
 	return slices.Clone(s.calls)
 }
 
-func (s *scriptRunner) LookPath(name string) (string, error) { return "/usr/bin/" + name, nil }
+func (s *scriptRunner) LookPath(name string) (string, error) {
+	if name == "docker" && s.noDocker {
+		return "", errors.New("not found")
+	}
+	return "/usr/bin/" + name, nil
+}
 
 func (s *scriptRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
 	joined := strings.Join(args, " ")
 	switch {
 	case checktest.IsDockerProbe(name, args):
+		if s.noDocker || s.dockerDown {
+			return nil, errors.New("permission denied while trying to connect to the Docker daemon socket")
+		}
 		return []byte("27.0.3\n"), nil
+	case name == "trivy" && len(args) > 0 && args[0] == "rootfs":
+		if s.hostErr {
+			return nil, errors.New("failed to analyze the root filesystem")
+		}
+		if s.host == "" {
+			return []byte(`{"Results":[]}`), nil
+		}
+		return []byte(s.host), nil
 	case name == "docker" && joined == "compose ls --all --format json":
 		return []byte(s.lsJSON), nil
 	case name == "docker" && joined == "ps --quiet --no-trunc":
@@ -224,8 +298,9 @@ func TestCVEPartialScanIsDegraded(t *testing.T) {
 	if !errors.As(err, &partial) {
 		t.Fatalf("expected a PartialError, got %v", err)
 	}
-	if partial.Covered != 1 || partial.Total != 2 {
-		t.Errorf("coverage = %d/%d, want 1/2", partial.Covered, partial.Total)
+	// The host's packages and one image scanned; one image failed.
+	if partial.Covered != 2 || partial.Total != 3 {
+		t.Errorf("coverage = %d/%d, want 2/3", partial.Covered, partial.Total)
 	}
 	// The one image that did scan contributes its finding; nothing may be
 	// invented for the image that failed.
@@ -254,9 +329,10 @@ func TestCVEUnparsedProjectCountsAlongsideAFailedImage(t *testing.T) {
 	if !strings.Contains(partial.Reason, "/nonexistent/docker-compose.yml") {
 		t.Errorf("the unparsed compose file is missing from %q", partial.Reason)
 	}
-	// One image scanned, one failed, one stack never enumerated.
-	if partial.Covered != 1 || partial.Total != 3 {
-		t.Errorf("coverage = %d/%d, want 1/3", partial.Covered, partial.Total)
+	// The host and one image scanned, one image failed, one stack never
+	// enumerated.
+	if partial.Covered != 2 || partial.Total != 4 {
+		t.Errorf("coverage = %d/%d, want 2/4", partial.Covered, partial.Total)
 	}
 }
 
@@ -296,6 +372,7 @@ func withBrokenProject(lsJSON string) string {
 // domain is still scored, and would hand back the false 100 all over again.
 func TestCVEAllImagesFailingIsError(t *testing.T) {
 	r := composeProject(t)
+	r.hostErr = true
 	r.trivyErr["redis:7"] = true
 	r.trivyErr["postgres:13"] = true
 

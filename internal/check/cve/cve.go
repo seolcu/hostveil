@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"slices"
 	"sort"
 	"strconv"
@@ -31,29 +32,49 @@ func New() *Checker { return &Checker{} }
 // Source identifies the CVE domain.
 func (*Checker) Source() model.Source { return model.SourceCVE }
 
-// Available requires both Trivy (the scanner) and a reachable Docker daemon
-// (to enumerate the images to scan). Missing either yields a clean skip.
-//
-// The daemon is probed, not merely looked up on PATH: an unreachable socket
-// would otherwise let the scan proceed, fail on every image, and report zero
-// vulnerabilities — a perfect CVE score for a scan that never happened.
-func (*Checker) Available(ctx context.Context, env platform.Env) (bool, string) {
+// Available requires Trivy. The host's own packages are always there to
+// scan; images are scanned when a Docker daemon is.
+func (*Checker) Available(_ context.Context, env platform.Env) (bool, string) {
 	if !platform.Has(env.Runner, "trivy") {
-		return false, "Trivy not installed — CVE scan skipped (install it to enable image vulnerability scanning)"
-	}
-	if ok, reason := platform.DockerReachable(ctx, env.Runner); !ok {
-		return false, reason + " — no images to scan"
+		return false, "Trivy not installed — CVE scan skipped (install it to enable vulnerability scanning)"
 	}
 	return true, ""
 }
 
-// Check enumerates compose images and scans each with Trivy.
+// Check scans the host's packages and every compose and standalone image
+// with Trivy.
 //
-// Per-image failures are counted rather than swallowed, because "no
-// vulnerabilities found" and "nothing could be examined" score identically
-// but mean opposite things. Some images unscannable is Degraded; all of them
-// is an outright error, which drops the axis from scoring entirely.
+// Failures are counted rather than swallowed, because "no vulnerabilities
+// found" and "nothing could be examined" score identically but mean opposite
+// things. Some targets unscannable is Degraded; all of them is an outright
+// error, which drops the axis from scoring entirely.
 func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
+	var cov check.Coverage
+	host, hostErr := scanHost(ctx, env.Runner)
+	if hostErr != nil {
+		cov.Missed(1, fmt.Sprintf("cannot scan the host's packages: %v", hostErr))
+	} else {
+		cov.Covered(1)
+	}
+
+	// The daemon is probed, not merely looked up on PATH: an unreachable
+	// socket would otherwise let the image scan proceed, fail on every
+	// image, and report zero image vulnerabilities. A host with no docker at
+	// all has no images, which is a complete answer.
+	if ok, reason := platform.DockerReachable(ctx, env.Runner); !ok {
+		if !platform.Has(env.Runner, "docker") {
+			if hostErr != nil {
+				return nil, hostErr
+			}
+			return host, nil
+		}
+		if hostErr != nil {
+			return nil, fmt.Errorf("%v, and %s", hostErr, reason)
+		}
+		cov.Missed(0, reason+" — images were not scanned")
+		return host, cov.Err()
+	}
+
 	projects, unparsed, err := compose.Discover(ctx, env.Runner)
 	if err != nil {
 		return nil, err
@@ -89,22 +110,23 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	}
 
 	findings, failed, firstErr := scanAll(ctx, env.Runner, targets)
+	findings = append(host, findings...)
 	attempted := len(targets)
 
-	// Every image failing is not partial coverage, it is none, and it leaves
-	// before the ledger because it is the one outcome that is not a matter of
-	// degree: a Degraded domain is still scored, so reporting it here would
-	// hand back a scored axis built on nothing. The attempted > 0 guard is
-	// what keeps a host with no containers at all — where failed and
-	// attempted are both zero — on the clean path.
-	if attempted > 0 && failed == attempted {
+	// Every target failing is not partial coverage, it is none, and it
+	// leaves before the ledger because it is the one outcome that is not a
+	// matter of degree: a Degraded domain is still scored, so reporting it
+	// here would hand back a scored axis built on nothing.
+	if hostErr != nil && failed == attempted {
+		if attempted == 0 {
+			return nil, hostErr
+		}
 		return nil, fmt.Errorf("no image could be scanned: %w", firstErr)
 	}
 
 	// Each blind spot is recorded rather than returned, so hitting two of
 	// them reports two. Returning at the first is how an unparsed compose
 	// file used to disappear from a scan that also had an image fail.
-	var cov check.Coverage
 	cov.Covered(attempted - failed)
 	if failed > 0 {
 		cov.Missed(failed, fmt.Sprintf("some images could not be scanned (first failure: %v)", firstErr))
@@ -314,9 +336,87 @@ type trivyVuln struct {
 	PkgName          string `json:"PkgName"`
 	InstalledVersion string `json:"InstalledVersion"`
 	FixedVersion     string `json:"FixedVersion"`
+	Status           string `json:"Status"`
 	Severity         string `json:"Severity"`
 	Title            string `json:"Title"`
 	PrimaryURL       string `json:"PrimaryURL"`
+}
+
+// hostSkipDirs keeps the host scan to the operating system's own package
+// databases. Container storage is scanned image by image above, and the rest
+// is data, not installed packages.
+var hostSkipDirs = []string{"/proc", "/sys", "/dev", "/run", "/tmp", "/var/tmp", "/var/lib/docker",
+	"/var/lib/containerd", "/var/lib/rancher", "/var/log", "/home", "/root", "/srv", "/mnt", "/media", "/snap"}
+
+// scanHost scans the operating system's installed packages.
+//
+// Only vulnerabilities the distribution has not published a fix for are
+// reported. One it has fixed is an update waiting to be installed, which the
+// updates domain already charges; reporting it here would charge it twice.
+// What only this scan can see is a package the distribution is not going to
+// patch, such as Caddy 2.6.2 on Ubuntu noble, where upstream fixed the CVEs
+// in a release noble does not carry.
+func scanHost(ctx context.Context, r platform.CommandRunner) ([]model.Finding, error) {
+	ctx, cancel := context.WithTimeout(ctx, imageTimeout+time.Minute)
+	defer cancel()
+
+	args := []string{"rootfs", "--scanners", "vuln", "--pkg-types", "os",
+		"--severity", "CRITICAL,HIGH,MEDIUM",
+		"--timeout", imageTimeout.String(),
+		"--format", "json", "--quiet", "--no-progress"}
+	for _, d := range hostSkipDirs {
+		args = append(args, "--skip-dirs", d)
+	}
+	out, err := r.Run(ctx, "trivy", append(args, "/")...)
+	if err != nil {
+		return nil, err
+	}
+	return parseHostTrivy(out)
+}
+
+// hostDeclined is what a distribution's tracker says it has decided not to
+// fix, or not yet. Neither is an advisory an operator can act on today, and
+// on a stock host they are mostly the kernel.
+var hostDeclined = map[string]bool{"will_not_fix": true, "fix_deferred": true}
+
+func parseHostTrivy(out []byte) ([]model.Finding, error) {
+	var report trivyReport
+	if err := json.Unmarshal(out, &report); err != nil {
+		return nil, fmt.Errorf("decode trivy output for the host: %w", err)
+	}
+	var unpatched group
+	seen := map[string]bool{}
+	pkgs := map[string]bool{}
+	for _, res := range report.Results {
+		for _, v := range res.Vulnerabilities {
+			if v.VulnerabilityID == "" || v.FixedVersion != "" || hostDeclined[v.Status] || seen[v.VulnerabilityID] {
+				continue
+			}
+			seen[v.VulnerabilityID] = true
+			unpatched.add(v)
+			if v.PkgName != "" {
+				pkgs[v.PkgName] = true
+			}
+		}
+	}
+	if unpatched.empty() {
+		return nil, nil
+	}
+	names := slices.Sorted(maps.Keys(pkgs))
+	named := strings.Join(names, ", ")
+	if len(names) > maxNamed {
+		named = strings.Join(names[:maxNamed], ", ") + fmt.Sprintf(", and %d more", len(names)-maxNamed)
+	}
+	opts := []model.FindingOption{
+		model.WithDescription(fmt.Sprintf("Installed packages carry %d vulnerabilit%s your distribution has not published a fix for (%s), in %s. Most severe: %s. Run with --json for the full list.",
+			len(unpatched.ids), plural(len(unpatched.ids)), unpatched.summary(), named, unpatched.worstList())),
+		model.WithHowToFix("There is no distribution update to install. Check whether the software's own project publishes fixed releases or a package repository (Caddy, nginx and Docker all do), or whether the vulnerable component is reachable in your setup at all."),
+		model.WithEvidence("packages", strings.Join(names, ", ")),
+	}
+	opts = append(opts, unpatched.evidence()...)
+	return []model.Finding{model.NewFinding("cve.unpatched-host",
+		"Host packages have vulnerabilities your distribution has not fixed",
+		unpatched.worst(), model.SourceCVE, model.RemediationUnavailable, opts...)}, nil
 }
 
 // imageTimeout bounds a single image scan. Trivy downloads its vulnerability

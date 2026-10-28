@@ -211,8 +211,11 @@ func TestEngineSkipsDockerDomainsWhenDaemonUnreachable(t *testing.T) {
 	report := engine.Scan(context.Background(), nil)
 
 	for _, d := range report.Domains {
-		if d.State != model.ScanSkipped {
-			t.Errorf("%s domain state = %v, want skipped", d.Source, d.State)
+		// The CVE domain still has the host's own packages to scan, so it
+		// runs; with neither half reachable it reports an error instead of
+		// a skip. Either way it is never Done, which is the claim that lied.
+		if d.State == model.ScanDone || (d.Source != model.SourceCVE && d.State != model.ScanSkipped) {
+			t.Errorf("%s domain state = %v, want skipped (or, for cve, not done)", d.Source, d.State)
 		}
 		if !strings.Contains(d.Reason, "sudo") {
 			t.Errorf("%s reason should tell the user how to fix it, got %q", d.Source, d.Reason)
