@@ -10,8 +10,8 @@
 
 upstream https://raw.githubusercontent.com/google/fonts/e1118da94a8cb00cf6d06cdac9ef13eb1e5c6ab7
 source ofl/notosanskr/NotoSansKR[wght].ttf sha256:194018e6b2b293a7964f037b25c0249ce1418bc9ab3c971060a03aa57861e252
-font NotoSansKR-400.woff2 50732 sha256:68578e328ab56da93a35f2af3d1b6847192ac71653f6c0a16eb5e3d0f36f536a
-font NotoSansKR-700.woff2 51564 sha256:ef0b8c9debd7dd821d508275e98936a873de3e0b98da05cedbea577579b2c57c
+font NotoSansKR-400.woff2 50644 sha256:dc18c6df4469985e863b232e3a4acef8e09926426cd21eb331b449d3595ce7d5
+font NotoSansKR-700.woff2 51460 sha256:02cd39d85402a0be182ed6fb9943625540e97099c476ee9381b31c4b9686af46
 codepoints 796
 
 가각간갇갈감갑값갔강갖같개갱갹거건걷걸검겁것겉게겠겨격견결겹겼경계고곤곧골곱곳공과관괄괜교구국군굴권규균그극근글금급긋기긴길김깁

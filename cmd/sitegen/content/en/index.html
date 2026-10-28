@@ -42,8 +42,8 @@
         <div class="container">
           <div class="section-heading">
             <p class="eyebrow">Why Hostveil</p>
-            <h2>A guide, not another report.</h2>
-            <p>Hostveil turns opaque host state into a prioritized list of concrete, plain-language problems — and then walks you through fixing them safely.</p>
+            <h2>From scan to fix, one step at a time.</h2>
+            <p>Hostveil turns opaque host state into a prioritized list of concrete problems in plain language, then walks you through fixing each one safely.</p>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
@@ -207,8 +207,8 @@
           </div>
           <ol class="flow-list">
             <li><div class="flow-step-head"><span>01</span><strong>Scan locally</strong></div><p>Run <code>hostveil</code> on your Linux server. Docker or Trivy absent? Those areas are skipped gracefully.</p></li>
-            <li><div class="flow-step-head"><span>02</span><strong>Understand</strong></div><p>Findings are prioritized by severity with a plain-language explanation of what and why. A clean host shows Clean, not a hollow 100.</p></li>
-            <li><div class="flow-step-head"><span>03</span><strong>Apply fixes</strong></div><p>Auto for the clearly-safe fix, Review when there are real alternatives, Manual when the tool should guide instead of mutate.</p></li>
+            <li><div class="flow-step-head"><span>02</span><strong>Understand</strong></div><p>Findings are prioritized by severity with a plain-language explanation of what and why. A host with nothing to report is marked Clean.</p></li>
+            <li><div class="flow-step-head"><span>03</span><strong>Apply fixes</strong></div><p>Auto for the clearly-safe fix, Review when there are real alternatives, Manual when the change is yours to make, with the steps written out.</p></li>
             <li><div class="flow-step-head"><span>04</span><strong>Roll back anytime</strong></div><p>Every applied fix is backed up first and reversible<br>through <code>hostveil rollback</code>.</p></li>
           </ol>
         </div>
@@ -259,7 +259,7 @@ hostveil fix --all</code></pre>
             </article>
             <article>
               <h3>What if a fix has tradeoffs?</h3>
-              <p>It is a Review fix, not Auto. Hostveil shows independent<br>alternatives and makes you choose.</p>
+              <p>It becomes a Review fix. Hostveil shows the independent<br>alternatives and you choose one.</p>
             </article>
             <article>
               <h3>Do I need Docker or Trivy?</h3>

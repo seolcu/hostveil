@@ -269,11 +269,17 @@ The body used to be a Korean serif (Nanum Myeongjo, and Noto Serif KR before it)
 
 The woff2 output is not byte-reproducible across fonttools and brotli versions, which is why the fonts are not part of the `git diff --exit-code site/` gate. Coverage is what is pinned, and that does not depend on either.
 
-### Korean copy is written, not translated
+### No "A, not B"
+
+Do not write the contrast "A, not B" — "a guide, not another report", "Clean, not a hollow 100", "보고서가 아닌 가이드", "B가 아니라 A" — in any copy, English or Korean: the site, the READMEs, release notes, the dashboard's and the TUI's text. It only works when the reader was already thinking B. Generated copy reaches for it where nobody was, so it reads as an answer to a question no one asked, and it is the most recognisable tell of machine-written prose there is. Say A, and say why A is true. If B really is the mistake a reader is about to make, name the mistake as its own sentence with the reason ("A skipped domain is not scored. A score of 100 would claim it was checked.").
+
+The same goes for its relatives: "not just X", "rather than X" as a flourish, and a heading built on either. A doc comment explaining why the code takes one path over another is a different thing and is exempt.
+
+### Korean copy is written in Korean
 
 `content/ko/**`, `README.ko.md` and `CHANGELOG.ko.md` are not renderings of the English text — they are their own sentences that happen to say the same thing. An agent drafting them by translating the English paragraph clause-for-clause produces fluent, grammatical Korean that a native reader still flags on sight, because the tell isn't grammar, it's rhythm: English sentence shape surviving the trip. The specific habits to watch for, because they are exactly the ones an LLM defaults to —
 
-- **직접 호칭을 피할 것.** English marketing copy addresses the reader as "you"; Korean product copy almost never does. `당신`/`당신의` in a sentence is close to a guarantee that it was translated rather than written — restructure around the noun or the action instead ("a host you control" → "직접 통제하는 호스트", not "당신이 통제하는 호스트").
+- **`당신`은 써도 된다.** Apple Korea's own product pages address the reader as `당신` ("당신의 데이터", "당신만이"), and that register is the model for this site. Use it where the sentence is about the reader. What still gives a translation away is `당신의` stacked on every noun because the English had "your" there; write the sentence the way Korean would say it and the address will appear where it belongs.
 - **em-dash을 남용하지 말 것.** English uses `—` for asides, appositives, and parenthetical qualification constantly; Korean prose doesn't reach for it nearly as often. Where the English draft leans on one, prefer ending the sentence and starting the next, or `즉`/쉼표. A Korean paragraph with an em-dash every line or two is a paragraph that was translated one sentence at a time.
 - **한 문장에 절을 쌓지 말 것.** English comfortably chains three or four clauses with "and," "which," "while." Korean technical writing reads better as several short declarative sentences than as one long one carrying the same clause count — split rather than translate the connectors (-고, -며, -면서) literally.
 - **"그리고"/"그런데"로 문장을 열지 말 것**, and don't reach for a sentence fragment for emphasis — both read as an English rhetorical habit (leading "And…", a one-word sentence for punch) transplanted rather than composed.
