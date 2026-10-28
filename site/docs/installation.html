@@ -153,7 +153,7 @@
               <table>
                 <thead><tr><th>Option</th><th>Effect</th></tr></thead>
                 <tbody>
-                  <tr><td><code>--version vX.Y.Z</code></td><td>Install a specific release instead of the latest.</td></tr>
+                  <tr><td><code>--version vX.Y.Z</code></td><td>Install a specific release. The default is the latest.</td></tr>
                   <tr><td><code>--no-trivy</code></td><td>Skip the optional Trivy prompt entirely.</td></tr>
                   <tr><td><code>--yes</code> / <code>-y</code></td><td>Run non-interactively (accept prompts).</td></tr>
                 </tbody>
@@ -186,7 +186,7 @@
             <div class="code-block"><pre><code>sudo apt install ./hostveil_&lt;version&gt;_linux_amd64.deb
 # or
 sudo dnf install ./hostveil-&lt;version&gt;.x86_64.rpm</code></pre></div>
-            <p>The package installs the same single binary to the same path the installer uses, <code>/usr/bin/hostveil</code>, so the two are interchangeable — you can move from one to the other without ending up with two copies on your PATH. Docker and <code>iproute2</code> are listed as <em>recommended</em>, never required: without them the container, CVE, and exposed-service domains report N/A rather than Hostveil failing to run.</p>
+            <p>The package installs the same single binary to the same path the installer uses, <code>/usr/bin/hostveil</code>, so the two are interchangeable — you can move from one to the other without ending up with two copies on your PATH. Docker and <code>iproute2</code> are listed as <em>recommended</em>, never required: without them the container, CVE, and exposed-service domains report N/A and the rest of Hostveil runs.</p>
             <p>There is no service to enable and no config file to edit. Removing the package leaves <code>/var/lib/hostveil</code> in place, for the same reason <code>--uninstall</code> does: those checkpoints are the backups of every file Hostveil has edited.</p>
             <p>Packages are Linux-only.</p>
 
@@ -195,7 +195,7 @@ sudo dnf install ./hostveil-&lt;version&gt;.x86_64.rpm</code></pre></div>
             <p>The installer already verifies the checksum of the archive it fetches against the release&rsquo;s own <code>hostveil-checksums.txt</code>, and discards anything that does not match. That proves the bytes arrived intact. It does not prove who produced them &mdash; a checksum file published beside a tampered archive matches it perfectly.</p>
             <p>Every release archive carries a <strong>signed build provenance attestation</strong>, which does prove that: the archive was built by this repository&rsquo;s release workflow, from a named commit, at a named tag. Nothing running on a maintainer&rsquo;s laptop can produce one.</p>
             <div class="code-block"><pre><code>gh attestation verify hostveil-linux-amd64.tar.gz --repo seolcu/hostveil</code></pre></div>
-            <p><code>hostveil update</code> runs that check for you where the GitHub CLI is present. A provenance check that <em>fails</em> stops the update; one that cannot run because <code>gh</code> is not installed is a note rather than an error, because a checksum still proves the bytes are intact and it would be dishonest to imply otherwise.</p>
+            <p><code>hostveil update</code> runs that check for you where the GitHub CLI is present. A provenance check that <em>fails</em> stops the update; one that cannot run because <code>gh</code> is not installed is a note, because a checksum still proves the bytes are intact and it would be dishonest to imply otherwise.</p>
             <p>Each archive also ships an SBOM (<code>.sbom.json</code>) listing everything that went into the binary, so you can answer &ldquo;does this contain the library in today&rsquo;s advisory&rdquo; without building it yourself.</p>
 
             <h2 id="macos">Running it on macOS</h2>
@@ -206,20 +206,20 @@ sudo dnf install ./hostveil-&lt;version&gt;.x86_64.rpm</code></pre></div>
                 <thead><tr><th>Domain</th><th>On macOS</th></tr></thead>
                 <tbody>
                   <tr><td>Host firewall</td><td>Excluded. Hostveil probes ufw, firewalld, nftables and iptables. macOS has none of them and uses <code>pf</code> instead, so &ldquo;none of my probes found anything&rdquo; would have been reported as <code>firewall.inactive</code> — a top-severity finding about a firewall Hostveil never looked for.</td></tr>
-                  <tr><td>Account hygiene</td><td>Excluded. macOS ships an <code>/etc/passwd</code>, but the account database is Open Directory and that file does not describe the host. The <code>/etc/shadow</code> half cannot run at all, and the advice it would print — re-run with <code>sudo</code> — could never help, because the file is absent rather than unreadable.</td></tr>
+                  <tr><td>Account hygiene</td><td>Excluded. macOS ships an <code>/etc/passwd</code>, but the account database is Open Directory and that file does not describe the host. The <code>/etc/shadow</code> half cannot run at all, and the advice it would print — re-run with <code>sudo</code> — could never help, because the file does not exist there at all.</td></tr>
                   <tr><td>AI agent runtimes</td><td>Excluded. It finds home directories through the same <code>/etc/passwd</code>, keeping the Linux UID range. macOS accounts start at 501, so it would have found only <code>/var/root</code> and reported &ldquo;no agent runtime&rdquo; about a host whose <code>/Users</code> it never opened.</td></tr>
                 </tbody>
               </table>
             </div>
-            <p>Two domains do run. <strong>SSH</strong> reads <code>/etc/ssh/sshd_config</code>, which macOS ships whether or not Remote Login is on, and its findings are about OpenSSH rather than about Linux — <code>PasswordAuthentication</code> means the same thing on Darwin. <strong>File permissions</strong> stats the files it recognises and skips the rest. On stock macOS both are usually clean.</p>
+            <p>Two domains do run. <strong>SSH</strong> reads <code>/etc/ssh/sshd_config</code>, which macOS ships whether or not Remote Login is on, and its findings are about OpenSSH itself — <code>PasswordAuthentication</code> means the same thing on Darwin. <strong>File permissions</strong> stats the files it recognises and skips the rest. On stock macOS both are usually clean.</p>
             <div class="callout warn">
               <span class="callout-label">A fix on macOS edits a real file</span>
               <p>The SSH domain is not read-only theatre. <code>hostveil fix ssh.passwordauth</code> on a Mac backs up and rewrites <code>/etc/ssh/sshd_config</code>, exactly as it would on a server, and it is reversible from <code>hostveil history</code> the same way. That is correct behaviour and worth knowing before you run it on a laptop.</p>
             </div>
-            <p>And the score is a number, not N/A: two domains ran, so there is something to average. It is an average over 19 of the 100 points of weight, and it says nothing about the ten domains that did not run. Read the axis breakdown, not the headline. Nothing about <code>pf</code>, the application firewall, Homebrew&rsquo;s update state, launchd services, or System Integrity Protection is examined by any part of Hostveil.</p>
+            <p>And the score is a number: two domains ran, so there is something to average. It is an average over 19 of the 100 points of weight, and it says nothing about the ten domains that did not run. Read the axis breakdown first. Nothing about <code>pf</code>, the application firewall, Homebrew&rsquo;s update state, launchd services, or System Integrity Protection is examined by any part of Hostveil.</p>
 
             <h2 id="upgrade">Upgrading and uninstalling</h2>
-            <p>Hostveil does both itself, and the reason it does rather than telling you to re-run the installer is that it knows how this binary got here.</p>
+            <p>Hostveil does both itself, because it knows how this binary got here.</p>
             <div class="code-block"><pre><code>hostveil update      # --check to ask without changing anything
 hostveil uninstall</code></pre></div>
             <p><code>update</code> works out the origin &mdash; the install script, a <code>.deb</code>, an <code>.rpm</code>, or <code>go install</code> &mdash; and updates it the same way. Re-running the install script over a packaged install replaces a file <code>dpkg</code> or <code>rpm</code> still believes it owns, which is the state this command exists to avoid. The download is checked against the release&rsquo;s checksums and, where the GitHub CLI is present, against the signed build provenance. If Hostveil cannot tell how the binary was installed it does nothing and says so. See the <a href="cli#update">CLI reference</a> for the full origin table.</p>

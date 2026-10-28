@@ -132,7 +132,7 @@
               <button class="copy-btn" type="button" data-copy="hostveil scan">Copy</button>
               <pre><code>hostveil scan</code></pre>
             </div>
-            <p>You get a single 0–100 security score and a list of findings ordered by severity. Areas whose tooling is absent (no Docker, no Trivy) are skipped and the score is renormalized — a clean host shows <strong>Clean</strong>, not a hollow 100.</p>
+            <p>You get a single 0–100 security score and a list of findings ordered by severity. Areas whose tooling is absent (no Docker, no Trivy) are skipped and the score is renormalized. A host with nothing to report shows <strong>Clean</strong>.</p>
             <div class="callout">
               <span class="callout-label">Tip</span>
               <p>On an interactive terminal, running <code>hostveil</code> with no arguments opens the <a href="interfaces">TUI</a> instead. Piped or redirected, it prints a scan — handy in scripts.</p>

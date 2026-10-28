@@ -133,7 +133,7 @@
               <button class="copy-btn" type="button" data-copy="hostveil scan">Copy</button>
               <pre><code>hostveil scan</code></pre>
             </div>
-            <p>0–100 사이의 단일 보안 점수와 심각도순으로 정렬된 발견 항목 목록을 받게 됩니다. 도구가 없는 영역(Docker 없음, Trivy 없음)은 건너뛰어지고 점수가 재정규화됩니다 — 깨끗한 호스트는 속 빈 100점이 아니라 <strong>Clean</strong>으로 표시됩니다.</p>
+            <p>0–100 사이의 단일 보안 점수와 심각도순으로 정렬된 발견 항목 목록을 받게 됩니다. 도구가 없는 영역(Docker 없음, Trivy 없음)은 건너뛰어지고 점수가 재정규화됩니다. 발견된 것이 없는 호스트는 <strong>Clean</strong>으로 표시됩니다.</p>
             <div class="callout">
               <span class="callout-label">팁</span>
               <p>대화형 터미널에서는 인자 없이 <code>hostveil</code>을 실행하면 대신 <a href="interfaces">TUI</a>가 열립니다. 파이프되거나 리디렉션된 경우에는 스캔 결과를 출력합니다 — 스크립트에서 유용합니다.</p>

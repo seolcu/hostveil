@@ -130,7 +130,7 @@
 
             <h2 id="why">What this measurement establishes</h2>
 
-            <p>Hostveil’s own score increasing after its own fixes only establishes consistency. Independent tools help check whether the host changed too. This is one seeded configuration on disposable VMs, not a security guarantee or a survey of production servers.</p>
+            <p>Hostveil’s own score increasing after its own fixes only establishes consistency. Independent tools help check whether the host changed too. This is one seeded configuration on disposable VMs. It is no security guarantee, and it says nothing about production servers in general.</p>
 
             <p>This final rerun supersedes September 10 for reporting. The fixes/rollback experiment and the control experiment each used a fresh VM, without manual pre-hardening. See the <a href="https://github.com/seolcu/hostveil/blob/main/docs/measurements/2026-09-11-cisc-w2026.md">run record and limitations</a>, the <a href="https://github.com/seolcu/hostveil/blob/main/docs/measurements/2026-09-11-cisc-w2026-seeded-raw.json">raw fixes/rollback JSON</a>, and the <a href="https://github.com/seolcu/hostveil/blob/main/docs/measurements/2026-09-11-cisc-w2026-control-raw.json">raw control JSON</a>. Earlier runs remain in the repository.</p>
 
@@ -151,7 +151,7 @@
             </table>
             </div>
 
-            <p>The binary reports <code>v3-dev</code>; the source commit above was recorded separately. These figures describe that build, not an arbitrary later release.</p>
+            <p>The binary reports <code>v3-dev</code>; the source commit above was recorded separately. These figures describe that build only.</p>
 
             <h2 id="instruments">The instruments</h2>
 
@@ -241,7 +241,7 @@
             </table>
             </div>
 
-            <p>SSH reaches full marks only after Review. The container axis remains low with risks such as mounted Docker sockets, host networking and secrets in environment variables. CVEs do not improve in this run; pulling a current image tag does not guarantee it is vulnerability-free. The agent axis improves but retains findings. These results describe the measured commit, not the current fix registry’s coverage.</p>
+            <p>SSH reaches full marks only after Review. The container axis remains low with risks such as mounted Docker sockets, host networking and secrets in environment variables. CVEs do not improve in this run; pulling a current image tag does not guarantee it is vulnerability-free. The agent axis improves but retains findings. These results describe the measured commit. The fix registry has grown since.</p>
 
             <h2 id="control">Does the score respond to independent hardening?</h2>
 
@@ -302,7 +302,7 @@
             </table>
             </div>
 
-            <p>Before-state hashes come from the live host before fixes, not from Hostveil’s checkpoints. The run also records paths whose before-state was unobserved: <code data-measured="rollback.paths_with_unobserved_before_state">/usr/bin/x86_64-linux-gnu-as, /usr/bin/x86_64-linux-gnu-as (0755), /usr/bin/x86_64-linux-gnu-ld.bfd, /usr/bin/x86_64-linux-gnu-ld.bfd (0755)</code>. They are not evidence of successful restoration.</p>
+            <p>Before-state hashes are taken from the live host before any fix runs. Hostveil’s own checkpoints play no part in them. The run also records paths whose before-state was unobserved: <code data-measured="rollback.paths_with_unobserved_before_state">/usr/bin/x86_64-linux-gnu-as, /usr/bin/x86_64-linux-gnu-as (0755), /usr/bin/x86_64-linux-gnu-ld.bfd, /usr/bin/x86_64-linux-gnu-ld.bfd (0755)</code>. They are not evidence of successful restoration.</p>
 
             <p>After rollback, the score is <span data-measured="phases.restored.hostveil.overall">32</span>, compared with <span data-measured="phases.before.hostveil.overall">28</span> before. The scan reaches <code data-measured="phases.restored.external_scan.reachable_tcp">22, 5432, 6380, 8080, 8096, 9000</code>, while the kernel lists <code data-measured="phases.restored.listeners.wildcard_or_routable_tcp">22, 5432, 6379, 6380, 8080, 8096, 9000</code>. Redis remains filtered and Portainer’s 9000 now answers. Equal port counts do not mean equal ports, and rolling back files does not undo package installs, account locks or firewall commands.</p>
 
@@ -310,7 +310,7 @@
 
             <p>This is a full Auto-plus-Review experiment, including irreversible actions. It is not the outcome of <code>fix --all</code> alone. The seeded host is intentionally weak, all domains ran, and the systemd and proxy axes already scored 100 before fixes. Domain availability does not prove that every rule was exercised.</p>
 
-            <p>The TCP scan originates on the Docker bridge, not on the public internet. Routing, filtering and timing can change its observations; it does not test cloud security groups or every possible network path. The control discrepancy remains unresolved. These instruments measure configuration and reachability, not breach probability.</p>
+            <p>The TCP scan originates on the Docker bridge. Routing, filtering and timing can change its observations; it does not test cloud security groups or every possible network path. The control discrepancy remains unresolved. These instruments measure configuration and reachability. None of them estimates how likely a breach is.</p>
 
             <p>The September 10 and 11 fixes/rollback runs reproduced the same scores, finding counts, auditor deltas and unrestored paths. That is repeatability on this fixture. Package repositories, images and vulnerability databases can change future runs; comparisons across Hostveil versions also include scoring and coverage changes.</p>
 

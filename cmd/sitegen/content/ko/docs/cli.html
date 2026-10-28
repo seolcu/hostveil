@@ -15,10 +15,10 @@
                 <tbody>
                   <tr><td><code>--json</code></td><td><code>false</code></td><td>보고서를 JSON으로 출력합니다.</td></tr>
                   <tr><td><code>--sarif</code></td><td><code>false</code></td><td>보고서를 CI 시스템과 GitHub code scanning이 읽는 SARIF 2.1.0 형식으로 출력합니다. <code>--json</code>과 함께 쓸 수 없습니다. 도메인별 커버리지가 run 속성에 함께 실리므로, 일부만 점검된 스캔은 내보내기에서도 그대로 보입니다.</td></tr>
-                  <tr><td><code>--output FILE</code></td><td>—</td><td>선택한 형식 그대로 보고서를 stdout 대신 파일에 씁니다. 종료 코드는 그대로이므로 CI 게이트는 계속 동작합니다.</td></tr>
-                  <tr><td><code>--only LIST</code></td><td>—</td><td>지정한 도메인만 스캔합니다. 쉼표로 구분합니다 (예: <code>--only ssh,firewall</code>). 스캔하지 않은 도메인은 100이 아니라 N/A로 표시됩니다. 부분 스캔은 마지막 스캔 기준선으로 저장되지 않고 변화 요약도 만들지 않습니다. 저장하면 다음 전체 스캔이 건너뛴 도메인의 모든 발견 항목을 새로 생긴 것으로 보고하게 되기 때문입니다.</td></tr>
+                  <tr><td><code>--output FILE</code></td><td>—</td><td>선택한 형식 그대로 보고서를 파일에 씁니다(기본값: stdout). 종료 코드는 그대로이므로 CI 게이트는 계속 동작합니다.</td></tr>
+                  <tr><td><code>--only LIST</code></td><td>—</td><td>지정한 도메인만 스캔합니다. 쉼표로 구분합니다 (예: <code>--only ssh,firewall</code>). 스캔하지 않은 도메인은 N/A로 표시되고 점수에서 빠집니다. 부분 스캔은 마지막 스캔 기준선으로 저장되지 않고 변화 요약도 만들지 않습니다. 저장하면 다음 전체 스캔이 건너뛴 도메인의 모든 발견 항목을 새로 생긴 것으로 보고하게 되기 때문입니다.</td></tr>
                   <tr><td><code>--skip LIST</code></td><td>—</td><td>지정한 도메인을 제외한 모든 도메인을 스캔합니다. <code>--only</code>와 함께 쓸 수 없으며, 같은 부분 스캔 규칙이 적용됩니다.</td></tr>
-                  <tr><td><code>--glyphs NAME</code></td><td>기억된 값, 없으면 <code>plain</code></td><td>상태 표시에 쓸 기호 세트입니다: <code>plain</code> 또는 <code>nerd</code>. <code>nerd</code>는 패치된 Nerd Font의 글리프를 씁니다. 폰트를 설치하고 <code>HOSTVEIL_GLYPHS=nerd</code>를 한 번 설정하세요. 터미널에 어떤 폰트를 쓰는지 물어볼 방법이 없어서 자동 감지가 아니라 명시적 선택이며, 기본값은 아무것도 바꾸지 않습니다.</td></tr>
+                  <tr><td><code>--glyphs NAME</code></td><td>기억된 값, 없으면 <code>plain</code></td><td>상태 표시에 쓸 기호 세트입니다: <code>plain</code> 또는 <code>nerd</code>. <code>nerd</code>는 패치된 Nerd Font의 글리프를 씁니다. 폰트를 설치하고 <code>HOSTVEIL_GLYPHS=nerd</code>를 한 번 설정하세요. 터미널에 어떤 폰트를 쓰는지 물어볼 방법이 없어서 직접 켜야 하며, 기본값은 아무것도 바꾸지 않습니다.</td></tr>
                   <tr><td><code>--verbose</code>, <code>-v</code></td><td><code>false</code></td><td>설명과 수정 안내를 표시합니다.</td></tr>
                   <tr><td><code>--no-color</code></td><td><code>false</code></td><td>색상 출력을 비활성화합니다.</td></tr>
                 </tbody>
@@ -27,7 +27,7 @@
             <p>종료 코드: 수정되지 않은 발견 항목 중 HIGH가 있으면 <code>1</code>, 탐지 영역이 아예 실패했으면 <code>3</code>, 그렇지 않으면 <code>0</code>입니다. 자세한 내용은 <a href="#exit-codes">종료 코드</a>를 참고하세요. 색상은 터미널에만 출력되며 <code>NO_COLOR</code>가 설정되면 억제됩니다.</p>
 
             <h3 id="json-shape"><code>--json</code>의 모양</h3>
-            <p>열거형 필드는 모두 숫자가 아니라 소문자 이름입니다:</p>
+            <p>열거형 필드는 모두 소문자 이름입니다:</p>
             <div class="code-block"><pre><code>{
   "findings": [
     {
@@ -44,7 +44,7 @@
   ]
 }</code></pre></div>
             <p><code>severity</code>는 <code>high</code>, <code>medium</code>, <code>low</code> 중 하나입니다. <code>remediation</code>은 <code>auto</code>, <code>review</code>, <code>manual</code>, <code>unavailable</code> 중 하나입니다. <code>source</code>는 도메인 이름이며 발견 항목 ID의 접두사와 같습니다. <code>state</code>는 <code>done</code>, <code>degraded</code>, <code>skipped</code>, <code>error</code> 중 하나입니다. <code>done</code>이 아닌 도메인은 "아무것도 없다"와 "볼 수 없었다"를 가르는 지점이므로, 결과가 비었다고 깨끗한 호스트로 취급하기 전에 반드시 확인하세요.</p>
-            <p>발견 항목에는 <code>fixed</code>도 실리고, 같은 실행에서 무언가를 적용했다면 <code>pending</code>도 실립니다. <code>fixed</code>는 Hostveil이 이 항목에 수정을 적용했다는 뜻이고, <code>pending</code>은 호스트가 그 수정을 아직 읽지 않았다는 뜻입니다. 그래서 이 항목은 점수에서 계속 감점되고 종료 코드에도 그대로 반영됩니다. 위험이 아직 서 있는지 판단하려는 소비자는 <code>fixed</code>만 볼 것이 아니라 <code>fixed &amp;&amp; !pending</code>을 읽어야 합니다. 둘 다 거짓이면 생략되며, 새로 스캔하면 남지 않습니다. 스캔은 모든 것을 체커 결과로 다시 만들기 때문입니다.</p>
+            <p>발견 항목에는 <code>fixed</code>도 실리고, 같은 실행에서 무언가를 적용했다면 <code>pending</code>도 실립니다. <code>fixed</code>는 Hostveil이 이 항목에 수정을 적용했다는 뜻이고, <code>pending</code>은 호스트가 그 수정을 아직 읽지 않았다는 뜻입니다. 그래서 이 항목은 점수에서 계속 감점되고 종료 코드에도 그대로 반영됩니다. 위험이 아직 서 있는지 판단하려는 소비자는 <code>fixed &amp;&amp; !pending</code>을 읽어야 합니다. <code>fixed</code>는 변경이 적용을 기다리는 동안에도 참입니다. 둘 다 거짓이면 생략되며, 새로 스캔하면 남지 않습니다. 스캔은 모든 것을 체커 결과로 다시 만들기 때문입니다.</p>
             <div class="callout">
               <span class="callout-label">3.11에서 변경</span>
               <p>이 필드들은 예전에는 정수였고, 그래서 소비하는 쪽마다 순서표를 따로 들고 있어야 했습니다. Hostveil은 정수 형식을 <em>읽기</em>는 계속 하므로 이전 버전이 남긴 스캔 스냅샷은 그대로 살아 있지만, 쓸 때는 이름만 씁니다.</p>
@@ -62,7 +62,7 @@
                 </tbody>
               </table>
             </div>
-            <p>두 번째 숫자는 GitHub code scanning이 정렬과 필터에 쓰는 0에서 10 사이의 척도입니다. 구간이 critical 9.0, high 7.0, medium 4.0에서 시작하므로 <strong>Hostveil의 High는 GitHub의 high가 아니라 <em>critical</em> 구간에 뜹니다.</strong></p>
+            <p>두 번째 숫자는 GitHub code scanning이 정렬과 필터에 쓰는 0에서 10 사이의 척도입니다. 구간이 critical 9.0, high 7.0, medium 4.0에서 시작하므로 <strong>Hostveil의 High는 GitHub의 <em>critical</em> 구간에 뜹니다.</strong></p>
             <p>이름이 어긋나는 것은 의도한 것입니다. Hostveil의 최상위 등급은 아무것도 갖지 않은 사람이 호스트 밖에서 지금 당장 닿을 수 있다는 뜻이고, code scanning에서 오늘 처리하라는 뜻의 구간은 critical입니다. 이름을 이름에 맞췄다면 그 항목들이 다음 스프린트에 볼 구간으로 내려갔을 겁니다.</p>
 
             <h2 id="fix">fix</h2>
@@ -94,7 +94,7 @@ hostveil fix --all [flags]</code></pre></div>
                 </tbody>
               </table>
             </div>
-            <p>(<code>hostveil history</code>에서 얻은) 체크포인트 ID 하나를 받아 백업된 파일을 바이트 단위 그대로 복원합니다. 파일이 수정이 써 넣은 내용과 더 이상 일치하지 않으면, 롤백은 그 뒤의 편집을 버리는 대신 <strong>거부하고</strong> 종료 코드 <code>1</code>을 반환합니다. 자세한 내용은 <a href="fixing#declined">롤백이 거부할 때</a>를 참고하세요.</p>
+            <p>(<code>hostveil history</code>에서 얻은) 체크포인트 ID 하나를 받아 백업된 파일을 바이트 단위 그대로 복원합니다. 파일이 수정이 써 넣은 내용과 더 이상 일치하지 않으면, 롤백은 <strong>거부하고</strong> 종료 코드 <code>1</code>을 반환합니다. 그 뒤의 편집은 그대로 남습니다. 자세한 내용은 <a href="fixing#declined">롤백이 거부할 때</a>를 참고하세요.</p>
 
             <h2 id="history">history</h2>
             <p>적용된 수정과 그 롤백 ID를 나열합니다.</p>
@@ -105,7 +105,7 @@ hostveil history --scans</code></pre></div>
               <table>
                 <thead><tr><th>플래그</th><th>동작</th></tr></thead>
                 <tbody>
-                  <tr><td><code>--scans</code></td><td>적용된 수정 이력 대신, 보관된 모든 스캔의 점수를 오래된 순으로 보여 주고 직전 스캔 대비 변화를 함께 표시합니다. Hostveil은 최근 30개 스캔을 보관합니다. 어떤 영역도 확인하지 못한 스캔은 숫자가 아니라 <code>N/A</code>로 표시되고 변화도 계산하지 않습니다. 아무도 채점할 수 없었던 실행은 0점으로 떨어진 것이 아니기 때문입니다.</td></tr>
+                  <tr><td><code>--scans</code></td><td>보관된 모든 스캔의 점수를 오래된 순으로 보여 주고 직전 스캔 대비 변화를 함께 표시합니다. Hostveil은 최근 30개 스캔을 보관합니다. 어떤 영역도 확인하지 못한 스캔은 <code>N/A</code>로 표시되고 변화도 계산하지 않습니다. 아무도 채점할 수 없었던 실행은 0점으로 떨어진 것이 아니기 때문입니다.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -165,7 +165,7 @@ hostveil triage analyze &lt;bundle-dir&gt;</code></pre></div>
                 <tbody>
                   <tr><td><code>--trace FILE</code></td><td><code>""</code></td><td><code>HOSTVEIL_DEBUG=1</code>로 만든 명령 트레이스를 첨부합니다.</td></tr>
                   <tr><td><code>--unredacted</code></td><td><code>false</code></td><td>IP 주소와 홈 디렉터리 사용자 이름을 가리지 않습니다. 로컬에서만 쓰는 용도입니다.</td></tr>
-                  <tr><td><code>--output FILE</code></td><td><code>""</code></td><td>리포트를 출력하는 대신 파일로 씁니다.</td></tr>
+                  <tr><td><code>--output FILE</code></td><td><code>""</code></td><td>리포트를 파일로 씁니다.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -193,8 +193,8 @@ hostveil triage analyze &lt;bundle-dir&gt;</code></pre></div>
                 <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
                 <tbody>
                   <tr><td><code>--format FMT</code></td><td>&mdash;</td><td>필수입니다. <code>json</code>, <code>sarif</code>, <code>markdown</code>, <code>docx</code>, <code>pdf</code> 중 하나입니다.</td></tr>
-                  <tr><td><code>--output FILE</code></td><td>&mdash;</td><td>표준 출력 대신 FILE에 씁니다. <code>docx</code>와 <code>pdf</code>는 필수입니다. 터미널에서는 이진 형식을 보여줄 방법이 없기 때문입니다.</td></tr>
-                  <tr><td><code>--only LIST</code></td><td>&mdash;</td><td>이 도메인만 스캔합니다(쉼표로 구분). 스캔하지 않은 도메인은 100이 아니라 N/A로 표시됩니다.</td></tr>
+                  <tr><td><code>--output FILE</code></td><td>&mdash;</td><td>FILE에 씁니다(기본값: 표준 출력). <code>docx</code>와 <code>pdf</code>는 필수입니다. 터미널에서는 이진 형식을 보여줄 방법이 없기 때문입니다.</td></tr>
+                  <tr><td><code>--only LIST</code></td><td>&mdash;</td><td>이 도메인만 스캔합니다(쉼표로 구분). 스캔하지 않은 도메인은 N/A로 표시되고 점수에서 빠집니다.</td></tr>
                   <tr><td><code>--skip LIST</code></td><td>&mdash;</td><td>나열한 도메인만 제외하고 스캔합니다(쉼표로 구분). <code>--only</code>와 함께 쓸 수 없습니다.</td></tr>
                 </tbody>
               </table>
@@ -217,7 +217,7 @@ hostveil triage analyze &lt;bundle-dir&gt;</code></pre></div>
             <p>결정론적 목록은 AI 없이도 항상 출력됩니다. <code>--ai</code>는 그 아래에 상황별 판단을 덧붙이거나, 덧붙이지 못한 이유를 말합니다.</p>
 
             <h2 id="ai-context">ai-context</h2>
-            <p>이 호스트를 한 줄로 설명한 문구를 보여주거나, 저장하거나, 지웁니다. "개인 미디어 서버, 안정성보다 최신 보안 패치가 중요함" 같은 문구입니다. <code>explain --ai</code>와 <code>advise --ai</code>는 이 설명을 읽어 Fix를 추상적으로가 아니라 이 호스트에 맞춰 판단합니다. Hostveil이 상태를 저장하는 것과 같은 디렉터리에 남아 있으며, 바꾸거나 지우기 전까지 계속 쓰입니다.</p>
+            <p>이 호스트를 한 줄로 설명한 문구를 보여주거나, 저장하거나, 지웁니다. "개인 미디어 서버, 안정성보다 최신 보안 패치가 중요함" 같은 문구입니다. <code>explain --ai</code>와 <code>advise --ai</code>는 이 설명을 읽어 Fix를 이 호스트에 맞춰 판단합니다. Hostveil이 상태를 저장하는 것과 같은 디렉터리에 남아 있으며, 바꾸거나 지우기 전까지 계속 쓰입니다.</p>
             <div class="code-block"><pre><code>hostveil ai-context               # 현재 설명을 보여줌
 hostveil ai-context "TEXT"        # 설명을 저장함
 hostveil ai-context --clear       # 설명을 지움</code></pre></div>
@@ -225,7 +225,7 @@ hostveil ai-context --clear       # 설명을 지움</code></pre></div>
               <table>
                 <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
                 <tbody>
-                  <tr><td><code>--clear</code></td><td><code>false</code></td><td>저장된 설명을 보여주는 대신 지웁니다.</td></tr>
+                  <tr><td><code>--clear</code></td><td><code>false</code></td><td>저장된 설명을 지웁니다.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -255,7 +255,7 @@ hostveil ai-context --clear       # 설명을 지움</code></pre></div>
                 <tbody>
                   <tr><td><code>--theme NAME</code></td><td>기억된 값, 없으면 <code>onedark</code></td><td>색상 테마: <code>onedark</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code>.</td></tr>
                   <tr><td><code>--layout NAME</code></td><td>기억된 값, 없으면 <code>console</code></td><td>화면 배치입니다: <code>console</code>, <code>split</code>, <code>triage</code>, <code>railverdict</code>, <code>lanes</code>, <code>inline</code>. TUI 안에서 <code>l</code>을 누르면 바꿀 수 있고 그 선택을 기억합니다. 우선순위는 이 플래그 &gt; <code>HOSTVEIL_LAYOUT</code> &gt; 기억된 값 &gt; <code>console</code>입니다.</td></tr>
-                  <tr><td><code>--glyphs NAME</code></td><td>기억된 값, 없으면 <code>plain</code></td><td>상태 표시에 쓸 기호 세트입니다: <code>plain</code> 또는 <code>nerd</code>. <code>nerd</code>는 패치된 Nerd Font의 글리프를 씁니다. 폰트를 설치하고 <code>HOSTVEIL_GLYPHS=nerd</code>를 한 번 설정하세요. 터미널에 어떤 폰트를 쓰는지 물어볼 방법이 없어서 자동 감지가 아니라 명시적 선택이며, 기본값은 아무것도 바꾸지 않습니다.</td></tr>
+                  <tr><td><code>--glyphs NAME</code></td><td>기억된 값, 없으면 <code>plain</code></td><td>상태 표시에 쓸 기호 세트입니다: <code>plain</code> 또는 <code>nerd</code>. <code>nerd</code>는 패치된 Nerd Font의 글리프를 씁니다. 폰트를 설치하고 <code>HOSTVEIL_GLYPHS=nerd</code>를 한 번 설정하세요. 터미널에 어떤 폰트를 쓰는지 물어볼 방법이 없어서 직접 켜야 하며, 기본값은 아무것도 바꾸지 않습니다.</td></tr>
                 </tbody>
               </table>
             </div>

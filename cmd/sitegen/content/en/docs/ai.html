@@ -17,7 +17,7 @@
               <button class="copy-btn" type="button" data-copy="hostveil ai-context &quot;a personal media server, want fast security patches more than stability&quot;">Copy</button>
               <pre><code>hostveil ai-context "a personal media server, want fast security patches more than stability"</code></pre>
             </div>
-            <p>Once it's set, every <code>--ai</code> answer — <code>explain</code>, the dashboard button, the TUI's <code>e</code> — reads it automatically and closes with a sentence judging the fix for a host like the one described, instead of a generic explanation. <code>hostveil ai-context</code> with no argument shows what's saved; <code>--clear</code> removes it.</p>
+            <p>Once it's set, every <code>--ai</code> answer — <code>explain</code>, the dashboard button, the TUI's <code>e</code> — reads it automatically and closes with a sentence judging the fix for a host like the one described. <code>hostveil ai-context</code> with no argument shows what's saved; <code>--clear</code> removes it.</p>
             <p><code>hostveil advise [--ai]</code> asks the same question about every fixable finding at once: a deterministic list of what each fix would get you and cost you (no AI required), and with <code>--ai</code>, a one-line verdict per finding — Apply, Skip, or Depends — weighed against the same saved description. The TUI's <code>v</code> key and the dashboard's <em>Advise</em> button reach the same thing.</p>
 
             <h2>Local by default, an external API by choice</h2>
@@ -56,7 +56,7 @@ hostveil explain ssh.rootlogin --ai</code></pre></div>
   HOSTVEIL_OPENAI_API_KEY=... \
   HOSTVEIL_OPENAI_MODEL=... \
   hostveil explain ssh.rootlogin --ai</code></pre></div>
-            <p>Set these in a shell profile or a systemd unit to make the choice permanent for that host, rather than repeating them on every command. Whichever provider is off-host, credentials and prompts leave the machine — see the privacy note below for exactly what that prompt contains.</p>
+            <p>Set these in a shell profile or a systemd unit to make the choice permanent for that host. Whichever provider is off-host, credentials and prompts leave the machine — see the privacy note below for exactly what that prompt contains.</p>
 
             <h2>Advisory only, and private by design</h2>
             <div class="callout">

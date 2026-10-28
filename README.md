@@ -85,7 +85,7 @@ you. Hostveil closes that loop and applies the fix itself.
   and reading the output assumes you already know which ones matter.
 - **[docker-bench-security](https://github.com/docker/docker-bench-security)**
   checks a Docker host against the CIS benchmark. It's container-only, and it
-  reports rather than fixes.
+  reports findings without fixing them.
 - **[Trivy](https://github.com/aquasecurity/trivy)** scans images and
   filesystems for known CVEs and misconfigurations. It's excellent at that one
   job, and Hostveil actually *runs* Trivy for its CVE domain, but it doesn't
@@ -108,14 +108,14 @@ column is what you pass to `hostveil fix` and `hostveil explain`.
 | **Firewall** | `firewall.*` | Whether ufw, firewalld, nftables or iptables is actually active, and whether published container ports are quietly bypassing it | — |
 | **Auto-updates** | `updates.*` | Whether unattended-upgrades (apt) or dnf-automatic (dnf) is enabled | — |
 | **Exposed services** | `ports.*` | Host processes listening on a non-loopback address, read from `ss`. This is the natively installed database, admin panel or app that a Compose audit cannot see | `ss` |
-| **Accounts** | `accounts.*` | Who can become root, and what stands in their way: non-root accounts carrying root's UID (0), login accounts with an empty password, and accounts a sudo rule lets run anything as root without being asked for one — the rule cloud and VM images ship so the first login works. sudo is asked what each account may actually run, rather than `/etc/sudoers` being re-parsed | root (for `/etc/shadow` and sudo) |
+| **Accounts** | `accounts.*` | Who can become root, and what stands in their way: non-root accounts carrying root's UID (0), login accounts with an empty password, and accounts a sudo rule lets run anything as root without being asked for one — the rule cloud and VM images ship so the first login works. sudo itself is asked what each account may actually run | root (for `/etc/shadow` and sudo) |
 | **File permissions** | `fileperms.*` | Over-permissive modes on `/etc/shadow`, `/etc/passwd`, `/etc/group`, `sshd_config`, and SSH host private keys | — |
 | **AI agent runtimes** | `agent.*` | Self-hosted agent runtimes, OpenClaw, Hermes Agent and Goose: a gateway reachable off-host, authentication turned off on one that is, unrestricted shell and elevated tools, a disabled sandbox, and loose permissions on the config and the API keys beside it | — |
 | **Kernel hardening** | `sysctl.*` | Eight kernel parameters read straight from `/proc/sys`: the quiet knobs that stop a local foothold from becoming root and a spoofed packet from becoming a route. No `sysctl` binary needed | — |
 | **Docker daemon** | `dockerd.*` | The daemon underneath your containers. An API served over TCP without TLS client verification is unauthenticated root for anyone who can reach the port; Hostveil also checks for a world-writable socket, who holds the socket's group, and the defaults for no-new-privileges, userns-remap and live-restore | Docker |
 | **Service hardening** | `systemd.*` | The units you installed yourself, read as systemd's own *effective* configuration: whether a service can gain privileges through setuid, write to `/usr` and `/etc`, read every user's home directory, or share `/tmp` with the rest of the host. Distribution units are left to the distribution | systemd |
 | **Reverse proxy** | `proxy.*` | The thing on 443 that everything else is behind. nginx read from `/etc/nginx`, following `include` into `conf.d` and `sites-enabled`, for deprecated TLS versions and directory listing; Caddy read from `/etc/caddy` or a container's mounted Caddyfile, for an admin API reachable off loopback — no authentication, and it can replace the whole configuration — and for `file_server browse`; Traefik read from your Compose files, for the dashboard served in insecure mode — an unauthenticated page listing every backend address behind the proxy, and the setting nearly every Traefik tutorial tells you to add | — |
-| **Proxmox VE host** | `proxmox.*` | The hypervisor every guest trusts, read only on a host with `/etc/pve`: a web interface on 8006 that accepts a login from any address, root@pam logging in with a password alone, and an enterprise repository enabled without a subscription — so Proxmox's own packages silently stop updating while Debian's keep arriving. The datacenter firewall is recognised by the firewall domain rather than counted twice | a Proxmox VE host |
+| **Proxmox VE host** | `proxmox.*` | The hypervisor every guest trusts, read only on a host with `/etc/pve`: a web interface on 8006 that accepts a login from any address, root@pam logging in with a password alone, and an enterprise repository enabled without a subscription — so Proxmox's own packages silently stop updating while Debian's keep arriving. The datacenter firewall is counted once, by the firewall domain | a Proxmox VE host |
 | **Single-node Kubernetes** | `kube.*` | One box running one k3s or k0s node, with k3s's settings resolved across all four of its layers (config.yaml, its drop-ins, the service environment file, the command line): a cluster-admin kubeconfig or join token readable by every account, `anonymous-auth=true` on the API server or kubelet, and Secrets stored unencrypted | k3s or k0s |
 | **Forensic readiness** | `forensic.*` | Whether the host keeps the evidence an investigation would need: a journal that survives reboots and keeps 90 days, auth and web logs rotated for 90 days, auditd recording what the web server's account executes, a synchronised clock, request sizes in the access log, and a copy of the logs off the host | — |
 | **Image CVEs** *(optional)* | `cve.*` | Known vulnerabilities in the images your Compose services run | Trivy |
@@ -140,9 +140,9 @@ looked — a test fails the build on the difference.
 Hostveil runs as root and edits configuration files on servers people depend
 on. That is a lot to ask, so this is what stands behind it.
 
-- **There is more test code in this repository than product code.** Not a
-  ratio anyone targets — it is what auditing an operating system honestly
-  costs, and a test enforces the inequality rather than a number.
+- **There is more test code in this repository than product code.** Nobody
+  targets the ratio. It is what auditing an operating system honestly costs,
+  and a test keeps the test code ahead of the product code.
 - **[`internal/docs/`](internal/docs) fails the build when a published page
   drifts from the code.** Every domain table, every finding ID in a
   screenshot, every figure on the measured-results page — checked against
@@ -175,7 +175,7 @@ sudo apt install ./hostveil_<version>_linux_amd64.deb   # or dnf install ./hostv
 
 Either route puts the same binary at the same path (`/usr/bin/hostveil`).
 Docker and `iproute2` are recommended but not required — without them, those
-domains report N/A instead of failing the scan. To build it yourself you need
+domains report N/A and the rest of the scan runs. To build it yourself you need
 Go 1.26 or later:
 
 ```bash
@@ -296,14 +296,13 @@ The score is one number between 0 and 100, built so it cannot flatter a host.
 Each detection domain is an axis with a fixed share of the 100; a domain that
 did not run is reported N/A and the remaining caps are renormalized over it,
 so a host without Docker is not quietly handed free points. If nothing ran at
-all, the score is N/A rather than 100.
+all, the score is N/A.
 
-Inside an axis, each finding erodes what is left instead of subtracting a
-fixed number of points — the tenth finding still costs something, unlike a
-model that sums penalties and clamps at zero, where two findings exhaust the
-axis and everything after is free.
+Inside an axis, each finding takes a share of what is left, so the tenth
+finding still costs something. A model that sums fixed penalties and clamps
+at zero runs out after two findings, and every finding after that is free.
 
-Severity answers how urgent a finding is, not how bad it could turn out to be:
+Severity answers one question: how urgent a finding is.
 
 | Level | What it means | Takes |
 | --- | --- | --- |
@@ -313,7 +312,7 @@ Severity answers how urgent a finding is, not how bad it could turn out to be:
 
 Two adjustments sit on top: the same finding ID repeated on one axis is
 damped harmonically, so four services missing the same setting count as one
-mistake made four times rather than four mistakes; and a finding nothing can
+mistake made four times; and a finding nothing can
 fix yet (an unpatched CVE) counts a quarter, since charging it in full would
 pin a well-maintained host's axis at 0. The overall score also gets a name in
 every interface: 80 and above is *in good shape*, 50 to 79 *middling*, 25 to
@@ -346,9 +345,9 @@ it remembered, use the pickers in the dashboard's status bar, or set
 `--theme`/`--layout` or `HOSTVEIL_THEME`/`HOSTVEIL_LAYOUT` explicitly.
 
 The TUI and `scan` can also draw their status markers from a patched
-[Nerd Font](https://www.nerdfonts.com/) instead of plain Unicode: `--glyphs nerd`,
-or `HOSTVEIL_GLYPHS=nerd`. This is opt-in rather than detected, since a
-terminal cannot be asked what font it is using. See
+[Nerd Font](https://www.nerdfonts.com/): `--glyphs nerd`, or
+`HOSTVEIL_GLYPHS=nerd`. This is opt-in, because a terminal cannot be asked
+what font it is using. See
 [Interfaces](https://hostveil.seolcu.com/docs/interfaces) for theme
 screenshots and Nerd Font details.
 
@@ -412,8 +411,8 @@ graph TD
     class np npTitle
 ```
 
-The reasoning behind every item, and why each "not planned" one is ruled out
-rather than just missing, is on the
+The reasoning behind every item, and why each "not planned" one was ruled out
+on purpose, is on the
 [Roadmap](https://hostveil.seolcu.com/docs/roadmap) page.
 
 ## Build from source
