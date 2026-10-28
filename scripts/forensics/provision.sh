@@ -6,6 +6,7 @@ set -Eeuo pipefail
 export DEBIAN_FRONTEND=noninteractive
 # The host this was built on reached the internet through a proxy recorded
 # in /etc/environment; a provisioner shell does not read it on its own.
+# shellcheck disable=SC1091 # read at runtime from the host being provisioned
 if [[ -f /etc/environment ]]; then set -a; . /etc/environment; set +a; fi
 
 apt-get update -q

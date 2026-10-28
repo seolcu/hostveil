@@ -24,6 +24,7 @@ CONF
 # other_vhosts_access.log Ubuntu enables in conf-enabled.
 sed -i 's/ vhost_combined$/ forensic_vhost/' /etc/apache2/conf-available/other-vhosts-access-log.conf
 a2enconf -q forensic-log >/dev/null
+# shellcheck disable=SC2016 # ${APACHE_LOG_DIR} is Apache's variable, matched literally
 sed -i 's/CustomLog ${APACHE_LOG_DIR}\/access.log combined/CustomLog ${APACHE_LOG_DIR}\/access.log forensic/' /etc/apache2/sites-enabled/000-default.conf
 systemctl reload apache2
 
