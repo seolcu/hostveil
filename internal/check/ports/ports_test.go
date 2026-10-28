@@ -44,7 +44,7 @@ func TestUnavailableWithoutSS(t *testing.T) {
 func TestExposedDatastoreFlagged(t *testing.T) {
 	ss := `LISTEN 0 511 0.0.0.0:6379 0.0.0.0:* users:(("redis-server",pid=999,fd=6))
 LISTEN 0 128 [::]:6379 [::]:* users:(("redis-server",pid=999,fd=7))`
-	fs, err := New().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
+	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ LISTEN 0 128 [::]:6379 [::]:* users:(("redis-server",pid=999,fd=7))`
 func TestTwoDistinctDatastoresBothCounted(t *testing.T) {
 	ss := `LISTEN 0 511 0.0.0.0:6379 0.0.0.0:* users:(("redis-server",pid=1,fd=6))
 LISTEN 0 128 0.0.0.0:5432 0.0.0.0:* users:(("postgres",pid=2,fd=5))`
-	fs, err := New().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
+	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ LISTEN 0 128 0.0.0.0:5432 0.0.0.0:* users:(("postgres",pid=2,fd=5))`
 func TestLoopbackDatastoreNotFlagged(t *testing.T) {
 	ss := `LISTEN 0 128 127.0.0.1:5432 0.0.0.0:* users:(("postgres",pid=888,fd=5))
 LISTEN 0 128 [::1]:5432 [::]:* users:(("postgres",pid=888,fd=6))`
-	fs, err := New().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
+	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ LISTEN 0 128 [::1]:5432 [::]:* users:(("postgres",pid=888,fd=6))`
 
 func TestAdminPanelFlagged(t *testing.T) {
 	ss := `LISTEN 0 128 0.0.0.0:9000 0.0.0.0:* users:(("portainer",pid=42,fd=3))`
-	fs, err := New().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
+	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestAdminPanelFlagged(t *testing.T) {
 func TestWebminAndProxmoxRecognizedAsAdminPanels(t *testing.T) {
 	ss := `LISTEN 0 128 0.0.0.0:10000 0.0.0.0:* users:(("miniserv",pid=42,fd=3))
 LISTEN 0 128 0.0.0.0:8006 0.0.0.0:* users:(("pveproxy",pid=43,fd=3))`
-	fs, err := New().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
+	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ LISTEN 0 128 0.0.0.0:8080 0.0.0.0:* users:(("myapp",pid=7,fd=3))`
 
 	// No firewall active -> the generic exposure finding appears (SSH excluded).
 	noFW := noFirewall(ss)
-	fs, err := New().Check(context.Background(), platform.Env{Runner: noFW})
+	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: noFW})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ LISTEN 0 128 0.0.0.0:8080 0.0.0.0:* users:(("myapp",pid=7,fd=3))`
 
 	// Active ufw firewall -> no generic finding (firewall is the backstop).
 	withFW := checktest.New().Listeners(ss).Outputs(map[string]string{"ufw status": "Status: active\n"})
-	fs2, err := New().Check(context.Background(), platform.Env{Runner: withFW})
+	fs2, err := hermetic().Check(context.Background(), platform.Env{Runner: withFW})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestZoneScopedLoopbackIgnored(t *testing.T) {
 	// A zone-scoped IPv6 loopback ([::1%lo]) is host-only and must not be
 	// reported as network-exposed.
 	ss := `LISTEN 0 128 [::1%lo]:6379 [::]:* users:(("redis-server",pid=9,fd=6))`
-	fs, err := New().Check(context.Background(), platform.Env{Runner: noFirewall(ss)})
+	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: noFirewall(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +186,7 @@ func TestHeaderRowSkipped(t *testing.T) {
 	// `ss` without -H prints a header row; it must be ignored, not parsed.
 	ss := `State  Recv-Q Send-Q Local Address:Port Peer Address:Port Process
 LISTEN 0      511    0.0.0.0:6379       0.0.0.0:*         users:(("redis-server",pid=1,fd=6))`
-	fs, err := New().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
+	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func findByIDok(fs []model.Finding, id string) bool {
 
 func TestMalformedLinesSkipped(t *testing.T) {
 	ss := "garbage line without enough fields\nLISTEN\n\n"
-	fs, err := New().Check(context.Background(), platform.Env{Runner: noFirewall(ss)})
+	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: noFirewall(ss)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +222,7 @@ LISTEN 0 128 0.0.0.0:22 0.0.0.0:*`
 	// ufw is installed but will not answer — the fake has no scripted output.
 	r := checktest.New().Without("firewall-cmd", "nft").Listeners(ss)
 
-	fs, err := New().Check(context.Background(), platform.Env{Runner: r})
+	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: r})
 
 	var partial *check.PartialError
 	if !errors.As(err, &partial) {
@@ -232,3 +232,8 @@ LISTEN 0 128 0.0.0.0:22 0.0.0.0:*`
 		t.Error("must not claim generic exposure when the firewall state is unknown")
 	}
 }
+
+// hermetic is the checker with no Redis config path, so a test's findings
+// depend on the scripted runner alone and not on whether the machine running
+// it has /etc/redis/redis.conf.
+func hermetic() *Checker { return &Checker{} }

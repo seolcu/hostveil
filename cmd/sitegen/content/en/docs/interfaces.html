@@ -82,7 +82,7 @@ HOSTVEIL_THEME=tokyonight hostveil</code></pre></div>
             <div class="code-block"><pre><code>hostveil tui --glyphs nerd
 hostveil scan --glyphs nerd
 HOSTVEIL_GLYPHS=nerd hostveil</code></pre></div>
-            <p>It is opt-in, because a terminal cannot be asked what font it is using and a glyph the font lacks is drawn in the same single cell a present one would be, so guessing wrong is a row of tofu with nothing to notice it. Any Nerd Font build works, Mono or not: the symbols come from the Font Awesome block, which every patched font carries and which stays one cell wide in every variant. Like <code>--theme</code>, the choice is remembered for the next run, and <code>--glyphs</code> and <code>HOSTVEIL_GLYPHS</code> both override it.</p>
+            <p>It is opt-in, because a terminal cannot be asked what font it is using and a glyph the font lacks is drawn in the same single cell a present one would be, so guessing wrong is a row of tofu with nothing to notice it. Any Nerd Font build works, Mono or not: the symbols come from the Font Awesome block, which every patched font carries and which stays one cell wide in every variant. Turn it on with <code>--glyphs nerd</code>, or once for every run with <code>HOSTVEIL_GLYPHS=nerd</code>.</p>
 
             <div class="callout">
               <span class="callout-label">One engine, three faces</span>

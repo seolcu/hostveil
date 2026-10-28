@@ -100,18 +100,6 @@ type Release struct {
 	Sums    string // where the release's checksums file is
 }
 
-// Plan is what an update would do, resolved before anything is downloaded so a
-// caller can print it and stop.
-type Plan struct {
-	Origin  Origin
-	Path    string // the binary that would be replaced
-	Current string
-	Latest  string
-}
-
-// UpToDate reports whether there is nothing to do.
-func (p Plan) UpToDate() bool { return SameVersion(p.Current, p.Latest) }
-
 // SameVersion compares two versions without caring which of them carries the
 // leading v.
 //
