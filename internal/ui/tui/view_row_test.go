@@ -1,9 +1,10 @@
 package tui
 
 import (
-	lipgloss "charm.land/lipgloss/v2"
 	"strings"
 	"testing"
+
+	lipgloss "charm.land/lipgloss/v2"
 
 	"github.com/seolcu/hostveil/internal/model"
 )

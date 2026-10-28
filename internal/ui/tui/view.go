@@ -322,11 +322,6 @@ func (m *appModel) View() tea.View {
 			[]string{s.brand.Render(m.th.Name)}, themeHint,
 			func(n int) []string { return m.clipRows(m.themeRows(), n) })
 
-	case modeLayout:
-		content = m.compose(compactHeader("LAYOUT"),
-			[]string{s.brand.Render(m.layoutName())}, layoutHint,
-			func(n int) []string { return m.clipRows(m.layoutPickerRows(), n) })
-
 	case modeExport:
 		content = m.compose(compactHeader("EXPORT"), nil, exportHint,
 			func(n int) []string { return m.clipRows(m.exportPickerRows(), n) })
@@ -376,93 +371,12 @@ func (m *appModel) deltaLine() string {
 	return s.dim.Render("since last scan  ") + strings.Join(parts, s.dim.Render("   "))
 }
 
-// axisCell is the rendered width of one axis: a 10-column id, an 8-column
-// meter, and the value with a space in front of it. axisGap separates two of
-// them. The id is 10 wide, not 9, so the longest ids ("container",
-// "fileperms") keep a space before the meter instead of butting straight
-// against it.
-//
-// The value's width comes from model rather than being written down here.
-// It was a hand-picked 4 — one space and three columns, which is what a score
-// looks like — and the case that needs five is a degraded axis scoring 100.
-// See model.ValueTextWidth for what the missing column cost.
-const (
-	axisCell = 10 + 8 + 1 + model.ValueTextWidth
-	axisGap  = 3
-)
-
-// axesLine renders the score axes, wrapped to the terminal width.
-//
-// It used to join every axis into a single row. With nine domains that is
-// 9*22 + 8*3 = 222 columns, so on any ordinary 80- or 120-column terminal the
-// row was far wider than the screen — and in alt-screen mode a wrapped line
-// does not merely look wrong, it pushes every row below it down and off the
-// bottom of the frame, taking the findings list with it.
-func (m *appModel) axesLine() string {
-	s := m.sty()
-	var cells []string
-	for _, ax := range m.report.Score.Axes {
-		label := s.dim.Render(fmt.Sprintf("%-10s", ax.ID))
-		// The text is model's decision — N/A, a number, or a number with the
-		// "~" that keeps a partial result from reading as a clean one. What
-		// is decided here is only how it is drawn: an empty track for an axis
-		// that did not run, a meter for one that did, and a fixed width so
-		// the columns line up whichever it is.
-		value := fmt.Sprintf(" %-*s", model.ValueTextWidth, ax.ValueText())
-		if !ax.Applicable {
-			cells = append(cells, label+s.meter(0, 8, s.cAccent)+s.dim.Render(value))
-			continue
-		}
-		cells = append(cells, label+s.meter(ax.Score, 8, s.band(ax.Score))+s.bone.Render(value))
-	}
-	if len(cells) == 0 {
-		return ""
-	}
-
-	// How many cells fit: n cells occupy n*axisCell + (n-1)*axisGap. Always
-	// emit at least one per row, so a pathologically narrow terminal still
-	// renders something rather than dividing by zero or looping forever.
-	perRow := 1
-	if m.width > axisCell {
-		perRow = (m.width + axisGap) / (axisCell + axisGap)
-	}
-	if perRow < 1 {
-		perRow = 1
-	}
-	// Spread them evenly over the rows they need. Packing greedily put twelve
-	// domains on a 180-column terminal as seven and then five, which leaves a
-	// third of the second row empty and reads as a strip that ran out — the
-	// dashboard's grid gives every card the same share and wraps to six and
-	// six. Same number of rows either way; this only decides where the break
-	// falls.
-	rows := (len(cells) + perRow - 1) / perRow
-	perRow = (len(cells) + rows - 1) / rows
-
-	gap := s.dim.Render(strings.Repeat(" ", axisGap))
-	var out []string
-	for i := 0; i < len(cells); i += perRow {
-		end := min(i+perRow, len(cells))
-		out = append(out, strings.Join(cells[i:end], gap))
-	}
-	return strings.Join(out, "\n")
-}
-
 const (
 	listHint = "↑/↓ move   enter details   f fix   space select   a fix marked\n" +
-		"s severity   d domain   x fixable   c clear   h history   t theme   l layout   e export   v advise   r rescan   q quit"
-	emptyListHint = "c clear   t theme   l layout   e export   v advise   r rescan   q quit"
-	historyHint   = "↑/↓ move   enter roll back   esc back   q list"
-	themeHint     = "↑/↓ preview   enter keep   esc cancel"
-	// The lanes arrangement adds one key, so it adds one line of hint. Written
-	// as its own string rather than appended at the call site because the
-	// footer is the only documentation these bindings have.
-	laneListHint = "↑/↓ move   enter details   f fix   space select   m select lane   a fix marked\n" +
-		"s severity   d domain   x fixable   c clear   h history   t theme   l layout   e export   v advise   r rescan   q quit"
-	// Not "preview", which is what the theme picker's says and earns: moving
-	// the cursor there restyles the whole frame on the spot. Here there is
-	// nothing to preview, because the picker screen is not one of the
-	// arrangements — enter is what shows you the choice.
-	layoutHint     = "↑/↓ choose   enter apply   esc cancel"
+		"s severity   d domain   x fixable   c clear   h history   t theme   e export   v advise   r rescan   q quit"
+	emptyListHint  = "c clear   t theme   e export   v advise   r rescan   q quit"
+	historyHint    = "↑/↓ move   enter roll back   esc back   q list"
+	themeHint      = "↑/↓ preview   enter keep   esc cancel"
 	exportHint     = "↑/↓ choose   enter next   esc cancel"
 	exportPathHint = "enter export   esc back"
 	adviceHint     = "c edit host description   esc back"
@@ -473,9 +387,6 @@ const (
 func (m *appModel) listHintFor() string {
 	if len(m.active) == 0 {
 		return emptyListHint
-	}
-	if m.wantsLanes() {
-		return laneListHint
 	}
 	return listHint
 }
@@ -621,72 +532,36 @@ func formatElapsed(d time.Duration) string {
 	return fmt.Sprintf("%d:%02d", secs/60, secs%60)
 }
 
-// minVerdictBody is how many rows must remain for the verdict band to be
-// worth its four. A sentence about the list, above no list, is not a summary.
-const minVerdictBody = 4
-
-// minInlineList is how many findings must stay visible around an opened one.
-// Below that the inline block has stopped being a finding opened in a list
-// and become the detail view with a row of context.
-const minInlineList = 3
-
-// listRows draws the body of the findings screen: the verdict band across
-// the top where an arrangement asks for one, then the rail, the list and the
-// detail pane side by side.
+// listRows draws the body of the findings screen: the rail, the list and the
+// detail pane side by side, each dropped when the terminal is too narrow.
 //
-// It is the only place the arrangements meet. Everything below it is written
-// against a column width rather than the terminal width, which is what lets
-// the same list render at 120 columns and at 46 without a second code path.
+// Everything below it is written against a column width rather than the
+// terminal width, which is what lets the same list render at 120 columns and
+// at 46 without a second code path.
 func (m *appModel) listRows(budget int) []string {
 	if budget <= 0 {
 		return nil
 	}
 	railW, listW, paneW := m.bodyColumns()
 
-	// The band spans the columns it leads, which is every column except the
-	// rail. In the dashboard the rail is a sibling of everything else and
-	// runs the full height of the window, so the verdict sits *beside* it
-	// rather than above it; the arrangement that draws both would otherwise
-	// read as a different arrangement in the two interfaces, which is the one
-	// thing the shared registry exists to prevent.
-	spanW := m.width
-	if railW > 0 {
-		spanW = listW
-	}
-	var lead []string
-	if m.wantsVerdict() {
-		if v := m.verdictRows(spanW); len(v)+minVerdictBody <= budget {
-			lead = v
-		}
-	}
-	inner := budget - len(lead)
-
-	list := m.listColumn(inner, listW)
+	list := m.listColumn(budget, listW)
 	if railW == 0 && paneW == 0 {
-		return append(lead, fitRows(list, inner)...)
-	}
-
-	// Where the rail is drawn the band belongs to the list's own column, so
-	// the rail keeps the whole height beside it.
-	rows := inner
-	if railW > 0 {
-		list = append(lead, list...)
-		lead, rows = nil, budget
+		return fitRows(list, budget)
 	}
 
 	widths := make([]int, 0, 3)
 	cols := make([][]string, 0, 3)
 	if railW > 0 {
 		widths = append(widths, railW)
-		cols = append(cols, m.railRows(railW, rows))
+		cols = append(cols, m.railRows(railW, budget))
 	}
 	widths = append(widths, listW)
 	cols = append(cols, list)
 	if paneW > 0 {
 		widths = append(widths, paneW)
-		cols = append(cols, m.paneRows(paneW, rows))
+		cols = append(cols, m.paneRows(paneW, budget))
 	}
-	return append(lead, m.joinColumns(rows, widths, cols)...)
+	return m.joinColumns(budget, widths, cols)
 }
 
 // paneRows is the detail column: the finding under the cursor, in full.
@@ -809,16 +684,6 @@ func (m *appModel) listColumn(budget, w int) []string {
 		fl, bb = "", ""
 	}
 
-	// The inline block is paid for out of the list's own rows rather than
-	// added under them, so the column is still exactly `budget` tall and the
-	// footer does not move when a finding is opened.
-	var inline []string
-	if m.wantsInline() {
-		if in := m.inlineRows(w); len(in) > 0 && visible-len(in) >= minInlineList {
-			inline, visible = in, visible-len(in)
-		}
-	}
-
 	var out []string
 	head := func(shownFrom, shownTo, total int) {
 		if chrome == 0 {
@@ -850,62 +715,13 @@ func (m *appModel) listColumn(budget, w int) []string {
 		}
 	}
 
-	// Lanes scrolls over the rendered rows rather than over the findings,
-	// because the lane headers are rows too: a window computed on finding
-	// indices would scroll the list out from under its own headings.
-	if m.wantsLanes() {
-		rows, cursorRow := m.laneRows(w)
-		m.rowOffset = scrollOffset(cursorRow, len(rows), visible, m.rowOffset)
-		end := min(m.rowOffset+visible, len(rows))
-		head(m.rowOffset+1, end, len(rows))
-		return append(out, rows[m.rowOffset:end]...)
-	}
-
 	m.offset = scrollOffset(m.cursor, len(m.active), visible, m.offset)
 	end := min(m.offset+visible, len(m.active))
 	head(m.offset+1, end, len(m.active))
 	for i := m.offset; i < end; i++ {
 		out = append(out, m.findingRow(m.active[i], i == m.cursor, w))
-		if i == m.cursor {
-			out = append(out, inline...)
-		}
 	}
 	return out
-}
-
-// laneRows renders the list grouped into one section per severity, and
-// returns the row index the cursor landed on so the caller can scroll to it.
-//
-// A severity with nothing at it gets no lane: a "HIGH · 0" heading is a
-// row of screen spent announcing that nothing happened, and four of them on
-// a nearly-clean host is the whole list.
-func (m *appModel) laneRows(w int) ([]string, int) {
-	var rows []string
-	cursorRow := 0
-	for _, sev := range model.AllSeverities() {
-		var idx []int
-		autos := 0
-		for i, f := range m.active {
-			if f.Severity != sev {
-				continue
-			}
-			idx = append(idx, i)
-			if f.IsAutoFixable() {
-				autos++
-			}
-		}
-		if len(idx) == 0 {
-			continue
-		}
-		rows = append(rows, m.laneHeadRow(sev, len(idx), autos, w))
-		for _, i := range idx {
-			if i == m.cursor {
-				cursorRow = len(rows)
-			}
-			rows = append(rows, m.findingRow(m.active[i], i == m.cursor, w))
-		}
-	}
-	return rows, cursorRow
 }
 
 // activeTotal counts findings that are not fixed, ignoring the filter — the
@@ -1377,10 +1193,6 @@ func serviceLabel(f model.Finding) string {
 	return "  (" + f.Service + ")"
 }
 
-func (m *appModel) serviceSuffix(f model.Finding) string {
-	return m.sty().dim.Render(serviceLabel(f))
-}
-
 func (m *appModel) detailRows() []string {
 	if len(m.active) == 0 {
 		return nil
@@ -1704,55 +1516,9 @@ func (m *appModel) themeRows() []string {
 	return out
 }
 
-// layoutName is the active arrangement's display name, for the picker's
-// title row.
-func (m *appModel) layoutName() string {
-	l, _ := LookupLayout(m.layoutID())
-	return l.Name
-}
-
-// layoutPickerRows is the temporary arrangement picker.
-//
-// Like the theme picker, moving the cursor applies the choice on the spot
-// rather than describing it — but unlike a palette, an arrangement cannot be
-// judged from the picker screen, because the picker screen is not one of the
-// arrangements. So this one carries the note as well: the sentence says what
-// bet the layout makes, and pressing enter returns to the list drawn that
-// way.
-func (m *appModel) layoutPickerRows() []string {
-	s := m.sty()
-	out := []string{""}
-
-	all := Layouts()
-	const nameW = 20
-	for i, l := range all {
-		marker := "  "
-		if i == m.layoutCursor {
-			marker = lipgloss.NewStyle().Foreground(s.cBone).Render(m.gl.Of(glyph.Cursor) + " ")
-		}
-		name := padRight(truncate(l.Name, max(1, min(nameW, m.width-2))), nameW)
-		row := marker
-		if i == m.layoutCursor {
-			row += s.sel.Render(name)
-		} else {
-			row += s.bone.Render(name)
-		}
-		out = append(out, row)
-	}
-
-	out = append(out, "")
-	if m.layoutCursor >= 0 && m.layoutCursor < len(all) {
-		out = append(out, styledRows(s.dim, wrap(all[m.layoutCursor].Note, min(m.width-2, 78)))...)
-	}
-	out = append(out, "", s.dim.Render("Temporary: six arrangements are shipped so one can be chosen. The"))
-	out = append(out, s.dim.Render("dashboard carries the same six under the same letters."))
-	return out
-}
-
 // exportFormatNote is one clause of context per format — core.FormatInfo
 // carries only a label, and a picker choosing between five formats needs to
-// say what each is for, the same way the layout picker's note does for an
-// arrangement.
+// say what each is for.
 func exportFormatNote(id string) string {
 	switch id {
 	case "json":
@@ -1770,8 +1536,8 @@ func exportFormatNote(id string) string {
 	}
 }
 
-// exportPickerRows is the export-format picker, on the same shape as
-// layoutPickerRows: a choice cannot be judged from this screen, so the note
+// exportPickerRows is the export-format picker. A choice cannot be judged
+// from this screen, so the note
 // carries what each format is for.
 func (m *appModel) exportPickerRows() []string {
 	s := m.sty()

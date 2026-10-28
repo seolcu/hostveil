@@ -58,7 +58,7 @@ func TestScreenshotServe(t *testing.T) {
 	// written to remove. A fresh browser profile has no remembered choice, so
 	// the served default is what paints.
 	base, _ := testServer(t)
-	s := New(base.engine, addr, Opts{Theme: screenshotTheme(t), Layout: screenshotLayout(t)})
+	s := New(base.engine, addr, Opts{Theme: screenshotTheme(t)})
 	real := s.Handler()
 	rep := uitest.PublishedReport()
 
@@ -107,26 +107,6 @@ func screenshotTheme(t *testing.T) string {
 		t.Fatalf("HOSTVEIL_SCREENSHOT_THEME=%q is not a theme; have %s", id, strings.Join(theme.IDs(), ", "))
 	}
 	return id
-}
-
-func screenshotLayout(t *testing.T) string {
-	t.Helper()
-	id := os.Getenv("HOSTVEIL_SCREENSHOT_LAYOUT")
-	if id == "" {
-		return DefaultLayout().ID
-	}
-	if _, ok := LookupLayout(id); !ok {
-		t.Fatalf("HOSTVEIL_SCREENSHOT_LAYOUT=%q is not an arrangement; have %s", id, strings.Join(layoutIDs(), ", "))
-	}
-	return id
-}
-
-func layoutIDs() []string {
-	ids := make([]string, 0, len(Layouts()))
-	for _, l := range Layouts() {
-		ids = append(ids, l.ID)
-	}
-	return ids
 }
 
 // screenshotServeFor is how long the fixture stays up, overridable for a slow

@@ -52,15 +52,6 @@ function srcLabel(s) { return (SRC[s] && SRC[s].label) || String(s); }
 function rank(table, key) { return (table[key] && table[key].rank) ?? 1e9; }
 function byRank(table) { return (a, b) => rank(table, a) - rank(table, b); }
 
-// ── layout (temporary; see internal/ui/web/layout.go) ───────────────────
-// Which of the six arrangements is on. /layout.js has already put it on
-// <html> before first paint, so this is a read, never a decision.
-function layout() {
-  return document.documentElement.getAttribute("data-layout") ||
-    window.HOSTVEIL_LAYOUT_DEFAULT || "split";
-}
-function layoutIs(...ids) { return ids.includes(layout()); }
-
 let report = null;
 // trend is fetched separately from the report: the report is refetched
 // after every fix, and the trend only moves when a scan does.
@@ -120,19 +111,6 @@ function el(tag, attrs = {}, ...kids) {
 // second one matched the stylesheet.
 function sevName(f) { return (SEV[f.severity] && SEV[f.severity].name) || "unknown"; }
 
-// topSeverity is the most urgent level the engine declared — rank 0 in the
-// table it exported, whatever that level is called this release.
-//
-// Asking for it by name is what this used to do, against a name the model
-// had stopped using: the verdict headline counted findings whose severity
-// was "critical" long after the four-level scale was gone, so the count was
-// always zero and the headline it gates silently never appeared again. A
-// hard-coded enum name in a renderer is a bug with a delayed fuse; the
-// export carries rank precisely so nothing here has to spell a level.
-function topSeverity() {
-  for (const [key, sev] of Object.entries(SEV)) if (sev.rank === 0) return key;
-  return null;
-}
 function sevAbbr(f) { return (SEV[f.severity] && SEV[f.severity].abbr) || "?"; }
 function remLabel(r) { return (REM[r] && REM[r].label) || "Unclassified"; }
 function isFixable(f) { return !!(REM[f.remediation] && REM[f.remediation].fixable); }
@@ -408,52 +386,11 @@ function renderDomainNotice() {
   }));
 }
 
-// ── verdict band (temporary layouts B, G) ──────────────────────────────
-// The same reading the overview panel gives, said as a sentence with the one
-// action that answers it beside. It is built on every render whatever the
-// layout, so switching the picker never leaves a stale band behind — CSS
-// decides whether it is on screen.
-function renderVerdict(all) {
-  const box = document.getElementById("verdict");
-  const autos = all.filter(isAuto).length;
-  const top = topSeverity();
-  const crit = top === null ? 0 : all.filter((f) => f.severity === top).length;
-  const scored = (report.score.axes || []).filter((a) => a.applicable).length;
-  const gaps = incompleteDomains().length;
-
-  // The headline is a claim the scan can defend. With nothing scannable
-  // there is no claim to make, which is the same reason the gauge refuses a
-  // number: "nothing reachable" and "nobody looked" are opposite readings.
-  const head = report.score.applicable === false
-    ? "This host could not be scanned."
-    : crit > 0
-      ? `${crit} finding${crit === 1 ? " is" : "s are"} reachable right now.`
-      : `This host is ${bandFor(report.score.overall).verdict}.`;
-
-  const acts = el("div", { class: "v-acts" });
-  if (autos > 0) {
-    const fix = el("button", { class: "primary" },
-      `Fix ${autos} safe finding${autos === 1 ? "" : "s"}`);
-    fix.onclick = () => document.getElementById("fixall").click();
-    acts.append(fix, el("span", { class: "v-note" },
-      "Each is previewed and backed up first, and reversible from History."));
-  } else {
-    acts.append(el("span", { class: "v-note" }, "Nothing here can be fixed unattended."));
-  }
-
-  box.replaceChildren(
-    el("h2", {}, head),
-    el("p", {}, `${all.length} unresolved · ${scored} of ${(report.score.axes || []).length} ` +
-      `domains scored${gaps ? ` · ${gaps} could not be fully checked` : ""}`),
-    acts
-  );
-}
-
-// ── domain rail (temporary layouts C, G) ───────────────────────────────
+// ── domain rail ──────────────────────────────────────────────────────
 // Every axis as a row: score, bar, severity mix, and for a domain that did
 // not run, the reason instead of a number. It doubles as the domain filter,
-// which is the point — the rail is the only place in these layouts where a
-// skipped domain is both visible and clickable.
+// which is the point — the rail is where a skipped domain is both visible
+// and clickable.
 function renderRail(all) {
   const rail = document.getElementById("rail");
   const byDomain = {};
@@ -547,26 +484,11 @@ function render() {
 
   // Findings list.
   const list = document.getElementById("findings");
-  // The inline arrangement parks the one detail node *inside* this list, under
-  // the row that opened it (see selectFinding). Rebuilding the list with it
-  // still in there deletes it — and every later getElementById("detail")
-  // returns null, so History, Preview and opening any finding all threw
-  // "Cannot read properties of null" until the page was reloaded. One node,
-  // three placements: whoever rebuilds the list puts it back first.
-  const det = document.getElementById("detail");
-  if (det && list.contains(det)) {
-    document.querySelector("main").insertBefore(det, document.getElementById("scrim"));
-  }
   const all = active(report.findings);
-  // Both are built whatever the layout, and before the early returns below:
-  // a clean host and a filtered-to-nothing list still need a correct verdict
-  // and a correct rail, and building them only on the happy path is how a
-  // layout switch would show the previous host's numbers.
-  renderVerdict(all);
+  // Built before the early returns below: a clean host and a
+  // filtered-to-nothing list still need a correct rail.
   renderRail(all);
   renderFilterbar(all);
-  // lanes always groups by severity regardless of sortBy (see laneRows) — a
-  // domain/remediation sort applies within each lane, not instead of it.
   const items = applyFilters(all).sort(sortComparators[sortBy] || sortComparators.severity);
   document.getElementById("findings-title-text").textContent =
     filterActive() ? `Findings · ${items.length}/${all.length}` : `Findings · ${all.length}`;
@@ -611,65 +533,12 @@ function render() {
     return li;
   };
 
-  list.replaceChildren(...(layoutIs("lanes") ? laneRows(items, row) : items.map(row)));
+  list.replaceChildren(...items.map(row));
   renderBatchbar();
-  // The inline layout parks the detail node in the list, and replaceChildren
-  // above has just thrown that placement away. Put the open finding back.
-  if (layoutIs("inline") && selected) {
-    const back = rows.get(selected.id + "|" + (selected.service || ""));
-    if (back) back.after(document.getElementById("detail"));
-  }
-  document.body.classList.toggle("detail-open", !!selected);
 
   // Orient the user in the detail pane instead of leaving it a blank "Select
   // a finding". It stays until the first selection, and comes back on rescan.
   if (!selected) renderOverview(all, items, rows);
-}
-
-// laneRows groups the list into one section per severity, each with its own
-// count and its own batch action.
-//
-// The lane header is an <li> rather than a <div> because it lives inside the
-// findings <ul> — a <div> there is invalid, and a browser is free to hoist it
-// out of the list, which is exactly the kind of thing that looks fine until
-// it does not.
-//
-// A severity with nothing at it gets no lane. A "High · 0" header is a
-// row of screen spent announcing that nothing happened, and four of them on
-// a clean host is the whole list.
-function laneRows(items, row) {
-  const out = [];
-  for (const [i, sev] of Object.entries(SEV)) {
-    const group = items.filter((f) => String(f.severity) === String(i));
-    if (!group.length) continue;
-    const autos = group.filter(isAuto);
-    const acts = el("span", { class: "a" });
-    if (autos.length) {
-      // "Select", not "Fix". This button hands the lane's Auto findings to
-      // the batch bar and stops there — it does not apply anything — and a
-      // button that says Fix and then appears to do nothing is the worst
-      // reading of that. It is also what the terminal's `m` does and says,
-      // and the same key in the same arrangement has to mean the same thing.
-      const btn = el("button", { class: "primary" }, `Select the ${autos.length} safe`);
-      // The batch bar already knows how to preview, apply and report a batch.
-      // A second path to the same POST is a second place for it to go wrong.
-      btn.onclick = (ev) => {
-        ev.stopPropagation();
-        marked.clear();
-        for (const f of autos) marked.add(fkey(f));
-        render();
-      };
-      acts.append(btn);
-    } else {
-      acts.append(el("em", {}, "none fix themselves"));
-    }
-    out.push(el("li", { class: "lane-head " + sev.name },
-      el("span", { class: "n" }, sev.name),
-      el("span", { class: "c" }, String(group.length)),
-      acts));
-    out.push(...group.map(row));
-  }
-  return out;
 }
 
 // renderOverview fills the detail pane with a read of the whole scan: the
@@ -745,16 +614,6 @@ function selectFinding(f, li) {
   const meta = [f.id, sevName(f), remLabel(f.remediation)];
   if (f.service) meta.push("service: " + f.service);
   const d = document.getElementById("detail");
-  // Three placements, one node: the pane keeps it where it is, the overlay
-  // layouts lift it in CSS, and the inline layout moves it into the list
-  // under the row that opened it. Moving beats cloning — a second detail
-  // node would be a second thing for the preview and the AI box to be
-  // appended to, and only one of them would be the one on screen.
-  if (layoutIs("inline") && li) li.after(d);
-  else if (d.parentElement !== document.querySelector("main")) {
-    document.querySelector("main").insertBefore(d, document.getElementById("scrim"));
-  }
-  document.body.classList.add("detail-open");
   d.replaceChildren(
     el("h3", {}, f.title),
     el("div", { class: "meta" }, meta.join("  ·  ")),
@@ -782,21 +641,7 @@ function selectFinding(f, li) {
   // before (a paragraph, or the fixbox) butted straight up against
   // "Explain with AI" with no breathing room at all.
   const explainBtn = el("button", { onclick: (ev) => explainAI(f, ev.target) }, "Explain with AI");
-  // The overlay and inline layouts need a way out that is not "pick another
-  // finding": an overlay covers the list it was opened from, and an inline
-  // panel has pushed the next finding off the bottom. The pane layouts have
-  // neither problem, so CSS hides it there.
-  const close = el("button", { class: "detail-close" }, "Close");
-  close.onclick = closeDetail;
-  d.append(el("div", { class: "detail-actions" }, explainBtn, close));
-}
-
-// closeDetail returns to the unselected state: the overview comes back in
-// the pane layouts, the overlay lifts, and the inline panel goes back to
-// <main> where it is out of the flow.
-function closeDetail() {
-  selected = null;
-  render();
+  d.append(el("div", { class: "detail-actions" }, explainBtn));
 }
 
 // explainAI asks the server for the advisory AI explanation. It degrades in
@@ -1154,34 +999,6 @@ function confirmModal(title, message, confirmLabel = "Confirm") {
 // The list and the applier come from /theme.js, generated by
 // internal/ui/theme, which has already restored the saved choice before this
 // script runs. All that is left is the control itself.
-// ── layout picker (temporary) ──────────────────────────────────────────
-// Same shape as the theme picker, and for the same reason: /layout.js has
-// already applied the saved choice before first paint, so all that is left
-// is the control. This one exists to settle which arrangement Hostveil
-// keeps; when that is decided it goes, along with five of the six.
-function initLayoutPicker() {
-  const sel = document.getElementById("layout");
-  const list = window.HOSTVEIL_LAYOUTS || [];
-  if (!sel || !list.length) return;
-
-  const current = layout();
-  sel.replaceChildren(...list.map((l) => {
-    const o = el("option", { value: l.id, title: l.note }, l.name);
-    if (l.id === current) o.selected = true;
-    return o;
-  }));
-  sel.onchange = () => {
-    document.documentElement.setAttribute("data-layout", sel.value);
-    try { localStorage.setItem("hostveil.layout", sel.value); } catch (e) { /* private mode */ }
-    // A re-render, not just a repaint: two of the six restructure the list
-    // and move the detail node, and a CSS-only switch would leave the DOM
-    // arranged for the layout you just left.
-    if (report) render();
-    const l = list.find((x) => x.id === sel.value);
-    if (l) flash(l.name + " — " + l.note);
-  };
-}
-
 function initThemePicker() {
   const sel = document.getElementById("theme");
   const themes = window.HOSTVEIL_THEMES || [];
@@ -1206,7 +1023,7 @@ function initThemePicker() {
 // ── sort control ───────────────────────────────────────────────────────
 // Lives in the findings pane's own header, not the top statusbar — it is a
 // list-scoped choice, not a global one. Same read-then-write pattern as the
-// theme/layout pickers, minus the localStorage: a sort choice is about what
+// theme picker, minus the localStorage: a sort choice is about what
 // you are looking at right now, not a standing preference across sessions.
 function initSortPicker() {
   const sel = document.getElementById("sort");
@@ -1219,14 +1036,7 @@ function initSortPicker() {
 }
 
 initThemePicker();
-initLayoutPicker();
 initSortPicker();
-
-document.getElementById("scrim").onclick = closeDetail;
-// Escape is what people press at an overlay before they look for a button.
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && selected && layoutIs("triage", "railverdict")) closeDetail();
-});
 
 document.getElementById("history").onclick = showHistory;
 document.getElementById("advise").onclick = showAdvise;
@@ -1238,7 +1048,7 @@ document.getElementById("advise").onclick = showAdvise;
 // instead of leaving flash() to say what happened.
 //
 // The format list used to be a second <select> beside this button, styled
-// like nothing else in the bar (app.css had rules for #theme/#layout and
+// like nothing else in the bar (app.css had rules for #theme and
 // none for it) and taking a second control to say one thing. exportFormats
 // comes from /model.js — core.ExportFormats(), the same table the CLI's
 // --format flag and the TUI's picker resolve against — so a sixth format

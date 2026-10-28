@@ -43,7 +43,6 @@ func TestTheStylesheetStylesEverySeverityTheModelDeclares(t *testing.T) {
 			fmt.Sprintf(".finding.%s", sev.String()),       // per-finding gutter
 			fmt.Sprintf(".over-chip.sev-%s", sev),          // overview chips
 			fmt.Sprintf(".chip.c-%s", sev.Abbr()),          // filter chips
-			fmt.Sprintf(".lane-head.%s", sev.String()),     // the lanes layout
 			fmt.Sprintf(".over-jump-row .sev.%s", sev),     // the most-severe list
 			fmt.Sprintf(".rail .dom .c .%s", sev.String()), // per-domain counts on the rail
 		} {

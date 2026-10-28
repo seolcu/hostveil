@@ -1,11 +1,12 @@
 package tui
 
 import (
-	"github.com/seolcu/hostveil/internal/textwidth"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/seolcu/hostveil/internal/textwidth"
 
 	"github.com/seolcu/hostveil/internal/model"
 )

@@ -29,7 +29,7 @@ func TestAdviseBeforeAnyScanIsConflict(t *testing.T) {
 		Registry: check.NewRegistry(),
 		Fixes:    fix.Default(),
 		Store:    history.NewStore(t.TempDir()),
-	}), "127.0.0.1:0", Opts{Theme: "nord", Layout: "lanes"})
+	}), "127.0.0.1:0", Opts{Theme: "nord"})
 
 	rec := httptest.NewRecorder()
 	req := authed(s, httptest.NewRequest(http.MethodGet, "/api/advise", nil))

@@ -61,7 +61,6 @@ var modeNames = map[mode]string{
 	modeRollbackConfirm: "rollback",
 	modeForceConfirm:    "force",
 	modeTheme:           "theme",
-	modeLayout:          "layout",
 	modeExport:          "export",
 	modeExportPath:      "exportpath",
 	modeAdvice:          "advice",
@@ -160,28 +159,6 @@ func TestCompactHeaderIsOneRow(t *testing.T) {
 		if got := visibleWidth(row); got > w {
 			t.Errorf("width=%d: compact header is %d columns: %q", w, got, row)
 		}
-	}
-}
-
-// The full header earns its rows only while the list still has room to be a
-// list. On a short or narrow terminal the axes strip wraps to five or nine
-// rows, and keeping it there would leave the findings a couple of lines.
-func TestFullHeaderDowngradesOnASmallTerminal(t *testing.T) {
-	// Pinned to A · Split rather than the default, because the default is the
-	// rail arrangement and the rail carries the same numbers — a header with no
-	// strip in it there is the design, not a downgrade.
-	roomy := &appModel{mode: modeList, width: 100, height: 34, report: layoutReport(),
-		selected: map[string]bool{}, layout: "split"}
-	roomy.rebuildActive()
-	if n := len(roomy.headerRows(fullHeader(), 3)); n < 3 {
-		t.Errorf("100x34 should keep the axes strip, got %d header rows", n)
-	}
-
-	cramped := &appModel{mode: modeList, width: 44, height: 20, report: layoutReport(),
-		selected: map[string]bool{}, layout: "split"}
-	cramped.rebuildActive()
-	if n := len(cramped.headerRows(fullHeader(), 5)); n != 1 {
-		t.Errorf("44x20 should fall back to the one-row header, got %d rows", n)
 	}
 }
 
