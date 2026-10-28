@@ -14,7 +14,6 @@ func TestNeedsRoot(t *testing.T) {
 		"history":   true,
 		"update":    true,
 		"uninstall": true,
-		"fleet":     false,
 		"version":   false,
 		"help":      false,
 		"":          false,

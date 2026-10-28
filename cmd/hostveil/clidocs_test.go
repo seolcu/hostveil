@@ -37,7 +37,6 @@ var docSection = map[string]string{
 	"cmdServe":       "serve",
 	"cmdTUI":         "tui",
 	"cmdHistory":     "history",
-	"cmdFleet":       "fleet",
 	"cmdDiagnostics": "diagnostics",
 	"cmdTriage":      "triage",
 	"cmdUpdate":      "update",
@@ -306,10 +305,7 @@ func TestEverySubcommandIsClassifiedAndDocumented(t *testing.T) {
 // elevate, each with the reason. It is a list rather than an absence from
 // needsRoot so that leaving a new command out of needsRoot by accident still
 // fails the test above.
-var runsAsInvokingUser = map[string]string{
-	"fleet": "it reaches other hosts with the invoking user's SSH keys, agent and ~/.ssh/config, " +
-		"all of which sudo's env_reset drops — an elevated fleet scan would be root logging in with nothing to log in with",
-}
+var runsAsInvokingUser = map[string]string{}
 
 // The version this binary is stamped with and the version the updater resolves
 // have to compare equal when they are the same release.
