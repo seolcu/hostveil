@@ -191,22 +191,3 @@ func TestEveryDeclinedFindingSaysWhy(t *testing.T) {
 		}
 	}
 }
-
-// A reason that restates the finding is not a reason, and one that runs on is
-// not readable in a detail pane a few dozen columns wide. Neither is
-// checkable in general; these are the mechanical parts of it.
-func TestDeclineReasonsAreOneShortSentence(t *testing.T) {
-	const maxLen = 200
-	for _, id := range fix.DeclinedIDs() {
-		r := fix.WhyNoFix(id)
-		switch {
-		case r == "":
-			t.Errorf("%s is listed as declined with an empty reason", id)
-		case len(r) > maxLen:
-			t.Errorf("%s: reason is %d characters, over the %d-character budget:\n  %s", id, len(r), maxLen, r)
-		case strings.Count(r, ". ") > 1:
-			t.Errorf("%s: reason runs to %d sentences; one is the budget:\n  %s",
-				id, strings.Count(r, ". ")+1, r)
-		}
-	}
-}

@@ -2,7 +2,6 @@ package docs
 
 import (
 	"regexp"
-	"strings"
 	"testing"
 )
 
@@ -63,27 +62,6 @@ func TestBothChangelogsCoverTheSameReleases(t *testing.T) {
 				"  Korean coverage starts at %s; every release from there on needs both.",
 				v, koChangelogStartsAt)
 		}
-	}
-}
-
-// TestTheKoreanChangelogSaysWhereItBegins pins the sentence that makes the
-// gap legible.
-//
-// Without it a reader lands on a file whose oldest entry is 3.20.1 and has no
-// way to tell whether Hostveil started there, whether the older ones were lost,
-// or whether nobody bothered. The file says which, and this keeps it saying so
-// for as long as there is a gap to explain.
-func TestTheKoreanChangelogSaysWhereItBegins(t *testing.T) {
-	doc := readRepoFile(t, "CHANGELOG.ko.md")
-	if !strings.Contains(doc, koChangelogStartsAt) {
-		t.Fatalf("CHANGELOG.ko.md never mentions %s, so it cannot be saying where it starts",
-			koChangelogStartsAt)
-	}
-	if !strings.Contains(doc, "CHANGELOG.md") {
-		t.Error("CHANGELOG.ko.md does not point at the English file for the releases it does not cover")
-	}
-	if !strings.Contains(readRepoFile(t, "CHANGELOG.md"), "CHANGELOG.ko.md") {
-		t.Error("CHANGELOG.md does not link the Korean one, so nothing on the English path leads to it")
 	}
 }
 

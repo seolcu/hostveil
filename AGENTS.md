@@ -115,7 +115,7 @@ Cut by hand. The tag starts `.github/workflows/release.yml`. Release only when a
 
 Steps:
 
-- Write the entry in both `CHANGELOG.md` and `CHANGELOG.ko.md` (`### Features`/`### Bug Fixes`, `### 새 기능`/`### 버그 수정`) and land it through a PR. Do the same with roadmap items moving to shipped, marked with `data-shipped="X.Y.Z"` in both languages.
+- Write the entry in both `CHANGELOG.md` and `CHANGELOG.ko.md` (`### Features`/`### Bug Fixes`, `### 새 기능`/`### 버그 수정`) and land it through a PR. Move shipped roadmap items in both languages' `roadmap.html` in the same PR.
 - Write the release notes in English, then the Korean inside `<details>`. Images go under `site/assets/releases/<version>/`.
 - Create the release:
 

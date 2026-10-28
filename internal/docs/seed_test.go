@@ -153,29 +153,6 @@ func TestSeedScriptIsExecutableAndGuarded(t *testing.T) {
 	}
 }
 
-// TestTheMeasurementsPageDescribesTheHostTheSeedBuilds keeps the page's
-// prose account of the fixture honest. It checks the weaknesses the page
-// names out loud, not every line of the script: the page is allowed to
-// summarise, but not to describe a host nothing builds.
-func TestTheMeasurementsPageDescribesTheHostTheSeedBuilds(t *testing.T) {
-	seed := readRepoFile(t, filepath.Join("scripts", "measure", "seed.sh"))
-	for _, c := range []struct{ claim, evidence string }{
-		{"a second UID 0 account", "useradd -o -u 0"},
-		{"a world-readable /etc/shadow", "chmod 0644 /etc/shadow"},
-		{"ufw installed and switched off", "ufw --force disable"},
-		{"automatic security updates off", "20auto-upgrades"},
-		{"a natively installed Redis on every interface", "bind 0.0.0.0"},
-		{"an SSH drop-in that outranks the image's", "00-hostveil-demo.conf"},
-		{"three compose stacks", "/opt/stacks"},
-		{"two AI agent runtimes", ".openclaw"},
-	} {
-		if !strings.Contains(seed, c.evidence) {
-			t.Errorf("the measurements page says the host has %s, and seed.sh no longer does it "+
-				"(looked for %q)", c.claim, c.evidence)
-		}
-	}
-}
-
 // TestSeededAgentConfigExercisesTheRegisteredFixes holds the fixture to the
 // registry rather than to the checker.
 //

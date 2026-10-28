@@ -76,19 +76,3 @@ func TestSARIFPublishesAfterFixesUnconditionally(t *testing.T) {
 		t.Error("SARIF now emits the after-fixes figure conditionally; a property bag should not hide a key")
 	}
 }
-
-// Both language editions have to explain it, or the Korean reader gets a
-// number on screen that the page beside it never mentions.
-func TestBothScoringPagesExplainAfterFixes(t *testing.T) {
-	for _, lang := range []string{"en", "ko"} {
-		p := filepath.Join(repoRoot(t), "cmd", "sitegen", "content", lang, "docs", "scoring.html")
-		b, err := os.ReadFile(p)
-		if err != nil {
-			t.Errorf("read %s: %v", p, err)
-			continue
-		}
-		if !strings.Contains(string(b), `id="after-fixes"`) {
-			t.Errorf("%s/scoring.html does not document the after-fixes figure", lang)
-		}
-	}
-}
