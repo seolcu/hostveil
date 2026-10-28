@@ -143,7 +143,7 @@
                   <tr><td><code>--output FILE</code></td><td>—</td><td>Write the report to a file (default: stdout), in whichever format was chosen. The exit status is unchanged, so a CI gate keeps working.</td></tr>
                   <tr><td><code>--only LIST</code></td><td>—</td><td>Scan only these domains, comma-separated (e.g. <code>--only ssh,firewall</code>). Domains not scanned show as N/A and are left out of the score. A partial scan is not saved as the last-scan baseline and reports no delta. Otherwise the next full scan would announce every finding from the skipped domains as new.</td></tr>
                   <tr><td><code>--skip LIST</code></td><td>—</td><td>Scan every domain except these, comma-separated. Mutually exclusive with <code>--only</code>; the same partial-scan rules apply.</td></tr>
-                  <tr><td><code>--glyphs NAME</code></td><td>remembered, else <code>plain</code></td><td>Symbol set for status markers: <code>plain</code> or <code>nerd</code>. <code>nerd</code> draws them from a patched Nerd Font: install one and set <code>HOSTVEIL_GLYPHS=nerd</code> once. A terminal cannot be asked what font it has, so this is opt-in and the default changes nothing.</td></tr>
+                  <tr><td><code>--glyphs NAME</code></td><td><code>plain</code></td><td>Symbol set for status markers: <code>plain</code> or <code>nerd</code>. <code>nerd</code> draws them from a patched Nerd Font: install one and set <code>HOSTVEIL_GLYPHS=nerd</code> once. A terminal cannot be asked what font it has, so this is opt-in and the default changes nothing.</td></tr>
                   <tr><td><code>--verbose</code>, <code>-v</code></td><td><code>false</code></td><td>Show descriptions and fix guidance.</td></tr>
                   <tr><td><code>--no-color</code></td><td><code>false</code></td><td>Disable colored output.</td></tr>
                 </tbody>
@@ -343,7 +343,7 @@ hostveil ai-context --clear       # remove it</code></pre></div>
                 <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
                 <tbody>
                   <tr><td><code>--theme NAME</code></td><td>remembered, else <code>hostveil</code></td><td>Color theme: <code>hostveil</code>, <code>onedark</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code>.</td></tr>
-                  <tr><td><code>--glyphs NAME</code></td><td>remembered, else <code>plain</code></td><td>Symbol set for status markers: <code>plain</code> or <code>nerd</code>. <code>nerd</code> draws them from a patched Nerd Font: install one and set <code>HOSTVEIL_GLYPHS=nerd</code> once. A terminal cannot be asked what font it has, so this is opt-in and the default changes nothing.</td></tr>
+                  <tr><td><code>--glyphs NAME</code></td><td><code>plain</code></td><td>Symbol set for status markers: <code>plain</code> or <code>nerd</code>. <code>nerd</code> draws them from a patched Nerd Font: install one and set <code>HOSTVEIL_GLYPHS=nerd</code> once. A terminal cannot be asked what font it has, so this is opt-in and the default changes nothing.</td></tr>
                 </tbody>
               </table>
             </div>

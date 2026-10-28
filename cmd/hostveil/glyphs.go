@@ -12,12 +12,10 @@ import (
 // the counterpart of HOSTVEIL_THEME and resolves the same way.
 const glyphsEnv = "HOSTVEIL_GLYPHS"
 
-// resolveGlyphs applies the precedence --glyphs > HOSTVEIL_GLYPHS > the
-// remembered choice > plain. Only a bad flag value is an error; a stale
-// environment variable or preference file falls back silently rather than
-// keeping an interface from starting over a font.
+// resolveGlyphs applies the precedence --glyphs > HOSTVEIL_GLYPHS > plain.
+// Only a bad flag value is an error.
 func resolveGlyphs(flagValue string) (glyph.Set, error) {
-	return glyph.Resolve(flagValue, os.Getenv(glyphsEnv), stateDir())
+	return glyph.Resolve(flagValue, os.Getenv(glyphsEnv))
 }
 
 // glyphList renders the available set names for flag help and usage text.

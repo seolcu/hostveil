@@ -1,8 +1,6 @@
 package glyph
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/textwidth"
@@ -142,28 +140,22 @@ func TestLookupAndString(t *testing.T) {
 }
 
 // Precedence, and which layers are allowed to fail. Only the flag was typed
-// just now; a stale environment variable or preference file falls back
-// rather than refusing to start over a font.
+// just now; a stale environment variable falls back rather than refusing to
+// start over a font.
 func TestResolvePrecedence(t *testing.T) {
-	dir := t.TempDir()
-	if err := Save(dir, "nerd"); err != nil {
-		t.Fatal(err)
-	}
 	for _, tc := range []struct {
-		name, flag, env, dir string
-		want                 Set
-		wantErr              bool
+		name, flag, env string
+		want            Set
+		wantErr         bool
 	}{
-		{name: "flag wins", flag: "plain", env: "nerd", dir: dir, want: Plain},
-		{name: "env beats the saved choice", env: "plain", dir: dir, want: Plain},
-		{name: "saved choice beats the default", dir: dir, want: Nerd},
+		{name: "flag wins", flag: "plain", env: "nerd", want: Plain},
+		{name: "env beats the default", env: "nerd", want: Nerd},
 		{name: "nothing set", want: Plain},
 		{name: "bad flag is an error", flag: "bogus", want: Plain, wantErr: true},
-		{name: "bad env falls back to saved", env: "bogus", dir: dir, want: Nerd},
-		{name: "bad saved value falls back to plain", dir: t.TempDir(), want: Plain},
+		{name: "bad env falls back to plain", env: "bogus", want: Plain},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := Resolve(tc.flag, tc.env, tc.dir)
+			got, err := Resolve(tc.flag, tc.env)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("Resolve error = %v, wantErr %v", err, tc.wantErr)
 			}
@@ -171,30 +163,5 @@ func TestResolvePrecedence(t *testing.T) {
 				t.Errorf("Resolve = %v, want %v", got, tc.want)
 			}
 		})
-	}
-}
-
-func TestSaveRefusesAnUnknownSet(t *testing.T) {
-	dir := t.TempDir()
-	if err := Save(dir, "nerdfont"); err == nil {
-		t.Error("Save wrote an unknown set; Load would then have to reason about it")
-	}
-	if got := Load(dir); got != "" {
-		t.Errorf("Load returned %q after a refused Save", got)
-	}
-}
-
-// A preference file holding a set from some later build is not an error
-// anywhere — it reads as "no preference".
-func TestLoadIgnoresAStalePreference(t *testing.T) {
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, prefFile), []byte("emoji\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if got := Load(dir); got != "" {
-		t.Errorf("Load = %q for a set this build does not have, want \"\"", got)
-	}
-	if got, err := Resolve("", "", dir); err != nil || got != Plain {
-		t.Errorf("Resolve = %v, %v; a stale file must not fail the start", got, err)
 	}
 }

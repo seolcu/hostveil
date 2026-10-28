@@ -45,7 +45,7 @@ func withFirewalld(ports, rich string) platform.Env {
 // rejected Redis's port, and the scan still called it reachable from the
 // network and said to enable ufw.
 func TestAPortFirewalldRefusesIsNotReported(t *testing.T) {
-	fs, err := New().Check(context.Background(), withFirewalld("", ""))
+	fs, err := hermetic().Check(context.Background(), withFirewalld("", ""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestAPortFirewalldRefusesIsNotReported(t *testing.T) {
 // firewalld and the zone, the fix adds a priority -100 reject, and the
 // checker reading the rule back no longer reports the port.
 func TestTheFirewalldRejectClosesTheDatastoreFinding(t *testing.T) {
-	fs, err := New().Check(context.Background(), withFirewalld("5432/tcp", ""))
+	fs, err := hermetic().Check(context.Background(), withFirewalld("5432/tcp", ""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestTheFirewalldRejectClosesTheDatastoreFinding(t *testing.T) {
 		t.Errorf("runs %q, want %q", got, want)
 	}
 
-	fs, err = New().Check(context.Background(), withFirewalld("5432/tcp", "\t"+rule+"\n"))
+	fs, err = hermetic().Check(context.Background(), withFirewalld("5432/tcp", "\t"+rule+"\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestTheFirewalldRejectClosesTheDatastoreFinding(t *testing.T) {
 }
 
 func TestWithNeitherFirewallTheFindingNamesBoth(t *testing.T) {
-	fs, err := New().Check(context.Background(), platform.Env{Runner: noFirewall(postgresListening)})
+	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: noFirewall(postgresListening)})
 	if err != nil {
 		t.Fatal(err)
 	}

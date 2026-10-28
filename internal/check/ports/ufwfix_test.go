@@ -34,7 +34,7 @@ To                         Action      From
 // letting it through, the fix prepends a deny, and the checker — reading ufw
 // the way ufw applies its rules — no longer reports the port reachable.
 func TestTheUFWDenyClosesTheDatastoreFinding(t *testing.T) {
-	fs, err := New().Check(context.Background(), withUFW(ufwAllowSSH))
+	fs, err := hermetic().Check(context.Background(), withUFW(ufwAllowSSH))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ To                         Action      From
 5432/tcp (v6)              DENY IN     Anywhere (v6)
 22/tcp (v6)                ALLOW IN    Anywhere (v6)
 `
-	fs, err = New().Check(context.Background(), withUFW(after))
+	fs, err = hermetic().Check(context.Background(), withUFW(after))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ To                         Action      From
 }
 
 func TestWithoutUFWTheFindingSaysWhy(t *testing.T) {
-	fs, err := New().Check(context.Background(), platform.Env{Runner: noFirewall(postgresListening)})
+	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: noFirewall(postgresListening)})
 	if err != nil {
 		t.Fatal(err)
 	}
