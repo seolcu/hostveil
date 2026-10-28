@@ -130,8 +130,8 @@ renormalized over the ones that ran, so a partial scan never comes back as a
 misleadingly perfect result.
 
 <!-- hostveil:counts -->
-Hostveil can report **192 findings** across those domains, and **180 of them
-carry a fix**: 75 Hostveil will apply unattended, 105 only after you have read
+Hostveil can report **193 findings** across those domains, and **181 of them
+carry a fix**: 76 Hostveil will apply unattended, 105 only after you have read
 the diff.
 <!-- /hostveil:counts -->
 

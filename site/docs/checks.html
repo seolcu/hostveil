@@ -152,22 +152,22 @@
               </table>
             </div>
             <p>Missing Docker or Trivy? Those domains are skipped cleanly and the score is <strong>renormalized</strong>, so you are never handed a misleadingly perfect result for a scan that did not run.</p>
-            <p>Across those domains Hostveil can report <strong data-counted="findings.total">192</strong> findings, and <strong data-counted="findings.fixable">180</strong> of them carry a fix: <span data-counted="findings.auto">75</span> it will apply unattended, <span data-counted="findings.review">105</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical (removing a Docker socket mount, which breaks the tool that needs it) is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Every one is Manual by <em>decision</em>, with the reason written down. A test fails the build when one is missing, and the counts in this paragraph are computed from the registry.</p>
+            <p>Across those domains Hostveil can report <strong data-counted="findings.total">193</strong> findings, and <strong data-counted="findings.fixable">181</strong> of them carry a fix: <span data-counted="findings.auto">76</span> it will apply unattended, <span data-counted="findings.review">105</span> only after you have read the diff. The rest are <strong>Manual</strong> on purpose, and every one is named in the register in <code>internal/fix/register.go</code> with the reason Hostveil will not act: a leaked secret has to be rotated by whoever issued it, and a healthcheck written without knowing what the service exposes marks a working container unhealthy. A fix that is risky but mechanical (removing a Docker socket mount, which breaks the tool that needs it) is a Review with a warning saying what it can break, applied only when you pick it, never by a batch. Every one is Manual by <em>decision</em>, with the reason written down. A test fails the build when one is missing, and the counts in this paragraph are computed from the registry.</p>
             <div class="ledger-bar-group">
-              <p class="ledger-bar-title">How the <span data-counted="findings.total">192</span> findings resolve</p>
+              <p class="ledger-bar-title">How the <span data-counted="findings.total">193</span> findings resolve</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Auto</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:39%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.auto">75</span>
+                <span class="ledger-bar-value" data-counted="findings.auto">76</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:55%"></div></div>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:54%"></div></div>
                 <span class="ledger-bar-value" data-counted="findings.review">105</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:6%"></div></div>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:7%"></div></div>
                 <span class="ledger-bar-value" data-counted="findings.manual">12</span>
               </div>
             </div>
@@ -460,11 +460,12 @@
                   <tr><td><code>fileperms.docker-config</code></td><td>Root's Docker credentials are too permissive</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.docker-config">Auto</a></td></tr>
                   <tr><td><code>fileperms.grub-config</code></td><td>GRUB configuration permissions are too broad</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.grub-config">Auto</a></td></tr>
                   <tr><td><code>fileperms.grub2-config</code></td><td>GRUB2 configuration permissions are too broad</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.grub2-config">Auto</a></td></tr>
-                  <tr><td><code>fileperms.at-allow</code></td><td>The at allowlist is too permissive</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.at-allow">Auto</a></td></tr>
-                  <tr><td><code>fileperms.at-deny</code></td><td>The at denylist is too permissive</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.at-deny">Auto</a></td></tr>
-                  <tr><td><code>fileperms.cron-allow</code></td><td>The cron allowlist is too permissive</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.cron-allow">Auto</a></td></tr>
-                  <tr><td><code>fileperms.cron-deny</code></td><td>The cron denylist is too permissive</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.cron-deny">Auto</a></td></tr>
-                  <tr><td><code>fileperms.crontab</code></td><td>The system crontab is too permissive</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.crontab">Auto</a></td></tr>
+                  <tr><td><code>fileperms.at-allow</code></td><td>The at allowlist is writable by non-root users</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.at-allow">Auto</a></td></tr>
+                  <tr><td><code>fileperms.at-deny</code></td><td>The at denylist is writable by non-root users</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.at-deny">Auto</a></td></tr>
+                  <tr><td><code>fileperms.cron-allow</code></td><td>The cron allowlist is writable by non-root users</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.cron-allow">Auto</a></td></tr>
+                  <tr><td><code>fileperms.cron-deny</code></td><td>The cron denylist is writable by non-root users</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.cron-deny">Auto</a></td></tr>
+                  <tr><td><code>fileperms.crontab</code></td><td>The system crontab is writable by non-root users</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.crontab">Auto</a></td></tr>
+                  <tr><td><code>fileperms.crontab-readable</code></td><td>The system crontab is readable by every local account</td><td><span class="sev low">LOW</span></td><td><a href="#fix-fileperms.crontab-readable">Auto</a></td></tr>
                   <tr><td><code>fileperms.passwd-backup</code></td><td>The passwd backup is writable by non-root</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.passwd-backup">Auto</a></td></tr>
                   <tr><td><code>fileperms.owner</code></td><td>One of the files above is not owned by root, and the owner decides who can read it as much as the mode does</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.owner">Review</a></td></tr>
                   <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code> is writable by non-root users</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.sshd-config">Auto</a></td></tr>
@@ -1166,7 +1167,12 @@
             <dt id="fix-fileperms.crontab"><code>fileperms.crontab</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
-              <p class="fix-benefit" lang="en">✓ Closes an avoidable persistence path: the system crontab can run commands as root, and this keeps it restricted to what the scheduler itself needs.</p>
+              <p class="fix-benefit" lang="en">✓ Stops a non-root account scheduling a command to run as root through the system crontab.</p>
+            </dd>
+            <dt id="fix-fileperms.crontab-readable"><code>fileperms.crontab-readable</code> <span class="fix-kind">Auto</span></dt>
+            <dd>
+              <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Keeps the schedule and command lines of root's system jobs to root; cron itself runs as root and still reads the file.</p>
             </dd>
             <dt id="fix-fileperms.docker-config"><code>fileperms.docker-config</code> <span class="fix-kind">Auto</span></dt>
             <dd>

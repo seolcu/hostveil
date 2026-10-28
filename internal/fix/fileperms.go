@@ -35,6 +35,7 @@ func registerFilePerms(r *Registry) {
 		"fileperms.cron-allow",
 		"fileperms.cron-deny",
 		"fileperms.crontab",
+		"fileperms.crontab-readable",
 		"fileperms.passwd-backup",
 		"fileperms.compiler",
 	} {
@@ -80,8 +81,10 @@ var filePermsBenefit = map[string]string{
 	"fileperms.at-deny":      "Keeps control of who is blocked from scheduling future one-off commands to root alone.",
 	"fileperms.cron-allow":   "Keeps control of who is allowed to schedule recurring cron jobs to root alone.",
 	"fileperms.cron-deny":    "Keeps control of who is blocked from scheduling recurring cron jobs to root alone.",
-	"fileperms.crontab": "Closes an avoidable persistence path: the system crontab can run commands " +
-		"as root, and this keeps it restricted to what the scheduler itself needs.",
+	"fileperms.crontab": "Stops a non-root account scheduling a command to run as root through the " +
+		"system crontab.",
+	"fileperms.crontab-readable": "Keeps the schedule and command lines of root's system jobs to root; " +
+		"cron itself runs as root and still reads the file.",
 	"fileperms.passwd-backup": "Stops a non-root account planting a change in the passwd backup that " +
 		"becomes a live credential the next time it is restored.",
 	"fileperms.compiler": "Removes the system compiler from every local account's reach by default, " +
