@@ -11,9 +11,9 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// filepermsRoundTripIDs mirrors registerFilePerms' 20 exact IDs.
+// filepermsRoundTripIDs mirrors registerFilePerms' exact IDs.
 // TestFilepermsRoundTripCoversEveryRegisteredID cross-checks this list
-// against the registry mechanically, so a 21st rule does not go untested
+// against the registry mechanically, so a new rule does not go untested
 // silently — the same check is what caught fileperms.compiler being absent
 // from an earlier draft of this list.
 //
@@ -31,7 +31,7 @@ func filepermsRoundTripIDs() []string {
 		"fileperms.systemd-units", "fileperms.docker-config", "fileperms.grub-config",
 		"fileperms.grub2-config", "fileperms.at-allow", "fileperms.at-deny",
 		"fileperms.cron-allow", "fileperms.cron-deny", "fileperms.crontab",
-		"fileperms.passwd-backup", "fileperms.compiler",
+		"fileperms.crontab-readable", "fileperms.passwd-backup", "fileperms.compiler",
 	}
 }
 
@@ -61,7 +61,7 @@ func TestFilepermsRoundTripCoversEveryRegisteredID(t *testing.T) {
 	}
 }
 
-// All 19 registered IDs use buildTightenMode (ActionMode, not ActionEdit),
+// Every registered ID uses buildTightenMode (ActionMode, not ActionEdit),
 // so this uses applyFirstAlternativeMode rather than applyFirstAlternative.
 //
 // Each case is a single-rule fileperms.Checker over one temp file chmod'd to

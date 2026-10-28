@@ -153,22 +153,22 @@
               </table>
             </div>
             <p>Docker나 Trivy가 없나요? 해당 영역은 깔끔하게 건너뛰어지고 점수가 <strong>재정규화</strong>되므로, 실행되지도 않은 스캔에 대해 오해를 살 만큼 완벽한 결과를 받는 일은 없습니다.</p>
-            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">192</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">180</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">75</span>개는 무인으로 적용하고, <span data-counted="findings.review">105</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 판단을 거쳐 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 유출된 비밀값은 그것을 발급한 쪽에서 바꿔야 하고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 모두 <em>판단</em>을 거쳐 Manual로 남긴 것이고, 이유가 빠진 항목이 생기면 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 레지스트리에서 계산한 값입니다.</p>
+            <p>Hostveil은 이 영역들에서 발견 항목 <strong data-counted="findings.total">193</strong>개를 보고할 수 있고, 그중 <strong data-counted="findings.fixable">181</strong>개에 수정이 붙어 있습니다. <span data-counted="findings.auto">76</span>개는 무인으로 적용하고, <span data-counted="findings.review">105</span>개는 차이를 읽은 뒤에만 적용합니다. 나머지는 판단을 거쳐 <strong>Manual</strong>로 둔 것이고, 하나하나 <code>internal/fix/register.go</code>의 목록에 Hostveil이 손대지 않는 이유와 함께 적혀 있습니다. 유출된 비밀값은 그것을 발급한 쪽에서 바꿔야 하고, 서비스가 무엇을 내놓는지 모른 채 쓴 healthcheck는 멀쩡한 컨테이너를 unhealthy로 만듭니다. 위험하지만 기계적으로 할 수 있는 수정은 Manual로 두지 않습니다. Docker 소켓 마운트를 떼는 수정이 그렇습니다. 이런 수정은 무엇이 망가질 수 있는지 경고를 붙인 Review로 제공하고, 직접 골랐을 때만 적용합니다. 일괄 적용에는 들어가지 않습니다. 모두 <em>판단</em>을 거쳐 Manual로 남긴 것이고, 이유가 빠진 항목이 생기면 테스트가 빌드를 깨뜨립니다. 이 문단의 개수도 레지스트리에서 계산한 값입니다.</p>
             <div class="ledger-bar-group">
-              <p class="ledger-bar-title"><span data-counted="findings.total">192</span>개 발견 항목의 처리 방식</p>
+              <p class="ledger-bar-title"><span data-counted="findings.total">193</span>개 발견 항목의 처리 방식</p>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Auto</span>
                 <div class="ledger-bar-track"><div class="ledger-bar-fill signal" style="--pct:39%"></div></div>
-                <span class="ledger-bar-value" data-counted="findings.auto">75</span>
+                <span class="ledger-bar-value" data-counted="findings.auto">76</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Review</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:55%"></div></div>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill warning" style="--pct:54%"></div></div>
                 <span class="ledger-bar-value" data-counted="findings.review">105</span>
               </div>
               <div class="ledger-bar">
                 <span class="ledger-bar-label">Manual</span>
-                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:6%"></div></div>
+                <div class="ledger-bar-track"><div class="ledger-bar-fill muted" style="--pct:7%"></div></div>
                 <span class="ledger-bar-value" data-counted="findings.manual">12</span>
               </div>
             </div>
@@ -461,11 +461,12 @@
                   <tr><td><code>fileperms.docker-config</code></td><td>root의 Docker 자격 증명 파일 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.docker-config">Auto</a></td></tr>
                   <tr><td><code>fileperms.grub-config</code></td><td>GRUB 설정 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.grub-config">Auto</a></td></tr>
                   <tr><td><code>fileperms.grub2-config</code></td><td>GRUB2 설정 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.grub2-config">Auto</a></td></tr>
-                  <tr><td><code>fileperms.at-allow</code></td><td>at 허용 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.at-allow">Auto</a></td></tr>
-                  <tr><td><code>fileperms.at-deny</code></td><td>at 차단 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.at-deny">Auto</a></td></tr>
-                  <tr><td><code>fileperms.cron-allow</code></td><td>cron 허용 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.cron-allow">Auto</a></td></tr>
-                  <tr><td><code>fileperms.cron-deny</code></td><td>cron 차단 목록 권한이 너무 넓음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.cron-deny">Auto</a></td></tr>
-                  <tr><td><code>fileperms.crontab</code></td><td>시스템 crontab 권한이 너무 넓음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.crontab">Auto</a></td></tr>
+                  <tr><td><code>fileperms.at-allow</code></td><td>at 허용 목록을 root 외 사용자가 쓸 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.at-allow">Auto</a></td></tr>
+                  <tr><td><code>fileperms.at-deny</code></td><td>at 차단 목록을 root 외 사용자가 쓸 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.at-deny">Auto</a></td></tr>
+                  <tr><td><code>fileperms.cron-allow</code></td><td>cron 허용 목록을 root 외 사용자가 쓸 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.cron-allow">Auto</a></td></tr>
+                  <tr><td><code>fileperms.cron-deny</code></td><td>cron 차단 목록을 root 외 사용자가 쓸 수 있음</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.cron-deny">Auto</a></td></tr>
+                  <tr><td><code>fileperms.crontab</code></td><td>시스템 crontab을 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.crontab">Auto</a></td></tr>
+                  <tr><td><code>fileperms.crontab-readable</code></td><td>시스템 crontab을 모든 로컬 계정이 읽을 수 있음</td><td><span class="sev low">LOW</span></td><td><a href="#fix-fileperms.crontab-readable">Auto</a></td></tr>
                   <tr><td><code>fileperms.passwd-backup</code></td><td>passwd 백업을 root 외 사용자가 쓸 수 있음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.passwd-backup">Auto</a></td></tr>
                   <tr><td><code>fileperms.owner</code></td><td>위 파일 중 하나가 root 소유가 아니며, 누가 읽을 수 있는지는 권한 비트만으로 정해지지 않음</td><td><span class="sev high">HIGH</span></td><td><a href="#fix-fileperms.owner">Review</a></td></tr>
                   <tr><td><code>fileperms.sshd-config</code></td><td><code>sshd_config</code>가 root가 아닌 사용자에게 쓰기 가능</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-fileperms.sshd-config">Auto</a></td></tr>
@@ -1167,7 +1168,12 @@
             <dt id="fix-fileperms.crontab"><code>fileperms.crontab</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Tighten /etc/shadow to 0640</p>
-              <p class="fix-benefit" lang="en">✓ Closes an avoidable persistence path: the system crontab can run commands as root, and this keeps it restricted to what the scheduler itself needs.</p>
+              <p class="fix-benefit" lang="en">✓ Stops a non-root account scheduling a command to run as root through the system crontab.</p>
+            </dd>
+            <dt id="fix-fileperms.crontab-readable"><code>fileperms.crontab-readable</code> <span class="fix-kind">Auto</span></dt>
+            <dd>
+              <p lang="en">Tighten /etc/shadow to 0640</p>
+              <p class="fix-benefit" lang="en">✓ Keeps the schedule and command lines of root's system jobs to root; cron itself runs as root and still reads the file.</p>
             </dd>
             <dt id="fix-fileperms.docker-config"><code>fileperms.docker-config</code> <span class="fix-kind">Auto</span></dt>
             <dd>

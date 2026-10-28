@@ -269,3 +269,42 @@ func TestAbsentFilesAreStillClean(t *testing.T) {
 		t.Errorf("a host missing these files is clean, not degraded: %v", err)
 	}
 }
+
+// Debian and Ubuntu ship /etc/crontab as 0644. That lets local accounts read
+// root's schedule, which is Low, and nothing more; only a crontab others can
+// write is High. Before the rule was split, the stock file was High on every
+// Debian-family host and made `scan` exit 1 on its own.
+func TestTheDistributionDefaultCrontabIsLowNotHigh(t *testing.T) {
+	var rules []Rule
+	for _, r := range DefaultRules() {
+		if r.Path == "/etc/crontab" {
+			rules = append(rules, r)
+		}
+	}
+	if len(rules) != 2 {
+		t.Fatalf("want the writable and readable crontab rules, got %d", len(rules))
+	}
+	for mode, want := range map[os.FileMode]map[string]model.Severity{
+		0o600: {},
+		0o644: {"fileperms.crontab-readable": model.SeverityLow},
+		0o664: {"fileperms.crontab-readable": model.SeverityLow, "fileperms.crontab": model.SeverityHigh},
+	} {
+		path := writeMode(t, "crontab", mode)
+		for i := range rules {
+			rules[i].Path = path
+		}
+		got := map[string]model.Severity{}
+		for _, f := range run(t, rules) {
+			got[f.ID] = f.Severity
+		}
+		if len(got) != len(want) {
+			t.Errorf("%#o: got %v, want %v", mode, got, want)
+			continue
+		}
+		for id, sev := range want {
+			if got[id] != sev {
+				t.Errorf("%#o: %s = %v, want %v", mode, id, got[id], sev)
+			}
+		}
+	}
+}
