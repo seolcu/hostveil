@@ -1,37 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="hostveil">
-  <!-- The hostveil mark: the host drawn as the thing it physically is. Twelve
-       pins, a package, the pin-1 orientation notch, and a hardened core with
-       the die at its centre. Safe green is the core because green means one
-       thing in this design system — the part that has been made safe — and
-       everything else is Bone.
+  <!-- The hostveil mark: a veil. The host is the sheet behind, drawn in Bone;
+       the sheet laid over it is the hardening, drawn in Safe, because green
+       means one thing in this design system — the part that has been made
+       safe. The front sheet is not outlined; the back one is cut away around
+       it instead, so the gap between them is a real hole and the figure
+       reads on any ground without knowing what colour that ground is.
 
        This variant carries no tile, so it dissolves into whatever palette
        paints the surface behind it; favicon.svg keeps one because a browser
        tab is requested before any theme is known. The two are one drawing,
        and site/assets/ carries byte-identical copies for the marketing site,
-       held there by TestSiteBrandAssetsMatchTheDashboard — four hand-drawn
-       marks is what this replaced.
+       held there by TestSiteBrandAssetsMatchTheDashboard. The site's light
+       scheme uses site/assets/mark-light.svg, the same geometry in the light
+       palette's ink, held to this file by TestLightMarkIsTheSameDrawing.
 
-       The weights are set for 16-20px rather than scaled down from the large
-       size: 3-unit pins and a 2.8 package stroke are heavier than the drawing
-       wants at 48, and are the only reason it survives in a tab. -->
-  <g fill="#c8ccd4">
-    <rect x="3.4" y="13.2" width="6.6" height="3"/>
-    <rect x="3.4" y="22.5" width="6.6" height="3"/>
-    <rect x="3.4" y="31.8" width="6.6" height="3"/>
-    <rect x="38" y="13.2" width="6.6" height="3"/>
-    <rect x="38" y="22.5" width="6.6" height="3"/>
-    <rect x="38" y="31.8" width="6.6" height="3"/>
-    <rect x="13.2" y="3.4" width="3" height="6.6"/>
-    <rect x="22.5" y="3.4" width="3" height="6.6"/>
-    <rect x="31.8" y="3.4" width="3" height="6.6"/>
-    <rect x="13.2" y="38" width="3" height="6.6"/>
-    <rect x="22.5" y="38" width="3" height="6.6"/>
-    <rect x="31.8" y="38" width="3" height="6.6"/>
-  </g>
-  <rect x="9.6" y="9.6" width="28.8" height="28.8" rx="2.4"
-        fill="none" stroke="#c8ccd4" stroke-width="2.8"/>
-  <circle cx="14.8" cy="14.8" r="1.8" fill="#c8ccd4"/>
-  <rect x="17.4" y="17.4" width="13.2" height="13.2" fill="#98c379"/>
-  <rect x="21.7" y="21.7" width="4.6" height="4.6" fill="#c8ccd4"/>
+       The three-unit gap is one pixel at 16px, which is the smallest size the
+       mark is drawn at and the reason it is not thinner. -->
+  <mask id="hv-cut">
+    <rect width="48" height="48" fill="white"/>
+    <rect x="14" y="14" width="32" height="32" rx="11" fill="black"/>
+  </mask>
+  <rect x="5" y="5" width="26" height="26" rx="8" fill="#f5f5f7" mask="url(#hv-cut)"/>
+  <rect x="17" y="17" width="26" height="26" rx="8" fill="#3ccf7e"/>
 </svg>

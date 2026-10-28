@@ -84,8 +84,8 @@ var svgPaint = regexp.MustCompile(`(?:fill|stroke)="(#[0-9a-fA-F]{6})"`)
 // internal/ui/theme is the only place a color is written down; the two brand
 // SVGs are the one static exception, because a favicon is fetched before any
 // theme is known. That exception is tolerable only while their hexes stay
-// the default theme's roles — the Ink2 tile, the Bone package and pins, and
-// the Safe core. If the palette moves, this fails instead of the mark
+// the default theme's roles — the Ink2 tile, the Bone sheet behind, and the
+// Safe sheet laid over it. If the palette moves, this fails instead of the mark
 // quietly drifting off-brand, which is exactly what it did when Instrument
 // was retired: the mark kept its bone-and-teal until this test said otherwise.
 //
@@ -115,8 +115,8 @@ func TestBrandMarkColorsAreTheDefaultPalette(t *testing.T) {
 			}
 			seen[r] = true
 		}
-		// Both variants are the same figure: a bone package around a safe
-		// core. Losing either color is losing half the mark's meaning.
+		// Both variants are the same figure: a bone host with a safe veil
+		// over it. Losing either color is losing half the mark's meaning.
 		for _, want := range []string{"Bone", "Safe"} {
 			if !seen[want] {
 				t.Errorf("%s no longer uses the %s role", name, want)
@@ -148,5 +148,34 @@ func TestSiteBrandAssetsMatchTheDashboard(t *testing.T) {
 			t.Errorf("site/assets/%s has drifted from the dashboard's copy; "+
 				"copy it across rather than editing one of them", name)
 		}
+	}
+}
+
+// The site has a light scheme and the dashboard does not, so the site carries
+// one asset the dashboard has no copy of: the mark in the light palette, since
+// a Bone sheet on a white page is invisible. That is a second file, and a
+// second file is how a second drawing starts. With every paint stripped the
+// two must be the same bytes, so the only thing the light variant may change
+// is colour.
+func TestLightMarkIsTheSameDrawing(t *testing.T) {
+	dark, err := assets.ReadFile("assets/mark.svg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	light, err := os.ReadFile(filepath.Join("..", "..", "..", "site", "assets", "mark-light.svg"))
+	if err != nil {
+		t.Fatalf("the site has no light mark: %v", err)
+	}
+	comment := regexp.MustCompile(`(?s)<!--.*?-->`)
+	shape := func(b []byte) string {
+		s := comment.ReplaceAllString(string(b), "")
+		return svgPaint.ReplaceAllString(s, "paint")
+	}
+	if a, b := shape(dark), shape(light); a != b {
+		t.Errorf("site/assets/mark-light.svg is no longer mark.svg with other colours:\n"+
+			"mark.svg:\n%s\nmark-light.svg:\n%s", a, b)
+	}
+	if bytes.Equal(dark, light) {
+		t.Error("site/assets/mark-light.svg is identical to mark.svg, so the light scheme draws a Bone sheet on a white page")
 	}
 }

@@ -291,8 +291,8 @@ Triage flags:
   --since SPAN    How far back to read logs and file changes (default 30d)
 
 TUI and dashboard flags:
-  --theme NAME    Color theme: onedark (default), gruvbox, nord,
-                  catppuccin, tokyonight. The TUI's picker (press t) remembers
+  --theme NAME    Color theme: hostveil (default), onedark, gruvbox,
+                  nord, catppuccin, tokyonight. The TUI's picker (press t) remembers
                   your choice; --theme and HOSTVEIL_THEME override it.
   --glyphs NAME   Symbol set for status markers: plain (default) or nerd.
                   nerd draws them from a patched Nerd Font; a terminal cannot

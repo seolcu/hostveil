@@ -5,15 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Hostveil — 셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화</title>
     <meta name="description" content="Hostveil은 셀프호스터가 해킹당하는 보안 실수 — Docker Compose, SSH, 방화벽, 자동 업데이트 — 를 리눅스 홈 서버에서 찾아, 쉬운 말로 설명하고, 미리보기·백업·한 번의 명령으로 되돌리는 롤백과 함께 고쳐 줍니다.">
-    <meta name="theme-color" content="#07100f">
+    <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
     <meta property="og:title" content="Hostveil — 셀프호스터를 위한 가이드형 보안 강화">
     <meta property="og:description" content="리눅스 홈 서버의 보안 실수를 찾아 쉽게 설명하고 안전하게 고치는 로컬 바이너리 하나 — 미리보기, 백업, 롤백. 선택적 CVE 스캔과 로컬 AI 지원.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://hostveil.seolcu.com/ko/">
-    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
-    <meta property="og:image:width" content="1500">
-    <meta property="og:image:height" content="760">
-    <meta property="og:image:alt" content="Hostveil 웹 대시보드: 0-100 보안 점수, 도메인별 게이지, 심각도로 묶인 발견 항목과 원클릭 안전 수정">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/social-preview.png">
+    <meta property="og:image:width" content="1280">
+    <meta property="og:image:height" content="640">
+    <meta property="og:image:alt" content="Hostveil 로고와 이름, 그리고 문구: Quiet security for the servers you run.">
     <meta property="og:site_name" content="Hostveil">
     <meta name="twitter:card" content="summary_large_image">
     <meta property="og:locale" content="ko_KR">
@@ -79,9 +80,9 @@
       <section class="hero" id="top">
         <div class="container hero-grid">
           <div class="hero-copy">
-            <p class="eyebrow">셀프호스터를 위한 가이드형 보안 강화</p>
-            <h1>홈 서버에 숨은 보안 실수, 찾아서 고쳐 드립니다.</h1>
-            <p class="lede">Hostveil은 셀프호스팅 중인 리눅스 서버에서 해킹으로 이어지는 잘못된 설정을 찾아 쉬운 말로 설명하고, 미리보기와 백업, 명령 한 번의 롤백과 함께 고쳐 줍니다.</p>
+            <p class="eyebrow">셀프호스팅 서버를 위한 보안 강화</p>
+            <h1>서버 보안.<br>조용하게, 단단하게.</h1>
+            <p class="lede">Hostveil은 셀프호스팅 리눅스 서버에서 해킹으로 이어지는 설정 실수를 찾아냅니다. 무엇이 문제인지 쉬운 말로 설명하고, 미리보기와 백업을 거쳐 안전하게 고칩니다. 되돌리는 것도 명령 한 번이면 충분하죠.</p>
             <div class="hero-actions" aria-label="주요 동작">
               <a class="button primary" href="#install">설치</a>
               <a class="button secondary" href="https://github.com/seolcu/hostveil">소스</a>
@@ -109,40 +110,40 @@
 
       <section class="trust-strip" aria-label="프로젝트 사실">
         <div class="container stats-grid">
-          <div><strong>바이너리 1개</strong><span>SaaS도 데이터베이스도 계정도 없이, 직접 통제하는 호스트에서 실행</span></div>
-          <div><strong>네이티브 점검</strong><span>추가 도구 없이 SSH·방화벽·업데이트 점검</span></div>
-          <div><strong>서명된 릴리스</strong><span>모든 아카이브에 SBOM과 빌드 프로버넌스</span></div>
-          <div><strong>롤백 준비 완료</strong><span>모든 수정은 먼저 백업하고 되돌릴 수 있음</span></div>
+          <div><strong>바이너리 하나.</strong><span>SaaS도, 데이터베이스도, 계정도 필요 없습니다. 직접 통제하는 호스트에서 실행됩니다.</span></div>
+          <div><strong>기본 점검 내장.</strong><span>SSH, 방화벽, 업데이트는 다른 도구 없이 점검합니다.</span></div>
+          <div><strong>서명된 릴리스.</strong><span>모든 아카이브에 SBOM과 빌드 출처 증명이 함께 제공됩니다.</span></div>
+          <div><strong>언제든 되돌리기.</strong><span>모든 수정은 먼저 백업하고, 언제든 원래대로 되돌릴 수 있습니다.</span></div>
         </div>
       </section>
 
       <section class="section" id="features">
         <div class="container">
           <div class="section-heading">
-            <p class="eyebrow">왜 Hostveil인가</p>
-            <h2>또 하나의 보고서가 아니라, 가이드입니다.</h2>
-            <p>Hostveil은 알기 어려운 호스트 상태를 구체적인 문제의 우선순위 목록으로 바꾸고, 안전하게 고치는 과정을 하나씩 안내합니다.</p>
+            <p class="eyebrow">Hostveil이 다른 점</p>
+            <h2>보고서가 아닌, 가이드.</h2>
+            <p>Hostveil은 알기 어려운 호스트 상태를 해야 할 일의 우선순위 목록으로 바꿉니다. 하나씩 안전하게 고칠 수 있도록 끝까지 안내합니다.</p>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
-              <span class="card-kicker">쉬운 언어</span>
-              <h3>전문 용어 없이 위험을 이해하세요.</h3>
-              <p>각 발견 항목은 무엇이 잘못됐고, 왜 중요하며, 어떻게 고치는지 알려 줍니다 — 점검한 모든 영역을 0–100 점수로 담은 하나의 스냅샷으로.</p>
+              <span class="card-kicker">쉬운 설명</span>
+              <h3>전문 용어는 덜고. 위험은 분명하게.</h3>
+              <p>발견 항목마다 무엇이 잘못됐는지, 왜 중요한지, 어떻게 고치는지 알려 줍니다. 점검한 모든 영역은 0–100 점수 하나로 정리됩니다.</p>
             </article>
             <article class="feature-card">
-              <span class="card-kicker">안전장치와 함께 수정</span>
+              <span class="card-kicker">안전한 수정</span>
               <h3>미리보기, 백업, 적용, 롤백.</h3>
-              <p>모든 Auto는 정확한 변경 내용을 먼저 보여 주고, 파일을 건드리기 전에 백업합니다. 마음이 바뀌었나요? <code>hostveil rollback</code>이 원본을 복원합니다.</p>
+              <p>모든 Auto 수정은 바뀔 내용을 먼저 보여 주고, 파일을 건드리기 전에 백업합니다. 마음이 바뀌면 <code>hostveil rollback</code> 한 번으로 원래대로 돌아가죠.</p>
             </article>
             <article class="feature-card">
-              <span class="card-kicker">설계부터 셀프호스팅</span>
-              <h3>에이전트도, 클라우드 업로드도, 계정도 없음.</h3>
-              <p>Compose 파일과 호스트 설정을 로컬에서 읽습니다. 네이티브 점검 덕분에 SSH·방화벽·업데이트 강화를 위해 따로 설치할 것이 없습니다.</p>
+              <span class="card-kicker">처음부터 셀프호스팅</span>
+              <h3>에이전트도, 업로드도, 계정도 없이.</h3>
+              <p>Compose 파일과 호스트 설정은 모두 로컬에서 읽습니다. SSH, 방화벽, 업데이트 점검은 기본으로 들어 있어 따로 설치할 것이 없습니다.</p>
             </article>
             <article class="feature-card accent-card">
-              <span class="card-kicker">필요할 때만, 원하는 방식으로</span>
-              <h3>원하면 CVE 스캔과 로컬 AI를 추가하세요.</h3>
-              <p>Trivy 이미지 스캔은 설치돼 있으면 사용하고, 없으면 깔끔히 건너뜁니다. AI 설명은 선택 사항이고 기본값이 로컬 모델이라 무엇도 호스트를 떠나지 않습니다.</p>
+              <span class="card-kicker">필요할 때만</span>
+              <h3>CVE 스캔과 로컬 AI. 원할 때만 더하세요.</h3>
+              <p>Trivy가 설치돼 있으면 이미지를 스캔하고, 없으면 깔끔하게 건너뜁니다. AI 설명은 선택 사항이며 기본값은 로컬 모델입니다. 어떤 데이터도 호스트 밖으로 나가지 않습니다.</p>
             </article>
           </div>
         </div>
@@ -152,7 +153,7 @@
         <div class="container split-grid">
           <div>
             <p class="eyebrow">점검 범위</p>
-            <h2>실제로 해킹으로 이어지는 홈 서버 실수들.</h2>
+            <h2>해킹으로 이어지는 바로 그 실수들.</h2>
             <p>노출된 데이터베이스, 컨테이너에 넘겨진 Docker 소켓, root SSH 로그인, 방화벽 부재, 패치되지 않은 패키지까지. Hostveil은 영향이 가장 큰 경로들을 함께, 깊이 점검합니다.</p>
           </div>
           <div class="check-stack">
@@ -176,8 +177,8 @@
         <div class="container">
           <div class="section-heading">
             <p class="eyebrow">제품</p>
-            <h2>터미널 우선, 브라우저도 친화적.</h2>
-            <p>기본은 TUI로 실행하고, 브라우저로 검토하는 편이 나을 때는 같은 스캔을 localhost로 제공하세요. 둘 다 완전히 동일한 수정·롤백 엔진을 구동하며, 같은 다섯 가지 색상 테마를 공유합니다.</p>
+            <h2>터미널에서. 브라우저에서도.</h2>
+            <p>기본은 TUI로 실행됩니다. 브라우저가 편할 때는 같은 스캔을 localhost로 띄우면 됩니다. 두 화면은 같은 수정·롤백 엔진을 쓰고, 같은 여섯 가지 색상 테마를 공유합니다.</p>
           </div>
           <div class="screens-grid">
             <figure class="screenshot-card" data-lightbox="tui" role="button" tabindex="0" aria-label="TUI 스크린샷 확대">
@@ -281,12 +282,12 @@
         <div class="container">
           <div class="section-heading">
             <p class="eyebrow">작업 흐름</p>
-            <h2>스캔하고, 이해하고, 적용하고, 복구하기.</h2>
+            <h2>스캔. 이해. 수정. 복구.</h2>
           </div>
           <ol class="flow-list">
-            <li><div class="flow-step-head"><span>01</span><strong>로컬에서 스캔</strong></div><p>리눅스 서버에서 <code>hostveil</code>을 실행하세요. Docker나 Trivy가 없나요? 해당 영역은 깔끔히 건너뜁니다.</p></li>
+            <li><div class="flow-step-head"><span>01</span><strong>로컬에서 스캔</strong></div><p>리눅스 서버에서 <code>hostveil</code>을 실행하세요. Docker나 Trivy가 없어도 괜찮습니다. 해당 영역은 깔끔하게 건너뜁니다.</p></li>
             <li><div class="flow-step-head"><span>02</span><strong>이해하기</strong></div><p>발견 항목은 심각도순으로 정렬되며 무엇이·왜 문제인지 쉬운 말로 설명됩니다. 깨끗한 호스트는 속 빈 100점이 아니라 ‘깨끗함’으로 표시됩니다.</p></li>
-            <li><div class="flow-step-head"><span>03</span><strong>수정 적용</strong></div><p>명백히 안전한 수정은 Auto, 실질적 대안이 있을 때는 Review, 도구가 직접 바꾸기보다 안내해야 할 때는 Manual로.</p></li>
+            <li><div class="flow-step-head"><span>03</span><strong>수정 적용</strong></div><p>명백히 안전한 수정은 Auto로, 대안 중에서 골라야 할 때는 Review로 적용합니다. 직접 바꾸기보다 안내가 맞는 경우는 Manual로 남겨 둡니다.</p></li>
             <li><div class="flow-step-head"><span>04</span><strong>언제든 롤백</strong></div><p>적용된 모든 수정은 먼저 백업되며 <code>hostveil rollback</code>으로<br>되돌릴 수 있습니다.</p></li>
           </ol>
         </div>
@@ -296,8 +297,8 @@
         <div class="container install-grid">
           <div>
             <p class="eyebrow">설치</p>
-            <h2>명령 한 줄, 그리고 스캔.</h2>
-            <p>설치 스크립트는 릴리스 바이너리를 내려받아 체크섬을 검증하고 Hostveil을 설치합니다. Trivy는 선택 사항입니다 — 이미지 CVE 스캔을 원하면 나중에 설치하세요.</p>
+            <h2>명령 한 줄이면 됩니다.</h2>
+            <p>설치 스크립트는 릴리스 바이너리를 내려받아 체크섬을 검증하고 Hostveil을 설치합니다. Trivy는 선택 사항입니다. 이미지 CVE 스캔이 필요할 때 설치하면 됩니다.</p>
             <div class="button-row">
               <a class="button primary" href="https://github.com/seolcu/hostveil/releases/latest">최신 릴리스</a>
               <a class="button secondary" href="/ko/docs/">문서</a>
@@ -324,11 +325,11 @@ hostveil fix --all</code></pre>
         <div class="container">
           <div class="section-heading">
             <p class="eyebrow">자주 묻는 질문</p>
-            <h2>자주 묻는 질문들.</h2>
+            <h2>자주 묻는 질문.</h2>
           </div>
           <div class="faq-grid">
             <article>
-              <h3>제 데이터를 업로드하나요?</h3>
+              <h3>데이터가 외부로 전송되나요?</h3>
               <p>아니요. Hostveil은 로컬에서 실행됩니다. 선택적 AI<br>설명도 기본값은 로컬 컴퓨터에 있는 모델입니다.</p>
             </article>
             <article>
@@ -337,7 +338,7 @@ hostveil fix --all</code></pre>
             </article>
             <article>
               <h3>수정에 절충점이 있으면 어떻게 되나요?</h3>
-              <p>그건 Auto가 아니라 Review 수정입니다. Hostveil이 독립적인<br>대안을 보여 주고 그중 하나를 고르게 합니다.</p>
+              <p>그런 수정은 Auto가 아닌 Review로 분류됩니다. Hostveil이<br>독립적인 대안을 보여 주고, 그중 하나를 직접 고르게 합니다.</p>
             </article>
             <article>
               <h3>Docker나 Trivy가 필요한가요?</h3>

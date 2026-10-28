@@ -5,15 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>인터페이스 — Hostveil 문서</title>
     <meta name="description" content="Hostveil의 세 가지 인터페이스 — 키보드 기반 TUI, localhost 웹 대시보드, 스크립트로 다루는 CLI — 모두 하나의 공유 수정·롤백 엔진을 구동합니다.">
-    <meta name="theme-color" content="#07100f">
+    <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
     <meta property="og:title" content="인터페이스 — Hostveil 문서">
     <meta property="og:description" content="TUI, localhost 웹 대시보드, 스크립트로 다루는 CLI — 하나의 공유 엔진.">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://hostveil.seolcu.com/ko/docs/interfaces">
-    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
-    <meta property="og:image:width" content="1500">
-    <meta property="og:image:height" content="760">
-    <meta property="og:image:alt" content="Hostveil 웹 대시보드: 0-100 보안 점수, 도메인별 게이지, 심각도로 묶인 발견 항목과 원클릭 안전 수정">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/social-preview.png">
+    <meta property="og:image:width" content="1280">
+    <meta property="og:image:height" content="640">
+    <meta property="og:image:alt" content="Hostveil 로고와 이름, 그리고 문구: Quiet security for the servers you run.">
     <meta property="og:site_name" content="Hostveil">
     <meta name="twitter:card" content="summary_large_image">
     <meta property="og:locale" content="ko_KR">
@@ -196,7 +197,7 @@ hostveil fix --all --yes</code></pre></div>
             <p>모든 명령과 플래그는 <a href="cli">CLI 레퍼런스</a>를 참고하세요.</p>
 
             <h2 id="themes">테마</h2>
-            <p>TUI와 대시보드는 다섯 가지 색상 테마를 제공합니다: <code>onedark</code>(기본값), <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code>. 하나의 팔레트 정의를 공유하므로 같은 테마가 터미널과 브라우저에서 동일하게 보입니다.</p>
+            <p>TUI와 대시보드는 여섯 가지 색상 테마를 제공합니다: <code>hostveil</code>(기본값), <code>onedark</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code>. 하나의 팔레트 정의를 공유하므로 같은 테마가 터미널과 브라우저에서 동일하게 보입니다.</p>
             <p>TUI에서는 <code>t</code>를 눌러 선택기를 엽니다. 방향키로 각 테마를 그 자리에서 미리 보고, <code>Enter</code>로 적용하며, <code>Esc</code>로 원래 테마를 되돌립니다. 선택은 다음 실행에도 기억됩니다. 대시보드는 같은 목록을 상태 표시줄에 두고 브라우저별로 기억합니다.</p>
             <div class="code-block"><pre><code>hostveil tui --theme nord
 hostveil serve --theme gruvbox

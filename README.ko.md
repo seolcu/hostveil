@@ -1,12 +1,17 @@
-# Hostveil
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="site/assets/banner-ko-dark.png">
+    <img src="site/assets/banner-ko-light.png" width="640" alt="Hostveil">
+  </picture>
+</h1>
 
 [English](README.md) · **한국어**
 
 > 2026-1 Ajou SoftCon 개발부문 최우수상 수상
 
-**Hostveil은 셀프호스팅 중인 리눅스 서버의 보안 실수를 찾아, 쉬운 말로 설명하고, 안전하게 고쳐 줍니다.**
-바이너리 하나, 설정 파일 없음, 클라우드 계정 없음. 모든 수정은 미리 보여 주고,
-백업하고, 명령 한 줄로 되돌릴 수 있습니다.
+**Hostveil은 셀프호스팅 리눅스 서버의 보안 실수를 찾아내고, 쉬운 말로 설명하고, 안전하게 고칩니다.**
+바이너리 하나면 됩니다. 설정 파일도, 클라우드 계정도 필요 없습니다. 모든 수정은
+미리 보여 주고 백업한 뒤 적용하며, 명령 한 줄로 되돌릴 수 있습니다.
 
 [![CI](https://github.com/seolcu/hostveil/actions/workflows/ci.yml/badge.svg)](https://github.com/seolcu/hostveil/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/seolcu/hostveil)](https://github.com/seolcu/hostveil/releases/latest)
@@ -336,8 +341,8 @@ Docker가 없는 호스트가 점수를 공짜로 받는 일은 없습니다. �
 
 셋 다 하나의 엔진 위에 얹은 얇은 층이라 동작이 같습니다.
 
-TUI와 대시보드는 `onedark`(기본값), `gruvbox`, `nord`, `catppuccin`,
-`tokyonight`까지 다섯 가지 색상 테마를 함께 쓰고, `console`을 기본값으로
+TUI와 대시보드는 `hostveil`(기본값), `onedark`, `gruvbox`, `nord`,
+`catppuccin`, `tokyonight`까지 여섯 가지 색상 테마를 함께 쓰고, `console`을 기본값으로
 하는 화면 배치 여섯 가지도 함께 씁니다. TUI에서 `t`나 `l`을 누르면 고른
 것을 기억하고, 대시보드는 상태 표시줄의 선택기를 쓰면 됩니다. `--theme`,
 `--layout`이나 `HOSTVEIL_THEME`, `HOSTVEIL_LAYOUT`으로 직접 지정할 수도
