@@ -1,65 +1,23 @@
 /* Korean typography. Linked from the Korean pages only, after styles.css and
    docs.css so the overrides below land at equal specificity.
  *
- * Two jobs. It supplies the Hangul the design has no glyph for — the body is
- * Georgia and the labels are monospace, and neither has ever had one, so until
- * this existed every Korean character on the site was drawn by whatever the
- * reader's machine fell back to. And it retunes the handful of measurements
- * that were set for uppercase Latin and do not transfer: tracking, leading,
- * and where a line is allowed to break.
+ * Two jobs. It supplies one Hangul face, so Korean reads the same on every
+ * machine rather than in whichever Korean font the reader's system happens to
+ * fall back to. And it retunes the handful of measurements that were set for
+ * Latin and do not transfer: tracking, leading, and where a line is allowed
+ * to break.
  *
  * The faces are subsets built by scripts/korean-subset.py and carry the site's
- * own 766 syllables and nothing else; internal/docs/koreanfont_test.go fails
- * the build when Korean copy uses one they lack. */
+ * own syllables and nothing else; internal/docs/koreanfont_test.go fails the
+ * build when Korean copy uses one they lack. */
 
 /* unicode-range is what keeps this off the English pages' bill and out of the
    Latin's way: a browser fetches a @font-face only when it has to draw a
-   codepoint inside the range, so Georgia and the monospace stack still set
-   every Latin letter, digit, dash and arrow on the page — including the ones
-   inside a Korean sentence. The English pages do not link this file at all,
-   which is a separate guard for the same thing: they contain three Hangul
-   syllables (the 한국어 switcher) and should not pull 112KB to draw them.
-
-   size-adjust is not a fudge factor. Nanum Myeongjo's syllables ink at about
-   0.955em against Georgia's 0.481em x-height — measured the same way, with
-   fontTools' BoundsPen over each glyph's outline rather than a design metric
-   that may go unused — which is within a point of Noto Serif KR's own 0.965em,
-   so the 95% that was already tuned for this pairing carries over unchanged.
-   The sans needs none — Noto Sans KR inks at 0.885em, and 0.94 x 0.95 is
-   0.893, so after the adjustment the two faces agree and a label and a
-   paragraph render Hangul at the same optical size.
-
-   The two weights below are not Nanum Myeongjo's Regular and Bold. Its
-   Regular inks noticeably thinner than Georgia at a shared size — the same
-   objection that ruled Nanum Myeongjo out the first time this was chosen, when
-   the body was still Noto Serif KR, whose strokes happen to sit close to
-   Georgia's by design. What changed is not the objection but the fix: Nanum
-   Myeongjo's Bold face is served as font-weight 400 and its ExtraBold as 700,
-   so `font-weight: normal` in the CSS lands on the stroke weight that actually
-   matches Georgia rather than on the face the family calls "Regular". Nanum
-   Myeongjo has no variable-weight axis to nudge instead — Sandoll cut three
-   fixed static weights — so which physical file answers which served weight
-   is the only lever there is. */
-
-@font-face {
-  font-family: "Nanum Myeongjo";
-  src: url(assets/fonts/NanumMyeongjo-400.woff2) format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-  size-adjust: 95%;
-  unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF;
-}
-
-@font-face {
-  font-family: "Nanum Myeongjo";
-  src: url(assets/fonts/NanumMyeongjo-700.woff2) format("woff2");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-  size-adjust: 95%;
-  unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF;
-}
+   codepoint inside the range, so the system face still sets every Latin
+   letter, digit, dash and arrow on the page — including the ones inside a
+   Korean sentence. The English pages do not link this file at all, which is a
+   separate guard for the same thing: they contain three Hangul syllables (the
+   한국어 switcher) and should not pull a font to draw them. */
 
 @font-face {
   font-family: "Noto Sans KR";
@@ -87,16 +45,21 @@
      opening — and a constant cannot go stale against a number it was never
      derived from. TestKoreanTypographyRetracksEveryWideLabel is what keeps the
      selector list below in step with styles.css and docs.css. */
-  --track-ko-label: 0.04em;
+  --track-ko-label: 0.02em;
+  /* The Korean face first, ahead of the system one. On a Mac the system face
+     would otherwise answer for Hangul itself, through its own cascade, and
+     the subset above would never be reached. unicode-range still hands every
+     Latin character straight on to the system face. */
+  --font-body: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, "Apple SD Gothic Neo", "Noto Sans CJK KR", "Malgun Gothic", "맑은 고딕", sans-serif;
 }
 
 body {
-  /* Korean prose wants more air between lines than a Latin serif does, and it
+  /* Korean prose wants more air between lines than Latin does, and it
      wants to break between 어절 rather than mid-word: keep-all is the whole
      reason a Korean page reads as typeset rather than as reflowed. It turns a
      space-free run into one unbreakable word, so overflow-wrap is what stops a
      long command or URL from pushing the layout sideways. */
-  line-height: 1.78;
+  line-height: 1.72;
   word-break: keep-all;
   overflow-wrap: break-word;
 }
@@ -125,9 +88,8 @@ h3 {
   line-height: 1.45;
 }
 
-/* Every rule in styles.css and docs.css that tracks a label wider than 0.05em,
-   minus .hero-panel::before, whose text is a CSS string and is Latin in both
-   languages. Adding a wide-tracked label to either stylesheet without adding
+/* Every rule in styles.css and docs.css that tracks a label wider than 0.05em.
+   Adding a wide-tracked label to either stylesheet without adding
    it here fails the build. */
 .eyebrow,
 .nav-links,
@@ -142,4 +104,17 @@ figcaption strong,
 .docs-breadcrumb,
 .callout .callout-label {
   letter-spacing: var(--track-ko-label);
+}
+
+/* Uppercase is a Latin device and Hangul has no case, so on a Korean label
+   it only ever reaches the Latin inside it — "Hostveil이 다른 점" came out as
+   HOSTVEIL이 다른 점, the product name shouting in the middle of a quiet
+   sentence. */
+.eyebrow,
+.card-kicker,
+figcaption strong,
+.docs-nav-group > p,
+.docs-breadcrumb,
+.callout .callout-label {
+  text-transform: none;
 }

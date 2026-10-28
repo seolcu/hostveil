@@ -4,43 +4,24 @@
     pip install fonttools brotli
     python3 scripts/korean-subset.py
 
-Why the site ships a font at all. The design is a serif: --font-body is
-Georgia, and the labels, buttons, nav and finding rows are monospace. Neither
-of those has a Hangul glyph, so on the Korean pages every Korean character was
-drawn by whatever the reader's operating system happened to fall back to — and
-the stack asked for the wrong things. It named "Noto Sans KR", which is the
-Google Fonts name; the family a Linux distribution installs is "Noto Sans CJK
-KR", so on Fedora every Korean entry in both stacks missed and the text landed
-on the generic fallback. In the monospace stack that generic is a *monospace*
-CJK face, which is how a page of Korean marketing copy — "셀프호스터를 위한
-가이드형 보안 강화" in the eyebrow, every nav link, every card kicker, every
-finding title — came to be set in fixed-width Hangul with 0.14em of extra
-tracking on top. And where the stack did resolve, it resolved to a sans inside
-a serif design, so the Korean read in a different voice from the English.
+Why the site ships a font at all. The site is set in the reader's own system
+face — San Francisco, Segoe UI, whatever the desktop uses — and for Latin that
+is the whole story. For Hangul it is not: a Mac draws it in Apple SD Gothic
+Neo, Windows in Malgun Gothic, and a Linux desktop in whatever the
+distribution happened to install, often under a name the stack did not ask
+for ("Noto Sans KR" is the Google Fonts name; distributions register "Noto
+Sans CJK KR"). So the Korean pages carry one sans of their own, and Korean
+reads the same on every machine.
 
-So: a Korean serif for the body, and Noto Sans KR for the slots the Latin sets
-in monospace, because a label is a label and Korean does not have a monospace
-tradition to borrow from.
-
-The body face was Noto Serif KR at first, picked over Gowun Batang and Nanum
-Myeongjo because both of those read visibly lighter than Georgia at a shared
-size, and this site mixes scripts in almost every sentence ("hostveil은 …").
-That was the right call on the one axis it was judged by, and the wrong one
-on voice: Noto Serif KR is drawn for uniform coverage across every CJK
-convention at once, and next to Georgia's particular, centuries-old cuts it
-reads as the institutional default it is — closer to a government form than
-to body copy. Nanum Myeongjo is what replaced it, which means the weight
-objection had to be solved rather than dropped. It is solved by serving the
-wrong-sounding face at each name: Nanum Myeongjo's **Bold** ships as
-font-weight 400 and its **ExtraBold** as 700, because at a shared size its
-own Regular is the light weight that lost the first round, and Bold is where
-its strokes actually sit next to Georgia's. See the size-adjust comment in
-site/korean.css for the measurement.
+One family, Noto Sans KR, for both body and labels. The site used to be a
+Georgia serif with monospace labels, and carried a Korean serif (Nanum
+Myeongjo) for the body beside this sans for the labels. The brand moved to a
+single sans, and a second Korean face would now only be a second voice.
 
 Why a subset. Korean is 11,172 syllables and the full face is megabytes. The
 whole Korean site — 16 pages — uses 766 of them, so the subset is the site's
-own repertoire and nothing else, which is what gets a serif weight down to
-about 110KB. **This is why internal/docs/koreanfont_test.go exists**: a subset
+own repertoire and nothing else, which is what gets a weight down to
+about 50KB. **This is why internal/docs/koreanfont_test.go exists**: a subset
 is silent when it is wrong. Write one new Korean sentence with one syllable
 that was not in the site when this ran, and that syllable alone falls back to
 a system font mid-word — a different face, a different weight, at a size
@@ -49,8 +30,8 @@ anyone whose system font happens to look close enough. The manifest this
 writes is what the test reads, so the build fails instead.
 
 Hangul only. Every @font-face in site/korean.css carries a unicode-range of
-the Hangul blocks, so Latin, digits and punctuation keep coming from Georgia
-and from the monospace stack exactly as they do on the English pages, and an
+the Hangul blocks, so Latin, digits and punctuation keep coming from the
+system face exactly as they do on the English pages, and an
 English page — which contains three Hangul syllables, the 한국어 switcher —
 downloads none of this. That is also why the subset drops the Latin the source
 faces carry: unicode-range means it could never be reached.
@@ -79,36 +60,9 @@ OUT = ROOT / "site" / "assets" / "fonts"
 # year's time, and google/fonts rebuilds these files in place. The digest is
 # checked as well, so a URL that starts answering with something else is loud
 # rather than quietly baked into the next subset.
-UPSTREAM = "https://github.com/google/fonts/raw/e1118da94a8cb00cf6d06cdac9ef13eb1e5c6ab7"
+UPSTREAM = "https://raw.githubusercontent.com/google/fonts/e1118da94a8cb00cf6d06cdac9ef13eb1e5c6ab7"
 
 SOURCES = [
-    {
-        # Nanum Myeongjo isn't a variable font — Sandoll cut three fixed
-        # weights — and the two this site uses aren't the ones their names
-        # suggest. "faces" names the served weight (what site/korean.css's
-        # @font-face and the output filename call it) next to the upstream
-        # file that actually backs it: Bold serves as 400 and ExtraBold as
-        # 700, because Regular is the weight that read lighter than Georgia
-        # and lost the first round this font entered. See the rationale
-        # above and the size-adjust comment in site/korean.css.
-        "family": "Nanum Myeongjo",
-        "kind": "static",
-        "license": "ofl/nanummyeongjo/OFL.txt",
-        "license_out": "NanumMyeongjo-OFL.txt",
-        "stem": "NanumMyeongjo",
-        "faces": [
-            {
-                "served_weight": 400,
-                "path": "ofl/nanummyeongjo/NanumMyeongjo-Bold.ttf",
-                "sha256": "bc9ed8e60d93fe6db054b8fb988481b625f2eef8cb2317ad0e9834681b8fe3f3",
-            },
-            {
-                "served_weight": 700,
-                "path": "ofl/nanummyeongjo/NanumMyeongjo-ExtraBold.ttf",
-                "sha256": "60c0077fce069ba90ae97c0a3679f6eb3712e0ca637bdd0c15b72d335ec46db7",
-            },
-        ],
-    },
     {
         "family": "Noto Sans KR",
         "kind": "variable",
@@ -216,23 +170,12 @@ def main() -> None:
             print(f"{src['family']}:")
             fetch(f"{UPSTREAM}/{src['license']}", None, OUT / src["license_out"])
 
-            if src["kind"] == "variable":
-                vf = tmpdir / f"{src['stem']}-VF.ttf"
-                fetch(f"{UPSTREAM}/{src['path']}", src["sha256"], vf)
-                for weight in src["weights"]:
-                    static = tmpdir / f"{src['stem']}-{weight}.ttf"
-                    run("fonttools", "varLib.instancer", "-q", "-o", str(static), str(vf), f"wght={weight}")
-                    subset(static, weight)
-            else:
-                # Static faces, fetched and subset directly — no instancer
-                # step, because there is no variable-font axis to slice. The
-                # served weight (the @font-face weight and the output name)
-                # is independent of which upstream file backs it; see the
-                # comment on SOURCES above for why they don't match here.
-                for face in src["faces"]:
-                    static = tmpdir / f"{src['stem']}-{face['served_weight']}-src.ttf"
-                    fetch(f"{UPSTREAM}/{face['path']}", face["sha256"], static)
-                    subset(static, face["served_weight"])
+            vf = tmpdir / f"{src['stem']}-VF.ttf"
+            fetch(f"{UPSTREAM}/{src['path']}", src["sha256"], vf)
+            for weight in src["weights"]:
+                static = tmpdir / f"{src['stem']}-{weight}.ttf"
+                run("fonttools", "varLib.instancer", "-q", "-o", str(static), str(vf), f"wght={weight}")
+                subset(static, weight)
 
     manifest = OUT / "coverage.txt"
     body = [
@@ -249,10 +192,8 @@ def main() -> None:
         f"upstream {UPSTREAM}",
     ]
     for src in SOURCES:
-        paths = src["faces"] if src["kind"] == "static" else [src]
-        for p in paths:
-            clean = p["path"].replace("%5B", "[").replace("%5D", "]")
-            body.append(f"source {clean} sha256:{p['sha256']}")
+        clean = src["path"].replace("%5B", "[").replace("%5D", "]")
+        body.append(f"source {clean} sha256:{src['sha256']}")
     for name, size in built:
         digest = hashlib.sha256((OUT / name).read_bytes()).hexdigest()
         body.append(f"font {name} {size} sha256:{digest}")

@@ -2,32 +2,18 @@
   <!-- The tab icon: the same drawing as mark.svg, on an opaque Ink2 tile.
        A browser asks for a favicon before any theme is known, so this one
        cannot dissolve into the surface behind it the way the status-bar mark
-       does — it brings its own ground. Bone #c8ccd4, Safe #98c379, Ink2
-       #21252b, all three the default palette's own roles.
+       does — it brings its own ground. Bone #f5f5f7, Safe #3ccf7e, Ink2
+       #0b0b0c, all three the default palette's own roles.
 
-       The drawing is inset to 82%. At full size the package runs to within a
-       unit and a half of the tile's corner radius, which reads as a crop
-       rather than as a mark sitting on a plate. -->
-  <rect width="48" height="48" rx="10.5" fill="#21252b"/>
-  <g transform="translate(4.32 4.32) scale(0.82)">
-    <g fill="#c8ccd4">
-      <rect x="3.4" y="13.2" width="6.6" height="3"/>
-      <rect x="3.4" y="22.5" width="6.6" height="3"/>
-      <rect x="3.4" y="31.8" width="6.6" height="3"/>
-      <rect x="38" y="13.2" width="6.6" height="3"/>
-      <rect x="38" y="22.5" width="6.6" height="3"/>
-      <rect x="38" y="31.8" width="6.6" height="3"/>
-      <rect x="13.2" y="3.4" width="3" height="6.6"/>
-      <rect x="22.5" y="3.4" width="3" height="6.6"/>
-      <rect x="31.8" y="3.4" width="3" height="6.6"/>
-      <rect x="13.2" y="38" width="3" height="6.6"/>
-      <rect x="22.5" y="38" width="3" height="6.6"/>
-      <rect x="31.8" y="38" width="3" height="6.6"/>
-    </g>
-    <rect x="9.6" y="9.6" width="28.8" height="28.8" rx="2.4"
-          fill="none" stroke="#c8ccd4" stroke-width="2.8"/>
-    <circle cx="14.8" cy="14.8" r="1.8" fill="#c8ccd4"/>
-    <rect x="17.4" y="17.4" width="13.2" height="13.2" fill="#98c379"/>
-    <rect x="21.7" y="21.7" width="4.6" height="4.6" fill="#c8ccd4"/>
+       The drawing is inset to 76%, so it sits on the tile as on a plate
+       rather than running into the tile's corners. -->
+  <mask id="hv-cut">
+    <rect width="48" height="48" fill="white"/>
+    <rect x="14" y="14" width="32" height="32" rx="11" fill="black"/>
+  </mask>
+  <rect width="48" height="48" rx="11" fill="#0b0b0c"/>
+  <g transform="translate(5.76 5.76) scale(0.76)">
+    <rect x="5" y="5" width="26" height="26" rx="8" fill="#f5f5f7" mask="url(#hv-cut)"/>
+    <rect x="17" y="17" width="26" height="26" rx="8" fill="#3ccf7e"/>
   </g>
 </svg>

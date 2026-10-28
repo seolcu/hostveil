@@ -97,15 +97,28 @@ func TestTheDefaultThemeIsDocumentedAsTheDefault(t *testing.T) {
 		{filepath.Join("cmd", "sitegen", "content", "en", "docs", "interfaces.html"), "default"},
 		{filepath.Join("cmd", "sitegen", "content", "ko", "docs", "interfaces.html"), "기본값"},
 	} {
+		// Any mention will do, not only the first: the default theme is
+		// named after the product, so the first "hostveil" in a README is
+		// a badge URL rather than the theme list.
 		body := readRepoFile(t, tc.path)
-		i := strings.Index(body, def)
-		if i < 0 {
+		if !strings.Contains(body, def) {
 			t.Errorf("%s does not name the default theme %q at all", tc.path, def)
 			continue
 		}
-		tail := body[i:min(len(body), i+window)]
-		if !strings.Contains(tail, tc.word) {
-			t.Errorf("%s names %q but does not call it the default: %q", tc.path, def, tail)
+		called := false
+		for rest := body; ; {
+			i := strings.Index(rest, def)
+			if i < 0 {
+				break
+			}
+			if strings.Contains(rest[i:min(len(rest), i+window)], tc.word) {
+				called = true
+				break
+			}
+			rest = rest[i+len(def):]
+		}
+		if !called {
+			t.Errorf("%s names %q but never calls it the default", tc.path, def)
 		}
 	}
 }

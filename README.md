@@ -1,4 +1,9 @@
-# Hostveil
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="site/assets/banner-dark.png">
+    <img src="site/assets/banner-light.png" width="640" alt="Hostveil">
+  </picture>
+</h1>
 
 **English** · [한국어](README.ko.md)
 
@@ -339,8 +344,8 @@ The full model, including why each axis cap is the size it is, is on the
 
 All three are thin layers over one shared engine, so they behave identically.
 
-The TUI and the dashboard share five color themes: `onedark` (the default),
-`gruvbox`, `nord`, `catppuccin` and `tokyonight`, and six screen arrangements
+The TUI and the dashboard share six color themes: `hostveil` (the default),
+`onedark`, `gruvbox`, `nord`, `catppuccin` and `tokyonight`, and six screen arrangements
 (`console` is the default). Press `t` or `l` in the TUI to pick one and have
 it remembered, use the pickers in the dashboard's status bar, or set
 `--theme`/`--layout` or `HOSTVEIL_THEME`/`HOSTVEIL_LAYOUT` explicitly.

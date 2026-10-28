@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 SGR_RE = re.compile(r"\x1b\[([0-9;]*)m")
 
-# The ground and the default ink, which is to say: One Dark's Ink and Bone,
+# The ground and the default ink, which is to say: the hostveil theme's Ink and Bone,
 # the two roles internal/ui/theme gives Hostveil's default theme.
 #
 # They have to come from somewhere, because a terminal capture does not carry
@@ -30,8 +30,8 @@ SGR_RE = re.compile(r"\x1b\[([0-9;]*)m")
 # HOSTVEIL_ANSI2PNG_BG and _FG override them, which is what a capture of a
 # non-default theme needs — the values are in internal/ui/theme, one Ink and
 # one Bone per theme.
-DEFAULT_BG = (0x28, 0x2C, 0x34)  # onedark Ink
-DEFAULT_FG = (0xC8, 0xCC, 0xD4)  # onedark Bone
+DEFAULT_BG = (0x11, 0x11, 0x13)  # hostveil Ink
+DEFAULT_FG = (0xF5, 0xF5, 0xF7)  # hostveil Bone
 
 # The 16 named ANSI colours, in the shades xterm uses for them.
 ANSI_16 = (

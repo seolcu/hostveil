@@ -2,8 +2,8 @@
         <div class="container hero-grid">
           <div class="hero-copy">
             <p class="eyebrow">Guided security hardening for self-hosters</p>
-            <h1>The security mistakes on your home server, found and fixed for you.</h1>
-            <p class="lede">Hostveil finds the misconfigurations that get self-hosted Linux servers hacked, explains them in plain language, and fixes them — with a preview, a backup, and one-command rollback.</p>
+            <h1>Quiet security for the servers you run.</h1>
+            <p class="lede">Hostveil finds the misconfigurations that get self-hosted Linux servers hacked, explains them in plain language, and fixes them with a preview, a backup, and one-command rollback.</p>
             <div class="hero-actions" aria-label="Primary actions">
               <a class="button primary" href="#install">Install</a>
               <a class="button secondary" href="https://github.com/seolcu/hostveil">Source</a>
@@ -31,7 +31,7 @@
 
       <section class="trust-strip" aria-label="Project facts">
         <div class="container stats-grid">
-          <div><strong>1 binary</strong><span>No SaaS, no database, no account — it runs on the host you control</span></div>
+          <div><strong>1 binary</strong><span>No SaaS, no database, no account. It runs on the host you control.</span></div>
           <div><strong>Native checks</strong><span>SSH, firewall, and updates without extra tools</span></div>
           <div><strong>Signed releases</strong><span>An SBOM and build provenance on every archive</span></div>
           <div><strong>Rollback ready</strong><span>Every fix backs up first and can be undone</span></div>
@@ -42,14 +42,14 @@
         <div class="container">
           <div class="section-heading">
             <p class="eyebrow">Why Hostveil</p>
-            <h2>A guide, not another report.</h2>
-            <p>Hostveil turns opaque host state into a prioritized list of concrete, plain-language problems — and then walks you through fixing them safely.</p>
+            <h2>From scan to fix, one step at a time.</h2>
+            <p>Hostveil turns opaque host state into a prioritized list of concrete problems in plain language, then walks you through fixing each one safely.</p>
           </div>
           <div class="feature-grid">
             <article class="feature-card">
               <span class="card-kicker">Plain language</span>
               <h3>Understand the risk without the jargon.</h3>
-              <p>Each finding says what is wrong, why it matters, and how to fix it — in one scored 0–100 snapshot across every checked area.</p>
+              <p>Each finding says what is wrong, why it matters, and how to fix it. Every checked area adds up to one 0–100 score.</p>
             </article>
             <article class="feature-card">
               <span class="card-kicker">Fix with a safety net</span>
@@ -64,7 +64,7 @@
             <article class="feature-card accent-card">
               <span class="card-kicker">Optional, on your terms</span>
               <h3>Add CVE scanning and local AI when you want.</h3>
-              <p>Trivy image scanning is used if present and skipped cleanly if not. AI explanations are opt-in and default to a local model — nothing leaves the host.</p>
+              <p>Trivy image scanning is used if present and skipped cleanly if not. AI explanations are opt-in and default to a local model, so nothing leaves the host.</p>
             </article>
           </div>
         </div>
@@ -75,12 +75,12 @@
           <div>
             <p class="eyebrow">Coverage</p>
             <h2>The home-server mistakes that actually get you hacked.</h2>
-            <p>Exposed databases, a Docker socket handed to a container, root SSH login, no firewall, unpatched packages — Hostveil checks the highest-impact paths together, deeply.</p>
+            <p>Exposed databases, a Docker socket handed to a container, root SSH login, no firewall, unpatched packages. Hostveil checks the paths that matter most, together and in depth.</p>
           </div>
           <div class="check-stack">
             <article>
               <strong>Docker &amp; Compose</strong>
-              <p>Privileged mode, host networking, Docker socket mounts, exposed datastores and admin panels, missing no-new-privileges, unsafe bind mounts, and hardcoded secrets — from a native audit of your Compose files.</p>
+              <p>Privileged mode, host networking, Docker socket mounts, exposed datastores and admin panels, missing no-new-privileges, unsafe bind mounts, and hardcoded secrets, found by a native audit of your Compose files.</p>
             </article>
             <article>
               <strong>SSH, firewall &amp; updates</strong>
@@ -88,7 +88,7 @@
             </article>
             <article>
               <strong>Image CVEs (optional)</strong>
-              <p>When Trivy is installed, Hostveil scans the images your Compose services run and models "no patch available yet" as a first-class state — no misleading perfect score when the scan didn't run.</p>
+              <p>When Trivy is installed, Hostveil scans the images your Compose services run and models "no patch available yet" as a first-class state. A scan that didn't run never shows up as a perfect score.</p>
             </article>
           </div>
         </div>
@@ -99,15 +99,15 @@
           <div class="section-heading">
             <p class="eyebrow">Product</p>
             <h2>Terminal-first, browser-friendly.</h2>
-            <p>Run the TUI by default, or serve the same scan over localhost when a browser is better for review. Both drive the exact same fix-and-rollback engine, and both ship the same five color themes.</p>
+            <p>Run the TUI by default, or serve the same scan over localhost when a browser is better for review. Both drive the exact same fix-and-rollback engine, and both ship the same six color themes.</p>
           </div>
           <div class="screens-grid">
             <figure class="screenshot-card" data-lightbox="tui" role="button" tabindex="0" aria-label="Enlarge TUI screenshot">
-              <img src="assets/tui.png" alt="Hostveil terminal UI — findings with severity filters and multi-select" width="1194" height="609" loading="lazy">
+              <img src="assets/tui.png" alt="Hostveil terminal UI: findings with severity filters and multi-select" width="1194" height="609" loading="lazy">
               <figcaption><strong>TUI</strong><span>Keyboard-driven findings with severity and domain filters, multi-select, plain-language detail, and fix preview.</span></figcaption>
             </figure>
             <figure class="screenshot-card" data-lightbox="web" role="button" tabindex="0" aria-label="Enlarge Web UI screenshot">
-              <img src="assets/web.png" alt="Hostveil web dashboard — score, coverage notice, filter chips, and the overview of the scan" width="1500" height="760" loading="lazy">
+              <img src="assets/web.png" alt="Hostveil web dashboard: score, coverage notice, filter chips, and the overview of the scan" width="1500" height="760" loading="lazy">
               <figcaption><strong>Web UI</strong><span>Localhost dashboard: score and per-domain axes, what changed since the last scan, filter chips, and an overview that reads the scan back to you.</span></figcaption>
             </figure>
           </div>
@@ -184,7 +184,7 @@
           <div class="section-heading">
             <p class="eyebrow">Roadmap</p>
             <h2>Coverage doesn&rsquo;t stop here.</h2>
-            <p>Four detection domains have shipped as named releases so far. More are next &mdash; and a few things are ruled out on purpose.</p>
+            <p>Four detection domains have shipped as named releases so far. More are next, and a few things are ruled out on purpose.</p>
           </div>
           <ol class="rt-track">
             <li><span class="rt-version">3.1.0</span><span class="rt-label">AI agent runtimes</span></li>
@@ -207,8 +207,8 @@
           </div>
           <ol class="flow-list">
             <li><div class="flow-step-head"><span>01</span><strong>Scan locally</strong></div><p>Run <code>hostveil</code> on your Linux server. Docker or Trivy absent? Those areas are skipped gracefully.</p></li>
-            <li><div class="flow-step-head"><span>02</span><strong>Understand</strong></div><p>Findings are prioritized by severity with a plain-language explanation of what and why. A clean host shows Clean, not a hollow 100.</p></li>
-            <li><div class="flow-step-head"><span>03</span><strong>Apply fixes</strong></div><p>Auto for the clearly-safe fix, Review when there are real alternatives, Manual when the tool should guide instead of mutate.</p></li>
+            <li><div class="flow-step-head"><span>02</span><strong>Understand</strong></div><p>Findings are prioritized by severity with a plain-language explanation of what and why. A host with nothing to report is marked Clean.</p></li>
+            <li><div class="flow-step-head"><span>03</span><strong>Apply fixes</strong></div><p>Auto for the clearly-safe fix, Review when there are real alternatives, Manual when the change is yours to make, with the steps written out.</p></li>
             <li><div class="flow-step-head"><span>04</span><strong>Roll back anytime</strong></div><p>Every applied fix is backed up first and reversible<br>through <code>hostveil rollback</code>.</p></li>
           </ol>
         </div>
@@ -219,7 +219,7 @@
           <div>
             <p class="eyebrow">Install</p>
             <h2>One command, then scan.</h2>
-            <p>The installer downloads the release binary, verifies checksums, and installs Hostveil. Trivy is optional — install it later if you want image CVE scanning.</p>
+            <p>The installer downloads the release binary, verifies checksums, and installs Hostveil. Trivy is optional. Install it later if you want image CVE scanning.</p>
             <div class="button-row">
               <a class="button primary" href="https://github.com/seolcu/hostveil/releases/latest">Latest release</a>
               <a class="button secondary" href="/docs/">Docs</a>
@@ -259,7 +259,7 @@ hostveil fix --all</code></pre>
             </article>
             <article>
               <h3>What if a fix has tradeoffs?</h3>
-              <p>It is a Review fix, not Auto. Hostveil shows independent<br>alternatives and makes you choose.</p>
+              <p>It becomes a Review fix. Hostveil shows the independent<br>alternatives and you choose one.</p>
             </article>
             <article>
               <h3>Do I need Docker or Trivy?</h3>

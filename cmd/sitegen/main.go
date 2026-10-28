@@ -102,7 +102,7 @@ var chrome = map[string]Strings{
 		FooterDocs: "Docs", FooterReleases: "Releases",
 		FooterChangelog: "Changelog",
 		LightboxAria:    "Enlarged screenshot",
-		OGImageAlt:      "Hostveil's web dashboard: a 0-100 security score, per-domain meters, and findings grouped by severity with one-click safe fixes",
+		OGImageAlt:      "The Hostveil mark and name above the line: Quiet security for the servers you run.",
 	},
 	"ko": {
 		SkipLink: "본문으로 건너뛰기", NavAria: "주요 내비게이션", BrandAria: "Hostveil 홈",
@@ -111,11 +111,11 @@ var chrome = map[string]Strings{
 		SidebarAria: "문서 내비게이션", SidebarToggle: "문서 메뉴",
 		SearchPlaceholder: "문서 검색…", SearchAria: "문서 검색", SearchResultsAria: "검색 결과",
 		GroupGettingStarted: "시작하기", GroupGuide: "가이드", GroupReference: "레퍼런스",
-		FooterTagline: "셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화.", FooterNavAria: "푸터 링크",
+		FooterTagline: "셀프호스팅 리눅스 서버를 위한 보안 강화.", FooterNavAria: "푸터 링크",
 		FooterDocs: "문서", FooterReleases: "릴리스",
 		FooterChangelog: "변경 이력",
 		LightboxAria:    "확대된 스크린샷",
-		OGImageAlt:      "Hostveil 웹 대시보드: 0-100 보안 점수, 도메인별 게이지, 심각도로 묶인 발견 항목과 원클릭 안전 수정",
+		OGImageAlt:      "Hostveil 로고와 이름, 그리고 문구: Quiet security for the servers you run.",
 	},
 }
 

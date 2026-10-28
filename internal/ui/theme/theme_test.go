@@ -62,6 +62,32 @@ func TestAllIsACopy(t *testing.T) {
 // The default look must not shift under anyone. This is the table every
 // screenshot, every doc and the brand mark are calibrated to, written out
 // again so that changing it is a decision rather than a diff nobody read.
+func TestHostveilUnchanged(t *testing.T) {
+	want := Palette{
+		Ink: "#111113", Ink2: "#0b0b0c", Ink3: "#1c1c1f",
+		Line: "#2c2c2e", Line2: "#3a3a3c",
+		Bone: "#f5f5f7", Slate: "#98989d",
+		Crit: "#ff6b6b", High: "#ff9f43", Med: "#f2c94c", Low: "#7d7d84",
+		// The brand green: the mark's front sheet and the site's dark accent.
+		Safe: "#3ccf7e",
+		// Blue for structure, so a header never reads as a verdict of safety.
+		Accent: "#4aa3ff",
+		Manual: "#b89a78", Unavail: "#9d93d6",
+	}
+	got, ok := Lookup("hostveil")
+	if !ok {
+		t.Fatal("the hostveil theme is gone")
+	}
+	if got.Palette != want {
+		t.Errorf("hostveil palette changed:\n got %+v\nwant %+v", got.Palette, want)
+	}
+	if Default().ID != "hostveil" {
+		t.Errorf("Default() = %q, want hostveil", Default().ID)
+	}
+}
+
+// One Dark was the default before the brand had a palette of its own, and
+// anyone who chose it keeps it, so its table is pinned the same way.
 //
 // Four of the twelve are not One Dark's published values. Three of those are
 // not drift — TestEveryThemeMeetsTheContrastFloor rejects the published Slate,
@@ -91,9 +117,6 @@ func TestOneDarkUnchanged(t *testing.T) {
 	}
 	if got.Palette != want {
 		t.Errorf("onedark palette changed:\n got %+v\nwant %+v", got.Palette, want)
-	}
-	if Default().ID != "onedark" {
-		t.Errorf("Default() = %q, want onedark", Default().ID)
 	}
 }
 

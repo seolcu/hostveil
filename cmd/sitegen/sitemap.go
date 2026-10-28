@@ -80,13 +80,18 @@ func writeSitemap(outDir string, pages []page) error {
 // thing, which is the shape this repository keeps getting wrong — the
 // measurements page, the READMEs, a screenshot naming findings that do not
 // exist. Decoding the PNG header costs nothing and removes the possibility:
-// re-shoot the dashboard at another size and the tags follow it.
+// redraw the card at another size and the tags follow it.
 //
 // A failure here is not fatal. The tags are a hint to a link unfurler, and a
 // site that refuses to build because it could not measure a PNG would be
 // trading a real thing for a cosmetic one; the tags are simply omitted.
+// ogImage is the card a link to the site unfurls as: the same drawn card
+// scripts/social-preview.py makes for the repository, so a link to either
+// looks like the same product.
+const ogImage = "social-preview.png"
+
 func ogImageSize() (int, int) {
-	f, err := os.Open(filepath.Join("site", "assets", "web.png"))
+	f, err := os.Open(filepath.Join("site", "assets", ogImage))
 	if err != nil {
 		return 0, 0
 	}
