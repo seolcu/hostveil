@@ -38,7 +38,7 @@ func cmdAIContext(_ context.Context, args []string) int {
 			fmt.Fprintln(os.Stderr, "hostveil:", err)
 			return 1
 		}
-		fmt.Println("Saved. Every AI explanation and `hostveil advise` will use this from now on:")
+		fmt.Println("Saved. Every AI explanation will use this from now on:")
 		fmt.Println("  " + text)
 	default:
 		got := engine.AIContext()

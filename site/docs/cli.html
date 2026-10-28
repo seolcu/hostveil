@@ -274,14 +274,17 @@ hostveil triage analyze &lt;bundle-dir&gt;</code></pre></div>
             <p>Printing the report also names where to paste it: <code>https://github.com/seolcu/hostveil/issues/new</code>. Nothing here reaches the network on its own. See <a href="environment">Environment variables</a> for what does.</p>
 
             <h2 id="explain">explain</h2>
-            <p>Explain a finding in plain language.</p>
-            <div class="code-block"><pre><code>hostveil explain &lt;finding-id&gt; [flags]</code></pre></div>
+            <p>Explain a finding in plain language. With no finding ID, scan the host and list every finding with a registered fix, alongside what applying it would get you and cost you. With <code>--ai</code> that list gains a verdict per finding (Apply, Skip, or Depends) weighed against the host description saved with <a href="#ai-context">ai-context</a>, if one is set.</p>
+            <div class="code-block"><pre><code>hostveil explain &lt;finding-id&gt; [flags]
+hostveil explain [--ai] [--only LIST | --skip LIST]</code></pre></div>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
                 <tbody>
                   <tr><td><code>--ai</code></td><td><code>false</code></td><td>Append an advisory AI explanation. Ollama (local) by default; set <code>HOSTVEIL_AI_PROVIDER</code> for an external API.</td></tr>
                   <tr><td><code>--service NAME</code></td><td><code>""</code></td><td>Disambiguate a finding by service name.</td></tr>
+                  <tr><td><code>--only LIST</code></td><td>&mdash;</td><td>With no finding ID: scan only these domains, comma-separated.</td></tr>
+                  <tr><td><code>--skip LIST</code></td><td>&mdash;</td><td>With no finding ID: scan every domain except these, comma-separated. Mutually exclusive with <code>--only</code>.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -303,23 +306,8 @@ hostveil triage analyze &lt;bundle-dir&gt;</code></pre></div>
             </div>
             <p>Exit code is the same gate as <code>scan</code>. See <a href="#exit-codes">exit codes</a>.</p>
 
-            <h2 id="advise">advise</h2>
-            <p>Scan the host and list every finding with a registered fix, alongside what applying it would get you and cost you. With <code>--ai</code>, add a verdict (Apply, Skip, or Depends) weighed against the host description saved with <a href="#ai-context">ai-context</a>, if one is set. See <a href="ai">AI explanations</a>.</p>
-            <div class="code-block"><pre><code>hostveil advise [--ai] [flags]</code></pre></div>
-            <div class="docs-table-wrap">
-              <table>
-                <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
-                <tbody>
-                  <tr><td><code>--ai</code></td><td><code>false</code></td><td>Add an AI verdict per finding. Ollama (local) by default; set <code>HOSTVEIL_AI_PROVIDER</code> for an external API.</td></tr>
-                  <tr><td><code>--only LIST</code></td><td>&mdash;</td><td>Scan only these domains, comma-separated.</td></tr>
-                  <tr><td><code>--skip LIST</code></td><td>&mdash;</td><td>Scan every domain except these, comma-separated. Mutually exclusive with <code>--only</code>.</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <p>The deterministic listing always prints, with no AI required. <code>--ai</code> adds the situational verdict beneath it, or says why it could not.</p>
-
             <h2 id="ai-context">ai-context</h2>
-            <p>Show, set, or clear the saved one-line description of this host ("a personal media server, want fast security patches more than stability") that <code>explain --ai</code> and <code>advise --ai</code> use to judge a fix for this host specifically. Remembered in the same state directory as everything else Hostveil keeps, until changed or cleared.</p>
+            <p>Show, set, or clear the saved one-line description of this host ("a personal media server, want fast security patches more than stability") that <code>explain --ai</code> uses to judge a fix for this host specifically. Remembered in the same state directory as everything else Hostveil keeps, until changed or cleared.</p>
             <div class="code-block"><pre><code>hostveil ai-context               # show the current description
 hostveil ai-context "TEXT"        # set it
 hostveil ai-context --clear       # remove it</code></pre></div>

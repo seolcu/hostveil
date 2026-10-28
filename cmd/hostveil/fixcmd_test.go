@@ -49,7 +49,7 @@ func fixtureHost(t *testing.T) string {
 	}
 	origEngine, origEngineWithAI := newEngine, newEngineWithAI
 	newEngine = build
-	// explain/advise go through this seam instead, so it needs the same
+	// explain goes through this seam instead, so it needs the same
 	// fixture — otherwise a test builds a fake engine and then reaches past
 	// it into the real host the moment --ai (or its absence) is checked.
 	newEngineWithAI = func(bool) *core.Engine { return build() }

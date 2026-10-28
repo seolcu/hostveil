@@ -79,7 +79,7 @@ type anthropicResponse struct {
 
 // Available checks that a key is configured and the account can reach the
 // Models API. That endpoint is metadata only, so — unlike Explain — checking
-// it costs no tokens, the same property Ollama's /api/version check has.
+// it costs no tokens, the same property the OpenAI-compatible /models check has.
 func (a *Anthropic) Available(ctx context.Context) bool {
 	if a.APIKey == "" {
 		return false

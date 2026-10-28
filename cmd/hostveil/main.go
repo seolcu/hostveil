@@ -118,8 +118,6 @@ func run(ctx context.Context, args []string) (code int) {
 		return cmdExplain(ctx, args)
 	case "export":
 		return cmdExport(ctx, args)
-	case "advise":
-		return cmdAdvise(ctx, args)
 	case "ai-context":
 		return cmdAIContext(ctx, args)
 	case "rollback":
@@ -188,10 +186,10 @@ Usage:
   hostveil fix --all --review    ...and the Review ones, through their first
                                  alternative, after reading what they are
   hostveil explain <id> [flags]  Explain a finding (optionally via AI)
+  hostveil explain [--ai]        List every fixable finding's benefit/cost, and
+                                 (with --ai) a verdict for this host specifically
   hostveil export --format FMT   Export the scan report: json, sarif or
                                  markdown (see Export flags below)
-  hostveil advise [--ai]         List every fixable finding's benefit/cost, and
-                                 (with --ai) a verdict for this host specifically
   hostveil ai-context [TEXT]     Show, set, or clear ("--clear") the saved
                                  description of this host that --ai uses
   hostveil serve [flags]         Serve the localhost web dashboard (alias: web)
@@ -250,13 +248,10 @@ Explain flags:
                   use an external API instead. See Environment below. Uses
                   the saved host description (hostveil ai-context) if one
                   is set, to make the answer situational rather than generic.
-
-Advise flags:
-  --ai            Add an AI verdict per finding: Apply/Skip/Depends, weighed
-                  against the saved host description if one is set. Without
-                  --ai, prints only the deterministic benefit/cost listing.
-  --only LIST     Scan only these domains (comma-separated)
-  --skip LIST     Scan every domain except these (comma-separated)
+                  With no finding ID, adds a verdict per fixable finding
+                  (Apply/Skip/Depends) under the benefit/cost listing.
+  --only LIST     With no finding ID: scan only these domains
+  --skip LIST     With no finding ID: scan every domain except these
 
 Ai-context flags:
   --clear         Remove the saved host description instead of showing it
