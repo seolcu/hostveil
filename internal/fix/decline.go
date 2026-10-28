@@ -71,6 +71,7 @@ var declineReasons = map[string]string{
 	// updates
 
 	// cve
+	"cve.unpatched-host":  "No package update carries a patch the distribution has not published, and replacing a distribution package by hand is not a change Hostveil can make or roll back.",
 	"cve.unpatched-image": "Re-pulling the tag is the only action Hostveil has here, and no rebuild of the image carries a patch upstream has not published.",
 
 	// ports

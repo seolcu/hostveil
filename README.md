@@ -123,14 +123,14 @@ column is what you pass to `hostveil fix` and `hostveil explain`.
 | **Proxmox VE host** | `proxmox.*` | The hypervisor every guest trusts, read only on a host with `/etc/pve`: a web interface on 8006 that accepts a login from any address, root@pam logging in with a password alone, and an enterprise repository enabled without a subscription, so Proxmox's own packages stop updating while Debian's keep arriving. The datacenter firewall is counted once, by the firewall domain | a Proxmox VE host |
 | **Single-node Kubernetes** | `kube.*` | One box running one k3s or k0s node, with k3s's settings resolved across all four of its layers (config.yaml, its drop-ins, the service environment file, the command line): a cluster-admin kubeconfig or join token readable by every account, `anonymous-auth=true` on the API server or kubelet, and Secrets stored unencrypted | k3s or k0s |
 | **Forensic readiness** | `forensic.*` | Whether the host keeps the evidence an investigation would need: a journal that survives reboots and keeps 90 days, auth and web logs rotated for 90 days, auditd recording what the web server's account executes, a synchronised clock, request sizes in the access log, and a copy of the logs off the host | — |
-| **Image CVEs** *(optional)* | `cve.*` | Known vulnerabilities in the images your Compose services run | Trivy |
+| **Image CVEs** *(optional)* | `cve.*` | Known vulnerabilities in the images your Compose services run and in host packages your distribution has not fixed | Trivy |
 
 If Docker or Trivy is missing, those domains are skipped and the score is
 renormalized over the ones that ran, so a partial scan never comes back as a
 misleadingly perfect result.
 
 <!-- hostveil:counts -->
-Hostveil can report **193 findings** across those domains, and **181 of them
+Hostveil can report **194 findings** across those domains, and **181 of them
 carry a fix**: 76 Hostveil will apply unattended, 105 only after you have read
 the diff.
 <!-- /hostveil:counts -->
