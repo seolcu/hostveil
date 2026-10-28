@@ -18,7 +18,7 @@
               <pre><code>hostveil ai-context "a personal media server, want fast security patches more than stability"</code></pre>
             </div>
             <p>Once it's set, every <code>--ai</code> answer (<code>explain</code>, the dashboard button, the TUI's <code>e</code>) reads it automatically and closes with a sentence judging the fix for a host like the one described. <code>hostveil ai-context</code> with no argument shows what's saved; <code>--clear</code> removes it.</p>
-            <p><code>hostveil advise [--ai]</code> asks the same question about every fixable finding at once: a deterministic list of what each fix would get you and cost you (no AI required), and with <code>--ai</code>, a one-line verdict per finding (Apply, Skip, or Depends) weighed against the same saved description. The TUI's <code>v</code> key and the dashboard's <em>Advise</em> button reach the same thing.</p>
+            <p><code>hostveil explain [--ai]</code>, with no finding ID, asks the same question about every fixable finding at once: a deterministic list of what each fix would get you and cost you (no AI required), and with <code>--ai</code>, a one-line verdict per finding (Apply, Skip, or Depends) weighed against the same saved description. The TUI's <code>v</code> key and the dashboard's <em>Advise</em> button reach the same thing.</p>
 
             <h2>Local by default, an external API by choice</h2>
             <p><code>HOSTVEIL_AI_PROVIDER</code> selects the backend. It defaults to <strong>Ollama</strong>, running on your own machine, so nothing leaves the host unless you name a different provider explicitly.</p>

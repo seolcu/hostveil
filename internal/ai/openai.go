@@ -16,16 +16,33 @@ import (
 
 const maxOpenAIResponse = 256 << 10
 
-// OpenAICompat is an Explainer for any vendor that speaks the OpenAI chat
-// completions shape — OpenAI itself, OpenRouter, Groq, Together, and most
-// self-hosted inference servers. It is the escape hatch for a vendor neither
-// Ollama nor the native Anthropic provider covers, not the recommended
-// default.
+// OpenAICompat is an Explainer for any server that speaks the OpenAI chat
+// completions shape: a local Ollama (the default provider, through its /v1
+// routes), OpenAI itself, OpenRouter, Groq, Together, and most self-hosted
+// inference servers.
 type OpenAICompat struct {
 	BaseURL string
 	APIKey  string
 	Model   string
 	http    *http.Client
+	// urlVar and modelVar name the variables BaseURL and Model came from, so
+	// an error points at the setting to change. Empty means the
+	// HOSTVEIL_OPENAI_* ones.
+	urlVar, modelVar string
+}
+
+// NewOllama builds the default provider: a local Ollama server, so nothing
+// leaves the host. It reads HOSTVEIL_OLLAMA_HOST and HOSTVEIL_OLLAMA_MODEL
+// and talks to Ollama's OpenAI-compatible /v1 routes.
+func NewOllama() *OpenAICompat {
+	host := strings.TrimRight(envOr("HOSTVEIL_OLLAMA_HOST", "http://127.0.0.1:11434"), "/")
+	return &OpenAICompat{
+		BaseURL:  host + "/v1",
+		Model:    envOr("HOSTVEIL_OLLAMA_MODEL", "llama3.2"),
+		http:     &http.Client{Timeout: 60 * time.Second},
+		urlVar:   "HOSTVEIL_OLLAMA_HOST",
+		modelVar: "HOSTVEIL_OLLAMA_MODEL",
+	}
 }
 
 // NewOpenAICompat reads HOSTVEIL_OPENAI_BASE_URL, HOSTVEIL_OPENAI_API_KEY,
@@ -102,7 +119,7 @@ func (c *OpenAICompat) Advise(ctx context.Context, findings []model.Finding, sit
 // capped to wordCap words. Shared by Explain and Advise.
 func (c *OpenAICompat) complete(ctx context.Context, prompt string, wordCap int) (string, error) {
 	if c.Model == "" {
-		return "", fmt.Errorf("HOSTVEIL_OPENAI_MODEL is not set")
+		return "", fmt.Errorf("%s is not set", c.modelEnv())
 	}
 	body, err := json.Marshal(openAIRequest{
 		Model:    c.Model,
@@ -114,7 +131,7 @@ func (c *OpenAICompat) complete(ctx context.Context, prompt string, wordCap int)
 	}
 	endpoint, err := safeEndpoint(c.BaseURL, "/chat/completions")
 	if err != nil {
-		return "", fmt.Errorf("invalid HOSTVEIL_OPENAI_BASE_URL: %w", err)
+		return "", fmt.Errorf("invalid %s: %w", c.urlEnv(), err)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
@@ -129,7 +146,11 @@ func (c *OpenAICompat) complete(ctx context.Context, prompt string, wordCap int)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("%s returned %s (check HOSTVEIL_OPENAI_MODEL=%q and HOSTVEIL_OPENAI_API_KEY)", c.BaseURL, resp.Status, c.Model)
+		hint := fmt.Sprintf("%s=%q", c.modelEnv(), c.Model)
+		if c.modelVar == "" {
+			hint += " and HOSTVEIL_OPENAI_API_KEY"
+		}
+		return "", fmt.Errorf("%s returned %s (check %s)", c.BaseURL, resp.Status, hint)
 	}
 	var or openAIResponse
 	limited := io.LimitReader(resp.Body, maxOpenAIResponse+1)
@@ -146,8 +167,37 @@ func (c *OpenAICompat) complete(ctx context.Context, prompt string, wordCap int)
 	return limitWords(or.Choices[0].Message.Content, wordCap), nil
 }
 
+func (c *OpenAICompat) urlEnv() string {
+	if c.urlVar != "" {
+		return c.urlVar
+	}
+	return "HOSTVEIL_OPENAI_BASE_URL"
+}
+
+func (c *OpenAICompat) modelEnv() string {
+	if c.modelVar != "" {
+		return c.modelVar
+	}
+	return "HOSTVEIL_OPENAI_MODEL"
+}
+
 func (c *OpenAICompat) setAuth(req *http.Request) {
 	if c.APIKey != "" {
 		req.Header.Set("Authorization", "Bearer "+c.APIKey)
 	}
+}
+
+func limitWords(s string, max int) string {
+	words := strings.Fields(s)
+	if len(words) <= max {
+		return s
+	}
+	return strings.Join(words[:max], " ") + "…"
+}
+
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }

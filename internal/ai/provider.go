@@ -10,7 +10,8 @@ import (
 // FromEnv builds the Explainer selected by HOSTVEIL_AI_PROVIDER: "ollama"
 // (the default — local, so nothing leaves the host), "anthropic" (the
 // Claude API), or "openai" (any vendor speaking the OpenAI chat-completions
-// shape). An operator must name an off-host provider explicitly; enabling
+// shape). Ollama and openai are the same client pointed at different
+// servers. An operator must name an off-host provider explicitly; enabling
 // --ai never sends anything off the host on its own.
 func FromEnv() Explainer {
 	switch p := envOr("HOSTVEIL_AI_PROVIDER", "ollama"); p {
