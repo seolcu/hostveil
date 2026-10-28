@@ -188,8 +188,8 @@ Usage:
   hostveil fix --all --review    ...and the Review ones, through their first
                                  alternative, after reading what they are
   hostveil explain <id> [flags]  Explain a finding (optionally via AI)
-  hostveil export --format FMT   Export the scan report: json, sarif, markdown,
-                                 docx, or pdf (see Export flags below)
+  hostveil export --format FMT   Export the scan report: json, sarif or
+                                 markdown (see Export flags below)
   hostveil advise [--ai]         List every fixable finding's benefit/cost, and
                                  (with --ai) a verdict for this host specifically
   hostveil ai-context [TEXT]     Show, set, or clear ("--clear") the saved
@@ -222,12 +222,11 @@ Scan flags:
   --no-color      Disable colored output
 
 Export flags:
-  --format FMT    json, sarif, markdown, docx, or pdf (required). json and
-                  sarif are byte-identical to scan --json/--sarif. markdown,
-                  docx, and pdf explain each finding and its fix in plain
-                  language, for a person rather than another program.
-  --output FILE   Write to FILE instead of stdout; required for docx/pdf,
-                  since a terminal has no sensible way to show them
+  --format FMT    json, sarif or markdown (required). json and sarif are
+                  byte-identical to scan --json/--sarif. markdown explains
+                  each finding and its fix in plain language, for a person
+                  rather than another program.
+  --output FILE   Write to FILE instead of stdout
   --only LIST     Scan only these domains (comma-separated)
   --skip LIST     Scan every domain except these (comma-separated)
 

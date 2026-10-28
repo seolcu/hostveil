@@ -9,8 +9,8 @@ import (
 
 func TestEngineExportFormatsMatchesReportAll(t *testing.T) {
 	formats := ExportFormats()
-	if len(formats) != 5 {
-		t.Fatalf("ExportFormats() returned %d formats, want 5 (json, sarif, markdown, docx, pdf)", len(formats))
+	if len(formats) != 3 {
+		t.Fatalf("ExportFormats() returned %d formats, want 3 (json, sarif, markdown)", len(formats))
 	}
 	for _, f := range formats {
 		if f.ID == "" || f.Label == "" || f.Ext == "" {

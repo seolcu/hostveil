@@ -26,7 +26,7 @@ func TestExportPickerOpensAndListsFormats(t *testing.T) {
 		t.Fatalf("picker opened in mode %v at cursor %d", m.mode, m.exportCursor)
 	}
 	got := plain(m.View().Content)
-	for _, want := range []string{"Markdown", "JSON", "SARIF", "Word", "PDF"} {
+	for _, want := range []string{"Markdown", "JSON", "SARIF"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("export picker does not list %q:\n%s", want, got)
 		}

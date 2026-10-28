@@ -30,8 +30,8 @@ func ExportFormats() []FormatInfo {
 	return out
 }
 
-// Export renders r in the named format ("json", "sarif", "markdown",
-// "docx", or "pdf"), returning the bytes, a suggested filename, and the
+// Export renders r in the named format ("json", "sarif" or "markdown"),
+// returning the bytes, a suggested filename, and the
 // MIME type a caller should advertise. It is the one place a UI reaches
 // report rendering from — see FormatInfo's comment.
 func (e *Engine) Export(r model.Report, formatID string) (data []byte, filename, contentType string, err error) {

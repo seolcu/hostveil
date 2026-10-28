@@ -14,7 +14,7 @@ package report
 //
 // This is the one table every caller resolves a format against — the CLI's
 // --format flag, the TUI's picker, and the web dashboard's route — so a
-// sixth format only ever needs one new row here.
+// new format only ever needs one new row here.
 type Format struct {
 	ID          string
 	Label       string
@@ -26,8 +26,6 @@ var formats = []Format{
 	{ID: "json", Label: "JSON", Ext: "json", ContentType: "application/json"},
 	{ID: "sarif", Label: "SARIF", Ext: "sarif", ContentType: "application/sarif+json"},
 	{ID: "markdown", Label: "Markdown", Ext: "md", ContentType: "text/markdown; charset=utf-8"},
-	{ID: "docx", Label: "Word", Ext: "docx", ContentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
-	{ID: "pdf", Label: "PDF", Ext: "pdf", ContentType: "application/pdf"},
 }
 
 // All lists every export format, in the order a picker should offer them.
