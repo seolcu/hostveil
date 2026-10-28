@@ -294,22 +294,6 @@ func TestUnifiedCostIsBoundedByTheChange(t *testing.T) {
 	}
 }
 
-// BenchmarkUnifiedOneLineEdit measures the operation that runs every time a
-// user previews a fix.
-func BenchmarkUnifiedOneLineEdit(b *testing.B) {
-	var orig strings.Builder
-	for range 5000 {
-		orig.WriteString("  - '8080:80'\n")
-	}
-	a := orig.String()
-	modified := strings.Replace(a, "  - '8080:80'\n", "  - '127.0.0.1:8080:80'\n", 1)
-
-	b.ReportAllocs()
-	for b.Loop() {
-		_ = Unified("docker-compose.yml", a, modified)
-	}
-}
-
 // FuzzUnified asserts the property that makes a preview trustworthy: the diff
 // must be a faithful, lossless rendering of both texts. Because Unified emits
 // every line (no hunks, no elided context), the reconstruction is exact at line
