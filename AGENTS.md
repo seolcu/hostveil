@@ -101,9 +101,12 @@ the site's own palette and the geometry of `internal/ui/web/assets/mark.svg`,
 rather than photographed, because a card is rendered at a fraction of its size
 and a screenshot is unreadable there. It is what every link to this repository
 unfurls as, on every platform, so an empty one is a grey card carrying whatever
-the description says. Re-run the script after editing it; the finding ids drawn
-on the card are held to the real ones by `internal/docs/fixtures_test.go`, the
-same guard that covers the two screenshots.
+the description says, and the website's `og:image` points at the same file. The
+same script draws the README banners (`site/assets/banner-light.png` and its siblings, a light and a
+dark one per language, which the READMEs pick between with `<picture>`). Re-run
+it after changing the palette, the mark or the slogan; any finding id drawn on
+the card is held to the real ones by `internal/docs/fixtures_test.go`, the same
+guard that covers the two screenshots.
 
 Topics are not decoration here: a repository with none appears on no topic page
 and is findable only by its own name.
@@ -256,21 +259,37 @@ The registry can report the kind a user is shown because `fix.checkerDeclaresRev
 
 ### The Korean pages carry a font
 
-Neither Georgia nor the monospace stack has a Hangul glyph, so every Korean character on the site was drawn by whatever the reader's machine fell back to — and both stacks asked for the wrong names. `"Noto Sans KR"` is the Google Fonts name; what a distribution installs is `"Noto Sans CJK KR"`, so on Fedora every Korean entry missed and Hangul fell through to the generic at the end of each list. At the end of a *monospace* list that generic is a monospace CJK face, which is how the Korean nav, buttons, eyebrows, card kickers and finding titles came to be set in fixed-width Hangul with 0.14em of tracking on top.
+The site is set in the reader's system face, and that face answers for Hangul differently on every machine — Apple SD Gothic Neo on a Mac, Malgun Gothic on Windows, and on Linux whatever the distribution installed, often under a name the stack did not ask for: `"Noto Sans KR"` is the Google Fonts name, and what a distribution registers is `"Noto Sans CJK KR"`. Before the brand moved to a sans, the Latin was Georgia and monospace, neither has a Hangul glyph, and the monospace stack's generic fallback is how the Korean labels once came out in fixed-width Hangul.
 
-`site/korean.css` answers that, and `cmd/sitegen` links it from the Korean pages only. It declares Nanum Myeongjo for the body and Noto Sans KR for the slots the Latin sets in monospace, each `unicode-range`d to the Hangul blocks so Latin still resolves to Georgia and an English page — which contains three Hangul syllables, the 한국어 switcher — downloads none of it. Alongside the faces it retunes what does not transfer between the scripts: `word-break: keep-all`, looser leading, and one tracking value in place of the seven the Latin design uses for uppercase labels.
+`site/korean.css` answers that, and `cmd/sitegen` links it from the Korean pages only. It declares one face, Noto Sans KR, `unicode-range`d to the Hangul blocks so Latin still resolves to the system face and an English page — which contains three Hangul syllables, the 한국어 switcher — downloads none of it, and puts it at the front of `--font-body` so a Mac's own cascade does not answer first. Alongside the face it retunes what does not transfer between the scripts: `word-break: keep-all`, looser leading, one tracking value for the uppercase labels, and no uppercasing at all on a Korean label, where it only ever reached the Latin name inside one.
 
-The body face was Noto Serif KR at first, chosen over Gowun Batang and Nanum Myeongjo because both read visibly lighter than Georgia at a shared size. It was replaced because Noto Serif KR's own cut reads as the generic, cross-CJK default it is — institutional next to Georgia's particular one — and the weight objection that ruled Nanum Myeongjo out turned out to be solvable rather than disqualifying: its **Bold** face is served as `font-weight: 400` and its **ExtraBold** as `700`, so normal-weight Korean body text renders from the static weight that actually matches Georgia's stroke weight rather than from the one the family calls Regular. `scripts/korean-subset.py`'s `SOURCES` documents that mapping; `site/korean.css`'s `size-adjust` comment has the ink-height measurement behind it.
+The body used to be a Korean serif (Nanum Myeongjo, and Noto Serif KR before it) chosen to sit beside Georgia. It went when Georgia did: a second Korean face would now only be a second voice.
 
-`site/assets/fonts/` **is** generated, by `scripts/korean-subset.py` (`pip install fonttools brotli`). The faces are subsets carrying the site's own repertoire — 766 of Korean's 11,172 syllables, which is what gets a serif weight to 112KB rather than megabytes — and a subset is the one asset that is wrong *silently*: one new Korean sentence with one syllable that was not there when it ran, and that character alone falls back to a system font mid-word, correct on either side, invisible in a diff. So the script writes `coverage.txt` beside the fonts and `internal/docs/koreanfont_test.go` reads it back — `TestEveryKoreanSyllableOnTheSiteHasAGlyph` is the one that matters; the others hold the fonts to the manifest, keep the retracked-label list in step with the two stylesheets, and keep the stylesheet off the English pages. **Re-run the script after editing Korean copy**, and note the order: it reads `site/ko/`, so `go run ./cmd/sitegen` comes first.
+`site/assets/fonts/` **is** generated, by `scripts/korean-subset.py` (`pip install fonttools brotli`). The faces are subsets carrying the site's own repertoire — about 800 of Korean's 11,172 syllables, which is what gets a weight to 50KB rather than megabytes — and a subset is the one asset that is wrong *silently*: one new Korean sentence with one syllable that was not there when it ran, and that character alone falls back to a system font mid-word, correct on either side, invisible in a diff. So the script writes `coverage.txt` beside the fonts and `internal/docs/koreanfont_test.go` reads it back — `TestEveryKoreanSyllableOnTheSiteHasAGlyph` is the one that matters; the others hold the fonts to the manifest, keep the retracked-label list in step with the two stylesheets, and keep the stylesheet off the English pages. **Re-run the script after editing Korean copy**, and note the order: it reads `site/ko/`, so `go run ./cmd/sitegen` comes first.
 
 The woff2 output is not byte-reproducible across fonttools and brotli versions, which is why the fonts are not part of the `git diff --exit-code site/` gate. Coverage is what is pinned, and that does not depend on either.
 
-### Korean copy is written, not translated
+### No "A, not B"
+
+Do not write the contrast "A, not B" — "a guide, not another report", "Clean, not a hollow 100", "보고서가 아닌 가이드", "B가 아니라 A" — in any copy, English or Korean: the site, the READMEs, release notes, the dashboard's and the TUI's text. It only works when the reader was already thinking B. Generated copy reaches for it where nobody was, so it reads as an answer to a question no one asked, and it is the most recognisable tell of machine-written prose there is. Say A, and say why A is true. If B really is the mistake a reader is about to make, name the mistake as its own sentence with the reason ("A skipped domain is not scored. A score of 100 would claim it was checked.").
+
+The same goes for its relatives: "not just X", "rather than X" as a flourish, and a heading built on either. A doc comment explaining why the code takes one path over another is a different thing and is exempt.
+
+### Other tells of machine-written copy
+
+"A, not B" is the worst of a family. The rest come from the patterns Wikipedia's [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) guide collects, and from Korean write-ups on LLM prose. They apply to the same copy as the rule above. A single instance proves nothing; what reads as generated is the density.
+
+- **Em dashes in prose.** Use a comma, a colon, parentheses or a new sentence. Korean copy has none at all. A dash is still right in a table cell that means "none", and in a quoted UI label that contains one ("Applied — not in force yet" is the dashboard's own text, so the docs quote it exactly).
+- **Vocabulary that clusters in model output.** In English: *deliberately*, *honest/honestly*, *quietly*, *plainly*, *genuinely*, *load-bearing*, *outright* used for emphasis, and a rhetorical *nobody* ("a question nobody asked"). Signposts like "worth noting", "worth stating plainly" and "the interesting answer is". In Korean: 일부러, 정직하게, 조용히, "짚어 둘 만합니다", "분명히 적어 둡니다". The literal sense is fine: a journal *survives* a reboot, and an unknown value is *silently* ignored. The tell is a word used to sound considered.
+- **Promotional and summary filler.** No "seamless", "robust", "powerful". No closing "Overall,". No sentence whose only job is to say the previous one mattered.
+
+These were swept out of the docs and READMEs once. Check new copy against this list before it lands.
+
+### Korean copy is written in Korean
 
 `content/ko/**`, `README.ko.md` and `CHANGELOG.ko.md` are not renderings of the English text — they are their own sentences that happen to say the same thing. An agent drafting them by translating the English paragraph clause-for-clause produces fluent, grammatical Korean that a native reader still flags on sight, because the tell isn't grammar, it's rhythm: English sentence shape surviving the trip. The specific habits to watch for, because they are exactly the ones an LLM defaults to —
 
-- **직접 호칭을 피할 것.** English marketing copy addresses the reader as "you"; Korean product copy almost never does. `당신`/`당신의` in a sentence is close to a guarantee that it was translated rather than written — restructure around the noun or the action instead ("a host you control" → "직접 통제하는 호스트", not "당신이 통제하는 호스트").
+- **`당신`은 써도 된다.** Apple Korea's own product pages address the reader as `당신` ("당신의 데이터", "당신만이"), and that register is the model for this site. Use it where the sentence is about the reader. What still gives a translation away is `당신의` stacked on every noun because the English had "your" there; write the sentence the way Korean would say it and the address will appear where it belongs.
 - **em-dash을 남용하지 말 것.** English uses `—` for asides, appositives, and parenthetical qualification constantly; Korean prose doesn't reach for it nearly as often. Where the English draft leans on one, prefer ending the sentence and starting the next, or `즉`/쉼표. A Korean paragraph with an em-dash every line or two is a paragraph that was translated one sentence at a time.
 - **한 문장에 절을 쌓지 말 것.** English comfortably chains three or four clauses with "and," "which," "while." Korean technical writing reads better as several short declarative sentences than as one long one carrying the same clause count — split rather than translate the connectors (-고, -며, -면서) literally.
 - **"그리고"/"그런데"로 문장을 열지 말 것**, and don't reach for a sentence fragment for emphasis — both read as an English rhetorical habit (leading "And…", a one-word sentence for punch) transplanted rather than composed.

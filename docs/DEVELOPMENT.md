@@ -185,11 +185,12 @@ HOSTVEIL_SCREENSHOT_THEME=nord  HOSTVEIL_SCREENSHOT_LAYOUT=lanes  …  # dashboa
 
 Rendering a `.ans` to PNG is `scripts/ansi2png.py`. A capture of a non-default
 palette needs its ground and ink passed in, since a terminal capture cannot
-carry them and the renderer assumes One Dark's:
+carry them and the renderer assumes the default palette's:
 
 | theme | `HOSTVEIL_ANSI2PNG_BG` | `HOSTVEIL_ANSI2PNG_FG` |
 | --- | --- | --- |
-| `onedark` (default) | `#282c34` | `#c8ccd4` |
+| `hostveil` (default) | `#111113` | `#f5f5f7` |
+| `onedark` | `#282c34` | `#c8ccd4` |
 | `gruvbox` | `#1d2021` | `#ebdbb2` |
 | `nord` | `#22262e` | `#eceff4` |
 | `catppuccin` | `#1e1e2e` | `#cdd6f4` |
@@ -219,8 +220,8 @@ python3 scripts/ansi2png.py internal/ui/tui/testdata/site-frame.ans site/assets/
 set in — `apt install fonts-dejavu-core`, `dnf install dejavu-sans-mono-fonts`.
 It says so if the font is missing. `HOSTVEIL_ANSI2PNG_BG`/`_FG` override the
 ground and default ink, which a capture of a non-default theme needs: a
-terminal capture cannot carry them, so the renderer assumes One Dark's `Ink`
-and `Bone`.
+terminal capture cannot carry them, so the renderer assumes the default
+palette's `Ink` and `Bone`.
 
 **`web.png` is photographed, so its *inputs* are pinned instead.** There is no
 headless browser in the test suite, so `TestDashboardScreenshotStampIsCurrent`

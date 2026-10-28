@@ -5,15 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>환경 변수 — Hostveil 문서</title>
     <meta name="description" content="Hostveil이 읽거나, 셸에서 따르거나, 실행하는 명령에 설정해 주는 모든 환경 변수: 자체 설정, sudo 동작, 색과 터미널 감지, LC_ALL 고정, 그리고 유일한 네트워크 요청에 걸리는 프록시 변수까지.">
-    <meta name="theme-color" content="#07100f">
+    <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
     <meta property="og:title" content="환경 변수 — Hostveil 문서">
     <meta property="og:description" content="모든 변수를 한곳에: Hostveil 자체 설정, 셸에서 따르는 것, 자식 명령에 설정해 주는 것, 그리고 주변 도구에서 읽는 것.">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://hostveil.seolcu.com/ko/docs/environment">
-    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
-    <meta property="og:image:width" content="1500">
-    <meta property="og:image:height" content="760">
-    <meta property="og:image:alt" content="Hostveil 웹 대시보드: 0-100 보안 점수, 도메인별 게이지, 심각도로 묶인 발견 항목과 원클릭 안전 수정">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/social-preview.png">
+    <meta property="og:image:width" content="1280">
+    <meta property="og:image:height" content="640">
+    <meta property="og:image:alt" content="Hostveil 로고와 이름, 그리고 문구: Quiet security for the servers you run.">
     <meta property="og:site_name" content="Hostveil">
     <meta name="twitter:card" content="summary_large_image">
     <meta property="og:locale" content="ko_KR">
@@ -136,7 +137,7 @@
                   <tr><td><code>HOSTVEIL_DEBUG</code></td><td>미설정(추적하지 않음)</td><td>비어 있지 않은 아무 문자열</td><td>실행한 명령마다 한 줄씩 <strong>stderr</strong>에 씁니다. 따옴표로 묶인 인자 목록, 밀리초 단위 소요 시간, 실패 여부는 물론, 도메인이 아예 실행될지를 결정하는 바이너리 탐색까지 포함됩니다. 명령의 <em>출력</em>은 의도적으로 절대 기록하지 않습니다. <code>docker inspect</code>는 모든 컨테이너의 환경 변수를 그대로 보여 주므로, 버그 리포트에 붙여 넣는 추적 로그가 자격 증명 유출이 되어서는 안 되기 때문입니다. 그 외에는 아무것도 달라지지 않으며, 설정하지 않았을 때 Hostveil은 예전과 똑같은 경로를 탑니다.</td></tr>
                   <tr><td><code>HOSTVEIL_ASSUME_HOST</code></td><td>미설정(컨테이너를 감지하고 그렇다고 말합니다)</td><td>비어 있지 않은 아무 문자열</td><td>명백히 컨테이너인 파일시스템도 호스트로 간주해 점검합니다. 설정하지 않으면 컨테이너 안에서 방화벽 영역은 <strong>건너뜀</strong>이 됩니다(컨테이너에는 호스트 방화벽이 없고 앞으로도 없습니다. 그 포트가 응답할지 정하는 패킷 필터는 호스트의 것입니다). 커널 하드닝 항목은 <strong>Manual</strong>이 됩니다(값이 호스트 커널의 것이고, 안에서 쓴 drop-in으로는 바꿀 수 없습니다). 그 컨테이너를 <em>곧</em> 점검 대상 호스트로 쓸 때 설정하세요. 배포 전 골든 이미지를 점검하거나, 이 프로젝트의 종단 간 작업처럼 버릴 수 있는 컨테이너를 루트 파일시스템으로 쓸 때입니다.</td></tr>
                   <tr><td><code>HOSTVEIL_NO_SUDO</code></td><td>미설정(자동 권한 상승이 켜짐)</td><td>비어 있지 않은 아무 문자열</td><td><code>sudo</code>로 자신을 다시 실행하지 않습니다. root가 필요한 영역(<code>sshd_config</code>, <code>/etc/shadow</code>, 방화벽 상태)은 이유와 함께 <strong>건너뜀</strong>으로 보고되고, 점수는 실제로 실행된 영역만으로 재정규화됩니다. 탐지나 수정 로직은 전혀 바뀌지 않습니다. 억제하는 것은 재실행뿐이므로, 이미 root로 돌고 있는 Hostveil에는 아무 영향이 없습니다.</td></tr>
-                  <tr><td><code>HOSTVEIL_THEME</code></td><td>기억된 값, 없으면 <code>onedark</code></td><td><code>onedark</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code></td><td>TUI의 색상 팔레트이자 대시보드가 처음 열릴 때의 팔레트입니다. 우선순위는 <code>--theme</code> &gt; 이 변수 &gt; 상태 디렉터리에 기억된 값 &gt; 기본값입니다. 이름은 공백 처리 없이 정확히, <strong>대소문자를 구분해서</strong> 비교하므로 <code>HOSTVEIL_THEME=Nord</code>는 아무 일도 하지 않고 아무 말도 하지 않습니다. 여기서 알 수 없는 값은 조용히 무시되고, 오류가 되는 것은 잘못된 <code>--theme</code>뿐입니다.</td></tr>
+                  <tr><td><code>HOSTVEIL_THEME</code></td><td>기억된 값, 없으면 <code>hostveil</code></td><td><code>hostveil</code>, <code>onedark</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code></td><td>TUI의 색상 팔레트이자 대시보드가 처음 열릴 때의 팔레트입니다. 우선순위는 <code>--theme</code> &gt; 이 변수 &gt; 상태 디렉터리에 기억된 값 &gt; 기본값입니다. 이름은 공백 처리 없이 정확히, <strong>대소문자를 구분해서</strong> 비교하므로 <code>HOSTVEIL_THEME=Nord</code>는 아무 일도 하지 않고 아무 말도 하지 않습니다. 여기서 알 수 없는 값은 조용히 무시되고, 오류가 되는 것은 잘못된 <code>--theme</code>뿐입니다.</td></tr>
                   <tr><td><code>HOSTVEIL_GLYPHS</code></td><td>기억된 값, 없으면 <code>plain</code></td><td><code>plain</code>, <code>nerd</code></td><td>TUI와 <code>hostveil scan</code>이 상태 표시에 쓰는 기호 세트입니다. 우선순위는 <code>--glyphs</code> &gt; 이 변수 &gt; 기억된 값 &gt; <code>plain</code>입니다. 앞뒤 공백은 잘라내지만 이름은 대소문자를 구분하며, 알 수 없는 값은 조용히 기본값으로 돌아갑니다. <code>nerd</code>는 패치된 Nerd Font가 설치돼 있어야 합니다. 터미널에 어떤 폰트를 쓰는지 물어볼 방법이 없고, 없는 글리프도 있는 글리프와 똑같이 한 칸을 차지하기 때문에 직접 켜야 합니다.</td></tr>
                   <tr><td><code>HOSTVEIL_LAYOUT</code></td><td>기억된 값, 없으면 <code>console</code></td><td><code>console</code>, <code>split</code>, <code>triage</code>, <code>railverdict</code>, <code>lanes</code>, <code>inline</code></td><td>TUI의 화면 배치이자 대시보드가 처음 표시될 배치입니다. 우선순위는 <code>--layout</code> &gt; 이 변수 &gt; 상태 디렉터리에 기억된 값 &gt; <code>console</code>입니다. 앞뒤 공백은 잘라내지만 이름은 <strong>대소문자를 구분</strong>하며 정확히 일치해야 합니다. 알 수 없는 값은 조용히 무시되고, 오류가 되는 것은 잘못된 <code>--layout</code>뿐입니다. 브라우저에서는 대시보드의 선택기로 고른 값이 그 브라우저에 저장되어 이 변수를 이깁니다.</td></tr>
                   <tr><td><code>HOSTVEIL_AI_PROVIDER</code></td><td><code>ollama</code></td><td><code>ollama</code>, <code>anthropic</code>, <code>openai</code></td><td><code>explain --ai</code>와 AI 버튼이 쓸 AI 백엔드를 고릅니다. <code>ollama</code>는 로컬이라 이 값을 일부러 바꾸지 않는 한 아무것도 호스트를 떠나지 않습니다. <code>anthropic</code>은 Claude API와, <code>openai</code>는 OpenAI의 chat-completions 형식을 쓰는 아무 벤더(OpenAI 자신, OpenRouter, Groq, Together, 다른 기계의 자체 호스팅 서버 등)와 통신합니다. Hostveil을 돌리는 기계가 로컬 모델을 감당하기엔 약할 때 유용합니다. 알 수 없는 값은 조용히 무시되지 않습니다. <code>explain --ai</code>는 인식하지 못한 값을 그대로 지목해 알려 줍니다. <a href="ai">AI 설명</a>을 참고하세요.</td></tr>
@@ -315,7 +316,7 @@
       <div class="container footer-grid">
         <div>
           <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>Hostveil</span></a>
-          <p>셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화.</p>
+          <p>셀프호스팅 리눅스 서버를 위한 보안 강화.</p>
         </div>
         <nav aria-label="푸터 링크">
           <a href="./">문서</a>

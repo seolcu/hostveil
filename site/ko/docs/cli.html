@@ -4,16 +4,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>CLI 레퍼런스 — Hostveil 문서</title>
-    <meta name="description" content="Hostveil 명령줄 완전 레퍼런스: scan, fix, rollback, history, explain, serve, tui — 모든 플래그, 기본값, 종료 코드.">
-    <meta name="theme-color" content="#07100f">
+    <meta name="description" content="Hostveil 명령줄 완전 레퍼런스: scan, fix, rollback, history, explain, serve, tui의 모든 플래그, 기본값, 종료 코드.">
+    <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
     <meta property="og:title" content="CLI 레퍼런스 — Hostveil 문서">
     <meta property="og:description" content="Hostveil의 모든 하위 명령과 플래그: scan, fix, rollback, history, explain, serve, tui.">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://hostveil.seolcu.com/ko/docs/cli">
-    <meta property="og:image" content="https://hostveil.seolcu.com/assets/web.png">
-    <meta property="og:image:width" content="1500">
-    <meta property="og:image:height" content="760">
-    <meta property="og:image:alt" content="Hostveil 웹 대시보드: 0-100 보안 점수, 도메인별 게이지, 심각도로 묶인 발견 항목과 원클릭 안전 수정">
+    <meta property="og:image" content="https://hostveil.seolcu.com/assets/social-preview.png">
+    <meta property="og:image:width" content="1280">
+    <meta property="og:image:height" content="640">
+    <meta property="og:image:alt" content="Hostveil 로고와 이름, 그리고 문구: Quiet security for the servers you run.">
     <meta property="og:site_name" content="Hostveil">
     <meta name="twitter:card" content="summary_large_image">
     <meta property="og:locale" content="ko_KR">
@@ -363,7 +364,7 @@ hostveil ai-context --clear       # 설명을 지움</code></pre></div>
                 <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
                 <tbody>
                   <tr><td><code>--addr ADDR</code></td><td><code>127.0.0.1:8787</code></td><td>대시보드를 바인딩할 주소입니다.</td></tr>
-                  <tr><td><code>--theme NAME</code></td><td>기억된 값, 없으면 <code>onedark</code></td><td>대시보드가 처음 표시될 색상 테마입니다.</td></tr>
+                  <tr><td><code>--theme NAME</code></td><td>기억된 값, 없으면 <code>hostveil</code></td><td>대시보드가 처음 표시될 색상 테마입니다.</td></tr>
                   <tr><td><code>--layout NAME</code></td><td>기억된 값, 없으면 <code>console</code></td><td>대시보드가 처음 표시될 화면 배치입니다. 브라우저의 선택기로 고른 값은 그 브라우저에 저장되어 이 값을 이깁니다. 따라서 이 옵션은 아직 아무것도 고르지 않은 브라우저가 보게 될 배치를 정합니다.</td></tr>
                 </tbody>
               </table>
@@ -378,7 +379,7 @@ hostveil ai-context --clear       # 설명을 지움</code></pre></div>
               <table>
                 <thead><tr><th>플래그</th><th>기본값</th><th>설명</th></tr></thead>
                 <tbody>
-                  <tr><td><code>--theme NAME</code></td><td>기억된 값, 없으면 <code>onedark</code></td><td>색상 테마: <code>onedark</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code>.</td></tr>
+                  <tr><td><code>--theme NAME</code></td><td>기억된 값, 없으면 <code>hostveil</code></td><td>색상 테마: <code>hostveil</code>, <code>onedark</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code>.</td></tr>
                   <tr><td><code>--layout NAME</code></td><td>기억된 값, 없으면 <code>console</code></td><td>화면 배치입니다: <code>console</code>, <code>split</code>, <code>triage</code>, <code>railverdict</code>, <code>lanes</code>, <code>inline</code>. TUI 안에서 <code>l</code>을 누르면 바꿀 수 있고 그 선택을 기억합니다. 우선순위는 이 플래그 &gt; <code>HOSTVEIL_LAYOUT</code> &gt; 기억된 값 &gt; <code>console</code>입니다.</td></tr>
                   <tr><td><code>--glyphs NAME</code></td><td>기억된 값, 없으면 <code>plain</code></td><td>상태 표시에 쓸 기호 세트입니다: <code>plain</code> 또는 <code>nerd</code>. <code>nerd</code>는 패치된 Nerd Font의 글리프를 씁니다. 폰트를 설치하고 <code>HOSTVEIL_GLYPHS=nerd</code>를 한 번 설정하세요. 터미널에 어떤 폰트를 쓰는지 물어볼 방법이 없어서 직접 켜야 하며, 기본값은 아무것도 바꾸지 않습니다.</td></tr>
                 </tbody>
@@ -460,7 +461,7 @@ hostveil update --check</code></pre></div>
       <div class="container footer-grid">
         <div>
           <a class="brand" href="../"><span class="brand-mark" aria-hidden="true"></span><span>Hostveil</span></a>
-          <p>셀프호스팅 리눅스 서버를 위한 가이드형 보안 강화.</p>
+          <p>셀프호스팅 리눅스 서버를 위한 보안 강화.</p>
         </div>
         <nav aria-label="푸터 링크">
           <a href="./">문서</a>

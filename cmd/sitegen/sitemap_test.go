@@ -129,7 +129,7 @@ func TestTheCardImageDimensionsMatchTheFile(t *testing.T) {
 
 	w, h := ogImageSize()
 	if w == 0 || h == 0 {
-		t.Fatal("could not read site/assets/web.png; the card would advertise a 0x0 image")
+		t.Fatal("could not read site/assets/" + ogImage + "; the card would advertise a 0x0 image")
 	}
 
 	page := string(readSite(t, "index.html"))

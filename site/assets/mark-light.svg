@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="hostveil">
+  <!-- mark.svg in the site's light palette: the same geometry, with the
+       back sheet in the light scheme's ink and the front in its green.
+       TestLightMarkIsTheSameDrawing holds it to mark.svg with the paints
+       stripped, so this cannot become a second drawing. -->
+  <mask id="hv-cut">
+    <rect width="48" height="48" fill="white"/>
+    <rect x="14" y="14" width="32" height="32" rx="11" fill="black"/>
+  </mask>
+  <rect x="5" y="5" width="26" height="26" rx="8" fill="#1d1d1f" mask="url(#hv-cut)"/>
+  <rect x="17" y="17" width="26" height="26" rx="8" fill="#1f8f4e"/>
+</svg>

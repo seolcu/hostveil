@@ -1,44 +1,84 @@
+/* The Hostveil brand, light and dark.
+
+   Graphite neutrals with no hue of their own and one green. Green means one
+   thing here, as it does in the product: the part that has been made safe.
+   The dark values are the dashboard's default palette ("hostveil" in
+   internal/ui/theme), so the site and the product a reader installs from it
+   are one look rather than two; the light values are the same system turned
+   over for a page read in daylight.
+
+   --accent is a fill (buttons, bars, the mark); --accent-ink is the same
+   green darkened where it is set as small text, because a fill only has to
+   be seen and text has to clear 4.5:1. */
 :root {
-  color-scheme: dark;
-  --bg: #07100f;
-  --bg-alt: #0b1512;
-  --panel: #101816;
-  --panel-strong: #16231f;
-  --paper: #e7dfca;
-  --paper-muted: #c8bea7;
-  --text: #f5ead2;
-  --muted: #9aa89f;
-  --line: #31413b;
-  --line-strong: #516057;
-  --accent: #d2bc74;
-  --signal: #91b987;
-  --danger: #e05757;
-  --orange: #d8843b;
-  --warning: #d6ae58;
-  --shadow-cut: #020504;
+  color-scheme: light;
+  --bg: #fbfbfd;
+  --bg-alt: #f5f5f7;
+  --panel: #ffffff;
+  --panel-strong: #f5f5f7;
+  --code-bg: #f5f5f7;
+  --text: #1d1d1f;
+  --paper: #1d1d1f;
+  --paper-muted: #424245;
+  --muted: #6e6e73;
+  --line: #e5e5ea;
+  --line-strong: #d2d2d7;
+  --accent: #1f8f4e;
+  --accent-ink: #157a43;
+  --accent-fg: #ffffff;
+  --accent-soft: rgba(31, 143, 78, 0.1);
+  --signal: #157a43;
+  --danger: #d70015;
+  --orange: #c4560b;
+  --warning: #a86200;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 28px rgba(0, 0, 0, 0.06);
+  --overlay: rgba(251, 251, 253, 0.86);
+  --mark: url(assets/mark-light.svg);
+  --radius: 18px;
   --max: 1080px;
-  /* Hangul comes from the two families named in the middle of each stack.
-     site/korean.css claims both with @font-face — Korean pages link it, English
-     pages do not — and restricts them by unicode-range to the Hangul blocks, so
-     Latin resolves to Georgia and to the monospace stack exactly as it would
-     with no webfont at all.
+  /* Latin is the reader's own system face — San Francisco on an Apple
+     device, Segoe UI on Windows, whatever the desktop sets on Linux — which
+     is the plainest way to look native everywhere and costs no download.
 
-     The system families behind them are the names an OS actually registers.
-     This used to ask for "Apple SD Gothic Neo", "Noto Sans KR" and "Malgun
-     Gothic" in both stacks, of which only the first two exist and only on one
-     platform each: "Noto Sans KR" is the Google Fonts name, and what a Linux
-     distribution installs is "Noto Sans CJK KR". So on Fedora every Korean
-     entry in both stacks missed and Hangul fell through to the generic — and
-     the generic at the end of a monospace stack is a monospace CJK face, which
-     is how the Korean nav, buttons, eyebrows, card kickers and finding titles
-     came to be set in fixed-width Hangul with tracking on top of it.
+     Hangul comes from the Korean faces further down, which site/korean.css
+     claims with @font-face on the Korean pages only and restricts by
+     unicode-range to the Hangul blocks, so Latin never reaches them. The
+     names are the ones an OS actually registers: "Noto Sans KR" is the Google
+     Fonts name, and what a Linux distribution installs is "Noto Sans CJK KR".
 
-     Hence the asymmetry: --font-body falls back to Korean serifs and
-     --font-mono to Korean *sans* faces, because a label wants a 고딕 and Korean
-     has no monospace tradition to borrow one from. `monospace` stays last for
-     Latin, which never reaches it. */
-  --font-body: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, "Nanum Myeongjo", "Noto Serif CJK KR", "Source Han Serif K", AppleMyungjo, Batang, "바탕", serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Noto Sans KR", "Apple SD Gothic Neo", "Noto Sans CJK KR", "Malgun Gothic", "맑은 고딕", monospace;
+     The monospace stack is for code and finding IDs only. It used to set the
+     nav, the buttons and every label too, and its generic fallback is a
+     monospace CJK face, which is how Korean labels came out fixed-width. */
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, "Noto Sans KR", "Apple SD Gothic Neo", "Noto Sans CJK KR", "Malgun Gothic", "맑은 고딕", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0b0b0c;
+    --bg-alt: #111113;
+    --panel: #161618;
+    --panel-strong: #1c1c1f;
+    --code-bg: #111113;
+    --text: #f5f5f7;
+    --paper: #f5f5f7;
+    --paper-muted: #c7c7cc;
+    --muted: #98989d;
+    --line: #2c2c2e;
+    --line-strong: #3a3a3c;
+    --accent: #3ccf7e;
+    --accent-ink: #3ccf7e;
+    --accent-fg: #04140b;
+    --accent-soft: rgba(60, 207, 126, 0.12);
+    --signal: #3ccf7e;
+    --danger: #ff6b6b;
+    --orange: #ff9f43;
+    --warning: #f2c94c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 28px rgba(0, 0, 0, 0.35);
+    --overlay: rgba(11, 11, 12, 0.88);
+    --mark: url(assets/mark.svg);
+  }
 }
 
 * {
@@ -52,18 +92,13 @@ html {
 body {
   margin: 0;
   font-family: var(--font-body);
-  line-height: 1.62;
+  font-size: 17px;
+  line-height: 1.55;
   color: var(--text);
   background: var(--bg);
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0 auto 0 0;
-  z-index: -1;
-  width: 10px;
-  background: var(--accent);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 img {
@@ -79,18 +114,14 @@ a {
 
 code,
 pre,
-.eyebrow,
-.card-kicker,
-.score-card span,
-.score-card small,
-.finding span,
-.finding small,
-.flow-list span,
-.nav-links,
-.site-footer nav,
-.button,
 .terminal-bar {
   font-family: var(--font-mono);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .container {
@@ -103,96 +134,95 @@ pre,
   left: 22px;
   top: 16px;
   z-index: 30;
-  transform: translateY(-140%);
-  padding: 9px 12px;
-  border: 2px solid var(--accent);
-  background: var(--bg);
-  color: var(--accent);
+  transform: translateY(-200%);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.85rem;
 }
 
 .skip-link:focus {
   transform: translateY(0);
 }
 
+/* ── header ─────────────────────────────────────────── */
+
 .site-header {
   position: sticky;
   top: 0;
   z-index: 10;
   border-bottom: 1px solid var(--line);
-  background: var(--bg);
+  background: var(--overlay);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
 .nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 64px;
+  min-height: 52px;
   gap: 24px;
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.6em;
-  font-family: var(--font-mono);
-  font-weight: 900;
-  letter-spacing: -0.04em;
+  gap: 0.5em;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   font-size: 1.05rem;
+  /* The wordmark is lowercase, as it is in the banners and the social card.
+     The markup keeps "Hostveil" so a screen reader and a copy-paste get the
+     name as it is written in prose. */
+  text-transform: lowercase;
 }
 
 /* The product's mark, not a second one drawn here in CSS.
    assets/mark.svg is byte-identical to the dashboard's, and a test holds
-   them equal — this used to be a bordered box with two bars that had nothing
-   to do with the figure hostveil actually ships, and nobody noticed because
-   the two were never on a screen together.
+   them equal. The light scheme swaps in assets/mark-light.svg, which a
+   second test holds to the same geometry — a Bone sheet on a white page
+   would not be there at all.
    url() resolves against the stylesheet rather than the page, so one
-   relative path works from the landing page and from /docs alike.
-
-   1.7em is the dashboard's figure too. This header had it at 34px against an
-   11px cap height — 3.1x — while the dashboard ran 2.2x, which is why the
-   same drawing read as two marks. See the note in the dashboard's app.css. */
+   relative path works from the landing page and from /docs alike. */
 .brand-mark {
-  width: 1.7em;
-  height: 1.7em;
+  width: 1.4em;
+  height: 1.4em;
   flex: none;
-  /* Half a descender up: the word has none, so its ink stops at the baseline
-     and its optical centre is above the line box the flexbox centres on. */
-  transform: translateY(-0.11em);
-  background: url(assets/mark.svg) center / contain no-repeat;
+  background: var(--mark) center / contain no-repeat;
 }
 
 .nav-links {
   display: flex;
   align-items: center;
-  gap: clamp(14px, 2vw, 28px);
+  gap: clamp(14px, 2vw, 26px);
   color: var(--muted);
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 0.82rem;
 }
 
 .nav-links a,
 .site-footer a {
-  border-bottom: 1px solid transparent;
+  transition: color 150ms ease;
 }
 
 .nav-links a:hover,
 .nav-links a:focus-visible,
 .site-footer a:hover,
 .site-footer a:focus-visible {
-  color: var(--accent);
-  border-bottom-color: currentColor;
+  color: var(--text);
 }
 
+/* ── hero ───────────────────────────────────────────── */
+
 .hero {
-  padding: clamp(64px, 9vw, 108px) 0 clamp(56px, 7vw, 88px);
-  border-bottom: 1px solid var(--line);
+  padding: clamp(64px, 10vw, 120px) 0 clamp(48px, 7vw, 80px);
 }
 
 .hero-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
-  align-items: start;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+  align-items: center;
   gap: clamp(36px, 6vw, 72px);
 }
 
@@ -205,11 +235,11 @@ pre,
 }
 
 .eyebrow {
-  margin: 0 0 12px;
-  color: var(--accent);
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  margin: 0 0 14px;
+  color: var(--accent-ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -225,42 +255,47 @@ h2,
 h3 {
   font-family: var(--font-body);
   font-weight: 700;
+  color: var(--text);
 }
 
 h1 {
-  max-width: 620px;
+  max-width: 640px;
   margin-bottom: 22px;
-  font-size: clamp(2rem, 3.7vw, 3rem);
-  line-height: 1.12;
+  font-size: clamp(2.5rem, 5.4vw, 4rem);
+  line-height: 1.04;
   letter-spacing: -0.04em;
   text-wrap: balance;
 }
 
 h2 {
   margin-bottom: 16px;
-  font-size: clamp(1.85rem, 4vw, 2.8rem);
+  font-size: clamp(1.9rem, 4vw, 2.8rem);
   line-height: 1.08;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 
 h3 {
-  margin-bottom: 10px;
-  font-size: 1.12rem;
-  line-height: 1.25;
+  margin-bottom: 8px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
 }
 
 .lede {
-  max-width: 580px;
-  color: var(--paper-muted);
-  font-size: 1.08rem;
+  max-width: 560px;
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1.5;
 }
 
 .hero-actions,
 .button-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin: 26px 0;
+  gap: 12px;
+  margin: 30px 0;
 }
 
 .button {
@@ -268,50 +303,42 @@ h3 {
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  padding: 0 16px;
-  border: 2px solid var(--line-strong);
-  background: var(--panel);
+  padding: 0 22px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
   color: var(--text);
-  font-size: 0.8rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  transition: background 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
-}
-
-.button:hover,
-.button:focus-visible {
-  box-shadow: 3px 3px 0 var(--shadow-cut);
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease, filter 150ms ease;
 }
 
 .button.primary {
-  color: #05100c;
+  color: var(--accent-fg);
   background: var(--accent);
   border-color: var(--accent);
-  box-shadow: 4px 4px 0 var(--shadow-cut);
 }
 
 .button.primary:hover,
 .button.primary:focus-visible {
-  background: #e0ca84;
-  border-color: #e0ca84;
+  filter: brightness(1.08);
 }
 
 .button.secondary {
-  color: var(--paper);
-  background: transparent;
+  color: var(--accent-ink);
 }
 
 .button.secondary:hover,
 .button.secondary:focus-visible {
-  background: var(--panel-strong);
-  border-color: var(--line);
+  background: var(--accent-soft);
+  border-color: transparent;
 }
 
 .terminal-card,
 .code-block {
   border: 1px solid var(--line);
-  background: #050a09;
-  box-shadow: 8px 8px 0 var(--shadow-cut);
+  border-radius: var(--radius);
+  background: var(--code-bg);
   overflow: hidden;
 }
 
@@ -323,74 +350,51 @@ h3 {
 }
 
 .terminal-bar span {
-  width: 18px;
-  height: 8px;
-  background: var(--danger);
-}
-
-.terminal-bar span:nth-child(2) {
-  background: var(--warning);
-}
-
-.terminal-bar span:nth-child(3) {
-  background: var(--accent);
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--line-strong);
 }
 
 pre {
   margin: 0;
   overflow-x: auto;
   padding: 18px;
-  color: var(--paper);
-  font-size: 0.88rem;
-  line-height: 1.55;
+  color: var(--text);
+  font-size: 0.86rem;
+  line-height: 1.6;
 }
 
+/* The hero's example scan. It is a picture of the product, so it is drawn
+   the way the dashboard draws one: a surface, a score, three rows. */
 .hero-panel {
-  position: relative;
   display: grid;
-  gap: 14px;
-  padding: clamp(16px, 3vw, 24px);
-  border: 2px solid var(--line-strong);
-  background: var(--panel-strong);
-  box-shadow: 12px 12px 0 var(--shadow-cut);
-  clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%);
-}
-
-.hero-panel::before {
-  content: "SCAN SHEET";
-  position: absolute;
-  top: 0;
-  right: 22px;
-  padding: 5px 12px;
-  background: var(--paper);
-  color: var(--bg);
-  font: 900 0.68rem/1 var(--font-mono);
-  letter-spacing: 0.08em;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
 }
 
 .score-card,
 .finding {
-  border: 1px solid var(--line);
-  background: var(--panel);
+  border-radius: 14px;
+  background: var(--panel-strong);
 }
 
 .score-card {
-  padding: 22px;
+  padding: 20px 22px;
 }
 
 .score-card span,
 .finding span,
 .card-kicker {
   color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 900;
-  letter-spacing: 0.11em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-}
-
-.finding span {
-  margin-bottom: 3px;
-  font-size: 0.92rem;
 }
 
 /* One rule per severity the model declares — cmd/sitegen's
@@ -399,16 +403,17 @@ pre {
    hero's example findings rendered with no colour at all for a release. */
 .finding.high span { color: var(--danger); }
 .finding.medium span { color: var(--warning); }
-.finding.low span { color: var(--signal); }
+.finding.low span { color: var(--muted); }
 
 .score-card strong {
   display: block;
-  margin: 6px 0;
-  color: var(--signal);
-  font-family: var(--font-mono);
-  font-size: clamp(2.6rem, 6vw, 4rem);
+  margin: 4px 0 6px;
+  color: var(--text);
+  font-size: clamp(2.8rem, 6vw, 3.8rem);
+  font-weight: 700;
   line-height: 1;
   letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
 }
 
 .score-card small,
@@ -417,31 +422,47 @@ pre {
   font-size: 0.8rem;
 }
 
+.finding small {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+}
+
 .finding-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .finding {
-  padding: 14px 16px;
-  border-left: 6px solid var(--accent);
+  position: relative;
+  padding: 12px 16px 12px 30px;
 }
 
-.finding.high { border-left-color: var(--danger); }
-.finding.medium { border-left-color: var(--warning); }
-.finding.low { border-left-color: var(--signal); }
+.finding::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 18px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.finding.high::before { background: var(--danger); }
+.finding.medium::before { background: var(--warning); }
 
 .finding strong {
   display: block;
-  margin: 4px 0 1px;
-  font-family: var(--font-mono);
-  font-size: 0.92rem;
-  font-weight: 700;
+  margin: 2px 0 1px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
+/* ── facts strip ────────────────────────────────────── */
+
 .trust-strip {
-  border-bottom: 1px solid var(--line);
-  background: var(--bg-alt);
+  border-block: 1px solid var(--line);
 }
 
 .stats-grid {
@@ -450,20 +471,20 @@ pre {
 }
 
 .stats-grid div {
-  padding: 24px clamp(14px, 3vw, 22px);
-  border-left: 1px solid var(--line);
+  padding: 28px clamp(14px, 3vw, 24px);
 }
 
-.stats-grid div:last-child {
-  border-right: 1px solid var(--line);
+.stats-grid div + div {
+  border-left: 1px solid var(--line);
 }
 
 .stats-grid strong {
   display: block;
-  margin-bottom: 6px;
-  color: var(--paper);
-  font-family: var(--font-mono);
-  font-size: 0.95rem;
+  margin-bottom: 4px;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .stats-grid span,
@@ -477,20 +498,25 @@ pre {
 .site-footer p,
 figcaption span {
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.98rem;
 }
 
+/* ── sections ───────────────────────────────────────── */
+
 .section {
-  padding: clamp(64px, 8vw, 96px) 0;
+  padding: clamp(72px, 10vw, 120px) 0;
 }
 
 .section-heading {
-  max-width: 820px;
-  margin-bottom: clamp(34px, 5vw, 58px);
+  max-width: 760px;
+  margin-bottom: clamp(36px, 5vw, 56px);
+}
+
+.section-heading p {
+  font-size: 1.1rem;
 }
 
 .section-heading.narrow {
-  max-width: 780px;
   margin-inline: auto;
   text-align: center;
 }
@@ -498,40 +524,35 @@ figcaption span {
 .feature-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
 }
 
 .feature-card,
 .check-stack article,
 .flow-list li,
 .faq-grid article {
-  border: 1px solid var(--line);
-  background: var(--panel);
-  box-shadow: 7px 7px 0 var(--shadow-cut);
+  border-radius: var(--radius);
+  background: var(--panel-strong);
 }
 
 .feature-card {
-  padding: 22px;
+  padding: 28px;
+}
+
+.card-kicker {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--accent-ink);
 }
 
 .accent-card {
-  background: var(--paper);
-  color: var(--bg);
-  border-color: var(--paper);
-  box-shadow: 7px 7px 0 #cfc3a8;
-}
-
-.accent-card p,
-.accent-card .card-kicker {
-  color: #4d574f;
+  background: var(--accent-soft);
 }
 
 .split-section,
-.install-section {
-  position: relative;
-  border-top: 3px solid var(--accent);
-  border-bottom: 3px solid var(--accent);
-  background: var(--panel-strong);
+.install-section,
+.dark-section {
+  background: var(--bg-alt);
 }
 
 /* Ledger bar: a plain HTML/CSS comparison bar, not a canvas or SVG chart —
@@ -549,8 +570,8 @@ figcaption span {
 .ledger-bar-title {
   margin-bottom: 10px;
   color: var(--muted);
-  font-family: var(--font-mono);
   font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .ledger-bar-group {
@@ -567,21 +588,20 @@ figcaption span {
 
 .ledger-bar-label {
   color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
 }
 
 .ledger-bar-track {
-  height: 14px;
-  border: 1px solid var(--line);
-  background: var(--bg);
-  box-shadow: 3px 3px 0 var(--shadow-cut);
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line);
   overflow: hidden;
 }
 
 .ledger-bar-fill {
   width: 0%;
   height: 100%;
+  border-radius: inherit;
   background: var(--accent);
 }
 
@@ -594,7 +614,7 @@ figcaption span {
 }
 
 .ledger-bar-fill.signal {
-  background: var(--signal);
+  background: var(--accent);
 }
 
 .ledger-bar-fill.muted {
@@ -607,21 +627,21 @@ figcaption span {
 
 @media (prefers-reduced-motion: no-preference) {
   .ledger-bar-fill {
-    transition: width 900ms ease-out;
+    transition: width 900ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 }
 
 .ledger-bar-value {
   color: var(--text);
-  font-family: var(--font-mono);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.95rem;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .split-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
   gap: clamp(28px, 5vw, 64px);
   align-items: start;
 }
@@ -632,22 +652,16 @@ figcaption span {
 }
 
 .check-stack article {
-  padding: 20px;
+  padding: 22px 24px;
+  background: var(--panel);
 }
 
 .check-stack strong {
   display: block;
-  margin-bottom: 8px;
-  color: var(--accent);
-  font-family: var(--font-mono);
-  font-size: 0.92rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.dark-section {
-  background: var(--bg-alt);
-  border-block: 1px solid var(--line);
+  margin-bottom: 6px;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .screens-grid {
@@ -658,20 +672,17 @@ figcaption span {
 
 .screenshot-card {
   margin: 0;
-  border: 1px solid var(--line-strong);
-  background: var(--panel-strong);
-  box-shadow: 9px 9px 0 var(--shadow-cut);
-  cursor: pointer;
-  transition: box-shadow 150ms ease;
-}
-
-.screenshot-card:hover {
-  box-shadow: 6px 6px 0 var(--shadow-cut);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  cursor: zoom-in;
 }
 
 .screenshot-card img {
   width: 100%;
-  max-height: 340px;
+  max-height: 360px;
   object-fit: cover;
   object-position: top left;
   border-bottom: 1px solid var(--line);
@@ -682,34 +693,34 @@ figcaption {
   grid-template-columns: auto 1fr;
   gap: 8px 16px;
   align-items: baseline;
-  padding: 16px 18px;
+  padding: 16px 20px;
 }
 
 figcaption strong {
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--accent);
+  letter-spacing: 0.06em;
+  color: var(--accent-ink);
 }
 
 .flow-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .flow-list li {
-  padding: 22px;
+  padding: 26px;
 }
 
 .flow-step-head {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   margin-bottom: 12px;
 }
 
@@ -717,28 +728,33 @@ figcaption strong {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 42px;
+  width: 28px;
   height: 28px;
   flex-shrink: 0;
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  font-size: 0.74rem;
-  font-weight: 800;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .flow-list li strong {
   margin: 0;
-  font-family: var(--font-mono);
-  font-size: 0.95rem;
-  line-height: 1.2;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.25;
 }
 
 .flow-list code,
-.faq-grid code {
+.faq-grid code,
+.feature-card code {
   color: var(--text);
-  background: var(--panel-strong);
+  background: var(--panel);
   border: 1px solid var(--line);
-  padding: 0.08rem 0.35rem;
+  border-radius: 6px;
+  padding: 0.05rem 0.35rem;
+  font-size: 0.88em;
 }
 
 .install-grid {
@@ -754,23 +770,24 @@ figcaption strong {
 .faq-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
 }
 
 .faq-grid article {
-  padding: 20px;
+  padding: 24px;
 }
 
 .faq-grid h3 {
-  font-family: var(--font-mono);
-  font-size: 0.92rem;
-  font-weight: 700;
+  font-size: 1.02rem;
 }
 
+/* ── footer ─────────────────────────────────────────── */
+
 .site-footer {
-  padding: 40px 0;
+  padding: 40px 0 48px;
   border-top: 1px solid var(--line);
-  background: #050a09;
+  background: var(--bg-alt);
+  font-size: 0.85rem;
 }
 
 .footer-grid {
@@ -784,20 +801,18 @@ figcaption strong {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
   color: var(--muted);
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 .site-footer p {
-  max-width: 300px;
+  max-width: 320px;
   margin-top: 10px;
+  font-size: 0.85rem;
 }
 
 /* ── roadmap teaser: the homepage's compact cut of the docs/roadmap
-   timeline. Same idea, one axis instead of two — a solid line of shipped
+   timeline. Same idea, one axis instead of two — a line of shipped
    releases ending in a hollow "more ahead" marker, because the full
    next/exploring/not-planned breakdown belongs on its own page, not
    competing with the pitch. ─────────────────────────────────────── */
@@ -819,7 +834,8 @@ figcaption strong {
   right: 5px;
   top: 25px;
   height: 2px;
-  background: var(--accent);
+  border-radius: 2px;
+  background: var(--line-strong);
 }
 
 .rt-track li {
@@ -835,17 +851,17 @@ figcaption strong {
   top: -21px;
   width: 11px;
   height: 11px;
+  border-radius: 50%;
   background: var(--accent);
-  box-shadow: 3px 3px 0 var(--shadow-cut);
 }
 
 .rt-version {
   display: block;
   margin-bottom: 3px;
-  color: var(--accent);
-  font-family: var(--font-mono);
-  font-weight: 800;
-  font-size: 0.85rem;
+  color: var(--accent-ink);
+  font-weight: 600;
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .rt-label {
@@ -854,10 +870,9 @@ figcaption strong {
   font-size: 0.92rem;
 }
 
-.rt-more::before {
+.rt-track .rt-more::before {
   background: var(--bg);
   border: 2px solid var(--line-strong);
-  box-shadow: none;
 }
 
 .rt-more .rt-label {
@@ -874,21 +889,22 @@ figcaption strong {
   .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .stats-grid div:nth-child(3) {
+    border-left: 0;
+  }
 }
 
 @media (max-width: 760px) {
-  body::before {
-    width: 6px;
-  }
-
   .container {
-    width: min(100% - 28px, var(--max));
+    width: min(100% - 32px, var(--max));
   }
 
   .nav {
     align-items: flex-start;
     flex-direction: column;
-    padding: 12px 0;
+    gap: 6px;
+    padding: 10px 0;
   }
 
   .nav-links {
@@ -902,11 +918,7 @@ figcaption strong {
   }
 
   h1 {
-    font-size: clamp(2.2rem, 12vw, 3.2rem);
-  }
-
-  .hero-panel {
-    box-shadow: 7px 7px 0 var(--shadow-cut);
+    font-size: clamp(2.3rem, 11vw, 3.2rem);
   }
 
   .feature-grid,
@@ -922,9 +934,14 @@ figcaption strong {
   }
 
   .stats-grid div,
-  .stats-grid div:last-child {
-    border-inline: 0;
+  .stats-grid div + div {
+    border-left: 0;
     border-bottom: 1px solid var(--line);
+    padding-inline: 0;
+  }
+
+  .stats-grid div:last-child {
+    border-bottom: 0;
   }
 
   .rt-track li {
@@ -945,6 +962,7 @@ figcaption strong {
     scroll-behavior: auto;
   }
 }
+
 .dark-section {
   padding-top: clamp(74px, 10vw, 124px);
   padding-bottom: clamp(74px, 10vw, 124px);
@@ -952,48 +970,48 @@ figcaption strong {
 
 .copy-btn {
   position: absolute;
-  top: 10px;
+  top: 50%;
   right: 10px;
   z-index: 2;
+  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 6px 14px;
   border: 1px solid var(--line-strong);
-  background: var(--panel-strong);
+  border-radius: 999px;
+  background: var(--panel);
   color: var(--muted);
-  font: 600 0.75rem/1 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font: 500 0.8rem/1 var(--font-body);
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
 }
 
 .copy-btn:hover {
-  background: var(--panel);
   color: var(--text);
 }
 
 .copy-btn.copied {
-  color: var(--signal);
-  border-color: var(--signal);
+  color: var(--accent-ink);
+  border-color: var(--accent);
 }
 
 .command-box {
   position: relative;
-  margin-top: 8px;
-  border: 1px solid var(--line-strong);
-  background: #050a09;
+  margin-top: 40px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--code-bg);
   overflow: hidden;
 }
 
 .command-box pre {
   margin: 0;
   padding: 16px 18px;
-  padding-right: 90px;
+  padding-right: 96px;
   overflow-x: auto;
-  color: var(--paper);
-  font-size: 0.88rem;
+  color: var(--text);
+  font-size: 0.86rem;
   white-space: nowrap;
 }
 
@@ -1002,9 +1020,9 @@ figcaption strong {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(7, 16, 15, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--overlay);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   align-items: center;
   justify-content: center;
   padding: 40px;
@@ -1028,22 +1046,23 @@ figcaption strong {
   max-width: 100%;
   max-height: 80vh;
   object-fit: contain;
-  border: 1px solid var(--line-strong);
-  box-shadow: 0 0 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
 }
 
 .lightbox-caption {
   margin-top: 16px;
   text-align: center;
-  color: var(--paper-muted);
+  color: var(--muted);
   font-size: 0.9rem;
 }
 
 .lightbox-caption strong {
   display: block;
   margin-bottom: 4px;
-  color: var(--paper);
-  font-size: 1.1rem;
+  color: var(--text);
+  font-size: 1.05rem;
 }
 
 /* ── language switch (header) ─────────────────────────── */
@@ -1051,23 +1070,16 @@ figcaption strong {
 .nav-links a.lang-switch {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 9px;
+  padding: 3px 11px;
   border: 1px solid var(--line-strong);
-  color: var(--accent);
+  border-radius: 999px;
+  color: var(--text);
   white-space: nowrap;
-}
-
-.nav-links a.lang-switch::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  background: var(--accent);
 }
 
 .nav-links a.lang-switch:hover,
 .nav-links a.lang-switch:focus-visible {
-  border-color: var(--accent);
+  border-color: var(--text);
 }
 
 /* ── language suggestion banner ───────────────────────── */
@@ -1079,22 +1091,21 @@ figcaption strong {
   flex-wrap: wrap;
   gap: 8px 16px;
   padding: 10px 20px;
-  border-bottom: 1px solid var(--accent);
-  background: var(--panel-strong);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-alt);
   color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-size: 0.85rem;
 }
 
 .lang-suggest a {
-  color: var(--accent);
-  font-weight: 700;
-  border-bottom: 1px solid currentColor;
+  color: var(--accent-ink);
+  font-weight: 600;
 }
 
 .lang-suggest button {
-  padding: 2px 8px;
+  padding: 3px 10px;
   border: 1px solid var(--line-strong);
+  border-radius: 999px;
   background: transparent;
   color: var(--muted);
   font: inherit;
@@ -1103,8 +1114,7 @@ figcaption strong {
 
 .lang-suggest button:hover,
 .lang-suggest button:focus-visible {
-  color: var(--accent);
-  border-color: var(--accent);
+  color: var(--text);
 }
 
 .measured-note {

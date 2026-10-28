@@ -89,9 +89,30 @@ type Theme struct {
 	Palette Palette
 }
 
-// themes is the registry, in the order both pickers list them. One Dark is
-// first because it is the default.
+// themes is the registry, in the order both pickers list them. Hostveil's own
+// palette is first because it is the default.
 var themes = []Theme{
+	{
+		ID:   "hostveil",
+		Name: "Hostveil",
+		Palette: Palette{
+			// The brand's own dark palette, and the one the website's dark
+			// scheme and the mark are drawn from: graphite neutrals with no
+			// hue of their own, and one green that means the part that has
+			// been made safe. The neutrals are deliberately hueless so the
+			// only colour on a clean screen is Safe.
+			//
+			// Accent is a blue rather than a second green. Structure has to
+			// be told apart from safety at a glance, and a panel header drawn
+			// in Safe would be saying the panel is fine.
+			Ink: "#111113", Ink2: "#0b0b0c", Ink3: "#1c1c1f",
+			Line: "#2c2c2e", Line2: "#3a3a3c",
+			Bone: "#f5f5f7", Slate: "#98989d",
+			Crit: "#ff6b6b", High: "#ff9f43", Med: "#f2c94c", Low: "#7d7d84",
+			Safe: "#3ccf7e", Accent: "#4aa3ff",
+			Manual: "#b89a78", Unavail: "#9d93d6",
+		},
+	},
 	{
 		ID:   "onedark",
 		Name: "One Dark",
