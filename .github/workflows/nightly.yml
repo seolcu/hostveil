@@ -25,6 +25,7 @@ permissions: {}
 jobs:
   vulncheck:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -36,6 +37,7 @@ jobs:
 
   fuzz:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       # One failing target must not cancel the others: they cover unrelated
       # parsers, and a crash in one says nothing about the rest.
@@ -82,6 +84,7 @@ jobs:
   # that published badly, independent of the code in this branch.
   installer:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     container:
       image: debian:13
     steps:

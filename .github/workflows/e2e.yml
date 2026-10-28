@@ -37,8 +37,32 @@ concurrency:
 permissions: {}
 
 jobs:
-  roundtrip:
+  # One static binary for every job below. It is what an operator downloads,
+  # and building it once replaces a setup-go and a build in each job. Named
+  # binary rather than build because ci.yml's required check is called build.
+  binary:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26"
+          check-latest: true
+
+      - name: Build the binary an operator would download
+        run: CGO_ENABLED=0 go build -o hostveil ./cmd/hostveil
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: hostveil
+          path: hostveil
+          retention-days: 1
+
+  roundtrip:
+    needs: binary
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     # Debian, not the runner itself: the test writes /etc/ssh/sshd_config and
     # chmods files under /etc, and doing that to the runner would be both
     # rude and unrepeatable. A container gives a disposable root filesystem.
@@ -64,20 +88,13 @@ jobs:
 
       - uses: actions/checkout@v7
 
-      # The checkout is owned by a different uid than the one running inside
-      # the container, so git refuses it as "dubious ownership" — which
-      # surfaces as `go build` failing with "error obtaining VCS status"
-      # rather than as anything about git.
-      - name: Trust the checkout inside the container
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - uses: actions/setup-go@v7
+      - uses: actions/download-artifact@v7
         with:
-          go-version: "1.26"
-          check-latest: true
+          name: hostveil
+          path: /tmp/hostveil-bin
 
-      - name: Build
-        run: go build -o /usr/local/bin/hostveil ./cmd/hostveil
+      - name: Install the binary
+        run: install -m 0755 /tmp/hostveil-bin/hostveil /usr/local/bin/hostveil
 
       - name: Seed the host with real misconfigurations
         run: |
@@ -399,66 +416,71 @@ jobs:
   # editing /etc and restarting daemons here acceptable. Nothing in it touches
   # the firewall, which would be the runner's own network.
   individual-fixes:
+    needs: binary
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # compose, the Docker daemon (including a restart that fails and
+          # must put the original daemon.json back), systemd and nginx.
+          - group: host
+            scenarios: compose dockerd dockerd-revert systemd nginx
+          # The firewall fixes, on a VM of their own: they enable ufw with a
+          # default-deny inbound policy, which would change what every
+          # scenario after them could reach. The runner talks to GitHub
+          # outbound only, so denying inbound does not cut the job off.
+          - group: ufw
+            scenarios: ufw
+          # k3s's control-plane fixes against a real single-node k3s: the
+          # check is what an unauthenticated request to the API server gets.
+          # Its own VM, because k3s brings its own containerd and iptables.
+          - group: k3s
+            scenarios: k3s
+          # Caddy's admin API and Traefik's dashboard are checked by whether
+          # they still answer, and the OpenClaw edit by what OpenClaw itself
+          # reads back from the file.
+          - group: proxies
+            scenarios: caddy traefik openclaw
+            node: true
+    name: individual-fixes (${{ matrix.group }})
     env:
       HOSTVEIL: /usr/local/bin/hostveil
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-node@v7
+        if: ${{ matrix.node }}
         with:
-          go-version: "1.26"
+          # openclaw's package declares a minimum patch release of node 24
+          # that it raises without notice (24.16, then 24.22.1), and "24"
+          # alone means whichever 24.x the runner image cached.
+          node-version: "24"
           check-latest: true
 
-      - name: Build
-        run: |
-          go build -o /tmp/hostveil ./cmd/hostveil
-          sudo install /tmp/hostveil /usr/local/bin/hostveil
-
-      - name: compose fixes that remove what a service set on purpose
-        run: sudo -E scripts/e2e/individual.sh compose
-
-      - name: Docker daemon fixes restart Docker and roll back
-        # Every scenario runs whatever happened to the one before it, so one
-        # failure does not hide the next.
-        if: ${{ !cancelled() }}
-        run: sudo -E scripts/e2e/individual.sh dockerd
-
-      - name: a Docker restart that fails puts the original daemon.json back
-        if: ${{ !cancelled() }}
-        run: sudo -E scripts/e2e/individual.sh dockerd-revert
-
-      - name: systemd drop-ins take effect and roll back
-        if: ${{ !cancelled() }}
-        run: sudo -E scripts/e2e/individual.sh systemd
-
-      - name: nginx fixes are checked by nginx before the reload
-        if: ${{ !cancelled() }}
-        run: sudo -E scripts/e2e/individual.sh nginx
-
-  # The firewall fixes, on a VM of their own: they enable ufw with a
-  # default-deny inbound policy, which would change what every scenario after
-  # them could reach. The runner talks to GitHub outbound only, so denying
-  # inbound does not cut the job off.
-  individual-fixes-ufw:
-    runs-on: ubuntu-latest
-    env:
-      HOSTVEIL: /usr/local/bin/hostveil
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v7
+      - uses: actions/download-artifact@v7
         with:
-          go-version: "1.26"
-          check-latest: true
+          name: hostveil
+          path: /tmp/hostveil-bin
 
-      - name: Build
+      - name: Install the binary
+        run: sudo install -m 0755 /tmp/hostveil-bin/hostveil /usr/local/bin/hostveil
+
+      # Every scenario runs whatever happened to the one before it, so one
+      # failure does not hide the next. PATH is passed through because sudo's
+      # secure_path would otherwise drop the node setup-node installed.
+      - name: ${{ matrix.scenarios }}
+        env:
+          SCENARIOS: ${{ matrix.scenarios }}
         run: |
-          go build -o /tmp/hostveil ./cmd/hostveil
-          sudo install /tmp/hostveil /usr/local/bin/hostveil
-
-      - name: ufw fixes enable, close and route around Docker, and roll back
-        run: sudo -E scripts/e2e/individual.sh ufw
+          rc=0
+          for s in $SCENARIOS; do
+            echo "::group::$s"
+            sudo -E env "PATH=$PATH" scripts/e2e/individual.sh "$s" || { rc=1; echo "::error::scenario $s failed"; }
+            echo "::endgroup::"
+          done
+          exit "$rc"
 
   # Fedora as a host, not a container. No runner is Fedora, so this boots one
   # under KVM with scripts/e2e/vm.sh, the same VM a developer runs locally.
@@ -467,16 +489,19 @@ jobs:
   # eighty, a timer that read as off after it was enabled, and a fix that
   # enabled a timer which installs nothing.
   individual-fixes-fedora:
+    needs: binary
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       HOSTVEIL_E2E_DISTRO: fedora
+      HOSTVEIL_BIN: /tmp/hostveil-bin/hostveil
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v7
+      - uses: actions/download-artifact@v7
         with:
-          go-version: "1.26"
-          check-latest: true
+          name: hostveil
+          path: /tmp/hostveil-bin
 
       - name: KVM and QEMU
         run: |
@@ -503,77 +528,13 @@ jobs:
         if: ${{ !cancelled() }}
         run: scripts/e2e/vm.sh run fedora-firewall
 
-  # k3s's control-plane fixes, against a real single-node k3s: the check is
-  # what an unauthenticated request to the API server actually gets, not what
-  # a config file says. Its own VM, because k3s brings its own containerd and
-  # iptables rules.
-  individual-fixes-k3s:
-    runs-on: ubuntu-latest
-    env:
-      HOSTVEIL: /usr/local/bin/hostveil
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v7
-        with:
-          go-version: "1.26"
-          check-latest: true
-
-      - name: Build
-        run: |
-          go build -o /tmp/hostveil ./cmd/hostveil
-          sudo install /tmp/hostveil /usr/local/bin/hostveil
-
-      - name: k3s fixes restart the control plane and change what it accepts
-        run: sudo -E scripts/e2e/individual.sh k3s
-
-  # The proxy and agent fixes, against the real programs: Caddy's admin API
-  # and Traefik's dashboard are checked by whether they still answer, and the
-  # OpenClaw edit by what OpenClaw itself reads back from the file.
-  individual-fixes-proxies:
-    runs-on: ubuntu-latest
-    env:
-      HOSTVEIL: /usr/local/bin/hostveil
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v7
-        with:
-          go-version: "1.26"
-          check-latest: true
-
-      - uses: actions/setup-node@v7
-        with:
-          # openclaw's package declares a minimum patch release of node 24
-          # that it raises without notice (24.16, then 24.22.1), and "24"
-          # alone means whichever 24.x the runner image cached. Same reason
-          # setup-go asks for the newest.
-          node-version: "24"
-          check-latest: true
-
-      - name: Build
-        run: |
-          go build -o /tmp/hostveil ./cmd/hostveil
-          sudo install /tmp/hostveil /usr/local/bin/hostveil
-
-      # PATH is passed through because sudo's secure_path would otherwise drop
-      # the node that setup-node installed, and OpenClaw needs it.
-      - name: Caddy's admin API moves to loopback and back
-        run: sudo -E env "PATH=$PATH" scripts/e2e/individual.sh caddy
-
-      - name: Traefik's dashboard stops answering and comes back on rollback
-        if: ${{ !cancelled() }}
-        run: sudo -E env "PATH=$PATH" scripts/e2e/individual.sh traefik
-
-      - name: OpenClaw reads the edited config the way the fix says
-        if: ${{ !cancelled() }}
-        run: sudo -E env "PATH=$PATH" scripts/e2e/individual.sh openclaw
-
   # Proxmox VE cannot be installed on a runner, and the fix does not need it
   # to be: it rewrites an apt source, so apt against the real Proxmox
   # repositories is the test, in both formats the two supported releases use.
   individual-fixes-proxmox:
+    needs: binary
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -590,16 +551,13 @@ jobs:
 
       - uses: actions/checkout@v7
 
-      - name: Trust the checkout inside the container
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - uses: actions/setup-go@v7
+      - uses: actions/download-artifact@v7
         with:
-          go-version: "1.26"
-          check-latest: true
+          name: hostveil
+          path: /tmp/hostveil-bin
 
-      - name: Build
-        run: go build -o /usr/local/bin/hostveil ./cmd/hostveil
+      - name: Install the binary
+        run: install -m 0755 /tmp/hostveil-bin/hostveil /usr/local/bin/hostveil
 
       - name: the rewritten source is one apt can use
         run: scripts/e2e/individual.sh proxmox
@@ -621,20 +579,22 @@ jobs:
   # each image. That is what an operator downloads, so it is what should be
   # tested — and running it under musl is the point on Alpine.
   distros:
+    needs: binary
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        image: [fedora:latest, alpine:latest]
+        # Fedora is covered as a real host by individual-fixes-fedora.
+        image: [alpine:latest]
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/download-artifact@v7
         with:
-          go-version: "1.26"
-          check-latest: true
+          name: hostveil
+          path: /tmp/hostveil-bin
 
-      - name: Build the binary an operator would download
-        run: CGO_ENABLED=0 go build -o /tmp/hostveil ./cmd/hostveil
+      - name: Make the binary executable
+        run: install -m 0755 /tmp/hostveil-bin/hostveil /tmp/hostveil
 
       - name: scan on ${{ matrix.image }}
         run: |
