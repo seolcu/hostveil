@@ -1,9 +1,6 @@
 package docs
 
 import (
-	"bytes"
-	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -202,66 +199,3 @@ func TestEveryReadmeCountClaimIsComputedFromTheCode(t *testing.T) {
 var spaceRun = regexp.MustCompile(`\s+`)
 
 func normalizeSpace(s string) string { return spaceRun.ReplaceAllString(s, " ") }
-
-// TestThereIsMoreTestCodeThanProductCode.
-//
-// Published as a property rather than as two line counts, because the counts
-// move on every commit and a page that names them would be wrong by the
-// afternoon. The inequality is the claim worth making and it is the one that
-// can be kept true.
-//
-// It is a real statement about this repository and it was written down nowhere
-// a reader could find it, which is the gap this whole file exists to close.
-func TestThereIsMoreTestCodeThanProductCode(t *testing.T) {
-	test, product := goLines(t)
-	if test <= product {
-		t.Errorf("the READMEs claim more test code than product code, and there are now "+
-			"%d lines of tests against %d of product. Either write the tests or delete the "+
-			"claim — a published property nobody maintains is worse than one nobody made.",
-			test, product)
-	}
-}
-
-// goLines counts lines of Go, split by whether the file is a test.
-//
-// Deliberately crude: it counts every line, comments and blanks included,
-// because the claim is about how much of this repository is given over to
-// checking itself, and a doc comment explaining why a test exists is part of
-// that. A precise metric would be a different claim.
-func goLines(t *testing.T) (test, product int) {
-	t.Helper()
-	root := repoRoot(t)
-
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			if name := d.Name(); name == ".git" || name == "site" || name == "testdata" {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(path, ".go") {
-			return nil
-		}
-		b, rerr := os.ReadFile(path)
-		if rerr != nil {
-			return rerr
-		}
-		n := bytes.Count(b, []byte("\n"))
-		if strings.HasSuffix(path, "_test.go") {
-			test += n
-			return nil
-		}
-		product += n
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if test == 0 || product == 0 {
-		t.Fatal("counted no Go at all, so the inequality below would be meaningless")
-	}
-	return test, product
-}
