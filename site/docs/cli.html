@@ -140,19 +140,19 @@
                 <tbody>
                   <tr><td><code>--json</code></td><td><code>false</code></td><td>Output the report as JSON.</td></tr>
                   <tr><td><code>--sarif</code></td><td><code>false</code></td><td>Output the report as SARIF 2.1.0, the format CI systems and GitHub code scanning ingest. Mutually exclusive with <code>--json</code>. Per-domain coverage rides in the run's properties, so a degraded scan is visible in the export too.</td></tr>
-                  <tr><td><code>--output FILE</code></td><td>—</td><td>Write the report to a file instead of stdout, in whichever format was chosen. The exit status is unchanged, so a CI gate keeps working.</td></tr>
-                  <tr><td><code>--only LIST</code></td><td>—</td><td>Scan only these domains, comma-separated (e.g. <code>--only ssh,firewall</code>). Domains not scanned show as N/A, never as 100. A partial scan is not saved as the last-scan baseline and reports no delta — otherwise the next full scan would announce every finding from the skipped domains as new.</td></tr>
+                  <tr><td><code>--output FILE</code></td><td>—</td><td>Write the report to a file (default: stdout), in whichever format was chosen. The exit status is unchanged, so a CI gate keeps working.</td></tr>
+                  <tr><td><code>--only LIST</code></td><td>—</td><td>Scan only these domains, comma-separated (e.g. <code>--only ssh,firewall</code>). Domains not scanned show as N/A and are left out of the score. A partial scan is not saved as the last-scan baseline and reports no delta. Otherwise the next full scan would announce every finding from the skipped domains as new.</td></tr>
                   <tr><td><code>--skip LIST</code></td><td>—</td><td>Scan every domain except these, comma-separated. Mutually exclusive with <code>--only</code>; the same partial-scan rules apply.</td></tr>
-                  <tr><td><code>--glyphs NAME</code></td><td>remembered, else <code>plain</code></td><td>Symbol set for status markers: <code>plain</code> or <code>nerd</code>. <code>nerd</code> draws them from a patched Nerd Font — install one and set <code>HOSTVEIL_GLYPHS=nerd</code> once. A terminal cannot be asked what font it has, so this is opt-in and the default changes nothing.</td></tr>
+                  <tr><td><code>--glyphs NAME</code></td><td>remembered, else <code>plain</code></td><td>Symbol set for status markers: <code>plain</code> or <code>nerd</code>. <code>nerd</code> draws them from a patched Nerd Font: install one and set <code>HOSTVEIL_GLYPHS=nerd</code> once. A terminal cannot be asked what font it has, so this is opt-in and the default changes nothing.</td></tr>
                   <tr><td><code>--verbose</code>, <code>-v</code></td><td><code>false</code></td><td>Show descriptions and fix guidance.</td></tr>
                   <tr><td><code>--no-color</code></td><td><code>false</code></td><td>Disable colored output.</td></tr>
                 </tbody>
               </table>
             </div>
-            <p>Exit code: <code>1</code> if any unfixed finding is High, <code>3</code> if a detection domain failed outright, otherwise <code>0</code> — see <a href="#exit-codes">exit codes</a>. Color is emitted only to a terminal and is suppressed when <code>NO_COLOR</code> is set.</p>
+            <p>Exit code: <code>1</code> if any unfixed finding is High, <code>3</code> if a detection domain failed outright, otherwise <code>0</code>. See <a href="#exit-codes">exit codes</a>. Color is emitted only to a terminal and is suppressed when <code>NO_COLOR</code> is set.</p>
 
             <h3 id="json-shape">What <code>--json</code> looks like</h3>
-            <p>Every enumerated field is a lowercase name, not a number:</p>
+            <p>Every enumerated field is a lowercase name:</p>
             <div class="code-block"><pre><code>{
   "findings": [
     {
@@ -168,8 +168,8 @@
     {"source": "cve", "state": "skipped", "reason": "trivy is not installed"}
   ]
 }</code></pre></div>
-            <p><code>severity</code> is one of <code>high</code>, <code>medium</code>, <code>low</code>. <code>remediation</code> is one of <code>auto</code>, <code>review</code>, <code>manual</code>, <code>unavailable</code>. <code>source</code> is the domain name, which is also the finding ID's prefix. <code>state</code> is one of <code>done</code>, <code>degraded</code>, <code>skipped</code>, <code>error</code> — and a domain that is not <code>done</code> is the difference between "nothing there" and "could not look", so read it before treating an empty result as a clean host.</p>
-            <p>A finding also carries <code>fixed</code> and, once something has been applied in the same run, <code>pending</code>. <code>fixed</code> means Hostveil applied a fix for it; <code>pending</code> means the host has not read that fix yet, so the finding is still charged in the score and still counts toward the exit status. A consumer deciding whether a risk is standing should read <code>fixed &amp;&amp; !pending</code> rather than <code>fixed</code> alone. Both are omitted when false, and neither survives a fresh scan &mdash; a scan re-derives everything from the checkers.</p>
+            <p><code>severity</code> is one of <code>high</code>, <code>medium</code>, <code>low</code>. <code>remediation</code> is one of <code>auto</code>, <code>review</code>, <code>manual</code>, <code>unavailable</code>. <code>source</code> is the domain name, which is also the finding ID's prefix. <code>state</code> is one of <code>done</code>, <code>degraded</code>, <code>skipped</code>, <code>error</code>. A domain that is not <code>done</code> is the difference between "nothing there" and "could not look", so read it before treating an empty result as a clean host.</p>
+            <p>A finding also carries <code>fixed</code> and, once something has been applied in the same run, <code>pending</code>. <code>fixed</code> means Hostveil applied a fix for it; <code>pending</code> means the host has not read that fix yet, so the finding is still charged in the score and still counts toward the exit status. A consumer deciding whether a risk is standing should read <code>fixed &amp;&amp; !pending</code>. <code>fixed</code> alone is also true while the change waits to take effect. Both are omitted when false, and neither survives a fresh scan, because a scan re-derives everything from the checkers.</p>
             <div class="callout">
               <span class="callout-label">Changed in 3.11</span>
               <p>These fields used to be integers, so every consumer had to keep its own copy of the ordering. Hostveil still <em>reads</em> the integer form, so a scan snapshot written by an older version is not lost, but it only writes names.</p>
@@ -187,7 +187,7 @@
                 </tbody>
               </table>
             </div>
-            <p>The second number is the 0 to 10 scale GitHub code scanning sorts and filters by. Its buckets start at 9.0 for critical, 7.0 for high and 4.0 for medium, so <strong>a Hostveil High appears in GitHub's <em>critical</em> band, not its high one.</strong></p>
+            <p>The second number is the 0 to 10 scale GitHub code scanning sorts and filters by. Its buckets start at 9.0 for critical, 7.0 for high and 4.0 for medium, so <strong>a Hostveil High appears in GitHub's <em>critical</em> band.</strong></p>
             <p>The mismatched words are deliberate. Hostveil's top level means the problem is reachable right now, from off the host, by someone holding nothing, and the band that means act today in code scanning is critical. Mapping the word to the word would have put those findings in a band people triage next sprint.</p>
 
             <h2 id="fix">fix</h2>
@@ -219,7 +219,7 @@ hostveil fix --all [flags]</code></pre></div>
                 </tbody>
               </table>
             </div>
-            <p>Takes one checkpoint ID (from <code>hostveil history</code>) and restores the backed-up file byte-for-byte. If the file no longer matches what the fix wrote, rollback <strong>declines</strong> and exits <code>1</code> rather than discarding your later edits — see <a href="fixing#declined">when rollback declines</a>.</p>
+            <p>Takes one checkpoint ID (from <code>hostveil history</code>) and restores the backed-up file byte-for-byte. If the file no longer matches what the fix wrote, rollback <strong>declines</strong> and exits <code>1</code>, leaving your later edits in place. See <a href="fixing#declined">when rollback declines</a>.</p>
 
             <h2 id="history">history</h2>
             <p>List applied fixes and their rollback IDs.</p>
@@ -230,29 +230,29 @@ hostveil history --scans</code></pre></div>
               <table>
                 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
                 <tbody>
-                  <tr><td><code>--scans</code></td><td>Show the score of every retained scan instead of the applied-fix log, oldest first, with the change from the one before it. Hostveil keeps the last 30 scans. A scan where no domain could be examined shows <code>N/A</code> rather than a number, and no change is reported against it — a run nobody could score is not a drop to zero.</td></tr>
+                  <tr><td><code>--scans</code></td><td>Show the score of every retained scan, oldest first, with the change from the one before it. Hostveil keeps the last 30 scans. A scan where no domain could be examined shows <code>N/A</code>, and no change is reported against it. A run nobody could score tells you nothing about the host.</td></tr>
                 </tbody>
               </table>
             </div>
 
             <h3 id="serve-ssh">Over SSH</h3>
-            <p>The dashboard listens on the loopback interface, so the address it prints is that address <em>on the server</em> — typing it into the browser on your laptop reaches your laptop. When <code>hostveil serve</code> sees it is running in an SSH session it prints the forwarding command to run on your own machine, using the address your client actually reached:</p>
+            <p>The dashboard listens on the loopback interface, so the address it prints is that address <em>on the server</em>. Typing it into the browser on your laptop reaches your laptop. When <code>hostveil serve</code> sees it is running in an SSH session it prints the forwarding command to run on your own machine, using the address your client actually reached:</p>
             <div class="code-block"><pre><code>ssh -N -L 8787:127.0.0.1:8787 you@10.0.0.2</code></pre></div>
             <p>Leave that open, then open the printed URL on your own machine. Hostveil does not offer to bind the dashboard to a routable address instead: every route on it applies fixes or reads a scan of <code>/etc/shadow</code>, as root, and a forwarded port is the same access with the authentication already done.</p>
 
             <h2 id="fleet">fleet</h2>
-            <p>Scan several hosts over SSH and lay their scores side by side. Each host needs Hostveil installed; nothing is copied, installed or configured on it, and nothing runs as a service anywhere &mdash; one local Hostveil runs <code>hostveil scan --json</code> on each host over SSH you already use, and reads the answers.</p>
+            <p>Scan several hosts over SSH and lay their scores side by side. Each host needs Hostveil installed; nothing is copied, installed or configured on it, and nothing runs as a service anywhere. One local Hostveil runs <code>hostveil scan --json</code> on each host over SSH you already use, and reads the answers.</p>
             <div class="code-block"><pre><code>hostveil fleet web1 db1 admin@nas.lan
 hostveil fleet --sudo --json web1 db1 &gt; fleet.json
 hostveil fleet --tui web1 db1</code></pre></div>
-            <p>Hosts are named exactly as you would name them to <code>ssh</code> &mdash; <code>user@host</code>, or an alias from <code>~/.ssh/config</code> &mdash; and the connection is non-interactive (<code>BatchMode=yes</code>), so a host that would ask for a password or a host-key confirmation is reported as unreachable rather than left waiting. A name beginning with <code>-</code> is refused before anything runs, because <code>ssh</code> would read it as an option.</p>
-            <p><code>fleet</code> is the one command that never re-runs itself under sudo: it uses <em>your</em> SSH keys and agent, which sudo would drop. Without <code>--sudo</code> each remote scan runs as the account you log in as, and the domains that need root say they were not fully checked &mdash; the table shows how many.</p>
+            <p>Hosts are named exactly as you would name them to <code>ssh</code> (<code>user@host</code>, or an alias from <code>~/.ssh/config</code>), and the connection is non-interactive (<code>BatchMode=yes</code>), so a host that would ask for a password or a host-key confirmation is reported as unreachable straight away. A name beginning with <code>-</code> is refused before anything runs, because <code>ssh</code> would read it as an option.</p>
+            <p><code>fleet</code> is the one command that never re-runs itself under sudo: it uses <em>your</em> SSH keys and agent, which sudo would drop. Without <code>--sudo</code> each remote scan runs as the account you log in as, and the domains that need root say they were not fully checked, and the table shows how many.</p>
             <p>The table is worst first: hosts that could not be scanned (with the reason, and never a score), then the rest by score. The exit status follows <code>scan</code>&rsquo;s contract across the whole fleet: <code>1</code> if any host has an unfixed HIGH finding, otherwise <code>3</code> if any host could not be scanned or had a domain fail, otherwise <code>0</code>. Fixes are applied on each host itself, with its own preview and rollback; the fleet view, including <code>--tui</code>, is read-only on purpose.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Flag</th><th>What it does</th></tr></thead>
                 <tbody>
-                  <tr><td><code>--sudo</code></td><td>Run each remote scan as <code>sudo -n hostveil scan</code>, for full coverage. Needs passwordless sudo for Hostveil on that host; a host that asks for a password is reported, not waited on.</td></tr>
+                  <tr><td><code>--sudo</code></td><td>Run each remote scan as <code>sudo -n hostveil scan</code>, for full coverage. Needs passwordless sudo for Hostveil on that host; a host that asks for a password is reported and skipped.</td></tr>
                   <tr><td><code>--json</code></td><td>Print every host&rsquo;s full report as JSON, in the order the hosts were named, with an <code>error</code> in place of the report for a host that could not be scanned.</td></tr>
                   <tr><td><code>--tui</code></td><td>Show the result in the terminal UI: one row per host, and the selected host&rsquo;s standing findings beside it. <code>r</code> rescans.</td></tr>
                   <tr><td><code>--parallel N</code></td><td>How many hosts to scan at once (default 4).</td></tr>
@@ -264,7 +264,7 @@ hostveil fleet --tui web1 db1</code></pre></div>
             </div>
 
             <h2 id="triage">triage</h2>
-            <p>Answer the question a scan cannot: has this host already been broken into? <code>triage</code> collects a read-only evidence bundle &mdash; running processes and sockets first, then what makes something survive a reboot, then the logs, in the order they would disappear &mdash; and says what it shows. It changes nothing on the host; the bundle directory is the only thing it writes.</p>
+            <p>Answer the question a scan cannot: has this host already been broken into? <code>triage</code> collects a read-only evidence bundle (running processes and sockets first, then what makes something survive a reboot, then the logs, in the order they would disappear) and says what it shows. It changes nothing on the host; the bundle directory is the only thing it writes.</p>
             <div class="code-block"><pre><code>hostveil triage [flags]
 hostveil triage verify &lt;bundle-dir&gt;
 hostveil triage analyze &lt;bundle-dir&gt;</code></pre></div>
@@ -277,24 +277,24 @@ hostveil triage analyze &lt;bundle-dir&gt;</code></pre></div>
                 </tbody>
               </table>
             </div>
-            <p>Every conclusion is one of three verdicts. An <strong>attempt</strong> left no sign of success &mdash; the scans and password guesses every public server receives. <strong>Suspicious</strong> is something a normal host also does, for you to confirm. <strong>Compromise</strong> is something a healthy host does not do: a login from an address that had been guessing passwords, a script run from an upload directory, the web server&rsquo;s account starting a shell, a setuid program no package installed. Each names the line of the artifact it rests on. The report also lists the questions the bundle cannot answer because the host never recorded the evidence &mdash; the <a href="checks#forensic">forensic-readiness</a> findings, put as questions.</p>
+            <p>Every conclusion is one of three verdicts. An <strong>attempt</strong> left no sign of success, like the scans and password guesses every public server receives. <strong>Suspicious</strong> is something a normal host also does, for you to confirm. <strong>Compromise</strong> is something a healthy host does not do: a login from an address that had been guessing passwords, a script run from an upload directory, the web server&rsquo;s account starting a shell, a setuid program no package installed. Each names the line of the artifact it rests on. The report also lists the questions the bundle cannot answer because the host never recorded the evidence. These are the <a href="checks#forensic">forensic-readiness</a> findings, put as questions.</p>
             <p>Every artifact is hashed as it is written and listed in <code>manifest.json</code> with the command or path it came from. The last line printed is the manifest&rsquo;s own SHA-256; write it down somewhere the host cannot reach. <code>triage verify</code> re-hashes a bundle and names any file changed, missing or added. <code>triage analyze</code> re-derives the report from a bundle without the host. Password hashes are never copied: <code>/etc/shadow</code> is reduced to which accounts have a password, none, or a locked one. Exit status is 3 when there is a sign of compromise.</p>
 
             <h2 id="diagnostics">diagnostics</h2>
-            <p>Collect the pieces a bug report needs into one file. It never touches the network — there is no send step, only local collection you attach to an issue by hand.</p>
+            <p>Collect the pieces a bug report needs into one file. It never touches the network. There is no send step, only local collection you attach to an issue by hand.</p>
             <div class="code-block"><pre><code>hostveil diagnostics [flags]</code></pre></div>
-            <p>The report carries Hostveil's version, the host's distro and platform, any recorded crash traces, and the last saved scan's score, domain states, and finding IDs and severities — never a finding's description, remediation text, or evidence, which can quote the very configuration an operator is asking about.</p>
+            <p>The report carries Hostveil's version, the host's distro and platform, any recorded crash traces, and the last saved scan's score, domain states, and finding IDs and severities. It never carries a finding's description, remediation text, or evidence, which can quote the very configuration an operator is asking about.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
                 <tbody>
                   <tr><td><code>--trace FILE</code></td><td><code>""</code></td><td>Attach a command trace produced with <code>HOSTVEIL_DEBUG=1</code>.</td></tr>
                   <tr><td><code>--unredacted</code></td><td><code>false</code></td><td>Skip redacting IP addresses and home-directory usernames. Local use only.</td></tr>
-                  <tr><td><code>--output FILE</code></td><td><code>""</code></td><td>Write the report to a file instead of printing it.</td></tr>
+                  <tr><td><code>--output FILE</code></td><td><code>""</code></td><td>Write the report to a file.</td></tr>
                 </tbody>
               </table>
             </div>
-            <p>Printing the report also names where to paste it: <code>https://github.com/seolcu/hostveil/issues/new</code>. Nothing here reaches the network on its own — see <a href="environment">Environment variables</a> for what does.</p>
+            <p>Printing the report also names where to paste it: <code>https://github.com/seolcu/hostveil/issues/new</code>. Nothing here reaches the network on its own. See <a href="environment">Environment variables</a> for what does.</p>
 
             <h2 id="explain">explain</h2>
             <p>Explain a finding in plain language.</p>
@@ -318,16 +318,16 @@ hostveil triage analyze &lt;bundle-dir&gt;</code></pre></div>
                 <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
                 <tbody>
                   <tr><td><code>--format FMT</code></td><td>&mdash;</td><td>Required. One of <code>json</code>, <code>sarif</code>, <code>markdown</code>, <code>docx</code>, <code>pdf</code>.</td></tr>
-                  <tr><td><code>--output FILE</code></td><td>&mdash;</td><td>Write to FILE instead of stdout. Required for <code>docx</code> and <code>pdf</code> &mdash; a terminal has no sensible way to show a binary format.</td></tr>
-                  <tr><td><code>--only LIST</code></td><td>&mdash;</td><td>Scan only these domains, comma-separated. Domains not scanned show as N/A, never as 100.</td></tr>
+                  <tr><td><code>--output FILE</code></td><td>&mdash;</td><td>Write to FILE (default: stdout). Required for <code>docx</code> and <code>pdf</code>, because a terminal has no sensible way to show a binary format.</td></tr>
+                  <tr><td><code>--only LIST</code></td><td>&mdash;</td><td>Scan only these domains, comma-separated. Domains not scanned show as N/A and are left out of the score.</td></tr>
                   <tr><td><code>--skip LIST</code></td><td>&mdash;</td><td>Scan every domain except these, comma-separated. Mutually exclusive with <code>--only</code>.</td></tr>
                 </tbody>
               </table>
             </div>
-            <p>Exit code is the same gate as <code>scan</code> &mdash; see <a href="#exit-codes">exit codes</a>.</p>
+            <p>Exit code is the same gate as <code>scan</code>. See <a href="#exit-codes">exit codes</a>.</p>
 
             <h2 id="advise">advise</h2>
-            <p>Scan the host and list every finding with a registered fix, alongside what applying it would get you and cost you. With <code>--ai</code>, add a verdict &mdash; Apply, Skip, or Depends &mdash; weighed against the host description saved with <a href="#ai-context">ai-context</a>, if one is set. See <a href="ai">AI explanations</a>.</p>
+            <p>Scan the host and list every finding with a registered fix, alongside what applying it would get you and cost you. With <code>--ai</code>, add a verdict (Apply, Skip, or Depends) weighed against the host description saved with <a href="#ai-context">ai-context</a>, if one is set. See <a href="ai">AI explanations</a>.</p>
             <div class="code-block"><pre><code>hostveil advise [--ai] [flags]</code></pre></div>
             <div class="docs-table-wrap">
               <table>
@@ -342,7 +342,7 @@ hostveil triage analyze &lt;bundle-dir&gt;</code></pre></div>
             <p>The deterministic listing always prints, with no AI required. <code>--ai</code> adds the situational verdict beneath it, or says why it could not.</p>
 
             <h2 id="ai-context">ai-context</h2>
-            <p>Show, set, or clear the saved one-line description of this host &mdash; "a personal media server, want fast security patches more than stability" &mdash; that <code>explain --ai</code> and <code>advise --ai</code> use to judge a fix for this host specifically rather than in the abstract. Remembered in the same state directory as everything else Hostveil keeps, until changed or cleared.</p>
+            <p>Show, set, or clear the saved one-line description of this host ("a personal media server, want fast security patches more than stability") that <code>explain --ai</code> and <code>advise --ai</code> use to judge a fix for this host specifically. Remembered in the same state directory as everything else Hostveil keeps, until changed or cleared.</p>
             <div class="code-block"><pre><code>hostveil ai-context               # show the current description
 hostveil ai-context "TEXT"        # set it
 hostveil ai-context --clear       # remove it</code></pre></div>
@@ -350,7 +350,7 @@ hostveil ai-context --clear       # remove it</code></pre></div>
               <table>
                 <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
                 <tbody>
-                  <tr><td><code>--clear</code></td><td><code>false</code></td><td>Remove the saved description instead of showing it.</td></tr>
+                  <tr><td><code>--clear</code></td><td><code>false</code></td><td>Remove the saved description.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -368,8 +368,8 @@ hostveil ai-context --clear       # remove it</code></pre></div>
                 </tbody>
               </table>
             </div>
-            <p>The command prints a URL containing a one-off access token; open that URL rather than typing the bare address. Every route requires the token, because loopback does not separate the operator from other local accounts and the dashboard runs as root.</p>
-            <p>The dashboard only answers requests addressed to localhost, so <code>--addr</code> cannot publish it to the network — a non-loopback address binds, then refuses anything that reaches this machine by IP or hostname, and Hostveil says so. A forwarded port keeps working, because the browser says localhost either way. Use <code>ssh -L 8787:127.0.0.1:8787 you@server</code> to reach it remotely.</p>
+            <p>The command prints a URL containing a one-off access token; open that URL. The bare address without the token is refused. Every route requires the token, because loopback does not separate the operator from other local accounts and the dashboard runs as root.</p>
+            <p>The dashboard only answers requests addressed to localhost, so <code>--addr</code> cannot publish it to the network. A non-loopback address binds, then refuses anything that reaches this machine by IP or hostname, and Hostveil says so. A forwarded port keeps working, because the browser says localhost either way. Use <code>ssh -L 8787:127.0.0.1:8787 you@server</code> to reach it remotely.</p>
 
             <h2 id="tui">tui</h2>
             <p>Open the interactive terminal UI (also the default with no command on a terminal).</p>
@@ -380,11 +380,11 @@ hostveil ai-context --clear       # remove it</code></pre></div>
                 <tbody>
                   <tr><td><code>--theme NAME</code></td><td>remembered, else <code>hostveil</code></td><td>Color theme: <code>hostveil</code>, <code>onedark</code>, <code>gruvbox</code>, <code>nord</code>, <code>catppuccin</code>, <code>tokyonight</code>.</td></tr>
                   <tr><td><code>--layout NAME</code></td><td>remembered, else <code>console</code></td><td>Screen arrangement: <code>console</code>, <code>split</code>, <code>triage</code>, <code>railverdict</code>, <code>lanes</code>, <code>inline</code>. Press <code>l</code> inside the TUI to change it and have the choice remembered. Precedence is this flag &gt; <code>HOSTVEIL_LAYOUT</code> &gt; the remembered choice &gt; <code>console</code>.</td></tr>
-                  <tr><td><code>--glyphs NAME</code></td><td>remembered, else <code>plain</code></td><td>Symbol set for status markers: <code>plain</code> or <code>nerd</code>. <code>nerd</code> draws them from a patched Nerd Font — install one and set <code>HOSTVEIL_GLYPHS=nerd</code> once. A terminal cannot be asked what font it has, so this is opt-in and the default changes nothing.</td></tr>
+                  <tr><td><code>--glyphs NAME</code></td><td>remembered, else <code>plain</code></td><td>Symbol set for status markers: <code>plain</code> or <code>nerd</code>. <code>nerd</code> draws them from a patched Nerd Font: install one and set <code>HOSTVEIL_GLYPHS=nerd</code> once. A terminal cannot be asked what font it has, so this is opt-in and the default changes nothing.</td></tr>
                 </tbody>
               </table>
             </div>
-            <p>Requires an interactive terminal; otherwise it tells you to use <code>hostveil scan</code>. Press <code>t</code> inside the TUI to pick a theme and have it remembered — see <a href="interfaces#themes">Interfaces</a>.</p>
+            <p>Requires an interactive terminal; otherwise it tells you to use <code>hostveil scan</code>. Press <code>t</code> inside the TUI to pick a theme and have it remembered. See <a href="interfaces#themes">Interfaces</a>.</p>
 
             <h2 id="exit-codes">Exit codes</h2>
             <div class="docs-table-wrap">
@@ -393,8 +393,8 @@ hostveil ai-context --clear       # remove it</code></pre></div>
                 <tbody>
                   <tr><td><code>0</code></td><td>Success (and, for <code>scan</code>, no unfixed High findings).</td></tr>
                   <tr><td><code>1</code></td><td><code>scan</code> found unfixed High findings, or a command failed.</td></tr>
-                  <tr><td><code>2</code></td><td>Usage error — unknown command or missing required argument.</td></tr>
-                  <tr><td><code>3</code></td><td><code>scan</code> had a detection domain fail outright, so it covered less of the host than it should have. A domain skipped for a missing dependency, or degraded to partial coverage, does <em>not</em> produce this — both are reported in the output instead.</td></tr>
+                  <tr><td><code>2</code></td><td>Usage error: unknown command or missing required argument.</td></tr>
+                  <tr><td><code>3</code></td><td><code>scan</code> had a detection domain fail outright, so it covered less of the host than it should have. A domain skipped for a missing dependency, or degraded to partial coverage, does <em>not</em> produce this. Both are reported in the output.</td></tr>
                 </tbody>
               </table>
             </div>

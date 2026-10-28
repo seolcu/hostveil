@@ -5,7 +5,7 @@
             <h2>TUI: the default</h2>
             <p>Running <code>hostveil</code> with no arguments on an interactive terminal opens the keyboard-driven TUI. You can also launch it explicitly:</p>
             <div class="code-block"><pre><code>hostveil        # or: hostveil tui</code></pre></div>
-            <p>It shows the score and findings with severity and domain <strong>filters</strong>, <strong>multi-select</strong> for batch fixing, plain-language detail, and a fix preview before anything is applied. While a scan runs it names the domains still working, so a slow CVE scan on a host with many images reads as progress rather than as a hang.</p>
+            <p>It shows the score and findings with severity and domain <strong>filters</strong>, <strong>multi-select</strong> for batch fixing, plain-language detail, and a fix preview before anything is applied. While a scan runs it names the domains still working, so a slow CVE scan on a host with many images reads as progress.</p>
             <figure>
               <img src="../assets/tui.png" alt="Hostveil terminal UI showing findings with severity filters and multi-select" width="1194" height="609" loading="lazy">
               <figcaption><strong>TUI</strong><span>Keyboard-driven findings with severity and domain filters, multi-select, plain-language detail, and fix preview.</span></figcaption>
@@ -43,7 +43,7 @@
 
             <h3 id="row">What a row says</h3>
             <p>Each row carries the severity, the kind of fix, the finding id, the title, and the service it is about. The kind column is the one to scan down: <code>AUTO</code> in green means Hostveil can apply it unattended, <code>REVIEW</code> in the accent means it will ask you to choose, and <code>MANUAL</code> or <code>N/A</code> in grey mean there is no button to press.</p>
-            <p>A fifth value appears only after you have applied something: <code>PEND</code>, in the accent. The fix is written and the host has not read it yet &mdash; a Compose file waiting on a recreate, a systemd drop-in waiting on a reload. The row stays on the list because <a href="scoring#limits">the score still charges it</a>, and it stops being markable, because there is nothing left to apply. The sentence under the finding names the command that puts it in force.</p>
+            <p>A fifth value appears only after you have applied something: <code>PEND</code>, in the accent. The fix is written and the host has not read it yet: a Compose file waiting on a recreate, or a systemd drop-in waiting on a reload. The row stays on the list because <a href="scoring#limits">the score still charges it</a>, and it stops being markable, because there is nothing left to apply. The sentence under the finding names the command that puts it in force.</p>
 
             <h2>Web: the localhost dashboard</h2>
             <p>Serve the same scan over HTTP when a browser is better for review:</p>
@@ -62,7 +62,7 @@
 
             <h3 id="delta">Since the last scan</h3>
             <p>Hostveil saves each scan, so the next one can say what moved. When anything has, both UIs show a one-line summary above the findings. <em>✓ 12 resolved</em>, <em>+ 2 new</em>, <em>~ 1 changed</em>, which is the fastest way to answer "did that round of fixes actually help?". Nothing is shown on a first scan, because there is nothing to compare against.</p>
-            <p>Just under it, either UI names any domain that could not be fully checked. A score built from a partial scan keeps saying so rather than flashing the notice once. See <a href="checks#coverage">when a domain can't be fully checked</a>.</p>
+            <p>Just under it, either UI names any domain that could not be fully checked. A score built from a partial scan keeps saying so for as long as it is on screen. See <a href="checks#coverage">when a domain can't be fully checked</a>.</p>
 
             <h2>CLI: scriptable</h2>
             <p>The <code>scan</code>, <code>fix</code>, <code>rollback</code>, and <code>history</code> subcommands work non-interactively. <code>scan --json</code> emits machine-readable output, and <code>scan</code> exits non-zero when any unfixed finding is High, so it slots into CI or a cron job:</p>
@@ -83,7 +83,7 @@ HOSTVEIL_THEME=tokyonight hostveil</code></pre></div>
             <div class="code-block"><pre><code>hostveil tui --glyphs nerd
 hostveil scan --glyphs nerd
 HOSTVEIL_GLYPHS=nerd hostveil</code></pre></div>
-            <p>It is opt-in rather than detected, because a terminal cannot be asked what font it is using and a glyph the font lacks is drawn in the same single cell a present one would be, so guessing wrong is a row of tofu with nothing to notice it. Any Nerd Font build works, Mono or not: the symbols come from the Font Awesome block, which every patched font carries and which stays one cell wide in every variant. Like <code>--theme</code>, the choice is remembered for the next run, and <code>--glyphs</code> and <code>HOSTVEIL_GLYPHS</code> both override it.</p>
+            <p>It is opt-in, because a terminal cannot be asked what font it is using and a glyph the font lacks is drawn in the same single cell a present one would be, so guessing wrong is a row of tofu with nothing to notice it. Any Nerd Font build works, Mono or not: the symbols come from the Font Awesome block, which every patched font carries and which stays one cell wide in every variant. Like <code>--theme</code>, the choice is remembered for the next run, and <code>--glyphs</code> and <code>HOSTVEIL_GLYPHS</code> both override it.</p>
 
             <div class="callout">
               <span class="callout-label">One engine, three faces</span>

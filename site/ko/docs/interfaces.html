@@ -131,7 +131,7 @@
             <h2>TUI: 기본값</h2>
             <p>인수 없이 대화형 터미널에서 <code>hostveil</code>을 실행하면 키보드 기반 TUI가 열립니다. 명시적으로 실행할 수도 있습니다.</p>
             <div class="code-block"><pre><code>hostveil        # or: hostveil tui</code></pre></div>
-            <p>점수와 발견 항목을 심각도·영역 <strong>필터</strong>, 일괄 수정을 위한 <strong>다중 선택</strong>, 쉬운 말 상세 설명, 그리고 적용 전 수정 미리보기와 함께 보여 줍니다. 스캔이 도는 동안에는 아직 작업 중인 영역의 이름을 보여 주므로, 이미지가 많은 호스트에서 CVE 스캔이 오래 걸려도 멈춘 것이 아니라 진행 중임을 알 수 있습니다.</p>
+            <p>점수와 발견 항목을 심각도·영역 <strong>필터</strong>, 일괄 수정을 위한 <strong>다중 선택</strong>, 쉬운 말 상세 설명, 그리고 적용 전 수정 미리보기와 함께 보여 줍니다. 스캔이 도는 동안에는 아직 작업 중인 영역의 이름을 보여 주므로, 이미지가 많은 호스트에서 CVE 스캔이 오래 걸려도 진행 중임을 알 수 있습니다.</p>
             <figure>
               <img src="../../assets/tui.png" alt="Hostveil 터미널 UI. 심각도 필터와 다중 선택이 있는 발견 항목" width="1194" height="609" loading="lazy">
               <figcaption><strong>TUI</strong><span>심각도·영역 필터, 다중 선택, 쉬운 말 상세 설명, 수정 미리보기를 갖춘 키보드 기반 발견 항목.</span></figcaption>
@@ -169,7 +169,7 @@
 
             <h3 id="row">한 줄이 말하는 것</h3>
             <p>각 행은 심각도, 수정 종류, 발견 항목 id, 제목, 그리고 대상 서비스를 담습니다. 눈으로 훑을 열은 수정 종류입니다. 초록색 <code>AUTO</code>는 Hostveil이 알아서 적용할 수 있다는 뜻, 강조색 <code>REVIEW</code>는 선택을 물어본다는 뜻, 회색 <code>MANUAL</code>과 <code>N/A</code>는 누를 버튼이 없다는 뜻입니다.</p>
-            <p>다섯 번째 값은 무언가를 적용한 뒤에만 나타납니다. 강조색 <code>PEND</code>입니다. 수정은 기록됐지만 호스트가 아직 읽지 않았다는 뜻입니다 &mdash; 다시 만들기를 기다리는 Compose 파일, 다시 읽기를 기다리는 systemd 드롭인처럼요. <a href="scoring#limits">점수가 여전히 감점하고 있기 때문에</a> 행은 목록에 남고, 더 적용할 것이 없으므로 표시 대상에서는 빠집니다. 무엇을 실행해야 반영되는지는 항목 아래 문장이 알려 줍니다.</p>
+            <p>다섯 번째 값은 무언가를 적용한 뒤에만 나타납니다. 강조색 <code>PEND</code>입니다. 수정은 기록됐지만 호스트가 아직 읽지 않았다는 뜻입니다. 다시 만들기를 기다리는 Compose 파일, 다시 읽기를 기다리는 systemd 드롭인이 그런 경우입니다. <a href="scoring#limits">점수가 여전히 감점하고 있기 때문에</a> 행은 목록에 남고, 더 적용할 것이 없으므로 표시 대상에서는 빠집니다. 무엇을 실행해야 반영되는지는 항목 아래 문장이 알려 줍니다.</p>
 
             <h2>웹: localhost 대시보드</h2>
             <p>브라우저로 검토하는 편이 나을 때 동일한 스캔을 HTTP로 제공합니다.</p>
@@ -188,7 +188,7 @@
 
             <h3 id="delta">지난 스캔 이후 달라진 것</h3>
             <p>Hostveil은 스캔을 저장해 두기 때문에 다음 스캔이 무엇이 달라졌는지 말해 줄 수 있습니다. 변화가 있으면 두 UI 모두 발견 목록 위에 한 줄 요약을 보여 줍니다. <em>✓ 12 resolved</em>, <em>+ 2 new</em>, <em>~ 1 changed</em>. "방금 한 수정이 실제로 도움이 됐나?"에 가장 빠르게 답하는 방법입니다. 첫 스캔에서는 비교할 대상이 없으므로 아무것도 표시되지 않습니다.</p>
-            <p>그 바로 아래에는 온전히 점검하지 못한 영역의 이름이 나옵니다. 부분적인 스캔으로 만든 점수는 그 사실을 한 번 알리고 사라지는 대신 계속 말해 줍니다. <a href="checks#coverage">영역을 온전히 점검하지 못했을 때</a>를 참고하세요.</p>
+            <p>그 바로 아래에는 온전히 점검하지 못한 영역의 이름이 나옵니다. 부분적인 스캔으로 만든 점수는 화면에 있는 동안 그 사실을 계속 알려 줍니다. <a href="checks#coverage">영역을 온전히 점검하지 못했을 때</a>를 참고하세요.</p>
 
             <h2>CLI: 스크립트 가능</h2>
             <p><code>scan</code>, <code>fix</code>, <code>rollback</code>, <code>history</code> 하위 명령은 비대화형으로 동작합니다. <code>scan --json</code>은 기계가 읽을 수 있는 출력을 내보내며, <code>scan</code>은 수정되지 않은 발견 항목 중 HIGH가 하나라도 있으면 0이 아닌 값으로 종료합니다. 그래서 CI나 cron 작업에 그대로 들어갑니다.</p>
@@ -209,7 +209,7 @@ HOSTVEIL_THEME=tokyonight hostveil</code></pre></div>
             <div class="code-block"><pre><code>hostveil tui --glyphs nerd
 hostveil scan --glyphs nerd
 HOSTVEIL_GLYPHS=nerd hostveil</code></pre></div>
-            <p>자동 감지가 아니라 사용자가 켜는 방식입니다. 터미널에 어떤 글꼴을 쓰는지 물어볼 방법이 없고, 글꼴에 없는 글리프도 있는 글리프와 똑같이 한 칸에 그려지기 때문에, 잘못 짐작하면 아무도 알아채지 못한 채 두부 글자만 늘어섭니다. Nerd Font라면 Mono든 아니든 모두 동작합니다. 기호는 Font Awesome 블록에서 가져오는데, 모든 패치 글꼴이 이 블록을 담고 있고 어떤 변형에서도 한 칸 너비를 유지합니다. <code>--theme</code>과 마찬가지로 선택은 다음 실행에도 기억되며, <code>--glyphs</code>와 <code>HOSTVEIL_GLYPHS</code>가 그보다 우선합니다.</p>
+            <p>사용자가 직접 켜야 합니다. 터미널에 어떤 글꼴을 쓰는지 물어볼 방법이 없고, 글꼴에 없는 글리프도 있는 글리프와 똑같이 한 칸에 그려지기 때문에, 잘못 짐작하면 아무도 알아채지 못한 채 두부 글자만 늘어섭니다. Nerd Font라면 Mono든 아니든 모두 동작합니다. 기호는 Font Awesome 블록에서 가져오는데, 모든 패치 글꼴이 이 블록을 담고 있고 어떤 변형에서도 한 칸 너비를 유지합니다. <code>--theme</code>과 마찬가지로 선택은 다음 실행에도 기억되며, <code>--glyphs</code>와 <code>HOSTVEIL_GLYPHS</code>가 그보다 우선합니다.</p>
 
             <div class="callout">
               <span class="callout-label">엔진 하나, 얼굴 셋</span>
