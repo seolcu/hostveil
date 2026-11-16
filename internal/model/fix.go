@@ -31,9 +31,9 @@ type ActionPreview struct {
 	// TakesEffectOn is fix.Action.TakesEffectOn: what has to happen before
 	// the change reaches the host. Empty means it is in force once written.
 	TakesEffectOn string `json:"takes_effect_on,omitempty"`
-	Type    string `json:"type"` // "edit" | "exec"
-	Path    string `json:"path,omitempty"`
-	Diff    string `json:"diff,omitempty"`
+	Type          string `json:"type"` // "edit" | "exec"
+	Path          string `json:"path,omitempty"`
+	Diff          string `json:"diff,omitempty"`
 	// Commands is what an exec action runs, or for an edit, what runs after
 	// the write to put it in force (fix.Action.AfterWrite).
 	Commands [][]string `json:"commands,omitempty"`

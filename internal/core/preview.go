@@ -43,7 +43,7 @@ func (e *Engine) PreviewFix(f model.Finding) (model.FixPreview, error) {
 	preview := model.FixPreview{FindingID: f.ID, Label: fx.Label, Kind: resolvedKind(f.Remediation, fx)}
 	for i, a := range fx.Actions {
 		ap := model.ActionPreview{Index: i, Label: a.Label, Benefit: a.Benefit, Warning: a.Warning,
-CheckFirst: a.CheckFirst, TakesEffectOn: a.TakesEffectOn}
+			CheckFirst: a.CheckFirst, TakesEffectOn: a.TakesEffectOn}
 		switch a.Kind {
 		case fix.ActionEdit:
 			ap.Type = "edit"
