@@ -32,7 +32,7 @@ func New() *Checker { return &Checker{RedisConfigPath: "/etc/redis/redis.conf"} 
 func (*Checker) Source() model.Source { return model.SourcePorts }
 
 // Available requires the `ss` tool (iproute2); without it the domain is
-// skipped cleanly rather than guessed at.
+// skipped cleanly.
 func (*Checker) Available(_ context.Context, env platform.Env) (bool, string) {
 	if !platform.Has(env.Runner, "ss") {
 		return false, "ss (iproute2) is not installed"
@@ -193,7 +193,7 @@ func exposedFinding(l platform.Listener, shield firewall.Shield, id, title, desc
 	opts := []model.FindingOption{
 		// Attribute the finding to this specific listener so two different
 		// exposed datastores (e.g. Redis and Postgres) get distinct Keys and
-		// are each counted, rather than deduplicated to one by (source, id).
+		// are each counted.
 		model.WithService(listenerSubject(l)),
 		model.WithDescription(desc),
 		model.WithHowToFix(fmt.Sprintf("Bind %s to 127.0.0.1 instead of %s, or restrict access with a host firewall / VPN. If it must be remote, put it behind an authenticated reverse proxy.", portLabel(l), l.Addr)),

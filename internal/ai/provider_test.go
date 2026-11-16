@@ -45,8 +45,7 @@ func TestFromEnvSelectsByName(t *testing.T) {
 }
 
 // The Ollama preset reaches Ollama's OpenAI-compatible routes under the host
-// it was given, and its errors name the Ollama variables rather than the
-// HOSTVEIL_OPENAI_* ones the operator never set.
+// it was given, and its errors name the Ollama variables.
 func TestOllamaUsesTheV1RoutesAndNamesItsOwnVariables(t *testing.T) {
 	var paths []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

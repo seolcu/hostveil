@@ -171,7 +171,7 @@ func TestAuditd(t *testing.T) {
 			t.Error("flagged a host with no web server")
 		}
 	})
-	t.Run("rules unreadable is partial, not clean", func(t *testing.T) {
+	t.Run("rules unreadable is partial", func(t *testing.T) {
 		h := newHost(t)
 		h.write("/usr/sbin/nginx", "")
 		h.write("/etc/passwd", "www-data:x:33:33::/var/www:/usr/sbin/nologin\n")

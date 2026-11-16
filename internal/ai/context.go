@@ -10,12 +10,11 @@ import (
 // contextFile holds the operator's own description of this host: "a
 // personal media server, want fast security patches more than stability",
 // so an AI judgment can weigh a fix's Benefit/Warning against the situation
-// it is being asked about, rather than in the abstract.
+// it is being asked about.
 const contextFile = "ai-context.txt"
 
 // maxContextBytes bounds the file: this is meant to be a sentence or two
-// that goes straight into every prompt from here on, not an essay someone
-// pastes in once and never rereads.
+// that goes straight into every prompt from here on.
 const maxContextBytes = 2000
 
 // LoadContext reads the saved host description, or "" if none has been set

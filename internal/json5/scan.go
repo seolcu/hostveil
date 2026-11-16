@@ -9,7 +9,7 @@ type span struct{ start, end int }
 
 // locate walks the document and records where each addressable value sits.
 //
-// It is a locator, not a parser: the decoded values come from Decode, and
+// It is a locator: the decoded values come from Decode, and
 // this pass exists only to answer "which bytes are the value at
 // gateway.controlUi.allowInsecureAuth" so an edit can replace exactly those
 // and leave every comment, blank line and trailing comma alone.
@@ -18,7 +18,7 @@ type span struct{ start, end int }
 // them, so a path that produced a finding is a path this can address. A key
 // containing a literal '.' makes its own path ambiguous (two different keys
 // can spell the same dotted path) and every such path is reported so Set
-// refuses it rather than editing whichever one it happened to record last.
+// refuses it.
 func locate(src []byte) (map[string]span, map[string]bool, error) {
 	s := &scanner{src: src, spans: map[string]span{}, amb: map[string]bool{}}
 	s.ws()

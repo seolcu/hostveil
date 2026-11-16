@@ -51,7 +51,7 @@ import (
 // another, and the row would be over-full or ragged depending on the glyph.
 // TestTextwidthAgreesWithLipgloss in internal/ui/tui pins that.
 //
-// Which is why RUNEWIDTH_EASTASIAN is honoured here rather than ignored.
+// Which is why RUNEWIDTH_EASTASIAN is honoured here.
 // Neutralizing the *locale* is the goal above; the same binary must not
 // lay out differently in Seoul and Berlin. That variable is a different
 // thing: it is the operator saying their terminal renders ambiguous
@@ -95,7 +95,7 @@ func Of(s string) int { return narrow.StringWidth(s) }
 //
 // The ellipsis costs a column of its own, so it is only used when there is
 // room for it to be worth one; below that the text is simply cut. A max of
-// zero or less yields the empty string rather than a bare ellipsis, since
+// zero or less yields the empty string, since
 // a caller with no room has nothing to say.
 func Truncate(s string, max int) string {
 	if max <= 0 {
@@ -126,7 +126,7 @@ const MinWrap = 8
 // have already reduced by the indent they want, which is how both callers
 // used it before this moved here.
 //
-// The floor is MinWrap and is applied here rather than passed in. It used to
+// The floor is MinWrap and is applied here. It used to
 // be a parameter, and both callers passed the same 8 from a constant of their
 // own with near-identical comments justifying it: an extraction that moved
 // the function and left the number behind twice. A parameter no caller varies

@@ -403,7 +403,7 @@ const (
 
 // auditK0s reads the admin kubeconfig k0s writes and the API server arguments
 // in its configuration. k0s runs with built-in defaults when it has no
-// configuration file, which is a complete answer, not a gap.
+// configuration file, which is a complete answer.
 func (c *Checker) auditK0s(_ context.Context, _ platform.Env, cov *check.Coverage) []model.Finding {
 	var out []model.Finding
 	cov.Covered(1)
@@ -450,8 +450,7 @@ func (c *Checker) auditK0s(_ context.Context, _ platform.Env, cov *check.Coverag
 // World-readable only. A group bit is how k3s's write-kubeconfig-group and
 // k0s's own 0640 hand the file to an administrators' group intentionally, the
 // same trade the docker group is; reading everyone else in is not a choice
-// anybody makes. Lstat, so a symlink is judged as the link it is
-// rather than as whatever it points at.
+// anybody makes. Lstat, so a symlink is judged as the link it is.
 func (c *Checker) readableCredential(p string, build func(os.FileMode) model.Finding) (*model.Finding, string) {
 	fi, err := os.Lstat(c.path(p))
 	switch {
@@ -515,7 +514,7 @@ func tokenFinding(p string) func(os.FileMode) model.Finding {
 
 // anonymousFinding reports anonymous-auth turned on explicitly. Both
 // distributions default it off for the API server, so only an explicit true
-// is a finding, and it is Medium, not High: anonymous requests are still
+// is a finding, and it is Medium: anonymous requests are still
 // authorised by RBAC, so what they reach is whatever someone bound to
 // system:anonymous or system:unauthenticated, which is the second mistake
 // this one waits for.
@@ -592,7 +591,7 @@ func strconvOct(m os.FileMode) string { return strconv.FormatUint(uint64(m.Perm(
 // hasArg reports whether the effective value of a component flag is value.
 // A flag given twice takes its last value, that is how the component parses
 // it, and it is how a k3s `+` drop-in turns an earlier setting off, so the
-// last occurrence decides, not any occurrence.
+// last occurrence decides.
 func hasArg(args []string, name, value string) bool {
 	found := false
 	for _, a := range args {

@@ -11,8 +11,7 @@ import (
 
 // Forbidden are the packages a UI may not import.
 //
-// It is a variable rather than a literal in each caller because it was a
-// literal in each caller: the same four strings were written out in
+// It is a variable because it used to be a literal in each caller: the same four strings were written out in
 // internal/ui/tui and internal/ui/web, and adding a fifth to one of them
 // would have left the other half of the boundary open with nothing to say
 // so. The boundary is what stopped v2's fix logic from being duplicated
@@ -38,7 +37,7 @@ var Forbidden = []string{
 // AssertThinUI fails if any production file in the calling package's
 // directory imports something a UI may not.
 //
-// It reads "." rather than taking a path, so each UI package calls it from
+// It reads ".", so each UI package calls it from
 // its own directory and cannot accidentally check the other one, which
 // would pass while testing nothing.
 //
@@ -65,8 +64,7 @@ func AssertThinUI(t *testing.T) {
 }
 
 // productionGoFiles lists the non-test .go files in the working directory.
-// Reading the directory directly rather than via the deprecated
-// parser.ParseDir: this check only cares about import lines, so package
+// Reading the directory directly: this check only cares about import lines, so package
 // grouping and build tags are irrelevant.
 func productionGoFiles(t *testing.T) []string {
 	t.Helper()

@@ -80,10 +80,10 @@ func (d *Doc) Has(path string) bool {
 // Set records that the value at a dotted path becomes v, which must be a
 // value encoding/json can marshal: the callers pass strings and bools.
 //
-// An absent path is an error rather than an insertion. See the package
+// An absent path is an error. See the package
 // comment: every finding served here fired on a value that was read, so a
 // path that is not there means the file changed under the fix or the finding
-// was built wrong, and both are worth reporting rather than papering over.
+// was built wrong, and both are worth reporting.
 func (d *Doc) Set(path string, v any) error {
 	if d.amb[path] {
 		return fmt.Errorf("key path %q is ambiguous: a key in this document contains a literal '.'", path)
@@ -158,7 +158,7 @@ func (d *Doc) Bytes() ([]byte, error) {
 }
 
 // assign writes v at a dotted path in a decoded tree, for verification only.
-// The path is known to exist, so a missing node is a bug rather than input.
+// The path is known to exist, so a missing node is a bug.
 func assign(m map[string]any, dotted string, v any) error {
 	parts := strings.Split(dotted, ".")
 	cur := m

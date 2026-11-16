@@ -29,7 +29,7 @@ func imageDeclaresHealthcheck(ctx context.Context, r platform.CommandRunner, ima
 		return false
 	}
 	// The format prints exactly one token so a daemon that answers something
-	// unexpected is a miss rather than a match. Asking for the whole struct
+	// unexpected is a miss. Asking for the whole struct
 	// and searching it would call a healthcheck present on any image whose
 	// metadata happens to contain the word.
 	out, err := r.Run(ctx, "docker", "image", "inspect",

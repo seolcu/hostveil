@@ -17,7 +17,7 @@ func TestCoverageWithNoGapsIsNotAnError(t *testing.T) {
 	}
 
 	// The zero value too: a checker that examined nothing and missed nothing
-	// (a host with no containers) is clean, not partial.
+	// (a host with no containers) is clean.
 	var empty Coverage
 	if err := empty.Err(); err != nil {
 		t.Errorf("the zero ledger produced %v", err)

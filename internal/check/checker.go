@@ -51,7 +51,7 @@ type PartialError struct {
 // Error appends the coverage fraction only when it says something the reason
 // does not: that some countable unit went unexamined.
 //
-// The test is Covered < Total, not Total > 0. A gap with no unit of its own:
+// The test is Covered < Total. A gap with no unit of its own:
 // "cannot enumerate the containers started outside Compose", where the units
 // missed are by definition the ones that could not be counted: leaves the
 // two equal, and the domain reported "audited compose projects only (covered
@@ -114,8 +114,7 @@ func runOne(ctx context.Context, c Checker, env platform.Env, events chan<- mode
 	emit(events, model.ScanEvent{Source: src, State: model.ScanRunning})
 
 	// A panic in one checker degrades only that domain. debug.Stack() is
-	// called right here, in the recover, rather than by whatever eventually
-	// reads Stack: a stack captured anywhere else would show that caller's
+	// called right here, in the recover: a stack captured anywhere else would show that caller's
 	// frames instead of the ones that panicked.
 	defer func() {
 		if r := recover(); r != nil {

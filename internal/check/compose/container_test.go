@@ -198,7 +198,7 @@ func TestHostNamespacesAuditedForStandaloneContainers(t *testing.T) {
 
 // Losing the ability to enumerate containers is a smaller blind spot than a
 // failed scan, but it is still one: the domain covered compose only and has
-// to say so rather than report a clean result.
+// to say so.
 func TestUninspectableContainersAreDegraded(t *testing.T) {
 	_, err := New().Check(context.Background(), platform.Env{Runner: runRunner{psErr: true}})
 	var partial *check.PartialError
@@ -260,7 +260,7 @@ func TestWellConfiguredStandaloneContainerIsClean(t *testing.T) {
 
 // The demotion has to fill the field the interfaces read. A
 // `docker run` container's findings are Manual for a reason that is specific
-// to that container, not to the finding ID, so the registry cannot answer it
+// to that container, so the registry cannot answer it
 // and the checker has to.
 func TestAContainerDemotionSaysWhyInTheFieldTheUIReads(t *testing.T) {
 	fs := auditContainer(compose.Container{

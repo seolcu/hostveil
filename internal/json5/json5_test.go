@@ -127,7 +127,7 @@ func TestSetRefusesAPathThatIsNotThere(t *testing.T) {
 
 // A key with a literal dot in it spells the same dotted path as a nested one,
 // and neither this package nor the checker's lookup can tell them apart. The
-// answer is to refuse, not to edit whichever was recorded last.
+// answer is to refuse.
 func TestAmbiguousDottedKeyIsRefused(t *testing.T) {
 	d, err := Load([]byte(`{"a":{"b":1},"a.b":2}`))
 	if err != nil {
