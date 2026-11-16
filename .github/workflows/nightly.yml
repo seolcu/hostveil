@@ -3,7 +3,7 @@ name: Nightly
 # The checks that are worth running against time rather than against a diff.
 #
 # govulncheck gates every pull request, but a new advisory against a
-# dependency lands on a schedule nobody controls — so with PR-only triggers a
+# dependency lands on a schedule nobody controls, so with PR-only triggers a
 # vulnerability in a shipped release stays invisible until somebody happens
 # to open a pull request. For a tool whose entire job is telling operators
 # about vulnerabilities, that is the wrong way round.
@@ -14,7 +14,7 @@ name: Nightly
 # cannot afford to give it.
 on:
   schedule:
-    # 04:17 UTC — off the hour, because everything else in the world runs at
+    # 04:17 UTC; off the hour, because everything else in the world runs at
     # :00 and a scheduled job that queues behind GitHub's peak gets delayed
     # or dropped.
     - cron: "17 4 * * *"
@@ -66,7 +66,7 @@ jobs:
 
       # A crash is only useful if the input that caused it survives the
       # runner. Go writes it under testdata/fuzz/<Target>/, which is exactly
-      # where it belongs in the repo — so the artifact is a file someone can
+      # where it belongs in the repo, so the artifact is a file someone can
       # commit as a regression seed, not a log line to reconstruct from.
       - name: Upload crash corpus
         if: failure()
@@ -80,7 +80,7 @@ jobs:
   # The installer is the first thing a new user runs, and it is the one
   # component CI cannot exercise from source: it downloads a published
   # release. So it is checked here rather than on a pull request, against
-  # whatever is currently `latest` — which is also what catches a release
+  # whatever is currently `latest`, which is also what catches a release
   # that published badly, independent of the code in this branch.
   installer:
     runs-on: ubuntu-latest
@@ -97,7 +97,7 @@ jobs:
             curl ca-certificates tar coreutils >/dev/null
           # Deliberately no sudo installed and no shim standing in for it.
           # This container is root, which is what the installer has to handle
-          # on its own — Debian's default is root-only administration, and
+          # on its own; Debian's default is root-only administration, and
           # every `docker run … | bash` is the same shape. A fake sudo here
           # passed the test while real users in this position hit
           # "sudo: command not found" after the download and the checksum.

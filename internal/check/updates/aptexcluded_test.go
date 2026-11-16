@@ -177,7 +177,7 @@ func TestAPiArchiveLeftOutOfUnattendedUpgradesIsReported(t *testing.T) {
 	if !strings.Contains(f.Description, "kernel or a core library") {
 		t.Error("a kernel and libc waiting should be called out")
 	}
-	// The count the rest of the domain gives is one — the -security row —
+	// The count the rest of the domain gives is one (the -security row)
 	// which is why this finding exists.
 	if p := find(t, fs, "updates.pending-security"); p.Evidence["pending"] != "1" {
 		t.Errorf("pending = %q, want 1", p.Evidence["pending"])

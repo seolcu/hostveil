@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>AI 설명 — Hostveil 문서</title>
+    <title>AI 설명; Hostveil 문서</title>
     <meta name="description" content="Hostveil의 선택적·조언 전용 AI: 기본값은 로컬 Ollama이며, 절대 변경을 적용하지 않고, 사람이 읽을 수 있는 필드만 전송합니다. 원본 비밀 값이나 경로는 절대 보내지 않습니다.">
     <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
-    <meta property="og:title" content="AI 설명 — Hostveil 문서">
+    <meta property="og:title" content="AI 설명; Hostveil 문서">
     <meta property="og:description" content="explain --ai로 얻는 선택적·조언 전용·로컬 우선 AI second opinion.">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://hostveil.seolcu.com/ko/docs/ai">
@@ -31,14 +31,14 @@
       // Send a Korean-speaking reader to the Korean page, once.
       //
       // GitHub Pages serves files, not content negotiation, so the only place
-      // this decision can be made is here — and the risk of making it here is
+      // this decision can be made is here, and the risk of making it here is
       // trapping someone: a reader who deliberately clicked "English" must not
       // be bounced back on the next click. So the switcher records that choice
       // and this defers to it forever after.
       //
       // Only from the English page, only when the browser's own preference
       // list actually leads with Korean, and never when a crawler is reading
-      // (they do not run this) — the hreflang links above are what they read.
+      // (they do not run this): the hreflang links above are what they read.
       (function () {
         try {
           if (document.documentElement.lang !== "en") return;

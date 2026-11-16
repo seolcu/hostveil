@@ -52,7 +52,7 @@ type DefaultRunner struct {
 // Nothing Hostveil asks the host is a long question: `ss -tlnp`, `docker
 // inspect`, `apt list --upgradable`, `sshd -T`. What they have in common is
 // that each talks to a daemon or a package database that can stop answering
-// while the socket stays open — a wedged Docker daemon is the everyday case —
+// while the socket stays open (a wedged Docker daemon is the everyday case)
 // and a read from one of those blocks forever, not briefly. Thirty seconds is
 // far more than any of them needs and still bounded.
 //
@@ -90,7 +90,7 @@ const waitDelay = 2 * time.Second
 // The one that mattered: apt's `[upgradable from: %s]` is translated in
 // twenty-one locales, and countAptSecurityUpdates skips any line that does not
 // contain that exact English text. On such a host the pending-security-updates
-// count came out zero however many were waiting — a clean report on an
+// count came out zero however many were waiting: a clean report on an
 // unpatched machine, which is the failure class this whole tool refuses.
 //
 // LC_ALL rather than LANG, and this is the part worth remembering: gettext
@@ -115,7 +115,7 @@ func (r DefaultRunner) Run(ctx context.Context, name string, args ...string) ([]
 		defer cancel()
 	}
 	// G204: this is the seam. Every command Hostveil runs arrives here as
-	// argv from a checker or a fix — never a shell string, which is the
+	// argv from a checker or a fix: never a shell string, which is the
 	// property that matters and the one gosec cannot see. Refusing a
 	// variable command here would leave the tool able to run nothing.
 	//nolint:gosec // G204: the command seam; argv only, never a shell
@@ -128,7 +128,7 @@ func (r DefaultRunner) Run(ctx context.Context, name string, args ...string) ([]
 	// fail differently: a command that hangs is killed at the deadline, while
 	// one that streams is held in full until it stops. The CVE checker runs
 	// several of these at once against a host that is often a 1 GB VPS, and
-	// `serve` does it as root — an OOM kill there ends the dashboard for
+	// `serve` does it as root: an OOM kill there ends the dashboard for
 	// every request in flight.
 	//
 	// stdout and stderr are captured separately because withStderr needs the
@@ -214,7 +214,7 @@ func describeContext(ctx context.Context, name string, limit time.Duration, err 
 const maxStderr = 200
 
 // withStderr enriches an *exec.ExitError with the command's stderr, which
-// os/exec otherwise strands on the error struct — leaving callers to report
+// os/exec otherwise strands on the error struct: leaving callers to report
 // the useless "exit status 1". The original error is wrapped, so errors.Is
 // and errors.As still work.
 func withStderr(err error, captured []byte) error {
@@ -250,22 +250,22 @@ func cleanStderr(b []byte) string {
 // They are searched because on Debian and its derivatives they are *not* on a
 // non-root user's PATH. Debian dropped sbin from the user PATH, so ufw, nft
 // and iptables all live somewhere `exec.LookPath` will not look unless the
-// caller is already root — and Hostveil is not always root: HOSTVEIL_NO_SUDO=1
+// caller is already root, and Hostveil is not always root: HOSTVEIL_NO_SUDO=1
 // is documented for scripts and CI, elevation can fail, and a container may
 // run as nobody.
 //
 // What that cost was a false High finding, on the most common firewall
 // arrangement there is. The firewall domain reads a front-end it cannot find
 // as a front-end that is not installed, and every front-end missing as "no
-// firewall is active" — so a Debian host running ufw was told it had no
+// firewall is active", so a Debian host running ufw was told it had no
 // firewall at all, and advised to install one it was already running. It is
 // only visible without root, which is why every scan that auto-elevated hid
 // it. Verified against a real Debian 13 host: firewall 50/100 with a High
 // finding unprivileged, 100/100 clean as root, same machine, same minute.
 //
-// The probe was already careful about the *other* half of this — a tool that
+// The probe was already careful about the *other* half of this; a tool that
 // is present and errors is recorded unreadable, and "no firewall" is only
-// claimed when every installed tool answered — so finding the binary is the
+// claimed when every installed tool answered, so finding the binary is the
 // whole fix. An unreadable ufw becomes StatusUnknown, which is a coverage gap
 // rather than an accusation.
 var adminDirs = []string{"/usr/local/sbin", "/usr/sbin", "/sbin"}
@@ -306,7 +306,7 @@ func Has(r CommandRunner, name string) bool {
 // Checkers must not settle for Has(r, "docker"): the client binary being on
 // PATH says nothing about whether this user may talk to the socket. Without
 // that distinction a non-root scan enumerates no containers, finds nothing,
-// and reports a clean result — which for the CVE domain means a perfect
+// and reports a clean result, which for the CVE domain means a perfect
 // vulnerability score on a host nobody actually scanned.
 func DockerReachable(ctx context.Context, r CommandRunner) (bool, string) {
 	if !Has(r, "docker") {
@@ -314,7 +314,7 @@ func DockerReachable(ctx context.Context, r CommandRunner) (bool, string) {
 	}
 	argv := DockerProbeArgv()
 	if _, err := r.Run(ctx, argv[0], argv[1:]...); err != nil {
-		return false, "cannot reach the Docker daemon — add your user to the docker group, or re-run with sudo"
+		return false, "cannot reach the Docker daemon; add your user to the docker group, or re-run with sudo"
 	}
 	return true, ""
 }
@@ -323,7 +323,7 @@ func DockerReachable(ctx context.Context, r CommandRunner) (bool, string) {
 //
 // It is exported so tests script this rather than a copy of it. The argv was
 // written out by hand in five test files, and a scripted command that no
-// longer matches the caller's does not fail — it falls through to the fake
+// longer matches the caller's does not fail: it falls through to the fake
 // runner's error path, which every checker reads as a daemon that did not
 // answer. That is the same value a genuinely unreachable daemon produces, so
 // a test covering the reachable case would go on passing while covering the
@@ -333,8 +333,8 @@ func DockerProbeArgv() []string {
 }
 
 // ExitCode returns the exit status a command's error carries, when it carries
-// one. Some tools answer through it — firewall-cmd --state exits 252 for "not
-// running" and 253 for "not authorized" — and those are an answer and a
+// one. Some tools answer through it: firewall-cmd --state exits 252 for "not
+// running" and 253 for "not authorized", and those are an answer and a
 // silence respectively, which reading every non-zero exit alike confuses.
 // It matches on the method rather than on *exec.ExitError so a test runner
 // can script an exit status.

@@ -26,8 +26,8 @@ func writeMode(t *testing.T, name string, mode os.FileMode) string {
 }
 
 // run drives the mode rules and nothing else. OwnerUID is the account
-// running the suite, so the fixtures in this file — temp files owned by
-// whoever that is — are correctly owned and the ownership check stays
+// running the suite, so the fixtures in this file (temp files owned by
+// whoever that is) are correctly owned and the ownership check stays
 // silent. Without it these tests pass under root and fail under CI's
 // unprivileged user, which is exactly how this was caught.
 func run(t *testing.T, rules []Rule) []model.Finding {
@@ -135,7 +135,7 @@ func TestDefaultRulesConstructible(t *testing.T) {
 	}
 }
 
-// The checker's declared kind is half of how remediation is settled — the
+// The checker's declared kind is half of how remediation is settled: the
 // registry is the other half, and classify takes the stricter. Declaring
 // Manual here would keep these Manual no matter what the registry offers.
 func TestFilePermsDeclaresAutoAndCarriesPaths(t *testing.T) {
@@ -178,7 +178,7 @@ func TestFilePermsDeclaresAutoAndCarriesPaths(t *testing.T) {
 
 // A directory the scan cannot enter is not a directory with no host keys in
 // it. filepath.Glob reports an unreadable directory as zero matches and a nil
-// error, so the two arrived identically — and the one that means "I was not
+// error, so the two arrived identically, and the one that means "I was not
 // allowed to look" cleared a High-severity rule about SSH private keys being
 // readable by the wrong people.
 func TestAnUnreadableGlobDirectoryDegradesTheDomain(t *testing.T) {
@@ -200,7 +200,7 @@ func TestAnUnreadableGlobDirectoryDegradesTheDomain(t *testing.T) {
 	pattern := filepath.Join(dir, "ssh_host_*_key")
 	// The premise: Glob is silent about why it found nothing.
 	if m, err := filepath.Glob(pattern); len(m) != 0 || err != nil {
-		t.Fatalf("premise broken — Glob returned %v, %v", m, err)
+		t.Fatalf("premise broken; Glob returned %v, %v", m, err)
 	}
 
 	_, err := (&Checker{Rules: []Rule{{
@@ -238,7 +238,7 @@ func TestAnUnstattableFileDegradesTheDomain(t *testing.T) {
 
 	// The premise: the error is a denial, not an absence.
 	if _, err := os.Stat(path); err == nil || os.IsNotExist(err) {
-		t.Fatalf("premise broken — stat returned %v", err)
+		t.Fatalf("premise broken; stat returned %v", err)
 	}
 
 	_, err := (&Checker{Rules: []Rule{{
@@ -255,7 +255,7 @@ func TestAnUnstattableFileDegradesTheDomain(t *testing.T) {
 	}
 }
 
-// A file that is simply not on this host — no SSH server, no /etc/shadow — is
+// A file that is simply not on this host (no SSH server, no /etc/shadow) is
 // nothing to judge, and must stay a clean result. Without this the fix above
 // would mark every minimal host Degraded.
 func TestAbsentFilesAreStillClean(t *testing.T) {

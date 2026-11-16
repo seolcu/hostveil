@@ -8,7 +8,7 @@
 #
 # The index alone is too coarse to be evidence. It is one number over 245
 # tests, so a change to three SSH options can be real and still round to the
-# same integer — and "the index did not move" would then read as "nothing
+# same integer, and "the index did not move" would then read as "nothing
 # happened", which is a different claim. So the test IDs behind every warning
 # and suggestion come out too: those are a set, and a set can be diffed. What
 # Hostveil cleared is exactly what leaves it.
@@ -17,7 +17,7 @@ set -euo pipefail
 # An auditor that did not run must not be reported as an auditor that found
 # nothing. Without this the block below emits hardening_index null with zero
 # warnings and zero suggestions, which is the JSON a perfectly hardened host
-# would produce — and the demo VM has no lynis, because the tools come from
+# would produce, and the demo VM has no lynis, because the tools come from
 # scripts/measure/seed.sh and that is not what provisions it. dockerbench.sh
 # already refuses this way; this one was measuring its own absence as a pass.
 command -v lynis >/dev/null || { echo '{"error":"lynis not installed"}'; exit 0; }

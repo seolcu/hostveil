@@ -44,7 +44,7 @@ func k3sDropIn(f model.Finding, name, content, label, benefit, warning string) (
 
 func buildK3sAnonymousOff(f model.Finding) (Fix, error) {
 	// `+` appends to what earlier files set, and the component takes a
-	// repeated flag's last value — so this turns it off without touching the
+	// repeated flag's last value, so this turns it off without touching the
 	// file that turned it on.
 	return k3sDropIn(f, "99-hostveil-anonymous-auth.yaml",
 		"# Written by Hostveil: turns off anonymous requests set earlier.\n"+
@@ -53,14 +53,14 @@ func buildK3sAnonymousOff(f model.Finding) (Fix, error) {
 		"Refuse unauthenticated requests to Kubernetes",
 		"Requests with no credential are refused instead of reaching RBAC as system:anonymous, so a stray "+
 			"binding for anonymous users stops being the whole cluster.",
-		"Anything that talks to the API server or the kubelet without credentials — a monitoring scrape, a "+
-			"health check against a path other than /livez, /readyz or /healthz — starts getting 401s. The "+
+		"Anything that talks to the API server or the kubelet without credentials; a monitoring scrape, a "+
+			"health check against a path other than /livez, /readyz or /healthz; starts getting 401s. The "+
 			"drop-in is a new file with a checkpoint; rolling it back deletes it and restarts k3s.")
 }
 
 // buildK3sSecretsEncryption runs k3s's own procedure for an existing
-// cluster. Writing `secrets-encryption: true` and restarting — what this did
-// in 3.33.0 — encrypts nothing on a cluster that already exists, and the
+// cluster. Writing `secrets-encryption: true` and restarting (what this did
+// in 3.33.0) encrypts nothing on a cluster that already exists, and the
 // checker, reading the same setting, called it fixed; a real cluster showed
 // both (scripts/e2e/individual.sh). The documented sequence is enable, restart
 // with the setting, rotate the keys so existing Secrets are rewritten, and

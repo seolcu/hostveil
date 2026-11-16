@@ -20,7 +20,7 @@ const (
 
 // ModeRule declares the strictest acceptable permission for one path inside a
 // runtime's state directory, relative to the owning user's home. A path is
-// flagged when perm &^ Max != 0 — the same test fileperms.Rule uses.
+// flagged when perm &^ Max != 0: the same test fileperms.Rule uses.
 //
 // Secret marks a path that holds raw credentials. It changes which finding is
 // emitted (agent.secret-exposed rather than agent.config-perms) and, for
@@ -53,8 +53,8 @@ type ModeRule struct {
 // not a sequence. tools.exec.security is deny or ask, and which one is right
 // depends on whether the agent is expected to run commands at all.
 //
-// Unset is the value the runtime behaves as if the key held when it is absent
-// — from the config, or because there is no config file at all. Leave it empty
+// Unset is the value the runtime behaves as if the key held when it is absent:
+// from the config, or because there is no config file at all. Leave it empty
 // when absence is safe or undocumented; that is every OpenClaw key, whose
 // defaults fail closed. It exists for the runtime whose default is the
 // dangerous value: Goose runs with GOOSE_MODE=auto unless told otherwise, so
@@ -100,7 +100,7 @@ type GatewayDesc struct {
 	ProcNames []string
 
 	// ListenerOnly is for a gateway whose bind is not in any file Hostveil
-	// reads — Goose's web UI takes it from a command-line flag. With no
+	// reads: Goose's web UI takes it from a command-line flag. With no
 	// config to judge, the observed listener is the whole answer, so it must
 	// be attributed by process name rather than by port: port 3000 is
 	// Grafana's as often as anybody's. That is only sound because every name
@@ -139,8 +139,8 @@ type Runtime struct {
 // mirrors upstream documentation; keep it that way, and prefer a small set of
 // stable high-signal keys over a full port of each project's own hardening
 // matrix. OpenClaw ships `openclaw security audit`, which covers its config
-// exhaustively; Hostveil's job is the host-observable half — what is actually
-// listening, what is actually readable — scored beside the other domains.
+// exhaustively; Hostveil's job is the host-observable half (what is actually
+// listening, what is actually readable) scored beside the other domains.
 func defaultRuntimes() []Runtime {
 	return runtimes()
 }
@@ -151,7 +151,7 @@ func defaultRuntimes() []Runtime {
 //
 // It is exported for the same reason platform.DockerProbeArgv is. A fixture
 // that writes ~/.config/openclaw/config.json instead of ~/.openclaw/openclaw.json
-// does not fail — the domain reports "no agent runtime found", which is a clean
+// does not fail: the domain reports "no agent runtime found", which is a clean
 // result, on a host seeded to run two. Nothing catches that except a test that
 // can read this table, and a test in this package cannot see the scripts.
 func DefaultRuntimes() []Runtime { return runtimes() }
@@ -183,7 +183,7 @@ func runtimes() []Runtime {
 				// gateway.auth.mode is unset, so an absent key is not "open".
 				AuthDisabled: []string{"none"},
 				// The gateway's process is "openclaw-gateway", which the kernel
-				// truncates to fifteen characters in what ss reports — observed
+				// truncates to fifteen characters in what ss reports; observed
 				// on a real gateway by scripts/e2e/individual.sh.
 				ProcNames: []string{"openclaw", "openclaw-gatewa", "node"},
 			},
@@ -193,7 +193,7 @@ func runtimes() []Runtime {
 					Good:     []any{"deny", "ask"},
 					Sev:      model.SeverityHigh,
 					Title:    "Agent can run shell commands without approval",
-					Desc:     "The agent is allowed to execute shell commands on this host with no approval step. Anything that can steer the agent — a malicious web page it reads, a poisoned document, a message from an untrusted contact — can run commands as the user it runs as.",
+					Desc:     "The agent is allowed to execute shell commands on this host with no approval step. Anything that can steer the agent (a malicious web page it reads, a poisoned document, a message from an untrusted contact) can run commands as the user it runs as.",
 					HowToFix: "Set `tools.exec.security` to `deny` (or `ask`) and `tools.exec.ask` to `always`, so command execution requires an explicit approval.",
 				},
 				{
@@ -201,7 +201,7 @@ func runtimes() []Runtime {
 					Good:     []any{"always"},
 					Sev:      model.SeverityHigh,
 					Title:    "Agent can run shell commands without approval",
-					Desc:     "The agent is allowed to execute shell commands on this host with no approval step. Anything that can steer the agent — a malicious web page it reads, a poisoned document, a message from an untrusted contact — can run commands as the user it runs as.",
+					Desc:     "The agent is allowed to execute shell commands on this host with no approval step. Anything that can steer the agent (a malicious web page it reads, a poisoned document, a message from an untrusted contact) can run commands as the user it runs as.",
 					HowToFix: "Set `tools.exec.ask` to `always` so command execution requires an explicit approval.",
 				},
 				{
@@ -230,7 +230,7 @@ func runtimes() []Runtime {
 					Good:     []any{false},
 					Sev:      model.SeverityHigh,
 					Title:    "Agent control UI has its auth safeguards disabled",
-					Desc:     "The control UI drives the agent. With its authentication safeguards switched off, anyone who can reach the UI — including anything running locally on this host — can operate the agent.",
+					Desc:     "The control UI drives the agent. With its authentication safeguards switched off, anyone who can reach the UI (including anything running locally on this host) can operate the agent.",
 					HowToFix: "Remove `gateway.controlUi.allowInsecureAuth` (and `dangerouslyDisableDeviceAuth`) from the config and reach the UI over an SSH tunnel or a tailnet instead.",
 				},
 				{
@@ -246,7 +246,7 @@ func runtimes() []Runtime {
 					Good:     []any{false},
 					Sev:      model.SeverityMedium,
 					Title:    "Agent browser may reach private network addresses",
-					Desc:     "The agent's browser is permitted to fetch private and link-local addresses, so a page it visits can steer it into your LAN or a cloud metadata endpoint and read back the response — a server-side request forgery with an LLM driving it.",
+					Desc:     "The agent's browser is permitted to fetch private and link-local addresses, so a page it visits can steer it into your LAN or a cloud metadata endpoint and read back the response; a server-side request forgery with an LLM driving it.",
 					HowToFix: "Remove `browser.ssrfPolicy.dangerouslyAllowPrivateNetwork` so the default private-network block applies.",
 				},
 			},
@@ -293,7 +293,7 @@ func runtimes() []Runtime {
 				// The keyring fallback, and it is the case on a server:
 				// with no desktop keyring service (or GOOSE_DISABLE_KEYRING
 				// set) Goose writes API keys here in plain text, and sets
-				// the file to 0600 itself — so anything looser was loosened
+				// the file to 0600 itself, so anything looser was loosened
 				// after the fact.
 				{Rel: ".config/goose/secrets.yaml", Max: 0o600, Secret: true},
 			},
@@ -314,8 +314,8 @@ func runtimes() []Runtime {
 					Good:  []any{"approve", "smart_approve"},
 					Sev:   model.SeverityHigh,
 					Title: "Agent can run shell commands without approval",
-					Desc: "Goose is in `auto` mode, which approves every tool call — shell commands and file edits included — without asking. It is also what Goose does when `GOOSE_MODE` is not set at all. " +
-						"Anything that can steer the agent — a malicious web page it reads, a poisoned document, an instruction hidden in a repository it opens — can run commands as the user it runs as. " +
+					Desc: "Goose is in `auto` mode, which approves every tool call (shell commands and file edits included) without asking. It is also what Goose does when `GOOSE_MODE` is not set at all. " +
+						"Anything that can steer the agent (a malicious web page it reads, a poisoned document, an instruction hidden in a repository it opens) can run commands as the user it runs as. " +
 						"A `GOOSE_MODE` environment variable overrides this file and is not something Hostveil can see.",
 					HowToFix: "Set `GOOSE_MODE: approve` (ask before every tool call) or `GOOSE_MODE: smart_approve` (ask only for the ones judged risky) in ~/.config/goose/config.yaml, and make sure no `GOOSE_MODE=auto` is exported where Goose is started.",
 				},

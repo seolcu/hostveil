@@ -16,7 +16,7 @@ import (
 // to the host or has more than one defensible answer. What changes is that
 // accepting them no longer means running the tool once per finding.
 //
-// Both directions are pinned. The plain batch must keep refusing Review — a
+// Both directions are pinned. The plain batch must keep refusing Review: a
 // UI that batched them by accident would apply, unattended, exactly the fixes
 // that exist because they need a person.
 func TestTheReviewedBatchAppliesWhatThePlainOneRefuses(t *testing.T) {
@@ -76,7 +76,7 @@ func contains(xs []string, want string) bool {
 // Accepting Review fixes in bulk is accepting the ones that are Review
 // because they cannot be checkpointed or have two right answers. It is not
 // accepting the ones that are Review because they can break a service that
-// set something on purpose — those are offered so that somebody who knows
+// set something on purpose: those are offered so that somebody who knows
 // the service reads the warning, and a batch is nobody reading.
 func TestTheReviewedBatchLeavesIndividualOnlyFixesAlone(t *testing.T) {
 	dir := t.TempDir()

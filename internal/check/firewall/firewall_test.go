@@ -85,7 +85,7 @@ table ip filter {
 // TestFirewallUnreadableIsNotReportedAsAbsent is the regression guard for a
 // false positive: `ufw status` and `nft list ruleset` both need root, and the
 // old code treated every probe error as "not active". A non-root scan of a
-// properly firewalled host therefore accused it of having no firewall at all —
+// properly firewalled host therefore accused it of having no firewall at all:
 // a High finding, on the strength of evidence the scan never obtained.
 func TestFirewallUnreadableIsNotReportedAsAbsent(t *testing.T) {
 	// ufw is installed but refuses to answer (as it does without root): the
@@ -171,12 +171,12 @@ func TestFirewallProbeStatuses(t *testing.T) {
 func TestBothFirewallGapsAreReported(t *testing.T) {
 	r := checktest.New().Only("ufw", "docker", "iptables").Docker("27.0.0").Outputs(map[string]string{
 		"ufw status": "Status: active\n",
-		// Active, but the default policy line is missing — gap one.
+		// Active, but the default policy line is missing; gap one.
 		"ufw status verbose": "Status: active\n",
 		// A container publishing to the world, so the bypass check runs...
 		"docker ps --format {{.Names}}\t{{.Ports}}": "db\t0.0.0.0:5432->5432/tcp\n",
 		// ...and `iptables -S DOCKER-USER` is unscripted, so it cannot be
-		// read — gap two, on a host where gap one already happened.
+		// read; gap two, on a host where gap one already happened.
 	})
 	_, err := New().Check(context.Background(), platform.Env{Runner: r})
 
@@ -222,7 +222,7 @@ LISTEN 0 128 0.0.0.0:8080 0.0.0.0:* users:(("nginx",pid=9,fd=6))
 //
 // probe knows ufw, firewall-cmd, nft and iptables. None of them is installed
 // in a container, so none fails, `unreadable` stays false, and StatusInactive
-// becomes "No active host firewall" at the top severity — on a machine where
+// becomes "No active host firewall" at the top severity, on a machine where
 // there is nothing to install and nothing to enable, because the packet filter
 // that decides whether its ports answer belongs to the host and cannot be seen
 // from inside.

@@ -61,7 +61,7 @@ func TestParseInvalidYAMLErrors(t *testing.T) {
 	}
 }
 
-// FuzzParse ensures parsing arbitrary bytes never panics — compose files
+// FuzzParse ensures parsing arbitrary bytes never panics: compose files
 // come from the host and may be malformed or hostile.
 func FuzzParse(f *testing.F) {
 	f.Add([]byte("services:\n  a:\n    image: x\n"))

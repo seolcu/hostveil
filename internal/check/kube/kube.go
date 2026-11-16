@@ -1,8 +1,8 @@
 // Package kube audits a single-node Kubernetes host: k3s, and k0s.
 //
 // Not a cluster manager. The homelab pattern this is for is one box running
-// one node, and the question is the one every other domain asks — what on
-// this host would let someone in, or let a foothold become more — scoped to
+// one node, and the question is the one every other domain asks (what on
+// this host would let someone in, or let a foothold become more) scoped to
 // what a single-host audit can actually see: the credentials the
 // distribution writes to disk, and the flags it starts the API server and
 // kubelet with. What runs inside the cluster (RBAC, pod security, network
@@ -12,7 +12,7 @@
 //
 // k3s takes its settings from three places and the last one wins:
 // /etc/rancher/k3s/config.yaml, then config.yaml.d/*.yaml in name order, then
-// the command line — which is the unit's ExecStart, plus the K3S_* variables
+// the command line, which is the unit's ExecStart, plus the K3S_* variables
 // the install script writes to k3s.service.env. Reading only the file would
 // miss `curl -sfL https://get.k3s.io | K3S_KUBECONFIG_MODE=644 sh -`, the
 // line nearly every tutorial copies, so the command line is read the way the
@@ -79,7 +79,7 @@ func (c *Checker) Available(context.Context, platform.Env) (bool, string) {
 	if c.isDir(k3sEtc) || c.isDir(k0sEtc) || c.isDir(k0sData) {
 		return true, ""
 	}
-	return false, "no single-node Kubernetes found — no k3s (" + k3sEtc + ") or k0s (" + k0sEtc + ")"
+	return false, "no single-node Kubernetes found: no k3s (" + k3sEtc + ") or k0s (" + k0sEtc + ")"
 }
 
 // Check audits whichever distributions are installed.
@@ -153,8 +153,8 @@ func (c *Checker) auditK3s(ctx context.Context, env platform.Env, cov *check.Cov
 	}
 	// k3s answers whether Secrets are encrypted, and its answer wins over the
 	// configuration's. The setting alone does not turn encryption on for a
-	// cluster that already exists — that takes `k3s secrets-encrypt enable`
-	// and a key rotation — so a host carrying `secrets-encryption: true` can
+	// cluster that already exists, that takes `k3s secrets-encrypt enable`
+	// and a key rotation, so a host carrying `secrets-encryption: true` can
 	// still store every Secret in plain base64, and reading the setting
 	// reported it fixed. That is what 3.33.0's fix left behind, and what
 	// scripts/e2e/individual.sh found on a real cluster. Without an answer
@@ -189,13 +189,13 @@ func (c *Checker) k3sEffective(ctx context.Context, env platform.Env) (k3sConfig
 		b, err := platform.ReadFileBounded(c.path(f), 1<<20)
 		if err != nil {
 			if !os.IsNotExist(err) {
-				gaps = append(gaps, "could not read "+f+" — the k3s settings in it were not audited")
+				gaps = append(gaps, "could not read "+f+"; the k3s settings in it were not audited")
 			}
 			continue
 		}
 		var m map[string]any
 		if err := yaml.Unmarshal(b, &m); err != nil {
-			gaps = append(gaps, "could not parse "+f+" — the k3s settings in it were not audited")
+			gaps = append(gaps, "could not parse "+f+"; the k3s settings in it were not audited")
 			continue
 		}
 		cfg.apply(m, f)
@@ -255,7 +255,7 @@ func (cfg *k3sConfig) apply(m map[string]any, from string) {
 
 // applyFlags folds the command line in. Flags win over every file, and a
 // repeatable flag given on the command line replaces the files' list rather
-// than adding to it — upstream's own rule.
+// than adding to it: upstream's own rule.
 func (cfg *k3sConfig) applyFlags(argv []string, from string) {
 	var apiserver, kubelet []string
 	sawAPI, sawKubelet := false, false
@@ -323,12 +323,12 @@ func (c *Checker) k3sCommandLine(ctx context.Context, env platform.Env) ([]strin
 			return argv, k3sOpenRC, ""
 		}
 	}
-	return nil, "", "neither a loaded k3s.service nor " + k3sOpenRC + " says how k3s is started — flags given on its command line were not audited"
+	return nil, "", "neither a loaded k3s.service nor " + k3sOpenRC + " says how k3s is started; flags given on its command line were not audited"
 }
 
 // openrcArgs reads command_args out of the openrc script the k3s installer
-// writes. It spans several lines — one single-quoted argument per line,
-// joined by backslash-newline — and ends in a redirect to the log file:
+// writes. It spans several lines (one single-quoted argument per line,
+// joined by backslash-newline) and ends in a redirect to the log file:
 //
 //	command_args="server \
 //		'--kube-apiserver-arg=anonymous-auth=true' \
@@ -358,7 +358,7 @@ func openrcArgs(script string) ([]string, bool) {
 	return argv, true
 }
 
-// shellWords splits on whitespace outside single quotes — the only quoting
+// shellWords splits on whitespace outside single quotes: the only quoting
 // the installer uses, so a value with a space in it stays one argument.
 func shellWords(s string) []string {
 	var out []string
@@ -418,7 +418,7 @@ func (c *Checker) auditK0s(_ context.Context, _ platform.Env, cov *check.Coverag
 	case os.IsNotExist(err):
 		return out
 	case err != nil:
-		cov.Missed(0, "could not read "+k0sConfig+" — the API server's arguments were not audited")
+		cov.Missed(0, "could not read "+k0sConfig+"; the API server's arguments were not audited")
 		return out
 	}
 	var doc struct {
@@ -429,7 +429,7 @@ func (c *Checker) auditK0s(_ context.Context, _ platform.Env, cov *check.Coverag
 		} `yaml:"spec"`
 	}
 	if err := yaml.Unmarshal(b, &doc); err != nil {
-		cov.Missed(0, "could not parse "+k0sConfig+" — the API server's arguments were not audited")
+		cov.Missed(0, "could not parse "+k0sConfig+"; the API server's arguments were not audited")
 		return out
 	}
 	var args []string
@@ -458,7 +458,7 @@ func (c *Checker) readableCredential(p string, build func(os.FileMode) model.Fin
 	case os.IsNotExist(err):
 		return nil, ""
 	case err != nil:
-		return nil, "could not stat " + p + " — whether it is readable by every account was not audited; re-run with sudo"
+		return nil, "could not stat " + p + ", whether it is readable by every account was not audited; re-run with sudo"
 	}
 	if !fi.Mode().IsRegular() || fi.Mode().Perm()&0o004 == 0 {
 		return nil, ""
@@ -470,13 +470,13 @@ func (c *Checker) readableCredential(p string, build func(os.FileMode) model.Fin
 
 func kubeconfigFinding(cfg k3sConfig) func(os.FileMode) model.Finding {
 	return func(mode os.FileMode) model.Finding {
-		fix := "Set `write-kubeconfig-mode: \"0600\"` in /etc/rancher/k3s/config.yaml (or `write-kubeconfig-group` to hand it to an administrators' group), and restart k3s — it rewrites the file at start, so a chmod alone lasts until the next restart. "
+		fix := "Set `write-kubeconfig-mode: \"0600\"` in /etc/rancher/k3s/config.yaml (or `write-kubeconfig-group` to hand it to an administrators' group), and restart k3s; it rewrites the file at start, so a chmod alone lasts until the next restart. "
 		if cfg.modeFrom != "" && cfg.modeFrom != k3sEtc+"/config.yaml" {
-			fix = "The mode is set in " + cfg.modeFrom + " (`" + cfg.mode + "`), which wins over config.yaml — change it there to `0600`, then restart k3s. It rewrites the file at start, so a chmod alone lasts until the next restart. "
+			fix = "The mode is set in " + cfg.modeFrom + " (`" + cfg.mode + "`), which wins over config.yaml: change it there to `0600`, then restart k3s. It rewrites the file at start, so a chmod alone lasts until the next restart. "
 		}
 		fix += "Anyone who needs kubectl should get their own kubeconfig rather than a copy of this one."
 		opts := []model.FindingOption{
-			model.WithDescription("The admin kubeconfig k3s writes is readable by every account on this host. It holds cluster-admin credentials, so any local user — or any service running as one — can do anything in the cluster, including run a privileged pod that mounts the host's filesystem, which is root on this machine. `--write-kubeconfig-mode 644` is in most k3s tutorials because it makes kubectl work without sudo."),
+			model.WithDescription("The admin kubeconfig k3s writes is readable by every account on this host. It holds cluster-admin credentials, so any local user (or any service running as one) can do anything in the cluster, including run a privileged pod that mounts the host's filesystem, which is root on this machine. `--write-kubeconfig-mode 644` is in most k3s tutorials because it makes kubectl work without sudo."),
 			model.WithHowToFix(fix),
 			model.WithEvidence("mode", "0"+strconvOct(mode)),
 		}
@@ -494,7 +494,7 @@ func k0sKubeconfigFinding() func(os.FileMode) model.Finding {
 		return model.NewFinding("kube.kubeconfig-readable",
 			"The cluster-admin kubeconfig is readable by every account",
 			model.SeverityMedium, model.SourceKube, model.RemediationReview,
-			model.WithDescription("k0s's admin kubeconfig is readable by every account on this host. It holds cluster-admin credentials, so any local user can do anything in the cluster, including run a privileged pod that mounts the host's filesystem — root on this machine. k0s writes it 0640 itself, so this was loosened after the fact."),
+			model.WithDescription("k0s's admin kubeconfig is readable by every account on this host. It holds cluster-admin credentials, so any local user can do anything in the cluster, including run a privileged pod that mounts the host's filesystem: root on this machine. k0s writes it 0640 itself, so this was loosened after the fact."),
 			model.WithHowToFix("`chmod 0640 "+k0sAdminConf+"`, and give anyone who needs kubectl a kubeconfig of their own (`k0s kubeconfig create <user>`) rather than a copy of this one."),
 			model.WithEvidence("mode", "0"+strconvOct(mode)),
 		)
@@ -506,7 +506,7 @@ func tokenFinding(p string) func(os.FileMode) model.Finding {
 		return model.NewFinding("kube.token-readable",
 			"The k3s join token is readable by every account",
 			model.SeverityMedium, model.SourceKube, model.RemediationReview,
-			model.WithDescription("The token that lets a machine join this cluster is readable by every account on the host. A node that joins is trusted with the workloads scheduled onto it and the secrets they mount, and a server token joins as another control-plane node — so a local user can hand the cluster to a machine of their choosing."),
+			model.WithDescription("The token that lets a machine join this cluster is readable by every account on the host. A node that joins is trusted with the workloads scheduled onto it and the secrets they mount, and a server token joins as another control-plane node, so a local user can hand the cluster to a machine of their choosing."),
 			model.WithHowToFix("`chmod 0600 "+p+"`, then rotate the token (`k3s token rotate`) since it has been readable: anything that copied it can still use it."),
 			model.WithEvidence("mode", "0"+strconvOct(mode)),
 		)
@@ -515,7 +515,7 @@ func tokenFinding(p string) func(os.FileMode) model.Finding {
 
 // anonymousFinding reports anonymous-auth turned on explicitly. Both
 // distributions default it off for the API server, so only an explicit true
-// is a finding — and it is Medium, not High: anonymous requests are still
+// is a finding, and it is Medium, not High: anonymous requests are still
 // authorised by RBAC, so what they reach is whatever someone bound to
 // system:anonymous or system:unauthenticated, which is the second mistake
 // this one waits for.
@@ -534,7 +534,7 @@ func anonymousFinding(dist string, apiserver, kubelet []string, from map[string]
 		"Kubernetes accepts unauthenticated requests",
 		model.SeverityMedium, model.SourceKube, model.RemediationManual,
 		model.WithDescription("`anonymous-auth=true` is set ("+strings.Join(where, "; ")+"), so requests with no credential at all are accepted as the system:anonymous user instead of being refused. "+
-			"What they can do is then decided by RBAC alone, so a single binding that grants system:anonymous or system:unauthenticated anything — often added while debugging and never removed — is the whole cluster to anyone who can reach the port. "+dist+" turns this off by default."),
+			"What they can do is then decided by RBAC alone, so a single binding that grants system:anonymous or system:unauthenticated anything (often added while debugging and never removed) is the whole cluster to anyone who can reach the port. "+dist+" turns this off by default."),
 		model.WithHowToFix("Remove the `anonymous-auth=true` argument and restart "+dist+". Health checks that need unauthenticated access are served by the /livez, /readyz and /healthz endpoints, which remain reachable without it."),
 		model.WithEvidence("set-in", strings.Join(where, "; ")),
 	)
@@ -582,7 +582,7 @@ func secretsFinding() model.Finding {
 	return model.NewFinding("kube.secrets-unencrypted",
 		"Kubernetes Secrets are stored unencrypted",
 		model.SeverityLow, model.SourceKube, model.RemediationManual,
-		model.WithDescription("k3s stores Secrets in its datastore as plain base64 unless secrets encryption is turned on. Anything that can read the datastore or a backup of it — a copied /var/lib/rancher/k3s, an etcd snapshot shipped off the host — reads every password and API key the cluster holds. It is off by default and on in the k3s CIS hardening guide."),
+		model.WithDescription("k3s stores Secrets in its datastore as plain base64 unless secrets encryption is turned on. Anything that can read the datastore or a backup of it (a copied /var/lib/rancher/k3s, an etcd snapshot shipped off the host) reads every password and API key the cluster holds. It is off by default and on in the k3s CIS hardening guide."),
 		model.WithHowToFix("Set `secrets-encryption: true` in /etc/rancher/k3s/config.yaml and restart k3s, then `k3s secrets-encrypt rotate-keys` (or rewrite existing Secrets) so the ones written before the change are encrypted too."),
 	)
 }
@@ -590,8 +590,8 @@ func secretsFinding() model.Finding {
 func strconvOct(m os.FileMode) string { return strconv.FormatUint(uint64(m.Perm()), 8) }
 
 // hasArg reports whether the effective value of a component flag is value.
-// A flag given twice takes its last value — that is how the component parses
-// it, and it is how a k3s `+` drop-in turns an earlier setting off — so the
+// A flag given twice takes its last value, that is how the component parses
+// it, and it is how a k3s `+` drop-in turns an earlier setting off, so the
 // last occurrence decides, not any occurrence.
 func hasArg(args []string, name, value string) bool {
 	found := false

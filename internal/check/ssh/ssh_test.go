@@ -346,7 +346,7 @@ func TestUnreadableIncludeIsPartial(t *testing.T) {
 // directives only to connections that match, so one under a Match does not
 // describe the host the way a global one does. What was wrong is that it
 // stopped in silence. `Match Address 0.0.0.0/0` matches every connection there
-// is, so the config below permits password authentication for everybody — and
+// is, so the config below permits password authentication for everybody, and
 // the domain reported clean, not degraded, with a finding set that says
 // passwords are off.
 func TestAMatchBlockIsReportedAsAGapRatherThanScannedPast(t *testing.T) {
@@ -436,7 +436,7 @@ func TestSSHAvailability(t *testing.T) {
 // bufio.Scanner stops at a line over 64 KiB and reports it only through
 // Err(), which nothing checked. The parse ended silently partway, every
 // directive after that point read as unset, and the compiled-in default won
-// the audit — so PermitRootLogin's verdict depended on which side of the
+// the audit, so PermitRootLogin's verdict depended on which side of the
 // long line it sat, with nothing saying the file had been truncated.
 func TestAnOverlongLineDegradesRatherThanTruncatingSilently(t *testing.T) {
 	dir := t.TempDir()

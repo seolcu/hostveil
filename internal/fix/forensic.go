@@ -16,8 +16,8 @@ import (
 //
 // They are all Review. Writing the file is reversible, but each has a cost
 // only the operator can weigh: a persistent journal and longer rotation use
-// disk, and an audit rule on a web application that does start programs —
-// an image converter shelling out, a cron-style PHP job — fills the audit log.
+// disk, and an audit rule on a web application that does start programs
+// (an image converter shelling out, a cron-style PHP job) fills the audit log.
 func registerForensic(r *Registry) {
 	r.Register("forensic.journald-volatile", buildJournaldPersistent)
 	r.Register("forensic.journald-retention", buildJournaldRetention)
@@ -134,8 +134,8 @@ func buildServiceExecAudit(f model.Finding) (Fix, error) {
 			Label: "Write an execve rule for uid " + uid + " to " + auditRulesPath + " and load it",
 			Benefit: "Every program the web server's account starts is recorded with its time and arguments, so a " +
 				"webshell's first command is evidence rather than a guess.",
-			Warning: "A web application that legitimately starts programs — an image converter, a PDF renderer, a " +
-				"git-backed wiki — writes an audit record each time it does; watch `ausearch -k " + auditKey +
+			Warning: "A web application that legitimately starts programs; an image converter, a PDF renderer, a " +
+				"git-backed wiki; writes an audit record each time it does; watch `ausearch -k " + auditKey +
 				"` for a day after applying. The rule file is a checkpoint; rolling it back removes the rule and reloads.",
 			Kind:            ActionEdit,
 			Path:            auditRulesPath,
@@ -161,8 +161,8 @@ func buildServiceExecAudit(f model.Finding) (Fix, error) {
 	}, nil
 }
 
-// logrotate rewriting. This mirrors the checker's reading of the file —
-// blocks, the rotate count, the period, size-only rotation — and only ever
+// logrotate rewriting. This mirrors the checker's reading of the file
+// (blocks, the rotate count, the period, size-only rotation) and only ever
 // raises a rotate count, so it cannot shorten anything.
 
 var lrPeriodDays = map[string]int{"daily": 1, "weekly": 7, "monthly": 30, "yearly": 365}

@@ -8,8 +8,8 @@
 # Why this exists rather than the `a && b && c` line AGENTS.md used to give:
 # a chain stops at the first failure and prints nothing about it. `gofmt -l .`
 # exits 0 whether or not it lists files, so the chain needed `test -z
-# "$(gofmt -l .)"`, and when that test failed every later step — including
-# the race tests — silently did not run. The run looked clean, and the first
+# "$(gofmt -l .)"`, and when that test failed every later step (including
+# the race tests) silently did not run. The run looked clean, and the first
 # thing to notice was CI. Every step here runs, and each one is reported by
 # name with the tail of its output when it fails.
 #

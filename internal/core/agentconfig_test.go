@@ -12,7 +12,7 @@ import (
 
 // commentedAgentConfig is the file this whole path exists for: JSON5 with the
 // operator's own reasoning written into it. If a fix reflows this, the fix is
-// worse than no fix — the operator opens the file afterwards and cannot find
+// worse than no fix: the operator opens the file afterwards and cannot find
 // what they wrote or tell what Hostveil changed.
 const commentedAgentConfig = `{
   "gateway": {

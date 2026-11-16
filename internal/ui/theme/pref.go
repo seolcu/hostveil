@@ -49,7 +49,7 @@ func Save(dir, id string) error {
 // Resolve picks the theme to start in: an explicit flag wins, then the
 // environment, then the saved preference, then the default.
 //
-// Only the flag can fail — a user who typed --theme deserves to be told they
+// Only the flag can fail; a user who typed --theme deserves to be told they
 // typed it wrong. An unrecognised environment variable or saved preference
 // falls back silently, because neither was typed just now and neither is
 // worth refusing to start over.

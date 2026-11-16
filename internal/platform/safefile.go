@@ -8,7 +8,7 @@ import (
 )
 
 // This file holds the file operations Hostveil uses on paths another account
-// can shape — anything under a user's home. Plain os.ReadFile, os.Stat, and
+// can shape: anything under a user's home. Plain os.ReadFile, os.Stat, and
 // os.Chmod all follow symlinks, and Hostveil runs as root, so on such paths
 // each is a confused deputy: a user who replaces their own config file with a
 // symlink to /etc/passwd turns a routine permission fix into root chmod'ing
@@ -26,7 +26,7 @@ import (
 // gap for the file to be swapped between the check and the read.
 func ReadFileNoFollow(path string, limit int64) ([]byte, error) {
 	// G304: the variable path is the point, and this function is the
-	// hardened way to open one — O_NOFOLLOW refuses a symlink, O_NONBLOCK
+	// hardened way to open one; O_NOFOLLOW refuses a symlink, O_NONBLOCK
 	// refuses to hang on a FIFO, and the checks below run on the descriptor
 	// rather than on the name. Flagging the safe opener while the plain
 	// os.ReadFile calls it replaces go unflagged is the finding backwards.
@@ -97,7 +97,7 @@ func readLimited(r io.Reader, path string, limit int64) ([]byte, error) {
 // chmod'ing its target.
 func ChmodNoFollow(path string, mode os.FileMode) error {
 	// G304: the variable path is the point, and this function is the
-	// hardened way to open one — O_NOFOLLOW refuses a symlink, O_NONBLOCK
+	// hardened way to open one; O_NOFOLLOW refuses a symlink, O_NONBLOCK
 	// refuses to hang on a FIFO, and the checks below run on the descriptor
 	// rather than on the name. Flagging the safe opener while the plain
 	// os.ReadFile calls it replaces go unflagged is the finding backwards.

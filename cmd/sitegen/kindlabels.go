@@ -6,7 +6,7 @@ import "github.com/seolcu/hostveil/internal/model"
 // a finding can carry.
 //
 // The docs used to be read through a map to a bare fixable/not-fixable bool,
-// which made "Auto" and "Review" the same answer — so the column could
+// which made "Auto" and "Review" the same answer, so the column could
 // promise unattended application of a fix the registry shapes as Review and
 // nothing would say a word. The difference between those two is the whole
 // subject of the fixing page: one of them is what `fix --all` runs on its own.
@@ -14,7 +14,7 @@ import "github.com/seolcu/hostveil/internal/model"
 // The Korean row is deliberately the same four English words as the English
 // one, not a translation of them. Hostveil's CLI, TUI, and dashboard are
 // English-only and always print "Auto"/"Review"/"Manual"/"Unavailable"
-// — there is no Korean build of the tool itself — so a Korean docs page that
+// (there is no Korean build of the tool itself) so a Korean docs page that
 // called them "자동 수정"/"검토"/"수동"/"사용 불가" was teaching a vocabulary
 // the reader would never see again the moment they ran the binary it was
 // documenting. These four are classification names, not prose, and every

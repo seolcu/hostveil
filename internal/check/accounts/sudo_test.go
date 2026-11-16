@@ -53,8 +53,8 @@ func TestPasswordlessSudoIsFound(t *testing.T) {
 }
 
 // The command spec is what separates a real finding from noise. A NOPASSWD
-// rule on one named command is ordinary administration — a backup script, a
-// monitoring hook — and it is a path to root only if that command happens to
+// rule on one named command is ordinary administration (a backup script, a
+// monitoring hook) and it is a path to root only if that command happens to
 // be exploitable, which nothing reading a config can decide. Flagging those
 // would bury the unambiguous case under rules that are working as intended.
 func TestNarrowNopasswdRuleIsNotAFinding(t *testing.T) {
@@ -73,7 +73,7 @@ func TestNarrowNopasswdRuleIsNotAFinding(t *testing.T) {
 
 // Within one privilege line NOPASSWD applies from where it appears until a
 // later PASSWD turns the prompt back on. Reading the line as "contains
-// NOPASSWD and contains ALL" — the obvious implementation — reports
+// NOPASSWD and contains ALL" (the obvious implementation) reports
 // unrestricted passwordless root about a rule that asks for a password before
 // doing anything unrestricted.
 func TestPasswdTagLaterInTheLineTurnsThePromptBackOn(t *testing.T) {
@@ -108,7 +108,7 @@ func TestStackedTagsStillReachTheCommand(t *testing.T) {
 // Defaults !authenticate turns the password off for every rule on the host,
 // and the privilege lines below it carry no tag saying so. A checker reading
 // only the tags calls this host clean while it is the most passwordless
-// arrangement sudoers can express — a false negative about something plainly
+// arrangement sudoers can express: a false negative about something plainly
 // visible, which is the failure this domain exists to avoid.
 func TestGlobalNoAuthenticateIsFound(t *testing.T) {
 	c := sudoChecker(t)
@@ -127,7 +127,7 @@ func TestGlobalNoAuthenticateIsFound(t *testing.T) {
 
 // root running anything without a password grants root nothing it did not
 // already have. Reporting it would put a finding on every host that has sudo
-// installed, which is every host — and an account that is root under another
+// installed, which is every host, and an account that is root under another
 // name is accounts.uid0's finding.
 func TestRootIsNotReportedAsItsOwnRisk(t *testing.T) {
 	c := sudoChecker(t)
@@ -145,8 +145,8 @@ func TestRootIsNotReportedAsItsOwnRisk(t *testing.T) {
 
 // The one that matters most, and the reason for the control run.
 //
-// `sudo -l -U alice` exits non-zero both for an account with no sudo rights —
-// the ordinary case — and for "a non-root user cannot use -U". Without the
+// `sudo -l -U alice` exits non-zero both for an account with no sudo rights
+// (the ordinary case) and for "a non-root user cannot use -U". Without the
 // control run the second reads as the first, and a non-root scan reports that
 // nobody on the host can become root without a password, having never been
 // allowed to ask. That is "I couldn't look" scoring as "nothing there", which
@@ -193,7 +193,7 @@ func TestAccountWithNoSudoRightsIsCleanNotDegraded(t *testing.T) {
 
 // A host with no sudo binary has an answer, not a gap: no sudo rule can be
 // granting anyone anything. Calling it a gap would mark every sudo-less host
-// Degraded — the direction dockerd's config merge got wrong, where an absent
+// Degraded: the direction dockerd's config merge got wrong, where an absent
 // file was treated as a blind spot rather than as a complete answer about
 // that file.
 func TestNoSudoInstalledIsAnAnswerNotAGap(t *testing.T) {
@@ -231,7 +231,7 @@ func TestBothGapsAreReportedTogether(t *testing.T) {
 		}
 	}
 	if partial.Covered != 1 || partial.Total != 3 {
-		t.Errorf("coverage = %d/%d, want 1/3 — the counters have to say how much went "+
+		t.Errorf("coverage = %d/%d, want 1/3; the counters have to say how much went "+
 			"unexamined, not just that something did", partial.Covered, partial.Total)
 	}
 }
@@ -243,7 +243,7 @@ func TestNonLoginAccountsAreNotAsked(t *testing.T) {
 	c := sudoChecker(t)
 	// daemon is in cleanPasswd with /usr/sbin/nologin. Only root and alice are
 	// scripted, so an ask about daemon would fall through to the fake's
-	// unscripted-command error and simply return no finding — which is why the
+	// unscripted-command error and simply return no finding, which is why the
 	// assertion is on the finding for daemon, not on the error.
 	fs, err := c.Check(context.Background(), withSudo(map[string]string{
 		"root":   rootMayRunAnything,

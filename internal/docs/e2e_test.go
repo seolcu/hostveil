@@ -16,7 +16,7 @@ import (
 //
 // It has already broken once. The step named "domains that cannot run report
 // Skipped, never clean" selected `.state == 3`, and #656 changed every enum to
-// marshal as its name — so the selection matched no domain, the variable it
+// marshal as its name, so the selection matched no domain, the variable it
 // filled was always empty, and the assertion that a skipped domain is never
 // scored 100 passed on every pull request without ever looking at one. That is
 // the exact failure the invariant exists to catch, hiding inside the check for
@@ -53,7 +53,7 @@ func TestE2ESelectsScanStatesByTheNameTheModelMarshals(t *testing.T) {
 		literal := m[1]
 		if !encoded[literal] {
 			t.Errorf("e2e.yml selects `.state == %s`, which is not how any "+
-				"ScanState marshals — the selection matches no domain and the "+
+				"ScanState marshals; the selection matches no domain and the "+
 				"step passes without testing anything. Valid literals: %v",
 				literal, keysOf(encoded))
 		}

@@ -19,7 +19,7 @@ import (
 // can come from LDAP rather than /etc/group, netgroups, #includedir ordering,
 // and per-file skip rules for names containing a dot. Re-deriving the
 // effective answer through all of that is the mistake internal/compose.Discover
-// exists to demonstrate — ask the tool that owns the configuration, and take
+// exists to demonstrate: ask the tool that owns the configuration, and take
 // its answer.
 //
 // -U names the user, which needs root and is why the gap is reported when
@@ -37,7 +37,7 @@ func sudoListArgv(user string) []string {
 // on, so `NOPASSWD: /bin/ls, PASSWD: ALL` grants unrestricted sudo *with* a
 // password and must not be flagged.
 //
-// The list is sudoers' own vocabulary, and it is not translated — which is the
+// The list is sudoers' own vocabulary, and it is not translated, which is the
 // reason this reads tags rather than the sentence around them. sudo's prose is
 // gettext-translated in dozens of locales; platform.DefaultRunner pins LC_ALL=C
 // so the prose would hold, but a parser that does not depend on it cannot be
@@ -52,7 +52,7 @@ var sudoTags = []string{
 // that user can run anything, as anyone, without being asked for a password.
 //
 // Deliberately only the unrestricted case. A NOPASSWD rule on a named command
-// is ordinary administration — a backup script, a monitoring hook — and it is
+// is ordinary administration (a backup script, a monitoring hook) and it is
 // not a path to root unless that command happens to be exploitable, which is a
 // question a config reader cannot answer. Flagging every one of them would bury
 // the case that is unambiguous: a password prompt standing between an account
@@ -138,13 +138,13 @@ func askSudo(ctx context.Context, r platform.CommandRunner, user string) ([]byte
 // under another name is accounts.uid0's finding, not this one.
 //
 // The control run is the whole design of this function. `sudo -l -U someone`
-// exits non-zero both for an account with no sudo rights — the ordinary case,
-// and the answer we wanted — and for "a non-root user cannot use -U", and
+// exits non-zero both for an account with no sudo rights (the ordinary case,
+// and the answer we wanted) and for "a non-root user cannot use -U", and
 // nothing in the status distinguishes them. Reading the message instead would
 // mean parsing translated prose. So root is asked first, where the answer is
 // known: on a host where Hostveil can use -U at all, root can run anything.
 // A failure there means the question was refused rather than answered, and
-// every later failure would have been the same refusal — which is the
+// every later failure would have been the same refusal, which is the
 // difference between "no account has passwordless sudo" and "I never got to
 // look", the two this domain exists to keep apart.
 //

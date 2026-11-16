@@ -1,4 +1,4 @@
-// The two appearance registries — color themes and terminal symbol sets —
+// The two appearance registries (color themes and terminal symbol sets)
 // are named out loud in six documents: README, the `hostveil help` text
 // compiled into the binary, and the Interfaces and CLI-reference pages of
 // the docs site in both languages. Every one of those is prose restating a
@@ -8,7 +8,7 @@
 // catch on its own. The Instrument theme was deleted and One Dark became the
 // default; `hostveil help` went on offering "instrument (default)" to
 // everyone who asked, naming a theme the binary would refuse. Nothing failed,
-// because every *remaining* theme was still listed — the stale entry was an
+// because every *remaining* theme was still listed: the stale entry was an
 // extra, and an extra is invisible to a test that only checks for presence.
 //
 // So these check both directions: every registered ID appears, and the count
@@ -47,7 +47,7 @@ func appearanceDocs(t *testing.T) map[string]string {
 	out := make(map[string]string, len(paths))
 	for _, p := range paths {
 		if _, err := os.Stat(filepath.Join(repoRoot(t), p)); err != nil {
-			t.Fatalf("%s does not exist — a file moved and this test did not", p)
+			t.Fatalf("%s does not exist; a file moved and this test did not", p)
 		}
 		out[p] = readRepoFile(t, p)
 	}

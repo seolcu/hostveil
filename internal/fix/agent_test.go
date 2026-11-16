@@ -45,7 +45,7 @@ func agentFinding(id string, ev map[string]string) model.Finding {
 
 // One safe value is one action, which is the Auto shape. Two are two
 // independent alternatives, which is the Review shape. Neither is decided
-// here — both are read off the evidence the checker recorded.
+// here: both are read off the evidence the checker recorded.
 func TestAgentConfigKeyShapeFollowsTheSafeValues(t *testing.T) {
 	auto := agentFinding("agent.elevated-enabled", map[string]string{
 		"config": "/home/alice/.openclaw/openclaw.json",

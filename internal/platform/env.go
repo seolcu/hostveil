@@ -43,7 +43,7 @@ type Env struct {
 	// OS is the host's operating system, from runtime.GOOS. It is the one
 	// place in Hostveil that asks, and it exists so a checker can tell
 	// "I looked and found nothing" apart from "this is not a host I can
-	// audit" — see AuditableOS.
+	// audit": see AuditableOS.
 	OS string
 }
 
@@ -53,7 +53,7 @@ const LinuxOS = "linux"
 // AuditableOS reports whether the host is one the checkers can draw
 // conclusions about, and why not when it is not.
 //
-// Hostveil builds and runs on darwin — goreleaser publishes those archives —
+// Hostveil builds and runs on darwin (goreleaser publishes those archives)
 // and every detection rule in it is about Linux. Most domains discover that
 // on their own and skip cleanly: there is no /proc/sys, no systemd, no
 // apt-get, no ss. Four did not, and each turned "I could not look" into an
@@ -61,7 +61,7 @@ const LinuxOS = "linux"
 //
 //   - firewall probes ufw, firewall-cmd, nft and iptables. None is installed
 //     on macOS, no probe fails, and the absence of a failure was read as the
-//     absence of a firewall — a guaranteed `firewall.inactive` at the top
+//     absence of a firewall: a guaranteed `firewall.inactive` at the top
 //     severity, on every Mac, whose actual packet filter is pf and whose
 //     application firewall is socketfilterfw. Neither is probed anywhere.
 //   - accounts reads /etc/passwd, which macOS ships as a stub because the
@@ -70,10 +70,10 @@ const LinuxOS = "linux"
 //   - agent enumerates home directories out of that same /etc/passwd, keeping
 //     uid 0 and 1000..65533. macOS user accounts start at 501, so it finds
 //     only /var/root and reports "no agent runtime found" without ever having
-//     looked at /Users — the exact confusion that package's doc comment says
+//     looked at /Users: the exact confusion that package's doc comment says
 //     it exists to prevent.
-//   - proxy reads /etc/nginx, which Homebrew's nginx does not use — its
-//     configuration lives under the Homebrew prefix instead — so it would
+//   - proxy reads /etc/nginx, which Homebrew's nginx does not use (its
+//     configuration lives under the Homebrew prefix instead) so it would
 //     report a clean proxy on a Mac that is running one, deciding from a
 //     config file it never opened.
 //
@@ -90,7 +90,7 @@ func AuditableOS() (bool, string) { return auditableOS(runtime.GOOS) }
 // auditableOS is the rule itself, taking the operating system as an argument
 // so it can be tested for the platforms this build is not running on. The
 // exported wrapper reads runtime.GOOS directly rather than Env.OS, because a
-// checker that forgot to populate the field would then audit a Mac as Linux —
+// checker that forgot to populate the field would then audit a Mac as Linux,
 // and the whole point of this is that the failure must not be silent.
 func auditableOS(goos string) (bool, string) {
 	if goos == LinuxOS {
@@ -115,7 +115,7 @@ func Detect(ctx context.Context, r CommandRunner) Env {
 }
 
 // osReleasePath is where the distro identity is read from. It is a variable
-// so the parsing can be tested against real fixtures — every distro spells
+// so the parsing can be tested against real fixtures: every distro spells
 // this file slightly differently, and a parser for it that has only ever
 // been run against the machine it was written on is a guess.
 var osReleasePath = "/etc/os-release"
@@ -134,7 +134,7 @@ func readOSReleaseID() string {
 // The prefix match must be exact: ID_LIKE= sits right beside it in every
 // Ubuntu and Rocky os-release, and a prefix test that accepted it would
 // report Ubuntu as Debian. Values may be bare, single-quoted, or
-// double-quoted — os-release permits all three and distros use all three.
+// double-quoted: os-release permits all three and distros use all three.
 func parseOSReleaseID(r io.Reader) string {
 	sc := bufio.NewScanner(r)
 	for sc.Scan() {

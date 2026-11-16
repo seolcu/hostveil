@@ -23,7 +23,7 @@ func (s *Store) scansDir() string { return filepath.Join(s.dir, "scans") }
 // is, even though a scan snapshot is not a backup. The newest snapshot is
 // the baseline: LastReport reads it and nothing else, and the next scan
 // diffs against it to decide what is newly appeared, resolved, or changed.
-// A snapshot torn by a crash — or by delayed allocation on XFS or btrfs —
+// A snapshot torn by a crash (or by delayed allocation on XFS or btrfs)
 // therefore does not degrade the delta, it destroys it: the file fails to
 // unmarshal, and the run that follows either reports no delta at all or
 // announces the whole host as new. os.WriteFile truncates before it writes,
@@ -89,8 +89,8 @@ func scanFiles(dir string) ([]string, error) {
 }
 
 // ScanSnapshot is one saved scan: when it ran, and the opaque bytes it was
-// saved as. The store deliberately does not parse them — it holds
-// snapshots, it does not know what a report is — so the caller unmarshals.
+// saved as. The store deliberately does not parse them (it holds
+// snapshots, it does not know what a report is) so the caller unmarshals.
 type ScanSnapshot struct {
 	ID   string
 	At   time.Time
@@ -109,14 +109,14 @@ const scanIDTime = idTimeLayout
 // ListReports returns every retained scan snapshot, oldest first.
 //
 // Thirty of these have been kept and pruned since the store was written,
-// and nothing ever read more than the newest one — LastReport takes the
+// and nothing ever read more than the newest one: LastReport takes the
 // last element and every interface shows only "since last scan". The data
 // for a trend was on disk the whole time with no way to ask for it.
 //
 // A snapshot whose id does not carry a parseable timestamp, or that cannot
 // be read, is skipped rather than failing the call. This is a history
-// view: one unreadable entry should cost that entry, not the whole series
-// — the same reasoning as Store.List returning what it could read
+// view: one unreadable entry should cost that entry, not the whole series;
+// the same reasoning as Store.List returning what it could read
 // alongside its error.
 func (s *Store) ListReports() ([]ScanSnapshot, error) {
 	names, err := scanFiles(s.scansDir())

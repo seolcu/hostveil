@@ -8,7 +8,7 @@ import (
 	// engine returns when it declines a rollback. The layering test scans
 	// production files only, and asserting against a stand-in would be
 	// asserting against something core.IsExternalEdit does not actually
-	// recognise — which is the bug this covers.
+	// recognise, which is the bug this covers.
 	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"
 )
@@ -16,7 +16,7 @@ import (
 // The engine has emitted per-domain progress since the CLI display was
 // built for it, and the TUI passed nil and threw every event away. On a
 // host with many images a scan takes minutes, and the screen said
-// "Scanning…" for all of it — a display that cannot distinguish "still
+// "Scanning…" for all of it: a display that cannot distinguish "still
 // working" from "hung" is the one place this is not decoration.
 func TestScanProgressNamesTheDomainsStillWorking(t *testing.T) {
 	m := &appModel{mode: modeScanning, width: 100, height: 24, selected: map[string]bool{}}
@@ -41,7 +41,7 @@ func TestScanProgressNamesTheDomainsStillWorking(t *testing.T) {
 
 	m.noteScanEvent(model.ScanEvent{Source: model.SourceCVE, State: model.ScanSkipped})
 	if m.scanDone != 2 {
-		t.Errorf("scanDone = %d, want 2 — a skipped domain still finished", m.scanDone)
+		t.Errorf("scanDone = %d, want 2; a skipped domain still finished", m.scanDone)
 	}
 	if strings.Contains(m.status, ",") {
 		t.Errorf("nothing is running, so nothing should be listed: %q", m.status)
@@ -96,7 +96,7 @@ func TestScanProgressIsStablyOrdered(t *testing.T) {
 // A declined rollback is a question, not a failure. The engine refuses when
 // the file changed after Hostveil wrote it, the CLI has offered --force
 // since 3.4, and the dashboard's server has accepted it since the token
-// landed — but in the TUI the answer was "Rollback failed" and a dead end.
+// landed, but in the TUI the answer was "Rollback failed" and a dead end.
 func TestDeclinedRollbackOffersToForce(t *testing.T) {
 	m := &appModel{mode: modeHistory, width: 100, height: 24, selected: map[string]bool{},
 		checkpoints: []model.Checkpoint{{ID: "cp1", Label: "Bind redis to loopback",
@@ -104,7 +104,7 @@ func TestDeclinedRollbackOffersToForce(t *testing.T) {
 
 	m.Update(rolledBackMsg{err: &history.ExternalEditError{CheckpointID: "cp1", Path: "/opt/stacks/cloud/docker-compose.yml"}})
 	if m.mode != modeForceConfirm {
-		t.Fatalf("mode = %v, want modeForceConfirm — a decline must offer the override", m.mode)
+		t.Fatalf("mode = %v, want modeForceConfirm; a decline must offer the override", m.mode)
 	}
 
 	// The screen has to say the two things the operator cannot recover
@@ -121,7 +121,7 @@ func TestDeclinedRollbackOffersToForce(t *testing.T) {
 }
 
 // Forcing is destructive and one-way, so only an explicit yes may do it.
-// Anything else cancels — the same rule keyRollbackConfirm follows, and for
+// Anything else cancels: the same rule keyRollbackConfirm follows, and for
 // a stronger reason.
 func TestForceConfirmTakesOnlyAnExplicitYes(t *testing.T) {
 	for _, key := range []string{"n", "esc", "q", "enter", " "} {

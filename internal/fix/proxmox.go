@@ -23,7 +23,7 @@ var enterpriseComponent = regexp.MustCompile(`(?m)(^|[ \t])(pve-enterprise|enter
 // buildProxmoxNoSubscription rewrites the one enterprise source file in place
 // to the no-subscription repository: the same path on download.proxmox.com,
 // with the enterprise component replaced. It is one file, signed by the same
-// Proxmox release key, so it is one edit with a checkpoint — which is what
+// Proxmox release key, so it is one edit with a checkpoint, which is what
 // the two-step "disable one, add the other" it used to be declined for was
 // not.
 func buildProxmoxNoSubscription(f model.Finding) (Fix, error) {
@@ -38,7 +38,7 @@ func buildProxmoxNoSubscription(f model.Finding) (Fix, error) {
 				"receiving the security updates that have been silently refused.",
 			Warning: "The no-subscription repository is the one Proxmox describes as less tested than enterprise and " +
 				"not recommended for production. The next `apt full-upgrade` may bring a lot of Proxmox packages at " +
-				"once, after months of none — run it while you can reboot. If you have a subscription, add the key " +
+				"once, after months of none: run it while you can reboot. If you have a subscription, add the key " +
 				"instead (`pvesubscription set <key>`) and roll this back. The edit has a checkpoint.",
 			Kind: ActionEdit, Path: p,
 			Transform: func(in []byte) ([]byte, error) {

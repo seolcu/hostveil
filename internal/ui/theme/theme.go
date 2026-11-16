@@ -1,7 +1,7 @@
 // Package theme is the single source of truth for Hostveil's colors.
 //
-// Hostveil's design system is a near-monochrome console — bone text on ink,
-// all-monospace, dense — where the only things that carry color are risk
+// Hostveil's design system is a near-monochrome console (bone text on ink,
+// all-monospace, dense) where the only things that carry color are risk
 // (severity), safety, and structure. A theme swaps the thirteen hexes that
 // system is drawn from; it does not change what any of them mean.
 //
@@ -16,7 +16,7 @@
 // TUI builds its styles from these values and the dashboard's stylesheet is
 // generated from them, so the two cannot drift.
 //
-// This package holds data and string formatting only — no lipgloss, no
+// This package holds data and string formatting only; no lipgloss, no
 // image/color, no engine. That is what lets both UIs depend on it without
 // either one dragging the other's dependencies in.
 package theme
@@ -34,14 +34,14 @@ import (
 // Line2 are hairlines, with Line2 doubling as the selection ground; Bone and
 // Slate are primary and muted text. The remaining six are the only ones
 // that mean anything: four heats, safety, and structure. Only three of the
-// heats carry a severity — the fourth serves the score bands, which have four
-// — so do not read this list as one colour per level. severityColor in
+// heats carry a severity (the fourth serves the score bands, which have four)
+// so do not read this list as one colour per level. severityColor in
 // internal/ui/tui is where that mapping actually lives.
 //
 // Accent is the newest and the one that changed the rule above it. This
 // system was monochrome-plus-risk: color meant danger or safety and nothing
-// else, and every navigational thing on screen — panel headers, the key
-// letters in the footer, the marker on the filtered domain — was drawn in the
+// else, and every navigational thing on screen (panel headers, the key
+// letters in the footer, the marker on the filtered domain) was drawn in the
 // same muted grey as the text it was meant to be distinguished from. That is
 // defensible as a principle and it read as an absence, particularly at 256
 // colors where the cool greys a theme is recognised by all flatten to neutral.
@@ -49,8 +49,8 @@ import (
 // how to move, never how bad something is. Risk and safety keep their
 // monopoly on the heats.
 //
-// Manual and Unavail answer a different question — not "how bad" but "what
-// kind of nothing can Hostveil do about it" — and they are deliberately not
+// Manual and Unavail answer a different question, not "how bad" but "what
+// kind of nothing can Hostveil do about it", and they are deliberately not
 // heats. A host can legitimately carry a dozen Manual findings by design (no
 // safe automatable action exists) and that must not read as a dozen problems
 // screaming for attention the way a dozen Crit findings would. Both sit at
@@ -59,7 +59,7 @@ import (
 // is a muted warm (clay/tan) tone so it never gets mistaken for Med's amber;
 // Unavail is a muted cool (dusty violet) tone so it never gets mistaken for
 // Accent's blue or for the neutral greys (Slate, Low). Before this pair
-// existed, Manual and Unavailable were drawn identically — the two kinds a
+// existed, Manual and Unavailable were drawn identically: the two kinds a
 // finding can be that Hostveil will never offer a button for, on purpose,
 // looked like one undifferentiated "nothing to do here" in every UI.
 type Palette struct {
@@ -131,7 +131,7 @@ var themes = []Theme{
 			//
 			// Slate, Crit and Low are lifted, because One Dark's published
 			// values do not clear the contrast floor this package holds every
-			// theme to — the comment grey (#7f848e) lands at 3.73:1 on its own
+			// theme to; the comment grey (#7f848e) lands at 3.73:1 on its own
 			// background where 4.5 is required, the red (#e06c75) at 4.38, and
 			// the Low grey at 3.39 against a floor of 3.5. Each is raised in
 			// HSL lightness only, by the smallest step that clears it, so the
@@ -145,7 +145,7 @@ var themes = []Theme{
 			//
 			// Crit carries a second lift, for the quantiser rather than for a
 			// human eye. At #e17079 it fell off the colour cube entirely and
-			// came out as xterm 246 — a flat grey — on every terminal without
+			// came out as xterm 246 (a flat grey) on every terminal without
 			// truecolor, which over SSH is nearly all of them. High severity,
 			// the level that means reachable now from off the host, was drawn
 			// in a grey. See TestEveryHeatSurvivesA256ColorTerminal.
@@ -176,7 +176,7 @@ var themes = []Theme{
 		Name: "Nord",
 		Palette: Palette{
 			// Nord's Polar Night starts at #2e3440, which is the lightest
-			// background of any theme here — light enough that its Aurora red
+			// background of any theme here; light enough that its Aurora red
 			// lands at 3:1 against it, and a High finding that reads as a
 			// suggestion is worse than no theme at all. The ramp is shifted
 			// down one step instead: #2e3440 becomes the raised surface and
@@ -184,7 +184,7 @@ var themes = []Theme{
 			// orange, yellow and green exactly as published.
 			//
 			// Slate is nudged six units greener than Nord's own muted blue.
-			// It and Low both quantised to xterm 103 — muted text and a Low
+			// It and Low both quantised to xterm 103; muted text and a Low
 			// finding rendered as one pixel value on any terminal short of
 			// truecolor. The quieter of the two keeps its published value and
 			// the text moves, since Low's whole job is to sit still.
@@ -216,7 +216,7 @@ var themes = []Theme{
 			Line: "#292e42", Line2: "#3b4261",
 			Bone: "#c0caf5", Slate: "#9aa5ce",
 			// The accent is nine units bluer than Tokyo Night's published blue,
-			// which quantised one index off this theme's own muted text — two
+			// which quantised one index off this theme's own muted text; two
 			// cube entries differing in a single channel, so the colour that
 			// says "here is how to move" and the colour that says "you may
 			// skip this" arrived the same.
@@ -280,8 +280,8 @@ func (p Palette) block(selector string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s {\n", selector)
 	// Every palette here is bone-on-ink, and the browser has no way to know
-	// that from custom properties: the widgets it draws itself — a checkbox,
-	// a <select>'s dropdown, a scrollbar — follow color-scheme, not --ink. Left
+	// that from custom properties: the widgets it draws itself (a checkbox,
+	// a <select>'s dropdown, a scrollbar) follow color-scheme, not --ink. Left
 	// unset they come out of the light default, which is why an unticked
 	// batch-select box was a white square sitting in the middle of a dark
 	// findings list. Written per block rather than once on :root so it travels
@@ -298,7 +298,7 @@ func (p Palette) block(selector string) string {
 // CSS renders every palette as custom properties. The theme named by
 // defaultID (falling back to Default) is emitted bare on :root, so the page
 // paints correctly before any script runs; each theme also gets a
-// data-theme block so the picker can switch to it — including the default,
+// data-theme block so the picker can switch to it, including the default,
 // which is how switching back works.
 func CSS(defaultID string) string {
 	def, ok := Lookup(defaultID)
@@ -307,7 +307,7 @@ func CSS(defaultID string) string {
 	}
 
 	var b strings.Builder
-	b.WriteString("/* Generated by internal/ui/theme — do not edit by hand. */\n")
+	b.WriteString("/* Generated by internal/ui/theme: do not edit by hand. */\n")
 	fmt.Fprintf(&b, "/* default: %s */\n", def.ID)
 	b.WriteString(def.Palette.block(":root"))
 	for _, t := range themes {
@@ -325,7 +325,7 @@ func CSS(defaultID string) string {
 // saved theme from flashing the default palette on every page load.
 func JS(defaultID string) string {
 	var b strings.Builder
-	b.WriteString("/* Generated by internal/ui/theme — do not edit by hand. */\n")
+	b.WriteString("/* Generated by internal/ui/theme: do not edit by hand. */\n")
 	b.WriteString("window.HOSTVEIL_THEMES = [\n")
 	for _, t := range themes {
 		fmt.Fprintf(&b, "  {id: %q, name: %q},\n", t.ID, t.Name)

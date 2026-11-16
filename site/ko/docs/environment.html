@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>환경 변수 — Hostveil 문서</title>
+    <title>환경 변수; Hostveil 문서</title>
     <meta name="description" content="Hostveil이 읽거나, 셸에서 따르거나, 실행하는 명령에 설정해 주는 모든 환경 변수: 자체 설정, sudo 동작, 색과 터미널 감지, LC_ALL 고정, 그리고 유일한 네트워크 요청에 걸리는 프록시 변수까지.">
     <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
-    <meta property="og:title" content="환경 변수 — Hostveil 문서">
+    <meta property="og:title" content="환경 변수; Hostveil 문서">
     <meta property="og:description" content="모든 변수를 한곳에: Hostveil 자체 설정, 셸에서 따르는 것, 자식 명령에 설정해 주는 것, 그리고 주변 도구에서 읽는 것.">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://hostveil.seolcu.com/ko/docs/environment">
@@ -31,14 +31,14 @@
       // Send a Korean-speaking reader to the Korean page, once.
       //
       // GitHub Pages serves files, not content negotiation, so the only place
-      // this decision can be made is here — and the risk of making it here is
+      // this decision can be made is here, and the risk of making it here is
       // trapping someone: a reader who deliberately clicked "English" must not
       // be bounced back on the next click. So the switcher records that choice
       // and this defers to it forever after.
       //
       // Only from the English page, only when the browser's own preference
       // list actually leads with Korean, and never when a crawler is reading
-      // (they do not run this) — the hreflang links above are what they read.
+      // (they do not run this): the hreflang links above are what they read.
       (function () {
         try {
           if (document.documentElement.lang !== "en") return;

@@ -1,5 +1,5 @@
 // Package tui is Hostveil's thin terminal UI. It renders the engine's
-// report and forwards user intent (scan, preview, apply) to the engine —
+// report and forwards user intent (scan, preview, apply) to the engine:
 // it contains NO detection, fix, scoring, or rollback logic of its own.
 // It imports only core and model, never fix/history/check directly.
 package tui
@@ -52,8 +52,8 @@ const (
 	//
 	// The list was written out by hand and fell two behind: the frame test
 	// called itself "the regression net for the whole composer" while
-	// covering eight of ten, and modeForceConfirm — the screen shown when a
-	// rollback is declined because the file changed — was never rendered at
+	// covering eight of ten, and modeForceConfirm (the screen shown when a
+	// rollback is declined because the file changed) was never rendered at
 	// any terminal size by any test. Keep this last.
 	modeCount
 )
@@ -65,7 +65,7 @@ type appModel struct {
 	// mode and reads Ctrl-C as a key, so without a cancellable context a scan
 	// started here could not be stopped by any means at all.
 	//
-	// Read it through runCtx, never directly — a model built as a bare struct
+	// Read it through runCtx, never directly; a model built as a bare struct
 	// literal has none, which is how several tests construct one.
 	ctx    context.Context
 	engine *core.Engine
@@ -105,8 +105,8 @@ type appModel struct {
 	// happened and never what is left, so a screen built from events alone
 	// can count upwards and cannot draw a bar.
 	//
-	// scanPlan is empty when there is no engine to ask — every model built
-	// as a bare struct literal in the tests — and the screen then falls back
+	// scanPlan is empty when there is no engine to ask (every model built
+	// as a bare struct literal in the tests) and the screen then falls back
 	// to the domains it has heard about, which is what it drew before.
 	scanPlan  []model.Source
 	scanState map[model.Source]model.ScanState
@@ -118,20 +118,20 @@ type appModel struct {
 	scanStartedAt time.Time
 	scanElapsed   time.Duration
 
-	// applyLabel names what is being applied — the finding's title for a
-	// single fix, a count for a batch — and applyStartedAt/applyElapsed are
+	// applyLabel names what is being applied (the finding's title for a
+	// single fix, a count for a batch) and applyStartedAt/applyElapsed are
 	// scanStartedAt/scanElapsed's counterpart for modeApplying, advanced by
 	// the same ticker. There is no per-item count the way scanning has a
 	// domain plan: ApplyFix and ApplyBatch each return one result with
 	// nothing emitted while they run, so the elapsed clock is the only
-	// signal modeApplying has that the wait is not hung — see applyingRows.
+	// signal modeApplying has that the wait is not hung; see applyingRows.
 	applyLabel     string
 	applyStartedAt time.Time
 	applyElapsed   time.Duration
 
 	// Advisory AI explanation state for the detail view. Cleared whenever
 	// the inspected finding changes, so a slow answer cannot land under the
-	// wrong finding — explainedMsg also carries the finding's key and is
+	// wrong finding: explainedMsg also carries the finding's key and is
 	// dropped if the user has moved on.
 	aiBusy bool
 	aiText string
@@ -166,8 +166,8 @@ type appModel struct {
 	// Whole-scan AI advisory screen and its context editor. advice holds
 	// the last answer; adviceBusy is set while waiting on it, the same
 	// shape aiBusy already uses for the single-finding case. aiContextText
-	// is a rune buffer for the same reason exportPath is — every keystroke
-	// mutates it in place — prefilled from Engine.AIContext() when the
+	// is a rune buffer for the same reason exportPath is (every keystroke
+	// mutates it in place) prefilled from Engine.AIContext() when the
 	// editor opens and written back with Engine.SetAIContext on Enter,
 	// straight through the engine rather than an injected callback: unlike
 	// theme/layout, internal/core is not layering-restricted, so it can
@@ -179,8 +179,8 @@ type appModel struct {
 	aiContextCursor int
 
 	// gl is which symbol set the screen draws from. The zero value is
-	// glyph.Plain, so a model built as a bare struct literal — which is how
-	// every layout and frame test builds one — renders what Hostveil has
+	// glyph.Plain, so a model built as a bare struct literal (which is how
+	// every layout and frame test builds one) renders what Hostveil has
 	// always rendered.
 	gl glyph.Set
 }
@@ -232,8 +232,8 @@ func New(ctx context.Context, engine *core.Engine, opts Opts) tea.Model {
 
 // runCtx is the context every engine call from the TUI runs under.
 //
-// It exists because appModel is also built as a bare struct literal — the
-// layout and frame tests do it for every mode — and such a model has no
+// It exists because appModel is also built as a bare struct literal (the
+// layout and frame tests do it for every mode) and such a model has no
 // context. Before this, a batch fix issued from one of those panicked on a
 // nil dereference inside the engine. Falling back to Background keeps the
 // zero value renderable and drivable; production always goes through New.
@@ -259,7 +259,7 @@ func (m *appModel) clearAI() {
 // Every message that changes the host has to end here: the engine has already
 // marked the finding fixed (or un-marked it, after a rollback) and rescored,
 // and the list is drawn from m.report. A handler that forgets leaves the
-// screen showing a finding the engine knows is gone — no error, no log, just
+// screen showing a finding the engine knows is gone: no error, no log, just
 // a list that is quietly one round out of date.
 //
 // It was written out three times, which is three chances for a fourth
@@ -334,13 +334,13 @@ func waitForScanEvent(ch chan model.ScanEvent) tea.Cmd {
 }
 
 // elapsedTickMsg advances the elapsed clock on whichever screen is showing
-// one — scanning or applying. One message and one ticker for both, because
+// one: scanning or applying. One message and one ticker for both, because
 // it is the same clock answering the same question ("is it hung?") in each:
 // duplicating it per mode would be the same code twice.
 type elapsedTickMsg struct{}
 
 // elapsedTick is how often the elapsed figure is refreshed. A second,
-// because that is the resolution the figure is shown at — a faster tick
+// because that is the resolution the figure is shown at: a faster tick
 // would redraw the screen without changing a character on it.
 const elapsedTick = time.Second
 
@@ -352,7 +352,7 @@ func tickElapsed() tea.Cmd {
 // the clock.
 //
 // The plan is asked of the engine before anything runs. Nothing else can
-// supply it — a checker announces itself when it starts, so a screen built
+// supply it: a checker announces itself when it starts, so a screen built
 // from the events alone knows the domains that have begun and not the ones
 // still queued, and a list that grows as the scan proceeds is a worse answer
 // to "is this hung" than no list at all.
@@ -362,7 +362,7 @@ func (m *appModel) startScan() tea.Cmd {
 	if m.engine != nil {
 		// The plan is the list of rows; the state map is only what has been
 		// heard since. Seeding the map with ScanPending would be seeding it
-		// with the zero value, which is what a missing key already reads as —
+		// with the zero value, which is what a missing key already reads as,
 		// and it would also make the screen draw a full list from a stale map
 		// if the plan were ever lost, hiding exactly the failure the plan
 		// exists to prevent.
@@ -376,7 +376,7 @@ func (m *appModel) startScan() tea.Cmd {
 // noteScanEvent folds one event into the progress state.
 //
 // Same reading as the CLI renderer: ScanRunning means a checker started,
-// and any other state is that checker finishing — Skipped and Degraded are
+// and any other state is that checker finishing; Skipped and Degraded are
 // outcomes, not failures to report. Counting terminal events rather than
 // tracking a total keeps this correct when a scan runs fewer than every
 // domain.
@@ -394,7 +394,7 @@ func (m *appModel) noteScanEvent(ev model.ScanEvent) {
 		m.scanDone++
 	}
 	// The state is recorded for every event including the ones that arrive
-	// for a domain the plan does not name — the plan is empty when there is
+	// for a domain the plan does not name: the plan is empty when there is
 	// no engine to ask, and the screen falls back to what it has heard.
 	m.scanState[ev.Source] = ev.State
 	m.status = m.scanStatus()
@@ -403,7 +403,7 @@ func (m *appModel) noteScanEvent(ev model.ScanEvent) {
 // scanDomains is what the scanning screen draws a row for: the plan when
 // there is one, and otherwise the domains that have announced themselves.
 //
-// The fallback keeps registry order out of it — a scan whose plan is unknown
+// The fallback keeps registry order out of it; a scan whose plan is unknown
 // is one the tests built by hand, and sorting by label is the only stable
 // order available.
 func (m *appModel) scanDomains() []model.Source {
@@ -422,7 +422,7 @@ func (m *appModel) scanDomains() []model.Source {
 //
 // It names the domains still working rather than the ones finished,
 // because the question the screen has to answer is "is this hung, and on
-// what" — and on a real host the answer is almost always the CVE scan,
+// what", and on a real host the answer is almost always the CVE scan,
 // which can take minutes. Sorted, because map order would make the line
 // jitter on every redraw.
 func (m *appModel) scanStatus() string {
@@ -461,7 +461,7 @@ type exportedMsg struct {
 }
 
 // exportCmd renders the current report in format and hands the bytes to
-// save — the injected, elevation-aware write path (see ExportOpts).
+// save: the injected, elevation-aware write path (see ExportOpts).
 func exportCmd(e *core.Engine, r model.Report, format, path string, save func(string, string, []byte) error) tea.Cmd {
 	return func() tea.Msg {
 		data, _, _, err := e.Export(r, format)
@@ -575,7 +575,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case scanProgressMsg:
-		// Progress arriving after the report is stale by definition — the
+		// Progress arriving after the report is stale by definition; the
 		// scan is over and the list is already drawn. Drop it rather than
 		// overwrite the screen the user is now reading.
 		if m.mode != modeScanning {
@@ -690,7 +690,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			// A declined rollback is a question, not a failure. The file
 			// changed after Hostveil wrote it, so restoring the backup
-			// would discard whatever was done in between — and rollback
+			// would discard whatever was done in between, and rollback
 			// keeps no checkpoint of its own, so there is no way back from
 			// that. The CLI has said so and offered --force since 3.4;
 			// here the answer was "Rollback failed" and a dead end.
@@ -811,7 +811,7 @@ func (m *appModel) keyList(key string) (tea.Model, tea.Cmd) {
 }
 
 // openExportPicker starts the export flow: choose a format, then type a
-// destination path. Reachable even on a clean report — an operator with
+// destination path. Reachable even on a clean report: an operator with
 // nothing to fix may still want to hand a colleague proof of that.
 func (m *appModel) openExportPicker() {
 	m.exportCursor = 0
@@ -820,7 +820,7 @@ func (m *appModel) openExportPicker() {
 }
 
 // keyExport drives the format picker. Enter carries the choice into
-// modeExportPath rather than exporting immediately — a format with no
+// modeExportPath rather than exporting immediately: a format with no
 // destination is not yet a complete request.
 func (m *appModel) keyExport(key string) (tea.Model, tea.Cmd) {
 	formats := core.ExportFormats()
@@ -844,7 +844,7 @@ func (m *appModel) keyExport(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// keyExportPath drives the free-text destination field — hand-rolled rather
+// keyExportPath drives the free-text destination field: hand-rolled rather
 // than a general-purpose text-input component, since the whole need is a
 // single-line path buffer with basic editing. A rune slice rather than a
 // string because every keystroke inserts or deletes at exportPathCursor.
@@ -892,7 +892,7 @@ func (m *appModel) keyExportPath(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// defaultExportPath is the path the field starts pre-filled with — the
+// defaultExportPath is the path the field starts pre-filled with: the
 // current directory, which is where an interactive user is already
 // sitting, and every character of it stays editable.
 func defaultExportPath(f core.FormatInfo) string {
@@ -901,7 +901,7 @@ func defaultExportPath(f core.FormatInfo) string {
 
 // openAdvicePicker starts the whole-scan advisory: every fixable finding
 // in the current report, judged against the saved host description if one
-// is set. Reachable even on a clean report — Advise's own deterministic
+// is set. Reachable even on a clean report: Advise's own deterministic
 // Plain listing just comes back saying there is nothing to judge.
 func (m *appModel) openAdvicePicker() tea.Cmd {
 	m.mode = modeAdvice
@@ -934,7 +934,7 @@ func (m *appModel) openAIContextEditor() {
 }
 
 // keyAIContext is modeExportPath's exact editing shape, applied to a
-// different field — see that function's comment for why this is
+// different field: see that function's comment for why this is
 // hand-rolled rather than a general-purpose text-input component. Enter
 // saves and returns to modeAdvice, re-firing adviseCmd so the screen
 // reflects the new context; esc discards and returns unchanged.
@@ -1042,7 +1042,7 @@ func (m *appModel) keyHistory(key string) (tea.Model, tea.Cmd) {
 }
 
 // keyForceConfirm answers the declined rollback. Anything but an explicit
-// yes cancels, matching keyRollbackConfirm — for a one-way overwrite of the
+// yes cancels, matching keyRollbackConfirm, for a one-way overwrite of the
 // operator's own edits, a stray keypress must never be consent.
 func (m *appModel) keyForceConfirm(key string) (tea.Model, tea.Cmd) {
 	if key != "y" {
@@ -1133,8 +1133,8 @@ func (m *appModel) presentSources() []model.Source {
 //
 // It walks model.AllSeverities rather than naming the levels, which is what
 // it used to do. A hand-written chain has to be edited every time the scale
-// changes, and the failure of forgetting is a level the filter simply skips
-// — invisible, because the key still appears to work.
+// changes, and the failure of forgetting is a level the filter simply skips:
+// invisible, because the key still appears to work.
 func cycleSeverity(cur *model.Severity) *model.Severity {
 	levels := model.AllSeverities()
 	if len(levels) == 0 {
@@ -1201,7 +1201,7 @@ func (m *appModel) startPreview() tea.Cmd {
 	}
 	f := m.active[m.cursor]
 	if !f.IsFixable() {
-		m.status = fmt.Sprintf("%s is %s — see the guidance in its detail view.", f.ID, f.Remediation.Label())
+		m.status = fmt.Sprintf("%s is %s; see the guidance in its detail view.", f.ID, f.Remediation.Label())
 		m.mode = modeMessage
 		return nil
 	}
@@ -1223,15 +1223,15 @@ func clamp(v, lo, hi int) int {
 
 // The three summaries below are methods rather than package functions so they
 // can reach the glyph set. As functions they could not, so each wrote a
-// literal "✓" — and with --glyphs nerd every other tick on the screen was a
+// literal "✓", and with --glyphs nerd every other tick on the screen was a
 // patched glyph while these three were not, which is the drift internal/glyph
 // exists to make impossible.
 //
 // Each returns lines rather than one sentence. They used to concatenate
 // clauses into a paragraph, which the message screen then word-wrapped: the
 // result broke wherever the column happened to fall ("You may need to /
-// restart 'redis'."), and four separate facts — what happened, what it cost,
-// how to undo it, what to restart — read as one run-on remark. They are
+// restart 'redis'."), and four separate facts (what happened, what it cost,
+// how to undo it, what to restart) read as one run-on remark. They are
 // separate facts, so they are separate lines.
 
 func (m *appModel) applySummary(o model.FixOutcome) string {
@@ -1270,7 +1270,7 @@ func (m *appModel) rollbackSummary(o model.RollbackOutcome) string {
 
 func (m *appModel) batchSummary(o model.BatchOutcome) string {
 	// The claim comes from the engine; this adds only the tick and the one
-	// thing that is genuinely local — which key reaches the history view.
+	// thing that is genuinely local, which key reaches the history view.
 	// The fixes that did land are already on the host with checkpoints
 	// waiting there, and an operator who thinks the batch completed has no
 	// reason to go looking.

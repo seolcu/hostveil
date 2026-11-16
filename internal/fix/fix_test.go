@@ -19,7 +19,7 @@ import (
 func representative(id string) model.Finding { return fixtest.Finding(id) }
 
 // TestEveryRegisteredFixIsValid builds each registered fix from a
-// representative finding and asserts it passes Validate — Auto has exactly
+// representative finding and asserts it passes Validate: Auto has exactly
 // one action, Review has independent alternatives, every edit has a
 // Transform, every exec has commands.
 // It enumerates the registry itself rather than a hand-kept list, so a new
@@ -160,7 +160,7 @@ func TestRepullFixHasTwoIndependentAlternatives(t *testing.T) {
 		t.Fatalf("build: ok=%v err=%v", ok, err)
 	}
 	if fx.Kind != model.RemediationReview {
-		t.Errorf("kind = %v, want Review — exec fixes are never Auto", fx.Kind)
+		t.Errorf("kind = %v, want Review; exec fixes are never Auto", fx.Kind)
 	}
 	if len(fx.Actions) != 2 {
 		t.Fatalf("expected 2 alternatives, got %d", len(fx.Actions))
@@ -202,7 +202,7 @@ func TestRepullFixTargetsTheComposeFile(t *testing.T) {
 			if cmd[idx+1] != f.Metadata["file"] {
 				t.Errorf("action %d command %d targets %q, want %q", i, j, cmd[idx+1], f.Metadata["file"])
 			}
-			// The unqualified name, as written in the compose file — never
+			// The unqualified name, as written in the compose file; never
 			// the project-qualified f.Service.
 			if cmd[len(cmd)-1] != f.Metadata["service"] {
 				t.Errorf("action %d command %d does not end with the bare service: %v", i, j, cmd)
@@ -274,7 +274,7 @@ func TestMemLimitFixOffersSeveralValues(t *testing.T) {
 			t.Errorf("action %d did not set mem_limit: %s", i, out)
 		}
 		// Each alternative must be a distinct choice, not the same edit
-		// relabelled — the loop variable capture bug this guards is easy to
+		// relabelled; the loop variable capture bug this guards is easy to
 		// reintroduce.
 		if seen[string(out)] {
 			t.Errorf("action %d produced an output identical to an earlier alternative", i)
@@ -311,7 +311,7 @@ func TestExecFixTransformsPure(t *testing.T) {
 
 // The property that makes this fix safe to apply unattended: it only ever
 // removes permission bits. Assigning the rule's MaxMode outright would GRANT
-// access — /etc/shadow at 0604 violates a 0640 rule, and setting it to 0640
+// access: /etc/shadow at 0604 violates a 0640 rule, and setting it to 0640
 // hands the shadow group a read bit the file never had.
 func TestTightenOnlyRemovesBits(t *testing.T) {
 	cases := []struct {
@@ -320,13 +320,13 @@ func TestTightenOnlyRemovesBits(t *testing.T) {
 	}{
 		{0o666, 0o644, 0o644, "world-writable stripped to the rule"},
 		{0o644, 0o640, 0o640, "other-read stripped"},
-		{0o604, 0o640, 0o600, "must NOT become 0640 — that would grant group read"},
+		{0o604, 0o640, 0o600, "must NOT become 0640, that would grant group read"},
 		{0o600, 0o640, 0o600, "already stricter than the rule is left alone"},
 		{0o400, 0o644, 0o400, "stricter in every bit, untouched"},
 	}
 	for _, c := range cases {
 		if got := tighten(c.current, c.mask); got != c.want {
-			t.Errorf("tighten(%#o, %#o) = %#o, want %#o — %s", c.current, c.mask, got, c.want, c.why)
+			t.Errorf("tighten(%#o, %#o) = %#o, want %#o; %s", c.current, c.mask, got, c.want, c.why)
 		}
 		// Whatever the inputs, no bit may appear that was not already set.
 		if got := tighten(c.current, c.mask); got&^c.current != 0 {
@@ -387,7 +387,7 @@ func TestFilePermsFixIsAutoAndModeShaped(t *testing.T) {
 		t.Fatalf("action kind = %v, want ActionMode", a.Kind)
 	}
 	// A glob rule covers several files, and an Auto fix gets exactly one
-	// action — so the one action has to carry them all.
+	// action, so the one action has to carry them all.
 	if len(a.Paths) != 2 {
 		t.Errorf("paths = %v, want both host keys", a.Paths)
 	}
@@ -416,7 +416,7 @@ func TestFilePermsFixRefusesIncompleteEvidence(t *testing.T) {
 // A path may contain ", ". The human-readable "files" evidence and the
 // machine-readable "paths" evidence used to share that separator, so a
 // directory like "logs, old" split into two paths that do not exist. It
-// failed safe — planModes aborts the whole fix when a path is missing — but
+// failed safe (planModes aborts the whole fix when a path is missing) but
 // it failed, on a fix that should have worked, for a reason invisible in the
 // output.
 func TestFilePermsFixHandlesPathsContainingTheHumanSeparator(t *testing.T) {
@@ -446,7 +446,7 @@ func TestFilePermsFixHandlesPathsContainingTheHumanSeparator(t *testing.T) {
 // tag can actually deliver: re-resolving the tag *may* pick up a fix for the
 // CVE that triggered the finding, but Hostveil has no way to confirm it did,
 // since the same tag can move for unrelated reasons too. This mirrors
-// internal/check/cve's own HowToFix, which carries the identical caveat —
+// internal/check/cve's own HowToFix, which carries the identical caveat,
 // and it is the property the whole feature exists to state honestly, per the
 // user's original example: fast patches are attractive on a self-hosted box
 // and risky on a stable one, and a Benefit that oversold "this fixes it"

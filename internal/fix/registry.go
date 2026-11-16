@@ -31,7 +31,7 @@ type Action struct {
 
 	// Benefit is one sentence stating what applying this action actually
 	// gets the operator, shown in preview beside Warning so the payoff and
-	// the risk are read together — a medicine label states efficacy next
+	// the risk are read together: a medicine label states efficacy next
 	// to side effects, not side effects alone. Required on every action
 	// (see Validate), unlike Warning, which stays optional: not every fix
 	// has a real side effect, but every registered fix is worth doing, so
@@ -50,7 +50,7 @@ type Action struct {
 	// Without it an edit action could only ever modify something already on
 	// disk, which left an entire detection domain unfixable. Persisting a
 	// kernel parameter means writing a drop-in under /etc/sysctl.d that by
-	// definition is not there — if it were, the value would already be set
+	// definition is not there, if it were, the value would already be set
 	// and the finding would not have fired.
 	//
 	// It is opt-in per action, not the default, because for every other fix
@@ -66,8 +66,8 @@ type Action struct {
 	// runs as root. Without it, replacing ~/.openclaw/openclaw.json with a
 	// link to a root-only file between the scan and the fix would have root
 	// read that file and render it into a preview diff for anyone at the
-	// dashboard. The write side is already safe — WriteFileAtomic renames
-	// over the link rather than through it — so the read is the whole
+	// dashboard. The write side is already safe (WriteFileAtomic renames
+	// over the link rather than through it) so the read is the whole
 	// exposure, and refusing it is the discipline the mode fixes in
 	// register.go committed every later home-directory fix to.
 	//
@@ -82,13 +82,13 @@ type Action struct {
 	SafeRoot string
 
 	// TakesEffectOn names what has to happen before this edit reaches the
-	// host — "recreated with `docker compose up -d`", "a docker daemon
+	// host: "recreated with `docker compose up -d`", "a docker daemon
 	// restart". Empty means the edit is in force the moment it is written.
 	//
 	// It exists because the re-check cannot tell the difference on its own,
 	// and got it wrong in the dangerous direction. The compose checker reads
 	// the project file, the compose fix edits that file, so the re-check
-	// finds nothing and reports VerifyGone — "the finding is gone" — while
+	// finds nothing and reports VerifyGone: "the finding is gone", while
 	// the container that is actually running still publishes the port on
 	// every interface. A positive confirmation over an unchanged host is the
 	// worst single thing this tool can say.
@@ -98,8 +98,8 @@ type Action struct {
 	// establishes that the artifact is correct and nothing more.
 	//
 	// This is also the whole of the objection register.go raises against the
-	// dockerd and systemd domains — "a fix would edit a file the running
-	// daemon will not read again until it restarts" — stated as a field
+	// dockerd and systemd domains: "a fix would edit a file the running
+	// daemon will not read again until it restarts": stated as a field
 	// rather than as a reason to have no fix at all.
 	TakesEffectOn string
 
@@ -112,17 +112,17 @@ type Action struct {
 	// are different claims, and only the second is worth marking a finding
 	// fixed for. An invalid sshd_config is the case that matters: sshd keeps
 	// serving from the config it already loaded, so a broken file looks like
-	// nothing at all until the next restart — at which point sshd refuses to
+	// nothing at all until the next restart, at which point sshd refuses to
 	// start and repairing it needs the SSH access it just removed.
 	//
 	// The check is calibrated against the original file before it is trusted:
 	// see Engine.runEditValidator. That is what keeps a validator which cannot run
-	// on this host — `sshd -t` needs host keys it may not be able to read —
+	// on this host: `sshd -t` needs host keys it may not be able to read:
 	// from blocking a perfectly good fix. "Cannot verify" is not "invalid".
 	VerifyCmd []string
 
 	// AfterWrite is argv run, in order, once an edit is written and its
-	// checkpoint saved — the restart or reload that puts the edit in force.
+	// checkpoint saved: the restart or reload that puts the edit in force.
 	//
 	// It is what lets an edit to a file a daemon reads only at start be one
 	// action rather than a fix plus a chore. The edit is still the checkpoint:
@@ -141,7 +141,7 @@ type Action struct {
 	// leaves the daemon running with it. Turning it on is a reload; turning
 	// it back off is a restart. A rollback that reports the file restored
 	// while the daemon still runs the fix is the outcome this field exists
-	// to prevent — and it took a real Docker to show it.
+	// to prevent, and it took a real Docker to show it.
 	AfterRestore [][]string
 
 	// Irreversible marks an edit whose effect outlives the file: the history
@@ -149,15 +149,15 @@ type Action struct {
 	// reported where it stopped rather than undone.
 	//
 	// k3s Secrets encryption is the case. Once a key rotation has rewritten
-	// Secrets encrypted, removing the setting and restarting — what a rollback
-	// or the restore-after-failure path would do — leaves the cluster unable
+	// Secrets encrypted, removing the setting and restarting (what a rollback
+	// or the restore-after-failure path would do) leaves the cluster unable
 	// to read them. For an edit like that, "put the old file back" is not the
 	// safe direction, and offering it as a rollback would offer the one action
 	// the fix's own Warning tells the operator not to take.
 	Irreversible bool
 
 	// Exec: one or more commands (argv, no shell) run in order as a single
-	// atomic action — e.g. "allow SSH" then "enable firewall".
+	// atomic action, e.g. "allow SSH" then "enable firewall".
 	Commands [][]string
 	// Timeout overrides the runner's short interactive-command deadline for
 	// operations such as package upgrades that legitimately take minutes.
@@ -165,7 +165,7 @@ type Action struct {
 	Timeout time.Duration
 
 	// Mode: the files whose permission bits change, and a PURE function from
-	// a file's current mode to its desired one. Same contract as Transform —
+	// a file's current mode to its desired one. Same contract as Transform:
 	// preview and apply share it, and preview never touches disk.
 	//
 	// Paths is a slice because one finding can cover several files (the
@@ -195,8 +195,8 @@ const VerifyPathToken = "{}"
 // # Actions[0] is the recommendation
 //
 // The order is not incidental. Every interface lists the alternatives in it,
-// the TUI and the dashboard both preselect the first, and — the part that
-// makes it load-bearing — `fix --all --review` applies index 0 without asking.
+// the TUI and the dashboard both preselect the first, and (the part that
+// makes it load-bearing) `fix --all --review` applies index 0 without asking.
 // So Actions[0] is what Hostveil recommends, and it is what an operator who
 // does not read them gets.
 //
@@ -204,15 +204,15 @@ const VerifyPathToken = "{}"
 // one builder disagreed with it: ds010's memory limits led with 512m, the
 // smallest, while the warning printed beside every one of them said "start
 // generous… and tighten later". A reviewed batch therefore capped every
-// unlimited container on the host at 512m — a media transcoder or a JVM is
+// unlimited container on the host at 512m: a media transcoder or a JVM is
 // OOM-killed by that, which is the outcome the warning exists to prevent.
 //
 // Recommended means recommended *for unattended application*, which is not
 // always what a person would pick first. The sysctl fixes are the case:
 // register.go argues at length that persisting to a drop-in and applying to
 // the running kernel are a genuine choice with neither dominating. For a
-// batch there is no choice — the file-backed one leaves a checkpoint and
-// survives a reboot — so that is index 0, and the exec alternative sits
+// batch there is no choice (the file-backed one leaves a checkpoint and
+// survives a reboot) so that is index 0, and the exec alternative sits
 // behind it for the human who wants the other thing.
 //
 // TestTheFirstAlternativeIsTheRecommendedOne pins every Review fix's index 0.
@@ -230,8 +230,8 @@ type Fix struct {
 	// without asking, which is defensible for a fix that is Review because it
 	// cannot be checkpointed or because it has two right answers. It is not
 	// defensible for one that is Review because it can break a deployment
-	// that set something on purpose — removing a Docker socket mount stops
-	// Portainer — where the whole point of offering it is that somebody who
+	// that set something on purpose (removing a Docker socket mount stops
+	// Portainer) where the whole point of offering it is that somebody who
 	// knows the service reads the Warning first. A batch is nobody reading.
 	IndividualOnly bool
 }
@@ -240,7 +240,7 @@ type Fix struct {
 // a command is Review, whatever it declared.
 //
 // "Auto means safe to apply unattended" rests on the fix being reversible,
-// and an exec action writes no checkpoint — there is nothing file-backed to
+// and an exec action writes no checkpoint; there is nothing file-backed to
 // restore. So `fix --all` applying one means a command run as root, on the
 // operator's host, with no way to undo it through hostveil.
 //
@@ -248,8 +248,8 @@ type Fix struct {
 // register ("`apt upgrade` is exec, so never Auto"; "Being exec, it is
 // Review and can never be Auto"), and it was once upheld entirely by each
 // checker choosing Review by hand. The updates domain is where that is
-// visible: its fix for updates.disabled is shaped Auto — one action, which
-// is all the shape rule means — and the only thing between `fix --all` and
+// visible: its fix for updates.disabled is shaped Auto (one action, which
+// is all the shape rule means) and the only thing between `fix --all` and
 // `apt-get install` was the checker independently declaring Review.
 //
 // One checker declaring Auto for a finding whose fix happens to be exec is
@@ -344,8 +344,8 @@ func matchPattern(pattern, id string) bool {
 //
 // Review used to require two or more independent alternatives, and that rule
 // is what left most of the declined register without a fix: a change with one
-// mechanical remediation that might break a legitimate deployment — deleting
-// `privileged: true`, adding `:ro` — had no shape it was allowed to take. It
+// mechanical remediation that might break a legitimate deployment; deleting
+// `privileged: true`, adding `:ro`; had no shape it was allowed to take. It
 // was neither Auto (unsafe unattended) nor Review (only one alternative), so it
 // became Manual, and the operator was told what to type instead of being
 // offered the button. A risky fix is now offered as a Review with one action,
@@ -358,10 +358,10 @@ func matchPattern(pattern, id string) bool {
 // whose shape contradicts its kind demotes the finding to Manual instead of
 // reaching a UI as a button. It used to run only in this package's tests,
 // against the representative findings those tests happen to construct,
-// which left the contract unenforced for every other finding — and the
+// which left the contract unenforced for every other finding, and the
 // first thing to notice a missing Transform was applyEdit calling it.
 //
-// It also requires Benefit on every action, unconditionally — unlike
+// It also requires Benefit on every action, unconditionally: unlike
 // Warning, which stays optional because not every fix has a real side
 // effect. Every fix is registered because it is worth doing, so it should
 // be able to say why; a registration that cannot is the same shape defect

@@ -1,4 +1,4 @@
-// Package compose implements the Docker Compose static-audit checker —
+// Package compose implements the Docker Compose static-audit checker:
 // Hostveil's crown jewel. It inspects each service in every discovered
 // compose project for the misconfigurations most likely to get a
 // self-hoster hacked, and emits plain-language findings.
@@ -30,7 +30,7 @@ func (*Checker) Source() model.Source { return model.SourceCompose }
 // a domain error reading "exit status 1".
 func (*Checker) Available(ctx context.Context, env platform.Env) (bool, string) {
 	if ok, reason := platform.DockerReachable(ctx, env.Runner); !ok {
-		return false, reason + " — nothing to audit"
+		return false, reason + "; nothing to audit"
 	}
 	return true, ""
 }
@@ -62,7 +62,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 				// "file" names the project; "files" is what a fix resolves
 				// against. On a layered project the merged state is what
 				// docker runs, so the file to edit is the one that decides
-				// this setting — which is not necessarily the first.
+				// this setting, which is not necessarily the first.
 				fnd.Metadata = mergeMeta(fnd.Metadata, map[string]string{
 					"file":    p.File,
 					"files":   strings.Join(p.Files, model.PathListSeparator),
@@ -76,7 +76,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	// Both halves of the domain can fail independently, so both are recorded
 	// and neither returns early. Returning at the first is what let a host
 	// with an unparsed stack *and* an unreachable daemon hear only about the
-	// daemon — while the stack it said nothing about went unmentioned.
+	// daemon, while the stack it said nothing about went unmentioned.
 	var cov check.Coverage
 	cov.Covered(len(projects))
 
@@ -87,7 +87,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		// findings already gathered and exclude the axis entirely. The
 		// containers it would have counted are the ones it cannot list, so
 		// the gap has no unit count of its own.
-		cov.Missed(0, "cannot inspect containers started outside Compose — audited compose projects only")
+		cov.Missed(0, "cannot inspect containers started outside Compose: audited compose projects only")
 	}
 	for _, c := range standalone {
 		findings = append(findings, auditContainer(c)...)
@@ -99,7 +99,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	// clean, which is the one thing a checker must never do.
 	if len(unparsed) > 0 {
 		cov.Missed(len(unparsed), "cannot parse compose file(s): "+strings.Join(unparsed, ", ")+
-			" — services defined there were not audited")
+			"; services defined there were not audited")
 	}
 	return findings, cov.Err()
 }
@@ -110,12 +110,12 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 // Two rules are deliberately absent, both because the daemon's record
 // cannot support the claim the rule would make:
 //
-//   - dr005 (hardcoded secret in the environment) — `docker inspect` reports
+//   - dr005 (hardcoded secret in the environment); `docker inspect` reports
 //     the resolved environment, which merges the image's own ENV defaults and
 //     anything loaded from an env_file. Flagging that would accuse an
 //     operator who did exactly the right thing, and tell them to do the thing
 //     they already did.
-//   - dr004 (loads secrets from an env_file) — a running container has no
+//   - dr004 (loads secrets from an env_file): a running container has no
 //     env_file; the values were resolved when it was created and the daemon
 //     keeps no record of where they came from.
 //
@@ -146,7 +146,7 @@ var runtimeOnlyRules = []rule{
 // auditContainer audits a container with no compose file behind it.
 //
 // Every finding is forced to Manual. The remediations these rules describe
-// are all file edits — "bind the port to 127.0.0.1", "add security_opt" —
+// are all file edits: "bind the port to 127.0.0.1", "add security_opt",
 // and there is no file. Engine.classify takes whichever of the checker and
 // the registry demands more human involvement, so declaring Manual here
 // keeps the registry from offering a fix that would have nothing to edit.
@@ -169,8 +169,8 @@ func auditContainer(c compose.Container) []model.Finding {
 		// The reason goes in WhyNoFix as well as the how-to-fix, because the
 		// interfaces have a place built for exactly this question and it was
 		// coming up empty here. fix.WhyNoFix answers from the declined list,
-		// and every one of these IDs *is* registered — it is the container
-		// that cannot be fixed, not the finding — so nothing filled it in.
+		// and every one of these IDs *is* registered (it is the container
+		// that cannot be fixed, not the finding) so nothing filled it in.
 		f.WhyNoFix = "This container was started with `docker run`, not Compose, so there is no file for Hostveil to edit."
 		f.HowToFix = "This container was started with `docker run`, not Compose, so there is no file to edit. " +
 			"Recreate it with the corrected flag, or move it into a compose file where Hostveil can fix it for you. " + f.HowToFix
@@ -252,7 +252,7 @@ func ruleDockerSocket(s compose.Service) (model.Finding, bool) {
 		src := strings.TrimSuffix(v.Source, "/")
 		if src == "/var/run/docker.sock" || src == "/run/docker.sock" {
 			return f("ds016", "Docker socket mounted into container", model.SeverityHigh, model.RemediationReview, s.Name,
-				model.WithDescription("Mounting the Docker socket lets the container create other containers and mount the host filesystem — it is equivalent to giving it root on the host, even read-only."),
+				model.WithDescription("Mounting the Docker socket lets the container create other containers and mount the host filesystem; it is equivalent to giving it root on the host, even read-only."),
 				model.WithHowToFix("Remove the docker.sock volume. If the container genuinely needs Docker access, put a socket-proxy in front of it that allows only the specific API calls it needs."),
 				model.WithEvidence("mount", v.Source),
 			), true
@@ -269,7 +269,7 @@ var datastoreImages = map[string]bool{
 
 func ruleExposedDatastore(s compose.Service) (model.Finding, bool) {
 	return exposedImage(s, datastoreImages, "ds018", "Datastore exposed on all network interfaces",
-		"A database or cache published on 0.0.0.0 is reachable from the internet if the host has a public IP. Many datastores have no authentication by default, so anyone can read, wipe, or plant data — a common route to full host takeover.",
+		"A database or cache published on 0.0.0.0 is reachable from the internet if the host has a public IP. Many datastores have no authentication by default, so anyone can read, wipe, or plant data: a common route to full host takeover.",
 		"Bind the port to 127.0.0.1 (e.g. `127.0.0.1:6379:6379`) so only the host can reach it, and set a strong password. Do not expose datastores to the internet.")
 }
 
@@ -291,7 +291,7 @@ func ruleExposedAdminPanel(s compose.Service) (model.Finding, bool) {
 // prose, which left the one thing that is not prose in only one of the copies:
 // the port evidence below is load-bearing. buildBindLoopback needs the host
 // port, and without it the fix fails to build and classify silently demotes
-// the finding to Manual — a UI shows no button and nothing reports why. Stated
+// the finding to Manual: a UI shows no button and nothing reports why. Stated
 // once now, for both.
 func exposedImage(s compose.Service, images map[string]bool, id, title, desc, howToFix string) (model.Finding, bool) {
 	if !images[imageBasename(s.Image)] {
@@ -326,7 +326,7 @@ func ruleHostPid(s compose.Service) (model.Finding, bool) {
 		return model.Finding{}, false
 	}
 	return f("ds020", "Container shares the host PID namespace", model.SeverityHigh, model.RemediationReview, s.Name,
-		model.WithDescription("`pid: host` lets the container see and signal every process on the host. A compromised container can read other processes' command lines and environment — which often carry credentials — and kill arbitrary services."),
+		model.WithDescription("`pid: host` lets the container see and signal every process on the host. A compromised container can read other processes' command lines and environment (which often carry credentials) and kill arbitrary services."),
 		model.WithHowToFix("Remove `pid: host` unless the service is a monitoring agent that genuinely needs to observe host processes. If it only needs to see one other container, use `pid: \"service:NAME\"` instead."),
 	), true
 }
@@ -354,7 +354,7 @@ func ruleSensitiveHostMount(s compose.Service) (model.Finding, bool) {
 		}
 		if isSensitivePath(src) {
 			return f("ds017", "Sensitive host path mounted read-write", model.SeverityHigh, model.RemediationReview, s.Name,
-				model.WithDescription("A read-write bind mount of a sensitive host directory lets a compromised container tamper with host files — including adding SSH keys or cron jobs to gain persistence."),
+				model.WithDescription("A read-write bind mount of a sensitive host directory lets a compromised container tamper with host files, including adding SSH keys or cron jobs to gain persistence."),
 				model.WithHowToFix("Mount only the exact subdirectory the service needs, and add `:ro` to make it read-only if the service does not write to it."),
 				model.WithEvidence("mount", v.Source),
 			), true

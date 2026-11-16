@@ -33,7 +33,7 @@ func decodeConfig(b []byte, format ConfigFormat) (map[string]any, error) {
 }
 
 // yamlSecretKeys is loadEnvFile's secret test for a secrets file written as
-// YAML — Goose's keyring fallback, `OPENAI_API_KEY: sk-…` one per line. The
+// YAML: Goose's keyring fallback, `OPENAI_API_KEY: sk-…` one per line. The
 // env parser cuts on '=', so it would read that file as holding nothing, and
 // a world-readable file of API keys would pass as an empty one. Top-level
 // scalar values only: that is the file's whole shape, and a nested value is
@@ -61,7 +61,7 @@ func yamlSecretKeys(path string) []string {
 // remediation decides how much human judgment a danger finding needs, and
 // records the values that would settle it.
 //
-// The checker answers "how much judgment", never "does a fix exist" — that is
+// The checker answers "how much judgment", never "does a fix exist", that is
 // the registry's half, and Engine.classify resolves the two by caution. What
 // this decides is read straight off the rules that tripped:
 //
@@ -183,8 +183,8 @@ func lookupString(m map[string]any, dotted string) string {
 // keys the caller declared safe to read; Present records every key by name.
 //
 // The split is the whole point. A credential must be able to influence a
-// finding — "your API key file is world-readable" needs to know a key is in
-// there — without the value ever reaching a Finding, because evidence is
+// finding: "your API key file is world-readable" needs to know a key is in
+// there, without the value ever reaching a Finding, because evidence is
 // rendered by every UI and persisted to disk. Presence is enough to make the
 // claim; the value would only ever be a liability.
 type envFile struct {

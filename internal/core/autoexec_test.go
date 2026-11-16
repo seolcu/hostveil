@@ -12,7 +12,7 @@ import (
 // Nothing that runs a command may end up Auto.
 //
 // "Auto means safe to apply unattended" rests on the fix being reversible,
-// and an exec action writes no checkpoint — `fix --all` would run it as root
+// and an exec action writes no checkpoint: `fix --all` would run it as root
 // with no way to undo it through hostveil. register.go states the rule five
 // times over ("`apt upgrade` is exec, so never Auto"; "Being exec, it is
 // Review and can never be Auto"), and every checker upholds it by hand: the
@@ -40,7 +40,7 @@ func TestAnExecFixIsNeverClassifiedAuto(t *testing.T) {
 	})
 	e := New(Config{Fixes: r, Store: history.NewStore(t.TempDir())})
 
-	// A checker that declares Auto — which nothing in-tree does today, and
+	// A checker that declares Auto, which nothing in-tree does today, and
 	// which nothing stops.
 	findings := []model.Finding{model.NewFinding(
 		"updates.disabled", "Automatic security updates are not enabled",
@@ -49,7 +49,7 @@ func TestAnExecFixIsNeverClassifiedAuto(t *testing.T) {
 	e.classify(findings)
 
 	if findings[0].Remediation == model.RemediationAuto {
-		t.Fatal("a fix that runs a command was classified Auto — `fix --all` " +
+		t.Fatal("a fix that runs a command was classified Auto: `fix --all` " +
 			"would execute it unattended, as root, with no checkpoint to undo it")
 	}
 	if !findings[0].Remediation.IsFixable() {

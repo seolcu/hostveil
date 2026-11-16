@@ -81,7 +81,7 @@ func TestContainerRuntimeReadsEachRuntimesOwnMarker(t *testing.T) {
 // A host running Docker has cgroup paths full of the word "container", and pid
 // 1 is systemd's init.scope. Matching "container" anywhere would call every
 // Docker host a container and skip the firewall domain on exactly the machines
-// this program is written for — which is a far worse failure than the one being
+// this program is written for, which is a far worse failure than the one being
 // fixed, because it is silent and it is on the common path.
 func TestADockerHostIsNotAContainer(t *testing.T) {
 	for _, cgroup := range []string{
@@ -97,7 +97,7 @@ func TestADockerHostIsNotAContainer(t *testing.T) {
 }
 
 // HOSTVEIL_ASSUME_HOST is the documented opt-out, and it has to reach the
-// exported entry point rather than the rule — the rule is about evidence, and
+// exported entry point rather than the rule: the rule is about evidence, and
 // the override is about what the operator is telling us to do with it.
 func TestAssumeHostOptsOutOfTheGate(t *testing.T) {
 	t.Setenv(AssumeHostEnv, "1")
@@ -109,7 +109,7 @@ func TestAssumeHostOptsOutOfTheGate(t *testing.T) {
 // And it is off by default, so the gate cannot be disabled by accident.
 func TestTheGateIsOnWithoutTheOptOut(t *testing.T) {
 	t.Setenv(AssumeHostEnv, "")
-	// No assertion on the result — this build may or may not be in a
+	// No assertion on the result: this build may or may not be in a
 	// container. The assertion is that the override is not what decided it.
 	if _, why := ContainerRuntime(); strings.Contains(why, AssumeHostEnv) {
 		t.Errorf("unexpected reason %q", why)

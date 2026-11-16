@@ -8,7 +8,7 @@ import (
 )
 
 // registerHostRisky wires the host findings that were declined because their
-// remediation is an exec action with consequences a checker cannot weigh —
+// remediation is an exec action with consequences a checker cannot weigh:
 // rebooting the host, disabling an account that might be load-bearing. Each
 // is Review because it is exec, and IndividualOnly because the consequence
 // is the operator's to accept, not a batch's.
@@ -70,11 +70,11 @@ func buildDisableRogueRoot(f model.Finding) (Fix, error) {
 		Actions: []Action{
 			{
 				Label: "Lock and expire " + account + " (`usermod --lock --expiredate 1`)",
-				Benefit: "The account can no longer log in by any route — password, SSH key or su — so a " +
+				Benefit: "The account can no longer log in by any route (password, SSH key or su) so a " +
 					"backdoor planted under it stops working, while the entry, its files and its history " +
 					"stay in place for you to investigate.",
-				Warning: "If something on this host deliberately logs in as " + account + " — a recovery " +
-					"procedure, a monitoring agent, a second admin name for root — it stops working. " +
+				Warning: "If something on this host deliberately logs in as " + account + "; a recovery " +
+					"procedure, a monitoring agent, a second admin name for root; it stops working. " +
 					noCheckpoint + " To reverse it: `usermod --unlock --expiredate '' " + account + "`.",
 				Kind:     ActionExec,
 				Commands: [][]string{{"usermod", "--lock", "--expiredate", "1", account}},

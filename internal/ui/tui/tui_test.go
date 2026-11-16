@@ -49,7 +49,7 @@ func send(m tea.Model, msg tea.Msg) tea.Model {
 // keyPreview/startBatch) so the screen can show a ticking elapsed clock
 // while the apply is in flight, so cmd() answers with a tea.BatchMsg rather
 // than the appliedMsg/batchAppliedMsg Update actually branches on. The apply
-// command is always first in that batch; the ticker is never run here — its
+// command is always first in that batch; the ticker is never run here: its
 // function blocks for a real wall-clock second, and these tests only want
 // to know what the apply did.
 func applyMsg(cmd tea.Cmd) tea.Msg {
@@ -66,9 +66,9 @@ func applyMsg(cmd tea.Cmd) tea.Msg {
 //
 // 150x31 and the three-pane console arrangement, because that is what the
 // page has room for and what a terminal wide enough to use Hostveil actually
-// shows. The fixture is deliberately a mixed host rather than a wrecked one —
-// a degraded domain, a skipped one, findings at all three levels, and a
-// couple marked for a batch fix — so the picture carries the claims the page
+// shows. The fixture is deliberately a mixed host rather than a wrecked one
+// (a degraded domain, a skipped one, findings at all three levels, and a
+// couple marked for a batch fix) so the picture carries the claims the page
 // makes beside it instead of just looking alarming.
 func siteFrame(t *testing.T) string {
 	t.Helper()
@@ -99,7 +99,7 @@ func siteFrame(t *testing.T) string {
 // A file path gets the one frame the website uses (site/assets/tui.png, at
 // its published 96x34); a directory gets every mode, one .ans per screen, for
 // eyeballing a change across the whole interface. There is deliberately one
-// hook rather than two — a second dumper drifts out of step with the first.
+// hook rather than two: a second dumper drifts out of step with the first.
 func TestSnapshotDump(t *testing.T) {
 	path := os.Getenv("HOSTVEIL_SNAPSHOT")
 	if path == "" {
@@ -116,7 +116,7 @@ func TestSnapshotDump(t *testing.T) {
 
 // The detail view's `e` key asks for an advisory AI explanation. With no
 // provider the engine answers through AIError, which must render as a note
-// in the detail pane — and a slow answer for a finding the user already
+// in the detail pane, and a slow answer for a finding the user already
 // left must be dropped, not drawn under the wrong finding.
 func TestDetailAIExplanation(t *testing.T) {
 	m := tea.Model(&appModel{mode: modeList, selected: map[string]bool{},
@@ -160,7 +160,7 @@ func TestDetailAIExplanation(t *testing.T) {
 // are more findings than fit on screen.
 func TestListScrolls(t *testing.T) {
 	// One real finding across twenty services, which is what a compose host
-	// with twenty services actually looks like — and it keeps the fixture from
+	// with twenty services actually looks like, and it keeps the fixture from
 	// naming twenty findings Hostveil cannot report. The rows are told apart
 	// by service, so the scroll assertions below read those rather than the id.
 	var fs []model.Finding
@@ -278,7 +278,7 @@ func TestMultiSelectBatchApply(t *testing.T) {
 	}
 	// They stay on the list, marked pending. A compose file is not what the
 	// running container reads, so the port is still published until the stack
-	// is recreated and the score still charges it — and a row that vanished
+	// is recreated and the score still charges it, and a row that vanished
 	// while the number stayed put would leave the operator with a score they
 	// cannot trace to anything.
 	var pending int
@@ -419,8 +419,8 @@ func TestFixFlowThroughEngine(t *testing.T) {
 	if !strings.Contains(string(data), "127.0.0.1:6379:6379") {
 		t.Errorf("fix not applied to file:\n%s", data)
 	}
-	// The engine marked ds018 fixed and pending — the file is correct and the
-	// container still runs the old configuration — so it stays on the
+	// The engine marked ds018 fixed and pending (the file is correct and the
+	// container still runs the old configuration) so it stays on the
 	// refreshed list rather than disappearing while the score keeps charging
 	// it.
 	var found bool

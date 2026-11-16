@@ -31,8 +31,8 @@ To                         Action      From
 `
 
 // The loop for the ufw fix: the checker flags Postgres with ufw running and
-// letting it through, the fix prepends a deny, and the checker — reading ufw
-// the way ufw applies its rules — no longer reports the port reachable.
+// letting it through, the fix prepends a deny, and the checker (reading ufw
+// the way ufw applies its rules) no longer reports the port reachable.
 func TestTheUFWDenyClosesTheDatastoreFinding(t *testing.T) {
 	fs, err := hermetic().Check(context.Background(), withUFW(ufwAllowSSH))
 	if err != nil {

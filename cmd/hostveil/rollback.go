@@ -36,7 +36,7 @@ func cmdRollback(ctx context.Context, args []string) int {
 	out, err := engine.Rollback(id)
 
 	// Declining is not failing. The file changed after Hostveil wrote it, so
-	// restoring the backup would discard whatever was done in between — and
+	// restoring the backup would discard whatever was done in between, and
 	// rollback keeps no checkpoint of its own, so there would be no way back.
 	// Say exactly that, and let the user decide.
 	if core.IsExternalEdit(err) {
@@ -65,9 +65,9 @@ func cmdRollback(ctx context.Context, args []string) int {
 }
 
 // cmdHistory takes no flags, which is not the same as ignoring them. It
-// used to discard args entirely, so `hostveil history --json` — a flag a
+// used to discard args entirely, so `hostveil history --json` (a flag a
 // user has every reason to expect, and which the CLI reference says does
-// not exist — printed the human table and exited 0. Every other subcommand
+// not exist) printed the human table and exited 0. Every other subcommand
 // exits 2 on an unknown flag. Parsing an empty flag set is what makes the
 // documented "no flags" true rather than merely written down.
 func cmdHistory(_ context.Context, args []string) int {
@@ -122,7 +122,7 @@ func warnAboutStateDirectory() {
 	}
 	fmt.Fprintf(os.Stderr,
 		"\nhostveil: reading %s because this run is not root.\n"+
-			"Fixes applied as root are recorded in /var/lib/hostveil instead — re-run with sudo to see those.\n",
+			"Fixes applied as root are recorded in /var/lib/hostveil instead; re-run with sudo to see those.\n",
 		history.DefaultDir())
 }
 

@@ -16,8 +16,8 @@ type Listener struct {
 }
 
 // Loopback reports whether the bind address is a loopback / host-only bind
-// that is not reachable from the network. Everything else — the 0.0.0.0, ::
-// and * wildcards, and specific LAN or public IPs — counts as exposed. An
+// that is not reachable from the network. Everything else (the 0.0.0.0, ::
+// and * wildcards, and specific LAN or public IPs) counts as exposed. An
 // IPv6 zone suffix (e.g. "::1%lo") is stripped before parsing.
 func (l Listener) Loopback() bool {
 	addr := l.Addr
@@ -55,7 +55,7 @@ func Listeners(ctx context.Context, r CommandRunner) ([]Listener, error) {
 // No `-H`: it is a relatively recent flag, so the header row is skipped here
 // (parseListener rejects it) rather than by asking an older iproute2 to
 // accept a flag it does not know. Exported for the same reason as
-// DockerProbeArgv — a test that scripts a stale argv still passes, because
+// DockerProbeArgv: a test that scripts a stale argv still passes, because
 // the fake runner's miss looks exactly like the tool failing.
 func ListenersArgv() []string { return []string{"ss", "-tlnp"} }
 

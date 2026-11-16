@@ -9,15 +9,15 @@ import (
 )
 
 // A compose file is not what docker is running from. It is what docker was
-// told, once — the container keeps its own configuration until it is
+// told, once: the container keeps its own configuration until it is
 // recreated.
 //
 // So every compose edit is correct and not yet in force, and every one of them
 // has to say so. This is the direction that was wrong in the worst possible
 // way: the highest-severity fix in the domain claimed "After this, the service
 // is reachable only from this host", which was false at apply time and stayed
-// false indefinitely, while buildRepullImage — the *least* severe finding in
-// the same file — had the honest sentence all along.
+// false indefinitely, while buildRepullImage (the *least* severe finding in
+// the same file) had the honest sentence all along.
 func TestEveryComposeEditSaysItIsNotInForceYet(t *testing.T) {
 	r := fix.Default()
 	var checked int

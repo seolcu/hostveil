@@ -51,7 +51,7 @@ func TestNoCheckerMutatesTheHost(t *testing.T) {
 			}
 			for _, name := range mutatingCalls[pkg.Name] {
 				if sel.Sel.Name == name {
-					t.Errorf("%s calls %s.%s — checkers are read-only, and everything from the "+
+					t.Errorf("%s calls %s.%s; checkers are read-only, and everything from the "+
 						"shared scan cache to running a scan on somebody's production host rests on it",
 						rel, pkg.Name, name)
 				}

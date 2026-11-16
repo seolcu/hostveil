@@ -3,7 +3,7 @@
 # the seeded finding is reported, the fix lands, the host really changed, a
 # rescan agrees, and a rollback puts the host back.
 #
-# Usage (as root, on a disposable host — it edits /etc and restarts daemons):
+# Usage (as root, on a disposable host; it edits /etc and restarts daemons):
 #   scripts/e2e/individual.sh accounts       # no daemons needed; container-safe
 #   scripts/e2e/individual.sh owner          # no daemons needed; container-safe
 #   scripts/e2e/individual.sh compose        # needs a Docker daemon
@@ -22,7 +22,7 @@
 #   scripts/e2e/individual.sh fedora-firewall # Fedora with firewalld; run through scripts/e2e/vm.sh
 #
 # Why it exists: these fixes are excluded from every batch on purpose, so
-# `fix --all --review` — the E2E job's and the measurement harness's path —
+# `fix --all --review` (the E2E job's and the measurement harness's path)
 # never runs them. Before this, every one of them had been exercised against a
 # fake CommandRunner and nothing else.
 
@@ -715,7 +715,7 @@ scenario_fedora_updates() {
 # reachable PORT: whether PORT answers from off this host. scripts/e2e/vm.sh
 # forwards it from the machine running the VM and names the way back in as
 # HOSTVEIL_E2E_OUTSIDE, so the connection arrives on the VM's own network card
-# and firewalld decides it — not the host's opinion of itself.
+# and firewalld decides it, not the host's opinion of itself.
 #
 # An HTTP answer, not a TCP connect: QEMU accepts the connection on the far
 # side of the forward before it tries the guest, so a bare connect succeeds
@@ -726,8 +726,8 @@ reachable() {
     [[ $(curl -s -m 3 -o /dev/null -w '%{http_code}' "http://$host:$((base + $1))/") == 200 ]]
 }
 
-# Every firewall fix was ufw-only, so on firewalld — Fedora's and the RHEL
-# family's default — none of these findings had a fix. And the reading was
+# Every firewall fix was ufw-only, so on firewalld (Fedora's and the RHEL
+# family's default) none of these findings had a fix. And the reading was
 # wrong too: a port firewalld refused was reported reachable, and a stopped
 # firewalld read as "cannot read firewall state" rather than no firewall.
 scenario_fedora_firewall() {

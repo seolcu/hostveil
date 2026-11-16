@@ -6,14 +6,14 @@ import "strings"
 // examine. Record each success with Covered and each blind spot with Missed;
 // Err then returns nil or the *PartialError describing every gap at once.
 //
-// It exists because the alternative — deciding, at the point a gap is
-// discovered, whether to return now — loses gaps. Both container checkers did
+// It exists because the alternative (deciding, at the point a gap is
+// discovered, whether to return now) loses gaps. Both container checkers did
 // exactly that: the CVE domain reported an unparsed compose file only when no
 // image had also failed to scan, and the compose domain reported it only when
 // container enumeration had also succeeded. Hit both at once, as a host with
 // one broken stack and one unreachable registry does, and one of the two
 // vanished from the reason string while its images went unexamined. The
-// counters lied in the same direction — the very thing the surviving branch's
+// counters lied in the same direction: the very thing the surviving branch's
 // own comment says a checker must never do.
 //
 // A ledger cannot make that mistake: nothing is returned until everything has
@@ -36,7 +36,7 @@ func (c *Coverage) Covered(n int) {
 // n may be zero for a gap with no unit of its own: "cannot enumerate the
 // containers started outside Compose" is unmeasurable by definition, since
 // the units it would have added are precisely the ones that could not be
-// counted. Such a gap still degrades the domain — it contributes a reason
+// counted. Such a gap still degrades the domain: it contributes a reason
 // without pretending to a denominator it does not know.
 //
 // An empty reason is the mirror case: units known to be uncovered whose cause

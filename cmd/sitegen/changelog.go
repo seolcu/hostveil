@@ -32,7 +32,7 @@ func changelogFile(lang string) string {
 }
 
 // renderChangelog reads a changelog and returns the HTML for its release
-// entries — everything from the first version heading on.
+// entries: everything from the first version heading on.
 //
 // What comes before that heading is the file's own front matter: an H1 the
 // page already has in its own title, and a link to the other language that the
@@ -69,9 +69,9 @@ var (
 // unsupported are the Markdown constructs this converter does not implement.
 //
 // They are an error rather than a silent passthrough. A minimal converter is
-// the right trade for a file whose syntax this project controls — it keeps a
-// Markdown dependency out of a six-dependency module for the sake of one page
-// — but only if it says so when the file outgrows it. Rendering a table as a
+// the right trade for a file whose syntax this project controls (it keeps a
+// Markdown dependency out of a six-dependency module for the sake of one page)
+// but only if it says so when the file outgrows it. Rendering a table as a
 // row of pipes, or a fenced block as literal backticks, would publish a
 // mangled changelog and nothing would notice.
 var unsupported = []struct {
@@ -92,8 +92,8 @@ func checkChangelogSyntax(name, body string) error {
 		if loc := u.pattern.FindStringIndex(body); loc != nil {
 			line := strings.Count(body[:loc[0]], "\n") + 1
 			return fmt.Errorf("%s:%d uses %s, which cmd/sitegen/changelog.go does not render.\n"+
-				"Either write the entry in the subset the rest of the file uses — headings, "+
-				"bullets, links, `code`, **bold**, *emphasis* — or teach changelogHTML to render it. "+
+				"Either write the entry in the subset the rest of the file uses; headings, "+
+				"bullets, links, `code`, **bold**, *emphasis*, or teach changelogHTML to render it. "+
 				"Publishing it unrendered is the one option that is not available",
 				name, line, u.what)
 		}
@@ -163,7 +163,7 @@ func changelogHTML(body string) string {
 			item = append(item, strings.TrimSpace(line))
 		case strings.TrimSpace(line) == "":
 			// A blank line ends a top-level paragraph, and inside a bullet it
-			// separates two of them rather than ending the bullet — the entry
+			// separates two of them rather than ending the bullet; the entry
 			// continues on the next indented line.
 			flushPara()
 			if len(item) > 0 {
@@ -205,7 +205,7 @@ func splitParagraphs(lines []string) []string {
 }
 
 // versionHTML renders a version heading, with an id so a release can be linked
-// to directly — which is the thing a changelog page is for that a file in the
+// to directly, which is the thing a changelog page is for that a file in the
 // repository is not.
 func versionHTML(line string) string {
 	m := versionHeading.FindStringSubmatch(line)
@@ -226,7 +226,7 @@ func versionHTML(line string) string {
 }
 
 // inline renders the four inline constructs, escaping first so that anything
-// the changelog quotes — `/etc/systemd/system/<unit>.d/`, `.chip.c-<abbr>` —
+// the changelog quotes: `/etc/systemd/system/<unit>.d/`, `.chip.c-<abbr>`:
 // reaches the page as text rather than as a tag.
 func inline(s string) string {
 	s = escText(s)

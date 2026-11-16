@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Rollback fidelity: does undoing every fix put the host back byte for byte?
 #
-# Not a security measurement — a claim about the recovery layer, and the one
+# Not a security measurement; a claim about the recovery layer, and the one
 # that has to hold for any of the rest to be worth running. Hostveil asks an
 # operator to let it edit files on a server, and "you can undo it" is the
 # reason that is acceptable.
@@ -9,7 +9,7 @@
 # The hashing is deliberately not done from the checkpoints. A checkpoint
 # records what Hostveil believes it backed up, so comparing a restored file
 # against it asks whether Hostveil agrees with itself. The candidate paths
-# come from the scan instead — every file a finding points at — and they are
+# come from the scan instead (every file a finding points at) and they are
 # hashed on the live filesystem before anything is applied. That is the state
 # a rollback has to reproduce.
 #
@@ -25,7 +25,7 @@ MARK=${MEASURE_MARK:-/tmp/hostveil-measure-mark}
 
 # Directories listed entry by entry rather than only where a finding names a
 # file inside them. A fix that *creates* a file is invisible in the
-# before-state — nothing points at a path that does not exist yet — so its
+# before-state (nothing points at a path that does not exist yet) so its
 # absence has to be recorded some other way, and enumerating the directory is
 # that way. sysctl is the case that needs it: persistSysctl writes a new
 # 60-hostveil-*.conf, and without this a run could not tell "rollback removed
@@ -33,7 +33,7 @@ MARK=${MEASURE_MARK:-/tmp/hostveil-measure-mark}
 ENUMERATED_DIRS=${MEASURE_ENUMERATED_DIRS:-/etc/sysctl.d}
 
 # `|| true` because grep exits 1 when it matches nothing, and nothing is what
-# it matches on a host that has never applied a fix — which is every host the
+# it matches on a host that has never applied a fix, which is every host the
 # documentation tells you to run this on ("a container or a throwaway VM").
 # Under `set -euo pipefail` that killed the instrument, `rb mark` with it, and
 # run.sh two lines into a four-phase run. Invisible on a host that has any

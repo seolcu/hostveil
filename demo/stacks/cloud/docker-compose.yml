@@ -1,4 +1,4 @@
-# A personal-cloud stack (Nextcloud + Postgres) — files, photos, contacts.
+# A personal-cloud stack (Nextcloud + Postgres): files, photos, contacts.
 # Seeded with the mistakes self-hosters commonly make.
 services:
   nextcloud:

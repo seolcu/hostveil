@@ -58,7 +58,7 @@ type FixOutcome struct {
 	// claims.
 	VerifyMessage string `json:"verify_message,omitempty"`
 	// VerifyNote is the checker's own reason when the re-check could not
-	// run — shown under the message, not instead of it.
+	// run; shown under the message, not instead of it.
 	VerifyNote string `json:"verify_note,omitempty"`
 
 	// Pending reports that the fix is written and not in force, so the score
@@ -81,13 +81,13 @@ type BatchOutcome struct {
 	Skipped []string          `json:"skipped"` // needed a choice or had no auto fix
 	Failed  map[string]string `json:"failed"`  // finding ID -> error
 	// Interrupted reports that the batch stopped early because the run was
-	// cancelled, so Skipped holds findings nobody decided against — they were
+	// cancelled, so Skipped holds findings nobody decided against; they were
 	// simply never reached. A UI must say so: the checkpoints for whatever
 	// did land are on disk, and an operator who thinks the batch completed
 	// has no reason to go looking for them.
 	Interrupted bool `json:"interrupted,omitempty"`
 	// Pending names the applied fixes that are written and not in force, so
-	// they are a subset of Applied and not a fourth outcome — the arithmetic
+	// they are a subset of Applied and not a fourth outcome; the arithmetic
 	// the Interrupted clause below does over Applied+Skipped+Failed is
 	// untouched.
 	//
@@ -105,7 +105,7 @@ type BatchOutcome struct {
 	// here with more force: four surfaces phrased this outcome themselves
 	// and each dropped something different. The dashboard's batch path
 	// never mentioned Interrupted at all, so a batch cut short read exactly
-	// like one that completed — the outcome the flag was added to prevent —
+	// like one that completed (the outcome the flag was added to prevent)
 	// and its fix-all path reported neither skipped nor failed, so a fix
 	// that errored was invisible.
 	Message string `json:"message"`
@@ -135,10 +135,10 @@ func (o BatchOutcome) Summary() string {
 		fmt.Fprintf(&b, " %d of them are written and not in force yet, so the score does not count them.", n)
 	}
 	// Every finding handed to a batch lands in exactly one of the three, so
-	// their sum is what was asked for — which is what makes "8 of 11" sayable
+	// their sum is what was asked for, which is what makes "8 of 11" sayable
 	// without the caller passing the total back in.
 	if o.Interrupted {
-		fmt.Fprintf(&b, " Interrupted — %d of %d were never attempted.",
+		fmt.Fprintf(&b, " Interrupted; %d of %d were never attempted.",
 			len(o.Skipped), len(o.Applied)+len(o.Skipped)+len(o.Failed))
 	}
 	return b.String()
@@ -151,7 +151,7 @@ type RollbackOutcome struct {
 	CheckpointID  string   `json:"checkpoint_id"`
 	RestoredFiles []string `json:"restored_files"`
 	// FailedFiles is set only when a restore wrote some of a checkpoint's
-	// files and could not write the others — a disk that filled, a path that
+	// files and could not write the others; a disk that filled, a path that
 	// vanished between the pre-flight check and the write.
 	//
 	// It is on the outcome rather than only in the error because that state
@@ -189,7 +189,7 @@ type Checkpoint struct {
 // after a fix was applied.
 //
 // It exists because "Hostveil wrote the file" and "the finding is gone" are
-// different claims, and until now only the first was ever established —
+// different claims, and until now only the first was ever established:
 // markFixed set Fixed the moment an apply returned, and the score moved on
 // that. That is the same gap Action.VerifyCmd closes before a write: this
 // closes the one after it.
@@ -203,7 +203,7 @@ type Checkpoint struct {
 type FixVerification int
 
 const (
-	// VerifyNotRun means no re-check was attempted — the batch path, which
+	// VerifyNotRun means no re-check was attempted: the batch path, which
 	// would otherwise re-run a checker once per fix.
 	VerifyNotRun FixVerification = iota
 	// VerifyGone means the domain was re-checked and no longer reports it.
@@ -251,8 +251,8 @@ func (v FixVerification) String() string {
 
 // Note is the one sentence every interface shows for this result.
 //
-// It lives here because the three outcome summaries — the CLI's
-// printOutcome, the TUI's applySummary, and the dashboard's flash — already
+// It lives here because the three outcome summaries (the CLI's
+// printOutcome, the TUI's applySummary, and the dashboard's flash) already
 // phrase the same fields three different ways, and this one carries a
 // distinction subtle enough that three attempts at it would produce three
 // different meanings.
@@ -268,15 +268,15 @@ func (v FixVerification) Note(restartHint string) string {
 	case VerifyPending:
 		if restartHint != "" {
 			return "Re-checked: the file is correct. The change reaches the host when '" +
-				restartHint + "' is recreated — until then nothing running has changed."
+				restartHint + "' is recreated, until then nothing running has changed."
 		}
 		return "Re-checked: the file is correct, and the change does not reach the host until what reads it is restarted."
 	case VerifyStillPresent:
 		if restartHint != "" {
-			return "Re-checked: the finding is still reported — the change may not take effect until '" +
+			return "Re-checked: the finding is still reported; the change may not take effect until '" +
 				restartHint + "' restarts."
 		}
-		return "Re-checked: the finding is still reported — the change may not take effect until a restart or reboot."
+		return "Re-checked: the finding is still reported; the change may not take effect until a restart or reboot."
 	case VerifyUnavailable:
 		return "Could not re-check this domain, so the fix is unconfirmed."
 	default:

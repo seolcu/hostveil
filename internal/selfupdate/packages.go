@@ -16,7 +16,7 @@ import (
 // The release publishes one per format per architecture, and installing it is
 // what keeps dpkg or rpm describing the filesystem correctly. There is no apt
 // or dnf repository to upgrade from, so `apt install --only-upgrade hostveil`
-// would find nothing and report success — which is the failure mode this
+// would find nothing and report success, which is the failure mode this
 // avoids by fetching the file the release actually has.
 func PackageAsset(o Origin, version string) (string, error) {
 	ext := ""
@@ -35,7 +35,7 @@ func PackageAsset(o Origin, version string) (string, error) {
 //
 // The file is installed by path rather than by name. apt and dnf both accept
 // that and both record it properly, so the package database stays true and a
-// later `apt remove hostveil` still works — which is the whole reason for not
+// later `apt remove hostveil` still works, which is the whole reason for not
 // simply writing over /usr/bin/hostveil.
 func InstallPackage(ctx context.Context, r platform.CommandRunner, o Origin, path string) error {
 	argv, err := installArgv(r, o, path)

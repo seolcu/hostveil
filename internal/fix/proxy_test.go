@@ -51,7 +51,7 @@ func TestScanJailDefaultActionEnablesTheJailWithNoBantimeOverride(t *testing.T) 
 		t.Error("the drop-in does not exist yet by definition")
 	}
 	if a.TakesEffectOn == "" {
-		t.Error("writing the file is not the same as fail2ban acting on it — TakesEffectOn must say so")
+		t.Error("writing the file is not the same as fail2ban acting on it; TakesEffectOn must say so")
 	}
 
 	got, err := a.Transform(nil)
@@ -75,7 +75,7 @@ func TestScanJailDefaultActionEnablesTheJailWithNoBantimeOverride(t *testing.T) 
 // the systemd journal over a jail's own logpath whenever the filter defines
 // a journalmatch, which nginx-botsearch does, and nginx never writes
 // request-level entries to the journal. A body with `enabled = true` and no
-// `backend` line watches nothing at all, ever — verified by scripting a
+// `backend` line watches nothing at all, ever: verified by scripting a
 // probe past maxretry against a live jail with and without this line, only
 // one of which produced a ban.
 func TestScanJailAlwaysStatesAnExplicitBackend(t *testing.T) {
@@ -132,7 +132,7 @@ func TestScanJailTransformIsIdempotent(t *testing.T) {
 
 // TestScanJailAlwaysNamesBothLogFiles pins the other half of the same bug:
 // a bare vhost that returns nginx's own 404 for an unmatched path never
-// reaches a static-file lookup, so only the access log carries it — the
+// reaches a static-file lookup, so only the access log carries it; the
 // error log stays empty. Both must always be named, not just the one
 // jail.conf's own default points at.
 func TestScanJailAlwaysNamesBothLogFiles(t *testing.T) {
@@ -174,7 +174,7 @@ func TestScanJailUsesDiscoveredLogPathsOverTheFallback(t *testing.T) {
 // Confirmed live against a real nginx + fail2ban: this is exactly the
 // arrangement a stock Debian/Ubuntu nginx package produces, and the finding
 // still records both as evidence even though they match the compiled-in
-// defaults — the fix names them anyway, per
+// defaults; the fix names them anyway, per
 // TestScanJailAlwaysStatesAnExplicitBackend's discovery that leaving
 // anything to fail2ban's own default resolution is what silently breaks it.
 func TestScanJailNamesTheDefaultPathsExplicitlyToo(t *testing.T) {

@@ -13,7 +13,7 @@ import (
 // real loop over eligible findings without paying for ApplyFix's verify step
 // once per item (see ApplyFix's and ApplyOne's doc comments). These pin that
 // it offers exactly ApplyBatch's own eligibility rule and no-verify
-// semantics — not a third set of rules a batch and a per-item loop could
+// semantics, not a third set of rules a batch and a per-item loop could
 // silently disagree on.
 func TestApplyOneAppliesAnEligibleAutoFinding(t *testing.T) {
 	dir := t.TempDir()
@@ -46,7 +46,7 @@ func TestApplyOneAppliesAnEligibleAutoFinding(t *testing.T) {
 }
 
 // A finding Hostveil has already applied is reported ineligible (skipped),
-// not failed — re-applying it on every tick of a progress loop would write
+// not failed: re-applying it on every tick of a progress loop would write
 // a new checkpoint over a file that has not changed since the last one.
 func TestApplyOneSkipsAnAlreadyFixedFinding(t *testing.T) {
 	engine := fixEngine(t)
@@ -66,7 +66,7 @@ func TestApplyOneSkipsAnAlreadyFixedFinding(t *testing.T) {
 	}
 }
 
-// A Manual finding is never eligible, reviewed or not — there is no
+// A Manual finding is never eligible, reviewed or not: there is no
 // mechanical remediation for a per-item loop to run.
 func TestApplyOneSkipsManual(t *testing.T) {
 	engine := fixEngine(t)
@@ -82,7 +82,7 @@ func TestApplyOneSkipsManual(t *testing.T) {
 }
 
 // A Review finding is skipped by the plain (unreviewed) loop and applied,
-// through its first alternative, by the reviewed one — the same distinction
+// through its first alternative, by the reviewed one: the same distinction
 // ApplyBatch/ApplyBatchWithReviewed make, since ApplyOne is that same
 // per-item decision exposed as a single call.
 func TestApplyOneReviewFindingNeedsReviewedFlag(t *testing.T) {

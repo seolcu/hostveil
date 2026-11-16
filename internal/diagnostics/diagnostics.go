@@ -1,10 +1,10 @@
 // Package diagnostics records what a crash looked like, entirely on disk and
-// entirely local. It has no network client and imports nothing that has one
-// — that is the point of it: a panic anywhere in Hostveil leaves a record
+// entirely local. It has no network client and imports nothing that has one,
+// that is the point of it: a panic anywhere in Hostveil leaves a record
 // here, and nothing here, nor `hostveil diagnostics` (cmd/hostveil) which
 // reads these back, ever sends that record anywhere. Packaging it for a bug
 // report and mailing it off are different acts, and this package and the
-// command that reads it only ever do the first — the operator pastes the
+// command that reads it only ever do the first: the operator pastes the
 // result into an issue by hand.
 //
 // A dependency-free leaf package on purpose, so internal/check and
@@ -24,7 +24,7 @@ import (
 )
 
 // CrashRecord is what one panic looked like. It never carries command
-// stdout, finding evidence, or file contents — the same boundary
+// stdout, finding evidence, or file contents: the same boundary
 // platform.TraceRunner already draws for HOSTVEIL_DEBUG, and for the same
 // reason: a record an operator might paste into a public issue must not be
 // able to leak a credential it never needed to hold.
@@ -44,7 +44,7 @@ type CrashRecord struct {
 // a panic that was just recovered.
 //
 // stack must be captured by the caller, with debug.Stack() called directly
-// inside the recover — not passed through another function first — so it
+// inside the recover (not passed through another function first) so it
 // names the frames that actually panicked rather than this one.
 func NewRecord(version, command, where string, panicValue any, stack []byte) CrashRecord {
 	return CrashRecord{
@@ -61,14 +61,14 @@ func NewRecord(version, command, where string, panicValue any, stack []byte) Cra
 }
 
 // maxRecords caps how many crash records are kept, the same way
-// internal/history caps checkpoints — these are diagnostic exhaust, not
+// internal/history caps checkpoints: these are diagnostic exhaust, not
 // backups, so there is no minimum-retention rule to go with the count.
 const maxRecords = 20
 
 func crashesDir(dir string) string { return filepath.Join(dir, "diagnostics", "crashes") }
 
 // RecordCrash writes one crash record under dir and prunes older ones beyond
-// maxRecords. dir is the Hostveil state directory — history.DefaultDir() in
+// maxRecords. dir is the Hostveil state directory: history.DefaultDir() in
 // production, or whatever a test points a Store at; this package has no
 // opinion of its own about where that is.
 //

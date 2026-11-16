@@ -9,7 +9,7 @@ import (
 )
 
 // repoRootFromSitegen walks up to the module root, because these tests read
-// CHANGELOG.md the way sitegen does — from the working directory — and `go
+// CHANGELOG.md the way sitegen does (from the working directory) and `go
 // test` runs each package in its own directory.
 func repoRootFromSitegen(t *testing.T) string {
 	t.Helper()
@@ -43,8 +43,8 @@ func inRepoRoot(t *testing.T) {
 // page worth more than writing it.
 //
 // A hand-written page can omit a release and look complete. This one is
-// converted from the file, so the only way it can omit one is a converter bug
-// — which is what this catches, by requiring every version heading in the
+// converted from the file, so the only way it can omit one is a converter bug,
+// which is what this catches, by requiring every version heading in the
 // source to arrive as a linkable heading in the output.
 func TestEveryReleaseReachesTheChangelogPage(t *testing.T) {
 	inRepoRoot(t)
@@ -78,8 +78,8 @@ func TestEveryReleaseReachesTheChangelogPage(t *testing.T) {
 
 // TestTheChangelogPageEscapesWhatItQuotes.
 //
-// The changelog quotes paths and CSS selectors that contain angle brackets —
-// `/etc/systemd/system/<unit>.d/`, `.chip.c-<abbr>` — and a converter that
+// The changelog quotes paths and CSS selectors that contain angle brackets:
+// `/etc/systemd/system/<unit>.d/`, `.chip.c-<abbr>`, and a converter that
 // passed those through would put a tag on the page where the file has text.
 // They are inside code spans, which is exactly where a naive converter is most
 // likely to stop escaping.

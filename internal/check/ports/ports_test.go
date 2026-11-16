@@ -219,7 +219,7 @@ func TestMalformedLinesSkipped(t *testing.T) {
 func TestGenericExposureWhenFirewallStateUnreadable(t *testing.T) {
 	ss := `LISTEN 0 128 0.0.0.0:8080 0.0.0.0:*
 LISTEN 0 128 0.0.0.0:22 0.0.0.0:*`
-	// ufw is installed but will not answer — the fake has no scripted output.
+	// ufw is installed but will not answer; the fake has no scripted output.
 	r := checktest.New().Without("firewall-cmd", "nft").Listeners(ss)
 
 	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: r})

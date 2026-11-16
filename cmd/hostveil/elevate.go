@@ -19,7 +19,7 @@ func needsRoot(cmd string) bool {
 }
 
 // maybeElevate re-executes Hostveil under sudo when a root-benefiting command
-// is run without root, so plain `hostveil` behaves like `sudo hostveil` — the
+// is run without root, so plain `hostveil` behaves like `sudo hostveil`: the
 // sudo password prompt is sudo's own and appears identically. On success it
 // replaces the current process (execve) and does not return. It degrades to
 // running unprivileged when it cannot elevate (no sudo, opt-out env, or sudo
@@ -41,7 +41,7 @@ func maybeElevate(cmd string) {
 	if err != nil {
 		// Say so. The two lines below explain why Hostveil is *asking* for a
 		// password; this is the case where it cannot ask, and it said nothing
-		// at all — so the operator learned they needed root domain by domain,
+		// at all, so the operator learned they needed root domain by domain,
 		// half way through a scan, from findings that read like a broken tool
 		// rather than a missing privilege. Same channel and same reason:
 		// stderr, so --json on stdout stays clean.
@@ -55,7 +55,7 @@ func maybeElevate(cmd string) {
 	}
 	// Say why before sudo asks. A first-time user's opening interaction with
 	// Hostveil was otherwise a bare "[sudo] password for ..." with nothing
-	// above it explaining who wanted their password or what for — the highest
+	// above it explaining who wanted their password or what for: the highest
 	// friction possible for a tool asking to be trusted with root. This goes
 	// to stderr so it never contaminates `--json` on stdout.
 	fmt.Fprintln(os.Stderr, "Hostveil needs root to read /etc/shadow, sshd_config, and the firewall state; re-running with sudo.")
@@ -78,8 +78,8 @@ func maybeElevate(cmd string) {
 // line that have to survive the re-exec.
 //
 // env_reset drops all of them. That is stated in alreadyElevated's comment
-// and was drawn as a conclusion about exactly one variable — the marker this
-// code used to pass itself — while applying identically to every variable a
+// and was drawn as a conclusion about exactly one variable (the marker this
+// code used to pass itself) while applying identically to every variable a
 // user sets. So on the ordinary non-root host, the path Hostveil documents
 // most loudly did nothing: `HOSTVEIL_DEBUG=1 hostveil scan` is printed in
 // `hostveil help`, in the README and on both troubleshooting pages as the
@@ -107,8 +107,8 @@ var carriedThroughSudo = []string{
 	"HOSTVEIL_OLLAMA_HOST",
 	"HOSTVEIL_OLLAMA_MODEL",
 	// explain elevates, same as above, and an API key that did not survive
-	// the re-exec would fail closed rather than open — Available() would
-	// just report the provider unreachable — but silently, which is exactly
+	// the re-exec would fail closed rather than open (Available() would
+	// just report the provider unreachable) but silently, which is exactly
 	// what this list exists to prevent.
 	"ANTHROPIC_API_KEY",
 	"HOSTVEIL_ANTHROPIC_MODEL",
@@ -123,7 +123,7 @@ var carriedThroughSudo = []string{
 	// Not Hostveil's own, and carried for the same reason as the one above:
 	// serve elevates, so the process that prints the SSH tunnel command is
 	// the child, and sudo's env_reset drops this. Without it Hostveil would
-	// decide it was on a console — on the path every remote operator takes —
+	// decide it was on a console (on the path every remote operator takes)
 	// and print a loopback URL with no way to reach it.
 	//
 	// Worth knowing: every other name here is opt-in, so the assignment form
@@ -131,7 +131,7 @@ var carriedThroughSudo = []string{
 	// remote session, so from here on nearly every elevated remote run passes
 	// an assignment to sudo. That is the same mechanism, not a new one, and
 	// sudo permits it because SSH_CONNECTION is not one of the names its
-	// env_delete blocks — but the blast radius of the mechanism failing is
+	// env_delete blocks, but the blast radius of the mechanism failing is
 	// now every remote run rather than the few that set a theme.
 	"SSH_CONNECTION",
 	"NO_COLOR",
@@ -159,9 +159,9 @@ func elevatedArgv(exe string, _ []string, getenv func(string) string) []string {
 // This used to pass HOSTVEIL_ELEVATED=1 through to the child and look for it
 // there. sudo strips it: env_reset is the default on every mainstream
 // distribution and keeps only what env_keep names, which is TERM, LANG, LC_*
-// and a short list besides — never an application's own variable. Verified on
+// and a short list besides; never an application's own variable. Verified on
 // Debian 13, where the child sees it empty. So the guard could not fire, and
-// the case its comment named — sudo running but not yielding root — was an
+// the case its comment named (sudo running but not yielding root) was an
 // unbounded chain of sudo invocations, each one prompting for a password
 // again.
 //
@@ -175,8 +175,8 @@ func elevatedArgv(exe string, _ []string, getenv func(string) string) []string {
 // is documented, a wrapper script may set it deliberately, and reading one
 // more variable costs nothing.
 //
-// A false positive here — SUDO_USER left in the environment by something other
-// than the sudo that ran us — means Hostveil does not auto-elevate and scans
+// A false positive here (SUDO_USER left in the environment by something other
+// than the sudo that ran us) means Hostveil does not auto-elevate and scans
 // unprivileged, which it is built to do: domains that need root report Skipped
 // with a reason. That is the safe direction to be wrong in, and the loop is
 // not.

@@ -18,7 +18,7 @@ func commandLines(fx Fix) []string {
 
 // firewalld installed and stopped: the SSH allow goes into the permanent
 // configuration before the daemon starts, which is what firewall-offline-cmd
-// is for — the same order as the ufw fix.
+// is for; the same order as the ufw fix.
 func TestEnablingFirewalldAllowsSSHFirst(t *testing.T) {
 	f := model.NewFinding("firewall.inactive", "No active host firewall", model.SeverityHigh,
 		model.SourceFirewall, model.RemediationReview,

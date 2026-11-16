@@ -15,8 +15,8 @@ import (
 // position works for one and is an off-by-one for the other, and the two
 // tables sit in the same package looking identical. Since these values are
 // serialized as bare integers into on-disk scan snapshots, that off-by-one
-// would not show up in any test — every test round-trips through the same
-// table — and would surface only as a previous scan whose findings all
+// would not show up in any test (every test round-trips through the same
+// table) and would surface only as a previous scan whose findings all
 // changed domain, which reads to a user as "everything on this host is new".
 
 // indexBy builds a lookup from an enum table, keyed by the value each row
@@ -45,14 +45,14 @@ func columnOf[T any, C any](defs []T, col func(T) C) []C {
 // numbering a compatibility surface. Every consumer of `scan --json` had to
 // keep its own copy of the ordering, the dashboard had to be handed generated
 // lookup tables to read its own API, and renumbering an enum silently
-// reinterpreted every scan snapshot already on disk — a 1 that meant High
+// reinterpreted every scan snapshot already on disk: a 1 that meant High
 // reading back as whatever now sits at 1, with no error anywhere and the only
 // symptom a previous scan whose findings had all changed meaning.
 //
 // model.FixVerification solved this for itself by marshalling its name, and
 // internal/ui/web/modeljs.go named the migration: "that is the better fix,
 // and it is open to any enum that is not already on disk as an integer".
-// These are, so the move has to carry the old form with it — unmarshalling
+// These are, so the move has to carry the old form with it; unmarshalling
 // accepts a name *or* an integer, and the integer path is what lets a
 // snapshot written before this release still be read.
 //
@@ -81,7 +81,7 @@ func marshalEnum(name string) ([]byte, error) { return json.Marshal(name) }
 // are not interchangeable: quietly resolving to a zero value would turn a
 // snapshot Hostveil cannot read into one it reads wrongly, which is the same
 // trade the scanner refuses everywhere else. Callers that survive a bad
-// snapshot — ScoreHistory skips one that will not unmarshal — already handle
+// snapshot (ScoreHistory skips one that will not unmarshal) already handle
 // the error, and they can only do that if there is one.
 //
 // Severity does not use this. Its ordinals were remapped when the scale went

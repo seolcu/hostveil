@@ -16,25 +16,25 @@ import (
 // ProtectSystem=full breaks a service that writes under /usr, ProtectHome
 // breaks anything whose data lives in a home directory, PrivateTmp=yes
 // breaks two services that pass each other files through /tmp, and neither
-// failure appears until the next restart — which on a self-hosted box is the
+// failure appears until the next restart, which on a self-hosted box is the
 // next reboot, at which point the service that did not come back is the one
 // holding the operator's data. The other five collide with workloads this
-// project's own audience runs — container runtimes needing namespaces and
+// project's own audience runs: container runtimes needing namespaces and
 // cgroups, GPU passthrough and VPN tunnels needing /dev and /proc/sys, JIT
 // runtimes needing writable executable memory. That is the "unambiguous"
 // test in fix.Default's standard, and these eight do not meet it, so their
-// remediation is a precise instruction — the exact path and the exact two
-// lines — and the operator decides. See TestKnownUnregisteredFindings.
+// remediation is a precise instruction (the exact path and the exact two
+// lines) and the operator decides. See TestKnownUnregisteredFindings.
 //
-// The other six — NoNewPrivileges, ProtectClock, LockPersonality,
-// RestrictSUIDSGID, ProtectKernelLogs, ProtectKernelModules — carry no such
+// The other six (NoNewPrivileges, ProtectClock, LockPersonality,
+// RestrictSUIDSGID, ProtectKernelLogs, ProtectKernelModules) carry no such
 // blind spot: each closes one narrow, well-known capability, and nothing
 // about the unit hides whether a particular service needs it. They are
 // registered in internal/fix/systemd.go as Review fixes, via
 // Action.TakesEffectOn (a drop-in plus `systemctl daemon-reload && systemctl
 // restart <unit>` is a fix that writes the artifact now and names what has
 // to happen for it to take effect, not two alternatives, so it does not
-// need to be Review for the "independent alternatives" reason — it is
+// need to be Review for the "independent alternatives" reason: it is
 // Review because a service that deliberately escalates, or needs one of
 // these capabilities, stops coming back, and that is not a thing to do
 // while nobody is watching). See that file's registerSystemd doc comment
@@ -54,9 +54,9 @@ type rule struct {
 	// remediation is how much human judgement this rule needs, and it is
 	// per-rule rather than per-domain because the four differ.
 	//
-	// Three of them break something the unit does not show — a service that
+	// Three of them break something the unit does not show (a service that
 	// hands another files through /tmp, one whose data lives in a home
-	// directory, one that writes under /usr — so Hostveil has no way to tell
+	// directory, one that writes under /usr) so Hostveil has no way to tell
 	// a safe unit from an unsafe one and stays out of it. NoNewPrivileges
 	// carries no such blind spot: it closes the setuid path and nothing
 	// about the unit hides whether that matters.
@@ -71,7 +71,7 @@ type rule struct {
 
 // on reports whether systemd read a boolean property as enabled. It prints
 // booleans as "yes"/"no", and an empty value is a property this systemd does
-// not know — which is not evidence that the protection is off.
+// not know, which is not evidence that the protection is off.
 func on(v string) bool { return v == "yes" }
 
 // known reports whether systemd answered about a property at all. An older
@@ -82,8 +82,8 @@ func known(v string) bool { return v != "" }
 
 // off reports whether an enumerated protection is disabled.
 //
-// ProtectSystem and ProtectHome are not booleans — systemd prints
-// no/yes/full/strict for the first and no/yes/read-only/tmpfs for the second —
+// ProtectSystem and ProtectHome are not booleans (systemd prints
+// no/yes/full/strict for the first and no/yes/read-only/tmpfs for the second)
 // so the test is against the one value that means "not protected" rather than
 // against `!on(v)`, which would flag "full" and "read-only" as failures.
 //
@@ -104,7 +104,7 @@ var rules = []rule{
 		// and walking out of it.
 		sev:        model.SeverityLow,
 		sevNonRoot: model.SeverityMedium,
-		desc: "NoNewPrivileges is off, so anything this service runs can gain privileges through a setuid binary — the standard way a foothold inside a service becomes a foothold outside it. " +
+		desc: "NoNewPrivileges is off, so anything this service runs can gain privileges through a setuid binary; the standard way a foothold inside a service becomes a foothold outside it. " +
 			"It costs nothing on a service that does not deliberately escalate, which is why it is the same protection the container domain checks for under the name no-new-privileges.",
 		directive:   "NoNewPrivileges=yes",
 		remediation: model.RemediationReview,
@@ -128,7 +128,7 @@ var rules = []rule{
 		title:      "A service can read every user's home directory",
 		sev:        model.SeverityMedium,
 		sevNonRoot: model.SeverityLow,
-		desc: "ProtectHome is off, so this service can read /home, /root, and /run/user — the SSH private keys, cloud credentials, and password databases of everyone with an account on this host. " +
+		desc: "ProtectHome is off, so this service can read /home, /root, and /run/user; the SSH private keys, cloud credentials, and password databases of everyone with an account on this host. " +
 			"Almost no self-hosted service has any business there; ProtectHome=yes hides them from this service without affecting anything else.",
 		directive: "ProtectHome=yes",
 		flagged:   func(u unit) bool { return known(u.ProtectHome) && off(u.ProtectHome) },
@@ -172,14 +172,14 @@ func (r rule) severityFor(u unit) model.Severity {
 // systemd.unit(5): "Multiple drop-in files with different names are applied in
 // lexicographic order, regardless of which of the directories they reside in."
 // So a vendor's /usr/lib/systemd/system/<unit>.d/90-vendor.conf beats
-// /etc/systemd/system/<unit>.d/50-hostveil.conf — the /etc-over-/usr rule
+// /etc/systemd/system/<unit>.d/50-hostveil.conf; the /etc-over-/usr rule
 // applies only to files with the *same* name. A drop-in that loses is the
 // worst available outcome and the one persistSysctl exists to avoid: the file
 // appears, the fix reports success, a checkpoint is recorded, and the value
 // comes back at the next daemon-reload with nothing to explain it.
 //
 // The name is picked to sort after everything systemd says it loaded, which
-// wins whatever those files contain — reading them to find out whether they
+// wins whatever those files contain; reading them to find out whether they
 // set this particular directive would be a second parser answering a question
 // systemd has already answered. 50- stays the name on the ordinary host,
 // because that is what the docs and the finding's own instructions say.
@@ -202,7 +202,7 @@ func dropInPath(unitID, loaded string) string {
 	return ""
 }
 
-// howToFix is the instruction, which has to name a file — and there is one
+// howToFix is the instruction, which has to name a file, and there is one
 // case where no file it could name would work.
 //
 // A drop-in wins on filename, so when systemd has already loaded one that
@@ -216,7 +216,7 @@ func howToFix(u unit, r rule) string {
 		return fmt.Sprintf(
 			"A drop-in that systemd loads after anything Hostveil could write is already in "+
 				"place for this unit (%s), and drop-ins are applied in filename order whichever "+
-				"directory they are in — so a new file under /etc/systemd/system/%s.d/ would be "+
+				"directory they are in, so a new file under /etc/systemd/system/%s.d/ would be "+
 				"overridden. Set `%s` in the file that sorts last, or rename it, then run "+
 				"`systemctl daemon-reload` and `systemctl restart %s`.",
 			u.DropInPaths, u.ID, r.directive, u.ID)
@@ -245,7 +245,7 @@ func (r rule) finding(u unit) model.Finding {
 		model.WithService(u.ID),
 		// Where the fix layer writes, decided by the half that computes it.
 		// internal/fix cannot import this package, and a path recomputed
-		// there would be a second answer to a question with one — the same
+		// there would be a second answer to a question with one; the same
 		// reason the compose checker carries "file".
 		model.WithMetadata("dropin", dropInPath(u.ID, u.DropInPaths)),
 		model.WithDescription(r.desc),

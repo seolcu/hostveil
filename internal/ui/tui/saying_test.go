@@ -12,7 +12,7 @@ import (
 //
 // They were package-level functions, so they could not reach the set the model
 // holds and each wrote a literal "✓". With --glyphs nerd every other tick on
-// the screen was a patched glyph and these three were not — one interface
+// the screen was a patched glyph and these three were not: one interface
 // drawing two alphabets, which is the drift internal/glyph exists to make
 // impossible.
 //
@@ -48,7 +48,7 @@ func TestEverySummaryDrawsItsTickFromTheGlyphTable(t *testing.T) {
 // They used to be concatenated into one sentence, which the screen then
 // word-wrapped: what happened, what it cost, how to undo it and what to
 // restart ran together, and the break landed wherever the column happened to
-// fall — "You may need to / restart 'redis'."
+// fall; "You may need to / restart 'redis'."
 //
 // textwidth.Wrap builds from strings.Fields, which treats a newline as a
 // space, so a renderer that wrapped the whole status at once would silently
@@ -60,8 +60,8 @@ func TestTheMessageScreenKeepsTheFactsApart(t *testing.T) {
 		NewScore: model.ScoreBreakdown{Overall: 61, Applicable: true},
 	})
 
-	// From the message's own first line, so the header and the footer — which
-	// are the frame's, not the message's — do not count as facts.
+	// From the message's own first line, so the header and the footer (which
+	// are the frame's, not the message's) do not count as facts.
 	var found []string
 	for _, line := range strings.Split(plain(m.View().Content), "\n") {
 		s := strings.TrimSpace(line)
@@ -88,7 +88,7 @@ func TestTheMessageScreenKeepsTheFactsApart(t *testing.T) {
 
 // The screen an operator reads immediately before pressing y.
 //
-// It showed the diff and the fix's label and nothing else — not the finding it
+// It showed the diff and the fix's label and nothing else, not the finding it
 // repairs, not whether Hostveil considers the fix safe to apply unattended,
 // not the file it edits, and not whether it can be undone. The rollback
 // confirmation, which asks a strictly smaller question, said all of that.
@@ -119,14 +119,14 @@ func TestThePreviewSaysWhatItIsBeforeItAsks(t *testing.T) {
 }
 
 // An exec action must not claim a backup it does not take. Commands are not
-// file-backed, so there is nothing to restore and the warning says so — the
+// file-backed, so there is nothing to restore and the warning says so: the
 // reassurance belongs to the edit case only.
 func TestThePreviewPromisesNoBackupForACommand(t *testing.T) {
 	m := &appModel{mode: modePreview, width: 96, height: 34, selected: map[string]bool{}}
 	m.preview = model.FixPreview{
 		FindingID: "cve.outdated-image", Label: "Update the image", Kind: model.RemediationReview,
 		Actions: []model.ActionPreview{{Index: 0, Label: "Pull and recreate", Type: "exec",
-			Warning:  "There is no rollback checkpoint — exec fixes are not file-backed.",
+			Warning:  "There is no rollback checkpoint; exec fixes are not file-backed.",
 			Commands: [][]string{{"docker", "compose", "pull", "nextcloud"}}}},
 	}
 	got := plain(m.View().Content)

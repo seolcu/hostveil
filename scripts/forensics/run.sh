@@ -45,7 +45,7 @@ case ${1:-} in
   e1)
     build; restore
     # rkhunter compares file properties against a baseline it records here,
-    # on the clean host — the condition under which it is meant to be used.
+    # on the clean host; the condition under which it is meant to be used.
     vm "sudo rkhunter --propupd --nocolors >/dev/null 2>&1; sudo /fx/run-tools.sh e1-clean"
     vm "sudo /fx/seed.sh all && sudo /fx/run-tools.sh e1-attacked"
     fetch e1-clean; fetch e1-attacked

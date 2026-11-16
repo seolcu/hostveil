@@ -30,7 +30,7 @@ func portsRoundTripCases() []roundTrip {
 	return out
 }
 
-// runPortsChecker mirrors runChecker, except it scripts a quiet `ss` first —
+// runPortsChecker mirrors runChecker, except it scripts a quiet `ss` first:
 // ports.Check reads listening sockets unconditionally, and an unscripted `ss`
 // would fail the whole check before the redis.conf directives under test are
 // ever reached. No listeners means the generic-exposed-port and

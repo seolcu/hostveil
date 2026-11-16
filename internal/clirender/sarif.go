@@ -11,8 +11,8 @@ import (
 // systems (GitHub code scanning among them) ingest. The mapping is one run,
 // one rule per distinct finding ID, one result per unfixed finding.
 //
-// Findings have no source-file location in SARIF's sense — they describe a
-// host — so results carry a logical location (the service, or "host") and a
+// Findings have no source-file location in SARIF's sense (they describe a
+// host) so results carry a logical location (the service, or "host") and a
 // stable partialFingerprint built from Finding.Key(), which is what lets a
 // consumer track a finding across scans. Score and per-domain coverage ride
 // in the run's properties so a Degraded or Skipped domain survives export:
@@ -86,7 +86,7 @@ func SARIF(r model.Report, version string) (string, error) {
 			},
 		})
 	}
-	// A run with no results still must carry a non-null, empty array —
+	// A run with no results still must carry a non-null, empty array;
 	// `"results": null` is invalid SARIF and some ingesters reject it.
 	if results == nil {
 		results = []result{}
@@ -150,7 +150,7 @@ func SARIF(r model.Report, version string) (string, error) {
 // The mapping is one-to-one, which it was not under the four-level scale:
 // its top two levels both became "error", so SARIF was already saying what
 // three levels now say. Nothing an ingesting tool sees changed when the
-// scale did, nor when the levels were renamed — the level is chosen by
+// scale did, nor when the levels were renamed: the level is chosen by
 // constant, never by name.
 func sarifLevel(s model.Severity) string {
 	switch s {

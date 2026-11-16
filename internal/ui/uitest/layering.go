@@ -28,7 +28,7 @@ var Forbidden = []string{
 	"internal/compose",
 	// internal/report renders a model.Report into an exported file. Both
 	// UIs reach it through Engine.Export/Engine.ExportFormats, the same as
-	// every other package below — a UI importing it directly would still
+	// every other package below: a UI importing it directly would still
 	// technically be "thin" by the letter of Engine.Export existing, but
 	// would duplicate the format table this boundary exists to keep in one
 	// place.
@@ -39,7 +39,7 @@ var Forbidden = []string{
 // directory imports something a UI may not.
 //
 // It reads "." rather than taking a path, so each UI package calls it from
-// its own directory and cannot accidentally check the other one — which
+// its own directory and cannot accidentally check the other one, which
 // would pass while testing nothing.
 //
 // Test files are exempt: they may wire fixtures, and this file being in a
@@ -57,7 +57,7 @@ func AssertThinUI(t *testing.T) {
 			p := strings.Trim(imp.Path.Value, `"`)
 			for _, bad := range Forbidden {
 				if strings.Contains(p, bad) {
-					t.Errorf("%s imports forbidden package %q — a UI must go through core", path, p)
+					t.Errorf("%s imports forbidden package %q; a UI must go through core", path, p)
 				}
 			}
 		}
@@ -83,7 +83,7 @@ func productionGoFiles(t *testing.T) []string {
 		out = append(out, filepath.Join(".", name))
 	}
 	if len(out) == 0 {
-		t.Fatal("no production Go files found — the layering check would pass vacuously")
+		t.Fatal("no production Go files found; the layering check would pass vacuously")
 	}
 	return out
 }

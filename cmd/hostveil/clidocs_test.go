@@ -19,7 +19,7 @@ import (
 // nothing checked the restatement. It was wrong in both directions at once:
 // the fix table listed a --no-color flag that does not exist (typing it exits
 // 2), and rollback was documented as taking no flags months after --force was
-// added — the flag that stands between an operator and an unrecoverable
+// added; the flag that stands between an operator and an unrecoverable
 // overwrite of their own edits.
 //
 // Prose cannot fail a build. This gives it a way to.
@@ -216,7 +216,7 @@ func TestCLIReferenceMatchesTheFlagSets(t *testing.T) {
 			}
 			for _, flag := range got {
 				if !slices.Contains(want, flag) {
-					t.Errorf("%s: the CLI reference lists --%s for `hostveil %s`, which does not accept it — "+
+					t.Errorf("%s: the CLI reference lists --%s for `hostveil %s`, which does not accept it; "+
 						"a reader who types it gets exit 2", lang, flag, section)
 				}
 			}
@@ -245,8 +245,8 @@ func TestEverySubcommandHasAReferenceSection(t *testing.T) {
 
 // Every subcommand this package defines has to be classified and documented.
 //
-// Both lists that decide those things are hand-maintained maps — docSection
-// here, and needsRoot's switch — and adding a subcommand fails neither of
+// Both lists that decide those things are hand-maintained maps (docSection
+// here, and needsRoot's switch) and adding a subcommand fails neither of
 // them. A command that nobody added to needsRoot runs unprivileged and
 // discovers it needed root half way through; one nobody added to the CLI
 // reference is a command users find by reading the help text and nowhere else.
@@ -344,7 +344,7 @@ func TestTheStampedVersionComparesAgainstAResolvedTag(t *testing.T) {
 // its client must not follow redirects. A release asset URL answers 302 and
 // sends the caller to objects.githubusercontent.com, so the download client
 // must. One shared no-redirect client made every download fail with "returned
-// 302 Found" — on the one path a `--check` smoke test never reaches, which is
+// 302 Found", on the one path a `--check` smoke test never reaches, which is
 // exactly how it survived being tested.
 func TestTheUpdateClientsDisagreeAboutRedirectsOnPurpose(t *testing.T) {
 	if resolveClient().CheckRedirect == nil {
@@ -358,7 +358,7 @@ func TestTheUpdateClientsDisagreeAboutRedirectsOnPurpose(t *testing.T) {
 // TestTheBuiltInHelpDocumentsEveryFlag.
 //
 // The site's flag tables are held to the flag sets by the test above, and
-// `hostveil help` was held to a hand-written list of four flags — so six
+// `hostveil help` was held to a hand-written list of four flags, so six
 // drifted out of it and nothing said anything. `fix --review`,
 // `history --scans`, `update --yes` and `uninstall --yes` all existed,
 // worked, and were absent from the only reference a user has without a

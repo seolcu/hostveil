@@ -15,7 +15,7 @@ import (
 // applies index 0 without asking.
 //
 // That was recorded in three prose comments and enforced by nothing. One
-// builder disagreed with it — ds010 led with the *smallest* memory limit while
+// builder disagreed with it: ds010 led with the *smallest* memory limit while
 // the warning beside every alternative said "Start generous… and tighten
 // later", so a reviewed batch capped every unlimited container at 512m.
 //
@@ -71,7 +71,7 @@ var recommendedFirst = map[string]struct{ label, why string }{
 // The sysctl fixes all share one shape, so they share one entry rather than
 // eight copies of it.
 const sysctlRecommendedWhy = "the drop-in is file-backed, so it leaves a checkpoint and survives a reboot; `sysctl -w` does neither. " +
-	"register.go argues that neither dominates for a person, and it is right — but a batch is not a person, and only one of the two can be undone."
+	"register.go argues that neither dominates for a person, and it is right, but a batch is not a person, and only one of the two can be undone."
 
 func TestTheFirstAlternativeIsTheRecommendedOne(t *testing.T) {
 	r := fix.Default()

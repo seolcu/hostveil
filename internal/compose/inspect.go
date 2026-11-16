@@ -35,7 +35,7 @@ type Container struct {
 //
 // Without this the compose and CVE checkers see only what `docker compose ls`
 // reports, so a hand-started `docker run -d --privileged -p 6379:6379 redis`
-// — the most dangerous object likely to be on the box — produced no findings
+// (the most dangerous object likely to be on the box) produced no findings
 // on either of the two highest-weighted axes. Those axes were not reporting
 // "nothing wrong"; they were reporting on a subset of the containers and
 // scoring as if it were all of them.
@@ -112,7 +112,7 @@ func parseInspect(raw []byte) ([]Container, error) {
 
 // toService maps the daemon's record of a container onto the Service fields
 // the rules read. Fields with no meaningful runtime equivalent are left zero
-// and the caller skips the rules that depend on them — see the checker.
+// and the caller skips the rules that depend on them: see the checker.
 func (e dockerContainer) toService(name string) Service {
 	s := Service{
 		Name:        name,

@@ -70,7 +70,7 @@ func fullHeader() header                { return header{kind: hdrFull} }
 //
 //	hdr    which header tier the mode wants. compose may downgrade hdrFull
 //	       when the screen is too short to spend the rows on it.
-//	title  extra chrome rows under the header — a modal's label. Already
+//	title  extra chrome rows under the header: a modal's label. Already
 //	       styled.
 //	hint   key bindings for the footer, which is pinned to the last row.
 //	fill   draws the body. Called exactly once, with the number of rows it
@@ -90,8 +90,8 @@ func (m *appModel) compose(hdr header, title []string, hint string, fill func(ro
 
 	top := m.headerRows(hdr, len(ftr))
 	// The title belongs to the body, not to the header: it names what the
-	// screen below it is about — the fix being previewed, the checkpoint being
-	// rolled back — so it takes the body's margin and lines up with the first
+	// screen below it is about (the fix being previewed, the checkpoint being
+	// rolled back) so it takes the body's margin and lines up with the first
 	// thing it introduces. Left at column 0 it sat under the gauge and over a
 	// body two columns in, which reads as two screens stacked.
 	top = append(top, indentRows(title, bodyInset)...)
@@ -99,8 +99,8 @@ func (m *appModel) compose(hdr header, title []string, hint string, fill func(ro
 		top = append(top, m.rule(m.ruleRow(), "┬"))
 	}
 
-	// Shed chrome from the bottom of the header up — the rule first, then the
-	// delta line, then axis rows — rather than clipping the frame, so what is
+	// Shed chrome from the bottom of the header up (the rule first, then the
+	// delta line, then axis rows) rather than clipping the frame, so what is
 	// lost is always the least informative thing left.
 	for len(top)+len(ftr) > h && len(top) > 0 {
 		top = top[:len(top)-1]
@@ -144,9 +144,9 @@ func (m *appModel) headerRows(hdr header, footerRows int) []string {
 	case hdrFull:
 		// Two tiers of full header, then the compact row. The coverage
 		// notices are the part that varies with the host rather than with
-		// the design — a host with no Docker, no Trivy and no systemd
+		// the design (a host with no Docker, no Trivy and no systemd
 		// contributes three rows the same screen did not have to find on the
-		// developer's laptop — so they are given up before the axes strip
+		// developer's laptop) so they are given up before the axes strip
 		// they annotate, instead of taking the whole header down with them.
 		full := m.fullHeaderRows()
 		if m.height-len(full)-1-footerRows >= minBodyRows {
@@ -190,7 +190,7 @@ func (m *appModel) fullHeaderRowsWithout(omit headerPart) []string {
 //
 // Four segments joined by three spaces. When they do not fit, the meter is
 // squeezed before anything is dropped, and only then are segments dropped
-// right to left — the brand is what identifies the program and is never one
+// right to left: the brand is what identifies the program and is never one
 // of them.
 func (m *appModel) topRow(right string) string {
 	s := m.sty()
@@ -228,10 +228,10 @@ func (m *appModel) topRow(right string) string {
 func (m *appModel) gaugeRow(meterW int) string {
 	s := m.sty()
 	// A report where no domain ran has no score to draw. An empty meter
-	// beside a number would read as "0/100 — terrible host" rather than
+	// beside a number would read as "0/100: terrible host" rather than
 	// "nothing was examined", which are opposite messages.
 	if m.report.Domains != nil && !m.report.Score.Applicable {
-		return s.dim.Render("SECURITY ") + s.dim.Render("N/A — nothing could be scanned")
+		return s.dim.Render("SECURITY ") + s.dim.Render("N/A: nothing could be scanned")
 	}
 	sc := m.report.Score.Overall
 	row := s.dim.Render("SECURITY ") + s.meter(sc, meterW, s.band(sc)) +
@@ -329,7 +329,7 @@ func (m *appModel) footerRows(hint string) []string {
 // The footer is fourteen bindings in one grey, which is the least scannable
 // thing on the screen: every key Hostveil has is written down there and none
 // of them is findable. Colouring the key and only the key turns the row into
-// a column of things you can press — and it is structure, not risk, so it
+// a column of things you can press, and it is structure, not risk, so it
 // spends the accent rather than one of the heats.
 //
 // The split is the one wrapHint already relies on: items are separated by
@@ -337,8 +337,8 @@ func (m *appModel) footerRows(hint string) []string {
 // single space ("↑/↓ move", "enter roll back", "space select").
 //
 // The first word is only picked out when it is actually a key, which is not
-// the same thing. Two of these hints are sentences — "press any key to
-// continue" and "any other key cancel" — and taking their first word offered
+// the same thing. Two of these hints are sentences: "press any key to
+// continue" and "any other key cancel", and taking their first word offered
 // `press` and `any` as bindings, on screens where one of them is the
 // confirmation for overwriting a file. Highlighting a key that does not exist
 // is worse than missing one that does, so anything unrecognised stays dim.
@@ -363,7 +363,7 @@ func (m *appModel) styleHintLine(line string) string {
 // namedKeys are the bindings whose names are longer than one rune. A list
 // rather than a rule, because "esc" and "any" are the same shape and only one
 // of them is a key. A binding added without its name here loses the accent and
-// nothing else — the failure direction that costs polish rather than truth.
+// nothing else: the failure direction that costs polish rather than truth.
 var namedKeys = map[string]bool{
 	"enter": true, "esc": true, "space": true, "tab": true,
 	"ctrl+c": true, "↑/↓": true,
@@ -390,7 +390,7 @@ func (m *appModel) ruleRowOf(w int) string {
 // listed in at.
 //
 // Counted in columns rather than in runes, which is not pedantry here. Every
-// glyph the frame is drawn from — ─ │ ┬ ▌ ░ █ — is East Asian *Ambiguous*,
+// glyph the frame is drawn from (─ │ ┬ ▌ ░ █) is East Asian *Ambiguous*,
 // and an operator whose terminal renders that class double-width says so with
 // RUNEWIDTH_EASTASIAN=1, which Hostveil honours (see internal/textwidth for
 // why it must). In that mode `strings.Repeat("─", w)` is a row twice as wide
@@ -430,7 +430,7 @@ func gridRow(w int, at []int, junction string) string {
 }
 
 // sepWidth is what one column separator costs. One column in every terminal
-// that draws ambiguous characters narrow, two in one that does not — and the
+// that draws ambiguous characters narrow, two in one that does not, and the
 // column arithmetic has to agree with whichever it is, or the columns and the
 // rules above them are laid out to different totals.
 func sepWidth() int { return lipgloss.Width("│") }
@@ -443,8 +443,8 @@ func sepWidth() int { return lipgloss.Width("│") }
 // one that makes a terminal interface look assembled from parts: the eye
 // reads the crossing as two elements that do not know about each other,
 // because that is exactly what it was. The columns are known before the body
-// is filled — they come out of bodyColumns, not out of what the fill returned
-// — so the frame can ask for them and place ┬ under the header and ┴ over the
+// is filled (they come out of bodyColumns, not out of what the fill returned)
+// so the frame can ask for them and place ┬ under the header and ┴ over the
 // footer. joinColumns does the same job from the other direction for the
 // rules drawn *inside* a column.
 func (m *appModel) rule(row, junction string) string {
@@ -484,7 +484,7 @@ func (m *appModel) bodySepColumns() []int {
 
 // styledRows renders each line of a multi-line string separately, so the
 // result can be laid out by the frame rather than embedded as one blob. An
-// empty string is no rows at all, not one empty row — the difference is a
+// empty string is no rows at all, not one empty row: the difference is a
 // stray blank line in every frame that uses it.
 func styledRows(st lipgloss.Style, text string) []string {
 	if text == "" {
@@ -546,7 +546,7 @@ func (m *appModel) clipRows(rs []string, n int) []string {
 //
 // truncate() cannot do this job: it measures runes and would count an SGR
 // sequence as a dozen columns, then cut through the middle of one. The two
-// are for different things — truncate shortens plain text before it is
+// are for different things: truncate shortens plain text before it is
 // styled, clip bounds a row that already is.
 func clip(s string, w int) string {
 	if w <= 0 {

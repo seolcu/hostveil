@@ -60,7 +60,7 @@ func execEngine(t *testing.T, r *stepRunner) (*Engine, model.Finding) {
 
 // The first command installs a package; the second fails. Returning before
 // the Save left the host changed with no history entry at all, reported only
-// as "failed" — so the operator was told nothing happened while a package
+// as "failed", so the operator was told nothing happened while a package
 // sat newly installed and unnamed.
 func TestAPartiallyAppliedExecFixIsRecorded(t *testing.T) {
 	e, f := execEngine(t, &stepRunner{failAt: 2})
@@ -83,7 +83,7 @@ func TestAPartiallyAppliedExecFixIsRecorded(t *testing.T) {
 	if !strings.Contains(cps[0].Label, "partially applied") {
 		t.Errorf("the record should say it is partial, got %q", cps[0].Label)
 	}
-	// Only what actually ran is recorded — a command that never executed must
+	// Only what actually ran is recorded; a command that never executed must
 	// not appear in the log of what was done to this host.
 	if len(cps[0].Commands) != 1 {
 		t.Errorf("recorded %d commands, want only the one that ran: %v", len(cps[0].Commands), cps[0].Commands)

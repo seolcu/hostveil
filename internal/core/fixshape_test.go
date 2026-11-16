@@ -13,7 +13,7 @@ import (
 )
 
 // fix.Validate is the shape contract, and for most of this project's life it
-// ran only in internal/fix/fix_test.go — against the representative findings
+// ran only in internal/fix/fix_test.go: against the representative findings
 // that file happens to construct. A registration that came out malformed for
 // any other finding was reported by nothing.
 //
@@ -64,7 +64,7 @@ func TestMalformedFixIsDemotedNotOffered(t *testing.T) {
 			Label: "x", Kind: model.RemediationAuto,
 			Actions: []fix.Action{{Label: "x", Kind: fix.ActionExec}},
 		},
-		// Auto is a claim about shape — one mechanical action. Two of them
+		// Auto is a claim about shape; one mechanical action. Two of them
 		// is a Review wearing Auto's label, and ApplyBatch silently skips it
 		// while every interface counts it as one that will be applied.
 		"auto with two actions": {
@@ -94,7 +94,7 @@ func TestMalformedFixIsDemotedNotOffered(t *testing.T) {
 
 			// Demoted, which is the same answer an unregistered fix gets.
 			if got := r.Findings[0].Remediation; got != model.RemediationManual {
-				t.Errorf("remediation = %v, want Manual — a fix whose shape contradicts its kind "+
+				t.Errorf("remediation = %v, want Manual; a fix whose shape contradicts its kind "+
 					"must not reach a UI as a button", got)
 			}
 			if r.Findings[0].IsFixable() {

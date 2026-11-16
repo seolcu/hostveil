@@ -25,7 +25,7 @@ type socket struct {
 // member is one account that holds the socket's group.
 type member struct {
 	name string
-	// system marks an account that does not log in interactively — a service
+	// system marks an account that does not log in interactively: a service
 	// identity rather than a person. It is what separates an administrator who
 	// chose this from a credential nobody is watching.
 	system bool
@@ -35,7 +35,7 @@ type member struct {
 //
 // A missing socket is not a failure. A daemon answered `docker version` or
 // this checker would not be running at all, so if there is nothing at this
-// path the client is reaching it another way — DOCKER_HOST pointing at a
+// path the client is reaching it another way: DOCKER_HOST pointing at a
 // remote daemon, or a socket somewhere non-standard. There is no local
 // socket to judge, which is a different thing from failing to judge one.
 func (c *Checker) readSocket() (s socket, known, absent bool, reason string) {
@@ -46,7 +46,7 @@ func (c *Checker) readSocket() (s socket, known, absent bool, reason string) {
 		return socket{}, false, true, ""
 	default:
 		return socket{}, false, false,
-			fmt.Sprintf("cannot inspect %s — its permissions and owning group were not audited", c.SocketPath)
+			fmt.Sprintf("cannot inspect %s; its permissions and owning group were not audited", c.SocketPath)
 	}
 
 	s = socket{path: c.SocketPath, perm: fi.Mode().Perm()}
@@ -89,7 +89,7 @@ func (c *Checker) groupName(gid uint32) string {
 }
 
 // readMembers lists the accounts that hold the socket's group, excluding
-// root — which already has this authority by every other route, so naming it
+// root, which already has this authority by every other route, so naming it
 // here would be noise in a finding that is about everyone else.
 //
 // Membership comes from two places and both count: the group's own member
@@ -99,11 +99,11 @@ func (c *Checker) groupName(gid uint32) string {
 func (c *Checker) readMembers(gid uint32) ([]member, bool, string) {
 	secondary, err := c.secondaryMembers(gid)
 	if err != nil {
-		return nil, false, fmt.Sprintf("cannot read %s — the accounts holding the Docker socket's group were not audited", c.GroupPath)
+		return nil, false, fmt.Sprintf("cannot read %s; the accounts holding the Docker socket's group were not audited", c.GroupPath)
 	}
 	accounts, err := c.accounts()
 	if err != nil {
-		return nil, false, fmt.Sprintf("cannot read %s — the accounts holding the Docker socket's group were not audited", c.PasswdPath)
+		return nil, false, fmt.Sprintf("cannot read %s; the accounts holding the Docker socket's group were not audited", c.PasswdPath)
 	}
 
 	held := map[string]bool{}

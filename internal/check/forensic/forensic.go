@@ -2,7 +2,7 @@
 // evidence an investigation would need if something went wrong.
 //
 // Every other domain asks whether an attacker can get in. This one asks a
-// question the operator meets only afterwards — "was I broken into?" — and
+// question the operator meets only afterwards: "was I broken into?", and
 // whether the host will be able to answer it. A self-hosted server usually
 // cannot, and not because the evidence was destroyed: it was never written.
 // The journal lives in memory and is gone at the next reboot, a web server
@@ -41,7 +41,7 @@ const retentionDays = 90
 // Checker reports gaps in what this host records for a later investigation.
 type Checker struct {
 	// Root is prepended to every file path read directly; overridable for
-	// tests. Commands are not affected — they go through the runner.
+	// tests. Commands are not affected: they go through the runner.
 	Root string
 }
 

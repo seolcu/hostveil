@@ -5,7 +5,7 @@ import "github.com/seolcu/hostveil/internal/model"
 // sampleReport builds a small but representative report: one High finding
 // with a Review remediation and evidence, one Medium finding with no fix
 // (WhyNoFix set), one fixed finding (must not appear in the export), and
-// one domain that was skipped — so every format's tests can check that a
+// one domain that was skipped, so every format's tests can check that a
 // partial scan is visibly called out rather than silently scoring 100.
 func sampleReport() model.Report {
 	high := model.NewFinding("ssh.rootlogin", "SSH permits root login with a password",
@@ -14,7 +14,7 @@ func sampleReport() model.Report {
 		model.WithHowToFix("Set PermitRootLogin to no or prohibit-password in sshd_config."),
 		model.WithEvidence("PermitRootLogin", "yes"))
 	// Set directly rather than through Engine.classify, which this package
-	// cannot reach without importing internal/core — the same reason the
+	// cannot reach without importing internal/core; the same reason the
 	// export renderers themselves never build a Fix.
 	high.FixBenefit = "Keeps key-based root access working while removing the one thing root " +
 		"logins are actually dangerous for: a guessable or stolen password."

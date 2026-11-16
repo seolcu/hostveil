@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// The site had 32 pages, no sitemap and no robots.txt — so the only route in
+// The site had 32 pages, no sitemap and no robots.txt, so the only route in
 // for a crawler was whatever it happened to follow from the landing page, and
 // the Korean half is reachable only through a language switcher.
 //
@@ -30,7 +30,7 @@ type page struct {
 //
 // Deliberately no <lastmod>, <changefreq> or <priority>. A real lastmod needs
 // a file mtime or a build timestamp, and either would make the output differ
-// between two runs of the same commit — which CI checks with
+// between two runs of the same commit, which CI checks with
 // `git diff --exit-code site/`, and which the whole design of this generator
 // rests on. A fake one is worse than none. The other two elements have been
 // ignored by every major crawler for years.
@@ -59,25 +59,25 @@ func sitemap(pages []page) string {
 //
 // Nothing is disallowed on purpose. The one non-page file the site serves is
 // install.sh, which .github/workflows/pages.yml copies in at deploy time and
-// which the landing page tells people to curl — a site that told crawlers to
+// which the landing page tells people to curl: a site that told crawlers to
 // ignore its own install command would be hiding the thing it advertises.
 func robots() string {
 	return "User-agent: *\nAllow: /\n\nSitemap: " + siteURL + "/sitemap.xml\n"
 }
 
 func writeSitemap(outDir string, pages []page) error {
-	//nolint:gosec // G306: generated site output, meant to be readable — see render
+	//nolint:gosec // G306: generated site output, meant to be readable; see render
 	if err := os.WriteFile(filepath.Join(outDir, "sitemap.xml"), []byte(sitemap(pages)), 0o644); err != nil {
 		return err
 	}
-	//nolint:gosec // G306: generated site output, meant to be readable — see render
+	//nolint:gosec // G306: generated site output, meant to be readable; see render
 	return os.WriteFile(filepath.Join(outDir, "robots.txt"), []byte(robots()), 0o644)
 }
 
 // ogImageSize reads the dimensions of the card image out of the file itself.
 //
 // og:image:width and og:image:height are two integers describing a third
-// thing, which is the shape this repository keeps getting wrong — the
+// thing, which is the shape this repository keeps getting wrong; the
 // measurements page, the READMEs, a screenshot naming findings that do not
 // exist. Decoding the PNG header costs nothing and removes the possibility:
 // redraw the card at another size and the tags follow it.

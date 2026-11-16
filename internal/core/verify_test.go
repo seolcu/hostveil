@@ -15,7 +15,7 @@ import (
 
 // verifyRunner stands in for a config validator. accept decides the verdict
 // for the contents of the file it is pointed at, so a test can make the
-// checker approve the original and reject the replacement — or reject both,
+// checker approve the original and reject the replacement, or reject both,
 // which is what a validator that cannot run on this host looks like.
 type verifyRunner struct {
 	absent bool
@@ -82,7 +82,7 @@ func verifySetup(t *testing.T, r *verifyRunner, marker string) (*Engine, string,
 
 // The whole point: a fix that would produce a file the service refuses must
 // not touch the host. sshd keeps serving from the config it already loaded,
-// so a broken sshd_config looks like nothing at all until the next restart —
+// so a broken sshd_config looks like nothing at all until the next restart,
 // and repairing it then needs the SSH access it just removed.
 func TestAFixThatWouldBreakTheConfigIsRefusedBeforeWriting(t *testing.T) {
 	r := &verifyRunner{accept: func(c string) bool { return !strings.Contains(c, "BROKEN") }}
@@ -107,7 +107,7 @@ func TestAFixThatWouldBreakTheConfigIsRefusedBeforeWriting(t *testing.T) {
 }
 
 // A validator that rejects the file already in service is not judging our
-// edit — it is failing to run. `sshd -t` needs to read the host keys, so on
+// edit: it is failing to run. `sshd -t` needs to read the host keys, so on
 // a host where it cannot, it fails on every config including the working
 // one. Blocking the fix there would be the checker's inability masquerading
 // as a verdict.

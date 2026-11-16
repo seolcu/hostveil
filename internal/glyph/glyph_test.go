@@ -13,14 +13,14 @@ import (
 //
 // The Nerd variants live in the Private Use Area, which runewidth treats as
 // ambiguous and therefore one column under the narrow condition Hostveil
-// pins — so this measures what Hostveil will *lay out*. What the font then
+// pins, so this measures what Hostveil will *lay out*. What the font then
 // *draws* is checked separately and by hand, against the four families
 // named in the package doc; the Font Awesome block was chosen partly
 // because it is one cell wide in every build, Mono or not.
 func TestEverySymbolIsOneColumn(t *testing.T) {
 	// Under RUNEWIDTH_EASTASIAN the operator has said their terminal draws the
 	// ambiguous class wide, and ▣, · and the whole Private Use Area block are
-	// in it. The property below is genuinely false there — and it is also not
+	// in it. The property below is genuinely false there, and it is also not
 	// what keeps the layout right in that mode, because the renderers measure
 	// rather than assume: internal/ui/tui's markColumns is the marker column
 	// "measured rather than assumed to be two", and the alignment sweep and
@@ -41,7 +41,7 @@ func TestEverySymbolIsOneColumn(t *testing.T) {
 
 // A symbol declared without a row answers "?" from every renderer that asks
 // for it, which is a question mark in the middle of the header rather than
-// a compile error. Walking the const range is the only way to see that —
+// a compile error. Walking the const range is the only way to see that:
 // iterating the table itself passes vacuously for exactly the symbol that
 // is missing from it.
 func TestEverySymbolConstHasARow(t *testing.T) {
@@ -58,7 +58,7 @@ func TestEverySymbolConstHasARow(t *testing.T) {
 // Two symbols that render the same character are two names for one thing,
 // and a renderer picking between them is making a distinction the screen
 // cannot show. Held per set, because the sets are allowed to disagree about
-// how *many* distinct characters they have — they are not allowed to
+// how *many* distinct characters they have: they are not allowed to
 // collapse two roles into one silently.
 func TestSymbolsAreDistinctWithinASet(t *testing.T) {
 	for _, set := range []struct {
@@ -80,7 +80,7 @@ func TestSymbolsAreDistinctWithinASet(t *testing.T) {
 }
 
 // The plain set is the one that has to render on a stock terminal font, so
-// nothing in it may be a Private Use codepoint — a PUA character there is a
+// nothing in it may be a Private Use codepoint: a PUA character there is a
 // symbol that shows as tofu for everyone who did not opt in, which is the
 // default. The nerd set is the reverse: a Nerd Font glyph that is not in
 // the PUA is an ordinary character that gained nothing by opting in.
@@ -98,7 +98,7 @@ func TestSetsDrawFromTheRangesTheyClaim(t *testing.T) {
 			t.Errorf("plain/%s is a Private Use codepoint (%q); it must render without a patched font", s.Name, s.Plain)
 		}
 		if !inPUA(s.Nerd) {
-			t.Errorf("nerd/%s is %q, which is not a Nerd Font codepoint — opting in buys nothing", s.Name, s.Nerd)
+			t.Errorf("nerd/%s is %q, which is not a Nerd Font codepoint; opting in buys nothing", s.Name, s.Nerd)
 		}
 	}
 }
@@ -107,7 +107,7 @@ func TestSetsDrawFromTheRangesTheyClaim(t *testing.T) {
 // is the oldest in the patch set, present in every build, and single-width
 // in all of them. Newer ranges are prettier, are missing from enough fonts
 // that opting in would produce a row of tofu, and include the ones that go
-// double-width in a non-Mono build — which would push every row that
+// double-width in a non-Mono build, which would push every row that
 // carries one past the edge of the terminal.
 func TestNerdGlyphsComeFromTheFontAwesomeBlock(t *testing.T) {
 	for _, s := range Symbols() {

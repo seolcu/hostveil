@@ -10,10 +10,10 @@ import (
 //
 // A break here is silent in the worst direction. Every rule in
 // internal/check/compose reads the normalised value, so an environment form
-// that came back empty would not produce an error or a Degraded domain — it
+// that came back empty would not produce an error or a Degraded domain: it
 // would produce a service with no environment, and a compose file full of
 // hardcoded passwords would audit clean. The fixtures happen to use the map
-// form, so the list form — the other half of what people write — was never
+// form, so the list form (the other half of what people write) was never
 // executed by a test at all.
 
 func serviceFrom(t *testing.T, body string) Service {
@@ -116,7 +116,7 @@ func TestEnvFileAcceptsAScalarOrAList(t *testing.T) {
 
 // The forms have to reach the rules, not just the struct. This is the same
 // compose file written both ways, and the audit must not read them
-// differently — the list form was the one no test had ever run.
+// differently: the list form was the one no test had ever run.
 func TestTheSameServiceWrittenBothWaysAuditsTheSame(t *testing.T) {
 	mapForm := serviceFrom(t, "    environment:\n      POSTGRES_PASSWORD: hunter2secret\n")
 	listForm := serviceFrom(t, "    environment:\n      - POSTGRES_PASSWORD=hunter2secret\n")

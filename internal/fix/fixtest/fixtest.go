@@ -5,7 +5,7 @@
 // It is exported for the same reason internal/check/checktest is: the answer
 // is needed outside the package that knows it. cmd/sitegen's docs tests pin
 // the checks table's Fix column against the registry, and the column is what
-// a user reads — which means resolving the fix, which means building it.
+// a user reads, which means resolving the fix, which means building it.
 package fixtest
 
 import "github.com/seolcu/hostveil/internal/model"
@@ -16,13 +16,13 @@ import "github.com/seolcu/hostveil/internal/model"
 // One finding with every key rather than a per-domain table: a builder that
 // starts reading a new key fails loudly here (its Build errors) instead of
 // being quietly skipped, and no caller has to know which domain an ID
-// belongs to. The source and severity are placeholders — no builder reads
-// either — and the declared remediation is deliberately Review, the value
+// belongs to. The source and severity are placeholders (no builder reads
+// either) and the declared remediation is deliberately Review, the value
 // that resolves against anything without hiding it.
 //
 // Several builders interpolate a value straight into the Action.Label or
 // .Warning a user reads, and cmd/sitegen's fix-actions page renders those
-// strings verbatim on the public docs site — so a path here is picked to
+// strings verbatim on the public docs site, so a path here is picked to
 // read as a plausible real one, not as test scaffolding. That is why "file"
 // and "dropin" are not under /tmp: cmd/sitegen/fixactions_test.go fails the
 // build if a rendered action text contains "/tmp/", specifically to catch a

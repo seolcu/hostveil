@@ -37,7 +37,7 @@ func writeKeys(t *testing.T, keys map[string]string) string {
 // It also pins the container gate to "this is a host". Left at the default it
 // reads /.dockerenv and /proc/1 on whatever is running the test, so every
 // assertion below about a Review remediation would invert the day these tests
-// ran inside a container — which is a normal thing for a CI job to do, and
+// ran inside a container, which is a normal thing for a CI job to do, and
 // would read as the sysctl domain having broken rather than as the test
 // having asked the wrong question.
 func checkerFor(root string) *Checker {
@@ -179,7 +179,7 @@ func TestAbsentKeysAreSilentlyFine(t *testing.T) {
 }
 
 // A key that exists but cannot be read is ground not covered, and the
-// domain must say so — "could not look" never passes for "nothing there".
+// domain must say so: "could not look" never passes for "nothing there".
 func TestUnreadableKeyIsPartial(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("permission bits do not bind root")
@@ -207,7 +207,7 @@ func TestUnreadableKeyIsPartial(t *testing.T) {
 
 // The reachable failure this whole file exists for. Ubuntu ships
 // /etc/sysctl.d/99-sysctl.conf as a symlink to /etc/sysctl.conf, so a value
-// set there is read *after* every drop-in — including the 60-hostveil-*.conf
+// set there is read *after* every drop-in, including the 60-hostveil-*.conf
 // the fix writes. Without an origin the finding tells the operator to add a
 // drop-in that will be overridden at the next boot, and nothing anywhere says
 // why the value came back.
@@ -223,7 +223,7 @@ func TestLegacyConfFileIsNamedAsTheOrigin(t *testing.T) {
 	f := idsOf(fs)["sysctl.dmesg-restrict"]
 
 	if got := f.Evidence["set-by"]; got != c.ConfFile+":2" {
-		t.Errorf("set-by = %q, want %q — the legacy file is read after every drop-in", got, c.ConfFile+":2")
+		t.Errorf("set-by = %q, want %q; the legacy file is read after every drop-in", got, c.ConfFile+":2")
 	}
 	if strings.Contains(f.HowToFix, "Add `") {
 		t.Errorf("how-to-fix still recommends a drop-in that would be overridden:\n%s", f.HowToFix)
@@ -252,7 +252,7 @@ func TestTheLastDropInWins(t *testing.T) {
 }
 
 // A file that sets a value other than the one running is not why the
-// parameter is weak — something set it at runtime. Naming it would send the
+// parameter is weak: something set it at runtime. Naming it would send the
 // operator to edit a line that already says the right thing.
 func TestAFileSettingADifferentValueIsNotTheOrigin(t *testing.T) {
 	c := withConf(t, checkerFor(writeKeys(t, weakHost)), map[string]string{
@@ -369,7 +369,7 @@ func TestGarbageValueIsPartialNotGuessed(t *testing.T) {
 // /proc/sys shows the host kernel's value for every knob that is not
 // namespaced, so the weakness is real and worth reporting. But the registered
 // fix writes /etc/sysctl.d in here, and no amount of `sysctl --system` in a
-// container reaches the host kernel — so the file would appear, the fix would
+// container reaches the host kernel, so the file would appear, the fix would
 // report success, a checkpoint would be recorded, and the value would never
 // move. internal/fix/sysctl.go calls that the worst available outcome and
 // declines it for a drop-in that would lose to /usr or /run; this is the same

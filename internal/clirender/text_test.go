@@ -13,7 +13,7 @@ func plain(r model.Report) string { return Text(r, Options{}) }
 
 // The CLI's score color had three arms where the TUI and the dashboard had
 // four, so a host scoring 10 and one scoring 40 printed identically here
-// while reading a band apart everywhere else — and 10 is the half of that
+// while reading a band apart everywhere else, and 10 is the half of that
 // range where the host is on fire.
 func TestScoreColorDistinguishesEveryBand(t *testing.T) {
 	scored := func(v uint8) string {
@@ -36,7 +36,7 @@ func TestScoreColorDistinguishesEveryBand(t *testing.T) {
 			t.Fatalf("score %d rendered no color escape: %q", v, line)
 		}
 		if prev, dup := seen[esc]; dup {
-			t.Errorf("scores %d and %d share the color %q — %v and %v are different bands",
+			t.Errorf("scores %d and %d share the color %q; %v and %v are different bands",
 				prev, v, esc, model.BandFor(prev), model.BandFor(v))
 		}
 		seen[esc] = v
@@ -47,7 +47,7 @@ func TestScoreColorDistinguishesEveryBand(t *testing.T) {
 }
 
 // A domain that ran but covered only part of its ground must appear. Before
-// ScanDegraded had any renderer, such a domain printed nothing at all — the
+// ScanDegraded had any renderer, such a domain printed nothing at all: the
 // report looked exactly like a complete one.
 func TestTextRendersDegradedDomain(t *testing.T) {
 	out := plain(model.Report{
@@ -200,7 +200,7 @@ func TestDeltaSummaryBoundsItsListing(t *testing.T) {
 }
 
 // A bare "changed" is not actionable. The useful part is what moved, and
-// for an aggregate finding that is the counts — never the payload behind
+// for an aggregate finding that is the counts: never the payload behind
 // them, which can be thousands of IDs long.
 func TestDeltaSummaryNamesWhatMoved(t *testing.T) {
 	longList := strings.Repeat("CVE-2024-0001, ", 300)

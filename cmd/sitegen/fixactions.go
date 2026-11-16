@@ -12,7 +12,7 @@ import (
 )
 
 // checksSlug is the docs page fixActionsMarker's generated content goes
-// into, and fixActionsMarker is where it goes — the same shape as
+// into, and fixActionsMarker is where it goes: the same shape as
 // changelogSlug/changelogMarker, kept as a second pair rather than
 // generalized into one, because two is not yet a pattern.
 const (
@@ -22,8 +22,8 @@ const (
 
 // shortDomainLabelsKo is the Korean counterpart to model.Source.Label(),
 // which this page uses for its <h3> domain headings ("Container", "SSH",
-// ...). Label has no language parameter — every other reader of it is
-// English-only CLI/TUI/dashboard output, so it stays that way — so a second,
+// ...). Label has no language parameter (every other reader of it is
+// English-only CLI/TUI/dashboard output, so it stays that way) so a second,
 // short, sitegen-only table is what lets a Korean heading exist at all,
 // the same shape kindLabels already is for remediation kinds. Keep these
 // as short as the English originals; they sit in a heading, not a sentence.
@@ -68,11 +68,11 @@ func domainHeading(lang string, src model.Source) (string, error) {
 // whether "Auto" means safe enough for their own host before a single one
 // ever runs.
 //
-// The structure — domain headings, the Auto/Review kind name, "
-// (recommended)" — is localized through domainHeading and kindLabels. Each
+// The structure: domain headings, the Auto/Review kind name, "
+// (recommended)": is localized through domainHeading and kindLabels. Each
 // individual fix's Label and Warning text is not: those strings live in
 // internal/fix/*.go with no i18n hook, and this codebase's rule for Korean
-// copy is that it is composed natively, not translated clause for clause —
+// copy is that it is composed natively, not translated clause for clause;
 // 127 of them, several carrying an exec fix's safety warning, are not a
 // pass to make in one sitting under the same rule that governs everything
 // else on this site. content/ko/docs/checks.html says as much once, above
@@ -139,7 +139,7 @@ func domainOf(id string) (model.Source, bool) {
 // it, exactly as an operator applying it would see.
 //
 // registry.Patterns() is what put id here, so Build failing on it is not a
-// case to skip past — every registered pattern is supposed to build against
+// case to skip past; every registered pattern is supposed to build against
 // fixtest.Finding, and TestEveryRegisteredFixIsValid already holds that for
 // the whole registry. An error here means this function found a gap that
 // test does not cover, and it should fail the site build rather than
@@ -179,7 +179,7 @@ func renderOneFix(registry *fix.Registry, id, lang string) (string, error) {
 	} else {
 		// Review only: Validate requires at least two actions there, each an
 		// independent alternative rather than a sequential step, and
-		// Actions[0] is the one `fix --all --review` and every UI preselect —
+		// Actions[0] is the one `fix --all --review` and every UI preselect;
 		// see the Fix doc comment in internal/fix/registry.go.
 		b.WriteString("              <ul>\n")
 		for i, a := range fx.Actions {
@@ -215,7 +215,7 @@ func renderOneFix(registry *fix.Registry, id, lang string) (string, error) {
 // An exec action with no Warning is an error here rather than a silent gap:
 // it is the one Action.Kind with no rollback checkpoint, and every exec
 // action registered today already says so in its own words (firewall.go,
-// updates.go) — this page's job is to surface that text, not restate it in
+// updates.go); this page's job is to surface that text, not restate it in
 // a second sentence next to it. A future exec fix registered without a
 // Warning should fail the site build, not publish a blank next to "Review".
 //
@@ -241,7 +241,7 @@ func renderAction(a fix.Action, labelSuffix string) (string, error) {
 }
 
 // checksFixKindCell matches one row of the checks table's existing 4-column
-// shape, up through its Fix column — the same row findingRow (docs_test.go)
+// shape, up through its Fix column: the same row findingRow (docs_test.go)
 // pins, captured so only the Fix cell's text needs replacing. Left as a
 // single group up to that cell rather than three, because nothing here
 // needs to know the description or severity; changing that shape only where
@@ -251,7 +251,7 @@ func renderAction(a fix.Action, labelSuffix string) (string, error) {
 // autoLabel/reviewLabel are interpolated in rather than hardcoded to
 // "Auto"/"Review": those come from kindLabels, and reading them from the
 // same table renderOneFix reads its own kind name from is what keeps the
-// two from disagreeing about what a row says, in either language — even
+// two from disagreeing about what a row says, in either language, even
 // though today both languages spell both words the same way.
 func checksFixKindCell(lang string) *regexp.Regexp {
 	auto := regexp.QuoteMeta(kindLabels[lang][model.RemediationAuto])
@@ -266,12 +266,12 @@ func checksFixKindCell(lang string) *regexp.Regexp {
 // running it does with nothing connecting the two.
 //
 // This runs on the *rendered* fragment, never on
-// content/{lang}/docs/checks.html itself — the source file the table's own
+// content/{lang}/docs/checks.html itself: the source file the table's own
 // regex-pinned tests (findingRow, severityCell in docs_test.go) read stays
 // exactly as written, so this cannot touch what those tests check. Every
 // candidate is re-verified against the registry rather than trusted from
 // the row's own hand-typed label, so a row this function cannot back with a
-// real entry below is left as plain text instead of becoming a dead link —
+// real entry below is left as plain text instead of becoming a dead link:
 // the row read "Auto" was already correct, wiring it to nothing at all
 // would not be.
 func linkFixColumnRows(html string, registry *fix.Registry, lang string) string {

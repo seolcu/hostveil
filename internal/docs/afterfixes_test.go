@@ -9,8 +9,8 @@ import (
 )
 
 // The score and the headroom are two numbers about one host, and three
-// interfaces draw them. Each owns its own formatting — a terminal cell, a
-// lipgloss style, a DOM node — so there is nothing a compiler can hold them
+// interfaces draw them. Each owns its own formatting (a terminal cell, a
+// lipgloss style, a DOM node) so there is nothing a compiler can hold them
 // to. What has to agree is not the formatting but the two refusals:
 //
 //   - nothing where the figure equals the score, because an arrow pointing at
@@ -21,12 +21,12 @@ import (
 //
 // This is the same shape of check as the Degraded flag's: a rule that lives in
 // prose until one renderer forgets it. It reads the sources rather than
-// rendering, because two of the three cannot be rendered here — the dashboard
+// rendering, because two of the three cannot be rendered here: the dashboard
 // is JavaScript and SARIF is a machine format with its own answer.
 // The Go renderers all call model.ScoreAxis.Headroom and
 // model.ScoreAxis.ValueText now, so the compiler holds them together and
 // there is nothing here to check. The dashboard is the one copy that cannot
-// call either — it is JavaScript reading /api/result — so it is the one this
+// call either (it is JavaScript reading /api/result) so it is the one this
 // reads.
 //
 // That is the point of the shrinking. This file used to grep four sources for

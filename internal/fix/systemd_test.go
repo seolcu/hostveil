@@ -10,8 +10,8 @@ import (
 // The drop-in has to end up with exactly one assignment, in a [Service]
 // section, whatever it started as.
 //
-// A bare directive outside a section is not a systemd override — systemd
-// ignores it — and two assignments of the same key is not wrong so much as
+// A bare directive outside a section is not a systemd override (systemd
+// ignores it) and two assignments of the same key is not wrong so much as
 // evidence of a tool that does not know what it has already done.
 func TestTheDropInEndsWithOneAssignmentInTheRightSection(t *testing.T) {
 	tr := setServiceDirective("NoNewPrivileges", "NoNewPrivileges=yes")
@@ -59,7 +59,7 @@ func TestTheDropInEndsWithOneAssignmentInTheRightSection(t *testing.T) {
 			want: "[Unit]\nDescription=x\n\n[Service]\nNoNewPrivileges=yes\n",
 		},
 		{
-			// Under [Service], not at the end of the file — the end of the
+			// Under [Service], not at the end of the file; the end of the
 			// file is inside [Install], where systemd would ignore it. The
 			// SSH domain learned this about Match blocks.
 			name: "a section follows [Service]",
@@ -132,7 +132,7 @@ func TestTheFixSaysWhatHasToHappenForItToTakeEffect(t *testing.T) {
 	}
 	a := fx.Actions[0]
 	if !strings.Contains(a.TakesEffectOn, "daemon-reload") || !strings.Contains(a.TakesEffectOn, "gitea.service") {
-		t.Errorf("TakesEffectOn = %q — it has to name the reload and the unit", a.TakesEffectOn)
+		t.Errorf("TakesEffectOn = %q; it has to name the reload and the unit", a.TakesEffectOn)
 	}
 	if !a.CreateIfMissing {
 		t.Error("the drop-in does not exist yet; without CreateIfMissing the fix fails on the read")

@@ -22,7 +22,7 @@ func TestFromEnvDefaultsToALocalOllama(t *testing.T) {
 	t.Setenv("HOSTVEIL_OLLAMA_MODEL", "")
 	c, ok := FromEnv().(*OpenAICompat)
 	if !ok || c.BaseURL != "http://127.0.0.1:11434/v1" || c.Model != "llama3.2" {
-		t.Errorf("FromEnv() = %#v, want the local Ollama when HOSTVEIL_AI_PROVIDER is unset — nothing should leave the host by default", FromEnv())
+		t.Errorf("FromEnv() = %#v, want the local Ollama when HOSTVEIL_AI_PROVIDER is unset; nothing should leave the host by default", FromEnv())
 	}
 }
 

@@ -14,7 +14,7 @@ import (
 // `docker compose ls --format json` and parses each project's config file.
 //
 // A project that fails to parse is skipped rather than aborting the whole
-// discovery — one broken stack must not blind the checker to the other
+// discovery: one broken stack must not blind the checker to the other
 // twelve. The paths of those projects are returned as the second value, and
 // callers must not drop it: a skipped project is ground the scan did not
 // cover, and reporting ScanDone over a subset is how "I couldn't look"
@@ -68,7 +68,7 @@ func parseDiscovery(ctx context.Context, r platform.CommandRunner, out []byte) (
 // That is not a partial view of a layered project, it is a wrong one, and in
 // the dangerous direction. `docker compose up` reads
 // docker-compose.override.yml with no flag asked for, and `-f base.yml -f
-// prod.yml` is the standard production pattern — so several files is the
+// prod.yml` is the standard production pattern, so several files is the
 // ordinary case, not an exotic one. Compose *appends* port mappings rather
 // than replacing them, which docker shows plainly for a base binding redis to
 // loopback and an override publishing it:
@@ -83,7 +83,7 @@ func parseDiscovery(ctx context.Context, r platform.CommandRunner, out []byte) (
 //
 // So the merge is asked of the tool that owns it. This is the same move as
 // reading kernel parameters through the file systemd-sysctl will actually
-// apply and unit properties through `systemctl show` — a checker that
+// apply and unit properties through `systemctl show`: a checker that
 // re-implements somebody else's precedence rules is a checker that will
 // disagree with reality on the hosts that matter.
 //
@@ -110,8 +110,8 @@ func effectiveProject(ctx context.Context, r platform.CommandRunner, files []str
 
 	// docker would not answer: an unset variable a mapping demands, a file it
 	// cannot read, a compose version too old for the flags. With one file
-	// there is no merge to lose — that file *is* the project, modulo
-	// interpolation — so fall back to reading it and keep auditing. With
+	// there is no merge to lose (that file *is* the project, modulo
+	// interpolation) so fall back to reading it and keep auditing. With
 	// several, the merge is the whole question and guessing at it would put
 	// back the wrong answer this exists to remove; the caller reports it as
 	// ground not covered instead.
@@ -125,7 +125,7 @@ func effectiveProject(ctx context.Context, r platform.CommandRunner, files []str
 }
 
 // configFiles splits docker's comma-separated ConfigFiles field, in the order
-// docker reports it — which is the order compose merged them in, and the
+// docker reports it, which is the order compose merged them in, and the
 // order `-f` has to repeat for the merge to come out the same.
 func configFiles(s string) []string {
 	var out []string

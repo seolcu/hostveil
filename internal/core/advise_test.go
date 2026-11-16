@@ -51,7 +51,7 @@ func TestPlainAdviceWithNothingFixable(t *testing.T) {
 }
 
 // The AGENTS.md invariant: every score, explanation, and fix must work
-// with ai.Noop. useAI=false is the "not asked" path — Plain is always
+// with ai.Noop. useAI=false is the "not asked" path: Plain is always
 // there, and nothing AI-shaped is attempted.
 func TestAdvisePlainWorksWithoutAI(t *testing.T) {
 	e := New(Config{Store: history.NewStore(t.TempDir())})
@@ -65,7 +65,7 @@ func TestAdvisePlainWorksWithoutAI(t *testing.T) {
 }
 
 // core.New defaults an unset Config.AI to ai.Noop, which reports itself
-// unavailable — so asking for AI with nothing configured is the same
+// unavailable, so asking for AI with nothing configured is the same
 // honest "no AI provider is reachable" answer Explain already gives, not a
 // silent success.
 func TestAdviseWithAIRequestedButNothingConfigured(t *testing.T) {

@@ -80,16 +80,16 @@ func (*Checker) Source() model.Source { return model.SourceUpdates }
 // checker knows how to verify. Anywhere else it reports a skip rather than
 // running: apk and pacman have no standard unattended-upgrade daemon to
 // look for, so "found nothing" would be indistinguishable from "did not
-// look" — and the two score identically while meaning opposite things.
+// look", and the two score identically while meaning opposite things.
 // A skip excludes the axis as N/A instead of awarding it full marks.
 func (*Checker) Available(_ context.Context, env platform.Env) (bool, string) {
 	switch env.PackageManager {
 	case platform.PMApt, platform.PMDnf:
 		return true, ""
 	case platform.PMUnknown:
-		return false, "no recognized package manager — cannot verify automatic updates"
+		return false, "no recognized package manager; cannot verify automatic updates"
 	default:
-		return false, "automatic-update checks cover apt and dnf hosts only — detected " + string(env.PackageManager)
+		return false, "automatic-update checks cover apt and dnf hosts only; detected " + string(env.PackageManager)
 	}
 }
 
@@ -116,7 +116,7 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 	var findings []model.Finding
 	var reasons []string
 	// apt reads every fragment in apt.conf.d and the last assignment wins, so
-	// the question is what apt resolves the option to — not what one file
+	// the question is what apt resolves the option to, not what one file
 	// says. Reading 20auto-upgrades alone reported "disabled" as "enabled" on
 	// any host carrying 99-disable-auto-upgrades, which cloud images and
 	// several hardening guides ship, and the fix then wrote into the file
@@ -131,7 +131,7 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 		// *is*, and therefore whether Hostveil can do it unattended. Ubuntu
 		// ships unattended-upgrades installed and Debian's netinst offers it,
 		// so the common case is a host where the whole fix is writing one
-		// config file — reversible, and Auto. Where the package is missing the
+		// config file: reversible, and Auto. Where the package is missing the
 		// fix has to install it, which is a command with no checkpoint.
 		f := disabledFinding("unattended-upgrades",
 			"Install and enable unattended-upgrades: `apt install unattended-upgrades` then `dpkg-reconfigure -plow unattended-upgrades`.")
@@ -154,7 +154,7 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 		findings = append(findings, f)
 	}
 	// apt's packages create this file from their postinst when an installed
-	// update cannot take effect until the machine restarts — a new kernel,
+	// update cannot take effect until the machine restarts; a new kernel,
 	// glibc, or libssl. Absence is a definite answer, not a guess.
 	if _, err := os.Stat(c.RebootRequiredPath); err == nil {
 		findings = append(findings, rebootFinding("sudo reboot"))
@@ -222,7 +222,7 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 	// a different question: it lists what `upgrade` would actually install,
 	// which excludes anything held back for needing new or removed packages.
 	// Security updates land in that category regularly. Counting from it
-	// would report fewer pending security updates than the host really has —
+	// would report fewer pending security updates than the host really has:
 	// erring toward "you are patched" on a machine that is not, which is the
 	// one direction this checker must never be wrong in.
 	//
@@ -251,7 +251,7 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 	}
 
 	// Whether automatic updates are configured, and whether anything is
-	// waiting — and, when both hold, whether it will ever be installed. Every
+	// waiting, and, when both hold, whether it will ever be installed. Every
 	// gap is reported, rather than the first standing for the domain.
 	if len(reasons) > 0 {
 		return findings, &check.PartialError{
@@ -279,28 +279,28 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 
 	// `systemctl is-enabled` exits non-zero for "disabled" and for "there is
 	// no systemctl here" alike, and reading the second as the first turns "I
-	// could not look" into the positive claim that automatic updates are off
-	// — on a host where nothing was consulted.
+	// could not look" into the positive claim that automatic updates are off,
+	// on a host where nothing was consulted.
 	//
 	// So the unit is asked whether it exists first, the way the systemd
 	// domain does it: LoadState answers `loaded` only for a unit systemd
 	// actually read, and a command that cannot run at all answers nothing.
-	// A unit that is genuinely absent *is* the finding — dnf-automatic is
-	// not installed — and that is the one case where a non-zero exit is an
+	// A unit that is genuinely absent *is* the finding (dnf-automatic is
+	// not installed) and that is the one case where a non-zero exit is an
 	// answer rather than a silence.
 	//
 	// UnitFileState rather than `systemctl is-enabled`: on dnf5 (Fedora 41
 	// and later) dnf-automatic.timer is an alias of dnf5-automatic.timer, and
 	// is-enabled answers "alias" for it whether the timer is on or not. So the
-	// finding outlived its own fix on every such host — found on a real
+	// finding outlived its own fix on every such host: found on a real
 	// Fedora 44 by scripts/e2e/vm.sh. show resolves the alias first.
 	state, err := env.Runner.Run(ctx, "systemctl", "show", "dnf-automatic.timer", "--property=LoadState,UnitFileState")
 	props := systemdProps(string(state))
 	switch {
 	case err != nil && !platform.Has(env.Runner, "systemctl"):
-		reasons = append(reasons, "cannot tell whether dnf-automatic is enabled — systemctl is not available")
+		reasons = append(reasons, "cannot tell whether dnf-automatic is enabled; systemctl is not available")
 	case err != nil:
-		reasons = append(reasons, "cannot tell whether dnf-automatic is enabled — systemctl did not answer")
+		reasons = append(reasons, "cannot tell whether dnf-automatic is enabled; systemctl did not answer")
 	case props["LoadState"] != "loaded":
 		// systemd answered and does not have the unit: it is not installed.
 		f := disabledFinding("dnf-automatic",
@@ -311,14 +311,14 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 		findings = append(findings, f)
 	default:
 		// A timer that runs is only half of it. dnf-automatic's shipped
-		// default is apply_updates = no — it downloads updates and installs
-		// none — so an enabled timer on a stock config is a host that
+		// default is apply_updates = no (it downloads updates and installs
+		// none) so an enabled timer on a stock config is a host that
 		// believes it patches itself and does not.
 		apply, ok := c.dnfApplyUpdates()
 		timerOn := props["UnitFileState"] == "enabled"
 		switch {
 		case !ok:
-			reasons = append(reasons, "cannot tell whether dnf-automatic installs updates — "+c.DnfAutomaticConfig+" could not be read")
+			reasons = append(reasons, "cannot tell whether dnf-automatic installs updates; "+c.DnfAutomaticConfig+" could not be read")
 		case !timerOn || !apply:
 			f := disabledFinding("dnf-automatic", dnfAutomaticHowToFix(c.DnfAutomaticConfig, timerOn, apply))
 			f.Evidence["installed"] = "true"
@@ -340,13 +340,13 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 	// the first used to mean the second was never asked: on a stock minimal
 	// Fedora or Rocky there is no needs-restarting (it ships in dnf-utils),
 	// so the reboot check came back unknown, the function returned, and
-	// pending security updates went uncounted on every such host — while the
+	// pending security updates went uncounted on every such host, while the
 	// domain reported only that a reboot could not be determined.
 
 	// `needs-restarting -r` exits non-zero precisely when a reboot IS
 	// required, so the exit status cannot be read as success or failure here.
 	// Its stdout is unambiguous and is still captured on a non-zero exit, so
-	// the text is the signal — and a reply matching neither phrase means the
+	// the text is the signal, and a reply matching neither phrase means the
 	// command did not answer, which must not be read as "no reboot needed".
 	//
 	// dnf5 has no needs-restarting binary; it is a dnf subcommand there, and
@@ -354,7 +354,7 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 	// Fedora 41 and later. dnf4 hosts with dnf-plugins-core answer it too.
 	//
 	// Both dnf probes refresh repository metadata when it has expired, which
-	// on a fresh Fedora 44 took over a minute — past platform.DefaultTimeout,
+	// on a fresh Fedora 44 took over a minute: past platform.DefaultTimeout,
 	// so whichever probe ran first was killed and its question went
 	// unanswered. They get a deadline of their own, as Trivy does.
 	dnfCtx, cancel := context.WithTimeout(ctx, dnfTimeout)
@@ -372,7 +372,7 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 		if platform.Has(env.Runner, "needs-restarting") {
 			reasons = append(reasons, "cannot tell whether a reboot is pending")
 		} else {
-			reasons = append(reasons, "cannot tell whether a reboot is pending — neither needs-restarting nor `dnf needs-restarting` answered (`dnf install dnf-utils`)")
+			reasons = append(reasons, "cannot tell whether a reboot is pending; neither needs-restarting nor `dnf needs-restarting` answered (`dnf install dnf-utils`)")
 		}
 	}
 
@@ -393,7 +393,7 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 	if len(reasons) > 0 {
 		return findings, &check.PartialError{
 			Reason: strings.Join(reasons, "; ") +
-				" — checked that automatic updates are configured, but not whether they have caught up",
+				"; checked that automatic updates are configured, but not whether they have caught up",
 			Covered: 3 - len(reasons),
 			Total:   3,
 		}
@@ -404,8 +404,8 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 // aptUnattendedEnabled reports whether the apt periodic config enables
 // unattended upgrades.
 // The bool answers "enabled"; ok answers whether the file could be consulted
-// at all. An absent config is a real answer — nothing has configured
-// unattended upgrades, which is exactly the finding — but an unreadable one is
+// at all. An absent config is a real answer (nothing has configured
+// unattended upgrades, which is exactly the finding) but an unreadable one is
 // not, and reading a permission error as "disabled" is the same silence this
 // domain's systemctl probe used to produce.
 func aptUnattendedEnabled(path string) (enabled, ok bool) {
@@ -564,11 +564,11 @@ func parseDnfBool(v string) bool {
 func dnfAutomaticHowToFix(config string, timerOn, apply bool) string {
 	switch {
 	case !apply && timerOn:
-		return "dnf-automatic runs but only downloads updates — its default is `apply_updates = no`. " +
+		return "dnf-automatic runs but only downloads updates; its default is `apply_updates = no`. " +
 			"Set `apply_updates = yes` under [commands] in " + config + "."
 	case !apply:
 		return "Set `apply_updates = yes` under [commands] in " + config +
-			", then `systemctl enable --now dnf-automatic.timer` — the default only downloads updates."
+			", then `systemctl enable --now dnf-automatic.timer`; the default only downloads updates."
 	default:
 		return "Enable it: `systemctl enable --now dnf-automatic.timer`."
 	}
@@ -581,7 +581,7 @@ func dnfAutomaticHowToFix(config string, timerOn, apply bool) string {
 func rebootFinding(howToFix string) model.Finding {
 	return model.NewFinding("updates.reboot-required", "A reboot is needed for installed security updates to take effect",
 		model.SeverityHigh, model.SourceUpdates, model.RemediationReview,
-		model.WithDescription("Updates to the kernel or a core library have been installed, but the running system is still using the old code held in memory. Until this host restarts, it stays vulnerable to exactly the issues those patches fixed — and because the packages already show as up to date, it is easy to believe the work is finished."),
+		model.WithDescription("Updates to the kernel or a core library have been installed, but the running system is still using the old code held in memory. Until this host restarts, it stays vulnerable to exactly the issues those patches fixed, and because the packages already show as up to date, it is easy to believe the work is finished."),
 		model.WithHowToFix("Restart the host when you can take the downtime: `"+howToFix+"`. Check what will restart with it first if you run services without a restart policy."),
 		model.WithEvidence("mechanism", "reboot flag"),
 	)
@@ -626,8 +626,8 @@ func (c *Checker) AptConfDir() string {
 // asked. The second return is whether the question could be answered at all.
 func (c *Checker) aptEnabled(ctx context.Context, env platform.Env) (enabled, ok bool) {
 	if value, set, asked := aptEffective(ctx, env.Runner); asked {
-		// apt answered. An unset option is a definite "not enabled" — that is
-		// exactly the finding — and any value other than "0" enables it.
+		// apt answered. An unset option is a definite "not enabled" (that is
+		// exactly the finding) and any value other than "0" enables it.
 		return set && value != "0", true
 	}
 	return aptUnattendedEnabled(c.AptConfigPath)

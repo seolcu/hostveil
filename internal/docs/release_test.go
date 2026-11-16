@@ -19,7 +19,7 @@ import (
 //
 // Add an architecture to the release build and nothing complains. CI keeps
 // compiling the three it has always compiled, goreleaser starts building four,
-// and the first compile of the new one happens during a release — which is the
+// and the first compile of the new one happens during a release, which is the
 // exact failure this step was added to prevent, reintroduced by the step going
 // stale rather than by anyone removing it.
 //

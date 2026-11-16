@@ -13,7 +13,7 @@ So exactly two things fail here.
   an operator's server a reasonable thing to ask for, and it either holds or
   the feature is not what it says it is.
 
-  hostveil's own score moved at all. Not by how much — that is a judgement
+  hostveil's own score moved at all. Not by how much, that is a judgement
   about weighting and it is allowed to change. A run where nothing moved
   means the fixes did not apply, or the scan is no longer reading what the
   fixes wrote, and either way the harness measured nothing.
@@ -51,8 +51,8 @@ def main():
     phases = doc.get("phases") or {}
     before = (phases.get("before") or {}).get("hostveil") or {}
 
-    # A Review fix Hostveil itself marks "not reversible" — installing a
-    # package, running a distribution upgrade — has no checkpoint by design,
+    # A Review fix Hostveil itself marks "not reversible" (installing a
+    # package, running a distribution upgrade) has no checkpoint by design,
     # and the packages it pulls in can rewrite files no finding ever named
     # (a compiler binary reinstalled as rkhunter's dependency, /etc/shadow
     # rewritten by a new service account) as an ordinary side effect of doing

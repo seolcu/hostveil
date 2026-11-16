@@ -25,7 +25,7 @@ import (
 // the finding ships undocumented with whatever remediation the checker
 // happened to declare.
 //
-// This test closes that loop from the other end — it harvests the IDs the
+// This test closes that loop from the other end; it harvests the IDs the
 // checkers actually construct and requires each to be documented. Together
 // the two make the chain complete: emitted → documented → registry position.
 
@@ -35,14 +35,14 @@ import (
 //
 // The alternation is built from model.AllSources rather than written out,
 // because a hand-written copy of the domain list is the thing this repo has
-// most reliably got wrong — and here it misreports which file is broken.
+// most reliably got wrong, and here it misreports which file is broken.
 //
 // A namespace missing from the pattern means that domain's IDs never match,
 // never enter the harvest, and are never required to be documented. That is
 // caught today, but only sideways and only if the domain's findings are
 // already documented: TestDocumentedFindingsAreStillEmitted sees rows with
 // no emitter and reports "the checks table documents dockerd.api-tls-
-// unverified but no checker constructs it — either the row is stale or the
+// unverified but no checker constructs it; either the row is stale or the
 // ID was renamed". Both suggestions are wrong. The row is correct, the
 // checker is correct, and the fault is a stale regex two files away.
 //
@@ -85,7 +85,7 @@ func emittedFindingIDs(t *testing.T) []string {
 		// := …), and through a table field (agent's danger rules). The
 		// namespace prefix is what actually identifies a finding ID, and
 		// over-collecting only ever demands a doc row for something that
-		// looks like a finding — the safe direction to err in.
+		// looks like a finding: the safe direction to err in.
 		ast.Inspect(file, func(n ast.Node) bool {
 			lit, ok := stringLit(n)
 			if !ok {
@@ -150,7 +150,7 @@ func TestEveryEmittedFindingIsDocumented(t *testing.T) {
 	for _, id := range emittedFindingIDs(t) {
 		if !slices.Contains(documented, id) {
 			t.Errorf("checkers can emit %s but cmd/sitegen/content/{en,ko}/docs/checks.html does not "+
-				"list it — an undocumented finding also escapes the docs-vs-fix-registry check", id)
+				"list it; an undocumented finding also escapes the docs-vs-fix-registry check", id)
 		}
 	}
 }
@@ -166,7 +166,7 @@ func TestDocumentedFindingsAreStillEmitted(t *testing.T) {
 	emitted := emittedFindingIDs(t)
 	for _, id := range documentedFindingIDs(t) {
 		if !slices.Contains(emitted, id) {
-			t.Errorf("the checks table documents %s but no checker constructs it — "+
+			t.Errorf("the checks table documents %s but no checker constructs it; "+
 				"either the row is stale or the ID was renamed", id)
 		}
 	}
@@ -183,7 +183,7 @@ func TestDocumentedFindingsAreStillEmitted(t *testing.T) {
 // missing the same entries and agree perfectly. Every guard passes, and the
 // domain's findings ship undocumented.
 //
-// That shape is not hypothetical — compose already has it. Its rules reach
+// That shape is not hypothetical: compose already has it. Its rules reach
 // NewFinding through a helper that prefixes them, so its IDs never appear as
 // namespaced literals, and composeRuleID exists solely to special-case them.
 // A twelfth domain adopting the same convention would need the same
@@ -195,7 +195,7 @@ func TestEveryDomainContributesAHarvestedID(t *testing.T) {
 	}
 	for _, src := range model.AllSources() {
 		if byDomain[src.String()] == 0 {
-			t.Errorf("no finding ID was harvested for the %s domain — its checker builds IDs in a "+
+			t.Errorf("no finding ID was harvested for the %s domain; its checker builds IDs in a "+
 				"shape emittedFindingIDs cannot see, so nothing requires them to be documented "+
 				"(compose needed composeRuleID for exactly this)", src)
 		}

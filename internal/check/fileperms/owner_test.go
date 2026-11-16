@@ -13,7 +13,7 @@ import (
 
 // The mode rules answer "how much access do the bits grant" and stopped
 // there, which is only half the question. Mode 0600 grants everything to
-// the owner and nothing to anyone else — so a /etc/shadow at 0600 owned by
+// the owner and nothing to anyone else, so a /etc/shadow at 0600 owned by
 // an ordinary user hands that user every password hash on the host, and the
 // mode check calls it clean because 0600 is exactly what it wants to see.
 // That is a false clean, the failure class this whole tool is built to
@@ -21,7 +21,7 @@ import (
 
 // ownerFixture builds a checker over one file. wrongOwner decides whether
 // the checker expects an owner the file does not have, so both directions
-// are exercised whoever runs the suite — under root and under CI's
+// are exercised whoever runs the suite: under root and under CI's
 // unprivileged user alike.
 func ownerFixture(t *testing.T, mode os.FileMode, wrongOwner bool) (*Checker, string) {
 	t.Helper()
@@ -63,7 +63,7 @@ func hasFinding(fs []model.Finding, id string) bool {
 }
 
 // The tests run as whatever uid the suite runs as. Under root that is 0 and
-// the fixture is correctly owned; unprivileged, it is not — which is the
+// the fixture is correctly owned; unprivileged, it is not, which is the
 // interesting case and the one CI actually exercises.
 func TestOwnershipIsCheckedIndependentlyOfMode(t *testing.T) {
 	for name, wrong := range map[string]bool{"correctly owned": false, "wrongly owned": true} {
@@ -71,7 +71,7 @@ func TestOwnershipIsCheckedIndependentlyOfMode(t *testing.T) {
 			c, _ := ownerFixture(t, 0o600, wrong)
 			fs := runOwner(t, c)
 
-			// Impeccable bits, so the mode rule stays quiet either way —
+			// Impeccable bits, so the mode rule stays quiet either way,
 			// which is exactly why the mode check alone called this clean.
 			if hasFinding(fs, "fileperms.shadow") {
 				t.Errorf("a 0600 file was flagged for its mode: %v", fs)
@@ -97,7 +97,7 @@ func TestModeAndOwnerAreSeparateFindings(t *testing.T) {
 }
 
 // The finding has to name the files and carry a remediation a person can
-// act on — and say the group is not guessable, because /etc/shadow is
+// act on, and say the group is not guessable, because /etc/shadow is
 // root:shadow on Debian and root:root elsewhere.
 func TestOwnerFindingIsActionable(t *testing.T) {
 	c, path := ownerFixture(t, 0o600, true)

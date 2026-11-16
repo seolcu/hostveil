@@ -23,7 +23,7 @@ import (
 // host that is written down instead of one somebody has to go and find.
 //
 // It replaces this repository's previous answer, which was to bring up the
-// Vagrant demo VM — twenty minutes, several gigabytes of deliberately
+// Vagrant demo VM: twenty minutes, several gigabytes of deliberately
 // outdated images, and a host whose findings drift with every image rebuild.
 // Nothing about the picture needed a real machine; it needed a real *page*.
 //
@@ -31,7 +31,7 @@ import (
 // from Server.Handler, exactly as `hostveil serve` builds it. Only /api/result
 // is substituted, and it is the one thing that has to be, since an engine
 // produces the report of whatever host it is on. That substitution is also the
-// one divergence worth knowing about — the override sits in front of the
+// one divergence worth knowing about: the override sits in front of the
 // guard, so this instance answers /api/result without the token. Localhost,
 // for the length of one screenshot, and nothing else is relaxed.
 //
@@ -52,7 +52,7 @@ func TestScreenshotServe(t *testing.T) {
 	//
 	// The two overrides do not change that: unset, this is the default page.
 	// They exist because a palette and an arrangement are the two things only
-	// a picture can review, and the fixture was reachable in one of each — so
+	// a picture can review, and the fixture was reachable in one of each, so
 	// reviewing the other five of either meant clicking through the live
 	// dashboard on whatever host was to hand, which is the drift this test was
 	// written to remove. A fresh browser profile has no remembered choice, so
@@ -95,7 +95,7 @@ func TestScreenshotServe(t *testing.T) {
 
 // screenshotTheme and screenshotLayout resolve the two overrides. An unknown
 // ID is a hard failure rather than a fall back to the default, because Opts
-// silently accepts one — so a typo would otherwise serve a page that is named
+// silently accepts one, so a typo would otherwise serve a page that is named
 // after the palette asked for and drawn in another.
 func screenshotTheme(t *testing.T) string {
 	t.Helper()

@@ -48,7 +48,7 @@ func modeModels(w, h int) map[string]*appModel {
 // It replaces a hand-written list inside modeModels that had fallen two
 // behind the enum: modeForceConfirm and modeLayout were never built, so
 // "every mode" meant eight of ten and the two screens most likely to be
-// reached in a bad moment — a declined rollback, and the picker — were
+// reached in a bad moment (a declined rollback, and the picker) were
 // composed by nobody.
 var modeNames = map[mode]string{
 	modeScanning:        "scanning",
@@ -128,8 +128,8 @@ func TestFooterIsPinned(t *testing.T) {
 
 // A model that has not seen a WindowSizeMsg has width and height 0. Drawing
 // into that meant strings.Repeat with a negative count and a negative row
-// budget; the fallback size is what keeps the first frame — and every model
-// built as a bare literal — renderable.
+// budget; the fallback size is what keeps the first frame (and every model
+// built as a bare literal) renderable.
 func TestUnsetSizeRenders(t *testing.T) {
 	for _, md := range []mode{modeScanning, modeList} {
 		m := &appModel{mode: md}
@@ -145,7 +145,7 @@ func TestUnsetSizeRenders(t *testing.T) {
 	}
 }
 
-// The compact header is one row at every width — that is the whole point of
+// The compact header is one row at every width, that is the whole point of
 // it. The full strip costs three to five rows and is worth it on the list;
 // repeating it over a detail view is what left an 80x24 terminal with half a
 // screen of chrome.
@@ -198,7 +198,7 @@ func TestClipCountsCellsNotBytes(t *testing.T) {
 // The footer picks the key out of each hint and dims the rest, which is only
 // safe while it can tell a key from a word. Two of the hints are sentences,
 // and one of them is the confirmation for overwriting a file that rollback
-// refused to touch — a footer offering `any` as the key there is worse than a
+// refused to touch: a footer offering `any` as the key there is worse than a
 // footer with no colour at all.
 //
 // Asserted by rendering and asking which spans came back accented, because the
@@ -224,7 +224,7 @@ func TestOnlyRealKeysAreHighlightedInTheFooter(t *testing.T) {
 		}
 		for _, w := range tc.not {
 			if accented(m, got, w) {
-				t.Errorf("%q: %q was drawn as a key, and it is not one — the footer is "+
+				t.Errorf("%q: %q was drawn as a key, and it is not one; the footer is "+
 					"the only documentation these bindings have", tc.hint, w)
 			}
 		}

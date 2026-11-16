@@ -1,7 +1,7 @@
 // Package accounts implements a native host account-hygiene checker. Its
 // question is who can become root and what stands in their way, and it asks it
 // three times: a second account carrying root's UID, a login account with no
-// password at all, and — through sudo itself rather than by reading sudoers —
+// password at all, and (through sudo itself rather than by reading sudoers)
 // an account that can run anything as root without being asked for one.
 //
 // The first two come out of /etc/passwd and /etc/shadow. The third does not,
@@ -50,7 +50,7 @@ func (*Checker) Source() model.Source { return model.SourceAccounts }
 // is visible rather than scored as clean.
 //
 // The OS gate is not belt-and-braces around the file check, because the file
-// is there on macOS. It is a stub — the account database is Open Directory —
+// is there on macOS. It is a stub (the account database is Open Directory)
 // so the UID-0 scan passes against something that does not describe the host,
 // and the missing /etc/shadow produces the Degraded reason "re-run with sudo",
 // which cannot help: the file is not unreadable, it does not exist. Advice
@@ -79,7 +79,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	// the sudo scan needs sudo installed and Hostveil running as root. A
 	// ledger rather than an early return, because a non-root scan misses two
 	// of the three and reporting only the first would under-state what went
-	// unexamined — see check.Coverage.
+	// unexamined: see check.Coverage.
 	var cov check.Coverage
 	cov.Covered(1) // /etc/passwd was read, or there would be no findings at all
 
@@ -96,8 +96,8 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		// Asked through platform because the Docker daemon domain asks the
 		// same question of docker-group members, and the two answers used to
 		// differ: this one matched whole paths against a fixed list, so a
-		// nologin at any other path — Arch's /usr/bin/nologin, NixOS's under
-		// /run/current-system — read as an ordinary login shell.
+		// nologin at any other path (Arch's /usr/bin/nologin, NixOS's under
+		// /run/current-system) read as an ordinary login shell.
 		loginShell[name] = !platform.IsNonLoginShell(shell)
 		if loginShell[name] {
 			logins = append(logins, name)
@@ -115,8 +115,8 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 
 	// Read here rather than where the empty-password scan reads it, because
 	// the UID-0 question needs it too: an account locked and expired can no
-	// longer authenticate by any route — not a password, not a key, since
-	// sshd and PAM both refuse an expired account — so it is a UID-0 entry,
+	// longer authenticate by any route (not a password, not a key, since
+	// sshd and PAM both refuse an expired account) so it is a UID-0 entry,
 	// not a second root anyone can use. That is the state the uid0 fix leaves
 	// behind, and a finding that survived it would say the fix did nothing.
 	// Unreadable shadow changes nothing here: every UID-0 account is reported,
@@ -198,7 +198,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	}
 
 	// The empty-password check needs /etc/shadow, which is root-only. Losing
-	// it costs half the domain, so the result is Degraded — never clean.
+	// it costs half the domain, so the result is Degraded: never clean.
 	//
 	// Returning nil here is the mistake this package exists to catch, made by
 	// the checker itself: "could not read /etc/shadow" and "no account has an
@@ -208,7 +208,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	// score on an unscanned host.
 	if shadowErr != nil {
 		cov.Missed(1, "cannot read "+c.ShadowPath+
-			" — did not check for accounts with an empty password; re-run with sudo")
+			": did not check for accounts with an empty password; re-run with sudo")
 	} else {
 		cov.Covered(1)
 		var passwordless, weakHashes []string
@@ -259,7 +259,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	case errors.Is(err, errNoSudo):
 		cov.Covered(1)
 	case errors.Is(err, errNotRoot):
-		cov.Missed(1, "sudo will not report another account's privileges unless Hostveil is root — "+
+		cov.Missed(1, "sudo will not report another account's privileges unless Hostveil is root; "+
 			"did not check whether any account can become root without a password; re-run with sudo")
 	default:
 		cov.Covered(1)
@@ -324,7 +324,7 @@ func hasCoreLimit(data []byte) bool {
 // disabledAccounts reports, for a shadow file, whether an account can no
 // longer authenticate at all: its password is locked (a leading '!') and its
 // expiry date (field 8, days since the epoch) has passed. Either alone is not
-// enough — a locked password still admits an SSH key, and an expired account
+// enough: a locked password still admits an SSH key, and an expired account
 // with a password is one `chage` away from working.
 func disabledAccounts(shadow []byte, now time.Time) func(string) bool {
 	today := now.Unix() / 86400

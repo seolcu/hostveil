@@ -13,7 +13,7 @@ const (
 	ScanPending  ScanState = iota // not started
 	ScanRunning                   // checker executing
 	ScanDone                      // completed successfully
-	ScanSkipped                   // dependency absent (e.g. Trivy not installed) — not an error
+	ScanSkipped                   // dependency absent (e.g. Trivy not installed), not an error
 	ScanDegraded                  // ran but produced a partial result
 	ScanError                     // failed
 
@@ -26,7 +26,7 @@ type scanStateDef struct {
 	ran   bool   // executed and contributed to scoring
 	// complete means it also covered all of its ground. Only ScanDegraded
 	// has ran without complete, and that gap is the entire reason both
-	// columns exist — see Ran and Complete below.
+	// columns exist: see Ran and Complete below.
 	complete bool
 }
 
@@ -99,8 +99,8 @@ func (s *ScanState) UnmarshalJSON(data []byte) error {
 // and "I could not look" must never read as either answer.
 //
 // Both callers of this predicate used to spell it out longhand and in
-// opposite directions — a three-case switch in the engine's post-fix
-// re-check, a != ScanDone in the CLI's clean-host guard — which is how the
+// opposite directions (a three-case switch in the engine's post-fix
+// re-check, a != ScanDone in the CLI's clean-host guard) which is how the
 // two came to look like negations of Ran when neither is.
 func (s ScanState) Complete() bool {
 	return scanStateIndex[s].complete
@@ -131,7 +131,7 @@ type Report struct {
 }
 
 // IncompleteDomains counts the domains that did not cover all of their
-// ground — skipped, degraded, or errored.
+// ground: skipped, degraded, or errored.
 //
 // It is the guard on every "clean host" claim. Finding nothing means
 // nothing unless the whole host was examined, and the two readings score
@@ -165,7 +165,7 @@ type Filter struct {
 func (flt Filter) Matches(f Finding) bool {
 	// Active, not !Fixed. A fix that is applied and not in force is still
 	// charged in the score, so hiding its row would leave a number with
-	// nothing behind it — the operator runs `fix --all`, the list empties,
+	// nothing behind it: the operator runs `fix --all`, the list empties,
 	// and the score does not move, with no row anywhere to explain why.
 	// See Finding.Pending.
 	if !flt.IncludeFixed && !f.Active() {
@@ -195,14 +195,14 @@ func (r Report) Select(flt Filter) []Finding {
 }
 
 // AutoFixable returns the findings inside the filter that "fix all safe"
-// would apply — the unfixed ones Hostveil can apply unattended.
+// would apply: the unfixed ones Hostveil can apply unattended.
 //
 // It takes a filter because the answer depends on one, and every caller that
 // counted these by hand had to decide which filter it meant without saying
 // so. The TUI got it wrong in the one way that shows: its batch bar counted
 // over the whole report while its `a` key applied over the filtered list, so
 // narrowing to one severity left the screen offering "fix all 10 safe" and
-// the key applying three. Nothing failed — the operator would have to count
+// the key applying three. Nothing failed: the operator would have to count
 // the list afterwards to notice.
 //
 // Pass the zero Filter for "every finding on this host", which is what the
@@ -212,8 +212,8 @@ func (r Report) AutoFixable(flt Filter) []Finding { return AutoFixable(r.Select(
 // AutoFixable is the same question asked of a slice a caller already has,
 // so a renderer holding the filtered findings does not have to rebuild them
 // to count what the key would apply.
-// Fixed here and not Active, deliberately. This is the other question — has
-// Hostveil already applied a fix here — and a pending fix has. Asking Active
+// Fixed here and not Active, deliberately. This is the other question (has
+// Hostveil already applied a fix here) and a pending fix has. Asking Active
 // would put it back in the batch, so `fix --all` would rewrite a file it
 // already wrote and record a second checkpoint over unchanged content, every
 // time it ran, until the operator restarted the service.
@@ -259,7 +259,7 @@ type ScorePoint struct {
 //
 // It lives on the model rather than in either interface because both draw
 // the same picture from the same points, and a bucketing rule written twice
-// is the shape that has already gone wrong here twice — the severity
+// is the shape that has already gone wrong here twice: the severity
 // palette before internal/ui/theme, the domain table before /model.js.
 // The TUI prints the string; the dashboard renders the same characters in a
 // monospace span.
@@ -271,7 +271,7 @@ type ScorePoint struct {
 // about the only thing it is for.
 //
 // A scan with no applicable score contributes a gap rather than a bar. It
-// is not a zero — nobody could look — and drawing it as the lowest bucket
+// is not a zero (nobody could look) and drawing it as the lowest bucket
 // would be the same lie the aggregate score refuses to tell.
 func Sparkline(points []ScorePoint) string {
 	// Runes, not a string: every bar is three bytes, so indexing by

@@ -168,7 +168,7 @@ func dumpEveryMode(t *testing.T, dir string) {
 		FindingID: "cve.outdated-image", Label: "Update the image for nextcloud", Kind: model.RemediationReview,
 		Actions: []model.ActionPreview{
 			{Index: 0, Label: "Pull the new image and recreate nextcloud now", Type: "exec",
-				Warning: "This recreates the container: the service goes down briefly and comes back on a different image. There is no rollback checkpoint — exec fixes are not file-backed, so Hostveil cannot undo this.",
+				Warning: "This recreates the container: the service goes down briefly and comes back on a different image. There is no rollback checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this.",
 				Commands: [][]string{
 					{"docker", "compose", "-f", "/opt/stacks/cloud/docker-compose.yml", "pull", "nextcloud"},
 					{"docker", "compose", "-f", "/opt/stacks/cloud/docker-compose.yml", "up", "-d", "nextcloud"}}},
@@ -180,7 +180,7 @@ func dumpEveryMode(t *testing.T, dir string) {
 
 	// Composed by the code that composes it in a real run, not written out
 	// here. A hand-written string is a picture of what somebody thought the
-	// message said — which is how this frame went on showing a single wrapped
+	// message said, which is how this frame went on showing a single wrapped
 	// paragraph after the summaries had been split into lines, and how the
 	// scanning frame showed a state no run reaches.
 	msg := newModel(modeMessage)

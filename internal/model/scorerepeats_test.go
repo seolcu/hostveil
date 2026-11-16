@@ -17,7 +17,7 @@ func TestOneHighStillCostsHalf(t *testing.T) {
 
 // The same mistake written four times is not four independent risks. A
 // compose file where every service is missing one line is one line missing,
-// and a self-hoster runs many services from one template — so the old
+// and a self-hoster runs many services from one template, so the old
 // arithmetic buried an axis for having more services rather than worse ones.
 //
 // Pinned as an ordering rather than an exact number, because the number is
@@ -36,7 +36,7 @@ func TestRepeatsOfOneFindingCostLessEachTime(t *testing.T) {
 	four := axis([]Finding{med("compose.ds009", "a"), med("compose.ds009", "b"),
 		med("compose.ds009", "c"), med("compose.ds009", "d")})
 	// Four distinct mistakes, one per service, cost more than one mistake
-	// repeated four times — that is the whole point.
+	// repeated four times, that is the whole point.
 	distinct := axis([]Finding{med("compose.ds009", "a"), med("compose.ds006", "b"),
 		med("compose.ds012", "c"), med("compose.ds022", "d")})
 
@@ -58,7 +58,7 @@ func TestRepeatsOfOneFindingCostLessEachTime(t *testing.T) {
 }
 
 // The same ID on two axes is two different mistakes and must not damp each
-// other — the counter is keyed by axis as well as by ID.
+// other: the counter is keyed by axis as well as by ID.
 func TestRepeatsAreCountedPerAxis(t *testing.T) {
 	fs := []Finding{
 		NewFinding("x.same", "t", SeverityHigh, SourceCompose, RemediationAuto, WithService("a")),
@@ -66,7 +66,7 @@ func TestRepeatsAreCountedPerAxis(t *testing.T) {
 	}
 	for _, a := range ScoreReport(fs, map[Source]ScanState{SourceCompose: ScanDone, SourceSSH: ScanDone}).Axes {
 		if (a.Source == SourceCompose || a.Source == SourceSSH) && a.Score != 50 {
-			t.Errorf("%s axis is %d, want 50 — the first of an ID on its own axis costs half", a.ID, a.Score)
+			t.Errorf("%s axis is %d, want 50; the first of an ID on its own axis costs half", a.ID, a.Score)
 		}
 	}
 }
@@ -76,8 +76,8 @@ func med(id, svc string) Finding {
 }
 
 // The order findings arrive in must not change the score, which the damping
-// puts at risk: one ID can carry two severities — a CVE roll-up is the worst
-// level in *that* image — and whichever instance is seen first would pay full
+// puts at risk: one ID can carry two severities (a CVE roll-up is the worst
+// level in *that* image) and whichever instance is seen first would pay full
 // price. The heaviest pays it, whatever the order.
 func TestOrderStillDoesNotChangeTheScore(t *testing.T) {
 	high := NewFinding("cve.outdated-image", "t", SeverityHigh, SourceCVE, RemediationReview, WithService("a"))

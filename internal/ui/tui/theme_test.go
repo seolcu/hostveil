@@ -30,8 +30,8 @@ func TestEveryThemeRendersEveryMode(t *testing.T) {
 	}
 }
 
-// An appModel built as a bare literal — which is how every layout test and
-// several call sites build one — must still render in the default theme
+// An appModel built as a bare literal (which is how every layout test and
+// several call sites build one) must still render in the default theme
 // rather than in no colors at all.
 func TestZeroValueThemeIsTheDefault(t *testing.T) {
 	m := &appModel{mode: modeList, width: 80, height: 24}
@@ -120,7 +120,7 @@ func TestThemePickerSurvivesASaveFailure(t *testing.T) {
 	}
 }
 
-// The picker opens on the theme already in use, not at the top of the list —
+// The picker opens on the theme already in use, not at the top of the list:
 // otherwise the first arrow key moves away from where the user thinks they
 // are.
 func TestThemePickerOpensOnTheActiveTheme(t *testing.T) {

@@ -225,7 +225,7 @@ func TestTLSVerifiedFromExecStartIsClean(t *testing.T) {
 
 // TLS without client verification is encryption without authorization:
 // never clean, and never collapsed into the unauthenticated finding. Both
-// are High — the point of the test is that they stay two findings with two
+// are High: the point of the test is that they stay two findings with two
 // remediations rather than one.
 func TestTLSWithoutVerifyIsItsOwnFinding(t *testing.T) {
 	h := host(t, `{"hosts":["tcp://0.0.0.0:2376"],"tls":true,"tlscert":"/etc/docker/cert.pem"}`,
@@ -239,8 +239,8 @@ func TestTLSWithoutVerifyIsItsOwnFinding(t *testing.T) {
 	mustNotFind(t, fs, "dockerd.api-unauthenticated")
 }
 
-// A certificate with no explicit "tls": true still means TLS is in force —
-// dockerd enables it implicitly — so reading only the boolean would grade a
+// A certificate with no explicit "tls": true still means TLS is in force
+// (dockerd enables it implicitly) so reading only the boolean would grade a
 // TLS-serving daemon as plaintext.
 func TestCertificateWithoutTLSFlagStillCountsAsTLS(t *testing.T) {
 	h := host(t, `{"hosts":["tcp://0.0.0.0:2376"],"tlscert":"/etc/docker/cert.pem"}`,
@@ -459,7 +459,7 @@ func TestRootlessDowngradesTheAPIFinding(t *testing.T) {
 // --- coverage -------------------------------------------------------------
 
 // Losing `docker info` costs the three default-hardening rules and leaves the
-// four socket and group rules genuinely answered — including two of the three
+// four socket and group rules genuinely answered, including two of the three
 // Criticals. Reporting that as an outright error would discard them.
 func TestDockerInfoFailureIsPartialNotFatal(t *testing.T) {
 	h := host(t, `{"hosts":["tcp://0.0.0.0:2375"]}`, cleanGroup, cleanPasswd, 0o666)
@@ -479,8 +479,8 @@ func TestDockerInfoFailureIsPartialNotFatal(t *testing.T) {
 	mustFind(t, fs, "dockerd.socket-world-writable")
 }
 
-// An absent daemon.json is a complete answer — it means no options are set
-// there, which is the default state of most hosts — not a failed read.
+// An absent daemon.json is a complete answer (it means no options are set
+// there, which is the default state of most hosts) not a failed read.
 func TestAbsentDaemonJSONIsNotPartial(t *testing.T) {
 	h := host(t, "", cleanGroup, cleanPasswd, 0o660)
 	if _, err := h.c.Check(context.Background(), env(hardenedInfo, "-H fd://")); err != nil {
@@ -564,7 +564,7 @@ func TestAvailableWhenDockerIsAbsent(t *testing.T) {
 }
 
 // Every finding must survive the engine's post-scan validation, carry this
-// domain's source, and be namespaced by it — the Valid() upper bound in
+// domain's source, and be namespaced by it: the Valid() upper bound in
 // model.Source is a range check, and getting it wrong drops the whole domain
 // silently.
 func TestEveryFindingValidates(t *testing.T) {
@@ -660,7 +660,7 @@ func TestHumanAdministratorStaysMedium(t *testing.T) {
 
 // `systemctl show` on a unit that does not exist exits 0 and prints nothing
 // for ExecStart. Reading err==nil as "inspected, no flags" is a claim the
-// command never made — the unit was not read, it was not there.
+// command never made: the unit was not read, it was not there.
 //
 // Reachable whenever the daemon's unit is not literally docker.service:
 // snap-installed Docker (snap.docker.dockerd.service), a rootless daemon
@@ -681,7 +681,7 @@ func TestAUnitThatIsNotFoundIsNotAnInspectedUnit(t *testing.T) {
 }
 
 // With no daemon.json and no readable unit, Hostveil has consulted neither
-// source of the socket and TLS settings — and the default state of most hosts
+// source of the socket and TLS settings, and the default state of most hosts
 // is no daemon.json at all, so this is the ordinary shape of the failure
 // rather than an exotic one.
 //
@@ -692,7 +692,7 @@ func TestAUnitThatIsNotFoundIsNotAnInspectedUnit(t *testing.T) {
 func TestNoDaemonJSONAndNoReadableUnitIsNotAudited(t *testing.T) {
 	h := host(t, "", cleanGroup, cleanPasswd, 0o660)
 	// env with no unit args scripts no `systemctl show` at all, so the call
-	// errors — a host whose unit Hostveil cannot read.
+	// errors; a host whose unit Hostveil cannot read.
 	_, err := h.c.Check(context.Background(), env(hardenedInfo, ""))
 
 	var partial *check.PartialError
@@ -707,7 +707,7 @@ func TestNoDaemonJSONAndNoReadableUnitIsNotAudited(t *testing.T) {
 // A daemon.json carrying `hosts` does not make up for an unreadable unit
 // either, and this is the direction that produces a *false positive* on the
 // domain's worst finding. Docker refuses to start with `hosts` in both places,
-// so the file's socket answer is trustworthy — but `tlsverify` has no such
+// so the file's socket answer is trustworthy, but `tlsverify` has no such
 // exclusion and lives on the unit just as often. Trusting the file alone here
 // reports an unauthenticated API on a host running mutual TLS.
 func TestDaemonJSONDoesNotMakeUpForAnUnreadableUnit(t *testing.T) {
@@ -725,8 +725,8 @@ func TestDaemonJSONDoesNotMakeUpForAnUnreadableUnit(t *testing.T) {
 
 // The largest behaviour change here, stated as its own case: on a host that
 // does not run systemd, the daemon's start-up flags live somewhere Hostveil
-// cannot read — /etc/conf.d/docker under OpenRC, a supervisor's config, a
-// hand-typed command line — and `docker info` does not report them. So the two
+// cannot read (/etc/conf.d/docker under OpenRC, a supervisor's config, a
+// hand-typed command line) and `docker info` does not report them. So the two
 // API rules are genuinely unanswered there.
 //
 // This used to report clean. An Alpine or Gentoo host publishing
@@ -746,7 +746,7 @@ func TestANonSystemdHostCannotAuditTheAPISocket(t *testing.T) {
 	if !strings.Contains(partial.Reason, "systemd") {
 		t.Errorf("the reason should say why the flags are unreadable: %q", partial.Reason)
 	}
-	// The rules that do not depend on the unit are still answered — partial
+	// The rules that do not depend on the unit are still answered; partial
 	// means incomplete, not failed.
 	if len(fs) == 0 && partial.Covered == 0 {
 		t.Error("the daemon defaults and the socket mode were still readable")
