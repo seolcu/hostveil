@@ -2,6 +2,78 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.36.0](https://github.com/seolcu/hostveil/compare/v3.35.0...v3.36.0) (2026-11-17)
+
+This release is written for people who run a server at home and do not
+work in security. The dashboard now explains each fix in plain sentences,
+asks you to check one thing before a fix that could lock you out, and says
+where the points left after every fix are. Hostveil also gains a forensic
+readiness domain and `hostveil triage`, scans the host's own packages for
+unfixed vulnerabilities, and has one look across the product, the website
+and the repository.
+
+**Removed.** Four things are gone, and scripts that use them need a change:
+
+* `hostveil advise`: run `hostveil explain` with no finding ID instead.
+* `hostveil fleet`: run `ssh <host> hostveil scan --json` on each host.
+* `export --format docx` and `--format pdf`: export `markdown` and convert
+  it with any document tool.
+* `--layout` and `HOSTVEIL_LAYOUT`: the TUI and the dashboard keep the
+  console arrangement.
+
+### Features
+
+* **web:** a fix in the dashboard opens with what it gets you and what it
+  can break, then says whether you can undo it from History and what has
+  to happen before it takes effect. About 45 fixes that can lock you out,
+  take a service down or cannot be undone name one thing to check first
+  (for `ssh.passwordauth`: log in with your SSH key in a second terminal),
+  and Apply stays off until you tick it. The diff is under "Show the exact
+  change" ([#889](https://github.com/seolcu/hostveil/pull/889)).
+* **web:** the overview lists the points left under the score: points that
+  return after a restart, points held by findings you fix by hand, and
+  points held by findings with no fix published yet. `hostveil scan`
+  prints the same as one line, and `--json` carries `score.left`
+  ([#888](https://github.com/seolcu/hostveil/pull/888)).
+* **core:** forensic readiness is off by default, because ninety days of
+  evidence matters to an organisation more than to a home server. Turn it
+  on with `--with forensic` on `scan`, `tui`, `serve`, `fix`, `explain` or
+  `export`. Turning it on or off no longer reports its findings as new or
+  resolved ([#886](https://github.com/seolcu/hostveil/pull/886)).
+* **check:** a forensic readiness domain (`forensic.*`) checks whether the
+  host keeps the evidence an investigation needs: a journal that survives
+  reboots, 90 days of auth and web logs, auditd on the web server's
+  account, a synchronised clock, request sizes in the access log and a log
+  copy on another machine. `hostveil triage` collects a read-only, hashed
+  evidence bundle and judges each indicator as an attempt, suspicious or a
+  compromise ([#864](https://github.com/seolcu/hostveil/pull/864)).
+* **cmd:** `triage` names SSH guessing that a proxy, tunnel or NAT hides
+  behind one internal address, and reads fail2ban's log for bans
+  ([#878](https://github.com/seolcu/hostveil/pull/878)).
+* **cve:** the CVE domain also scans the host's own packages with
+  `trivy rootfs`. A new `cve.unpatched-host` finding lists vulnerabilities
+  the distribution has not fixed yet. The domain now needs only Trivy; an
+  unreachable Docker daemon makes it partial
+  ([#879](https://github.com/seolcu/hostveil/pull/879)).
+* **ui:** one brand across the TUI, the dashboard, the website and the
+  repository: a new mark, a new default `hostveil` theme with one green for
+  "made safe" and a blue accent, and a website set in the system sans
+  ([#866](https://github.com/seolcu/hostveil/pull/866)).
+
+### Bug Fixes
+
+* **check:** the stock 0644 `/etc/crontab` on Debian and Ubuntu was High
+  and made `scan` exit 1. A writable crontab stays High; a readable one is
+  the new Low `fileperms.crontab-readable`. The cron and at allow and deny
+  lists now flag write access only
+  ([#877](https://github.com/seolcu/hostveil/pull/877)).
+* **ui:** text across the product, the docs and the code drops the phrasing
+  that reads as machine-written, and a test keeps it out. The pending row
+  now reads "Applied, waiting to take effect"
+  ([#887](https://github.com/seolcu/hostveil/pull/887)).
+* **demo:** the demo VM's memory can be raised past 2 GB
+  ([#885](https://github.com/seolcu/hostveil/pull/885)).
+
 ## [3.35.0](https://github.com/seolcu/hostveil/compare/v3.34.0...v3.35.0) (2026-10-20)
 
 Hostveil now notices updates that unattended-upgrades is set up to skip.

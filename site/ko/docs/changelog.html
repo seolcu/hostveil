@@ -135,6 +135,59 @@
 
             <p>각 버전의 릴리스 아카이브, 체크섬, SBOM, 서명된 빌드 프로버넌스는 <a href="https://github.com/seolcu/hostveil/releases">릴리스 페이지</a>에 있습니다. 업그레이드는 <code>hostveil update</code>로 합니다.</p>
 
+          <h2 id="v3.36.0"><a href="https://github.com/seolcu/hostveil/compare/v3.35.0...v3.36.0">3.36.0</a> <span class="changelog-date">2026-11-17</span></h2>
+          <p>이번 릴리스는 보안이 본업이 아닌 홈서버 운영자를 위한 변경이 중심입니다. 대시보드는 수정마다 쉬운 문장으로 설명하고, 접속을 끊을 수 있는 수정 앞에서는 먼저 확인할 것을 묻습니다. 모든 수정을 적용한 뒤에도 남는 점수가 어디에 있는지도 보여 줍니다. 그 밖에 포렌식 준비도 영역과 <code>hostveil triage</code>가 생겼고, 호스트 패키지의 미패치 취약점을 스캔하며, 제품과 웹사이트와 저장소의 디자인을 하나로 맞췄습니다.</p>
+          <p><strong>제거된 기능.</strong> 다음 네 가지가 없어졌습니다. 이를 쓰는 스크립트는 고쳐야 합니다.</p>
+          <ul class="changelog-entries">
+            <li>
+              <p><code>hostveil advise</code>: 발견 항목 ID 없이 <code>hostveil explain</code>을 실행합니다.</p>
+            </li>
+            <li>
+              <p><code>hostveil fleet</code>: 호스트마다 <code>ssh &lt;host&gt; hostveil scan --json</code>을 실행합니다.</p>
+            </li>
+            <li>
+              <p><code>export --format docx</code>, <code>--format pdf</code>: <code>markdown</code>으로 내보낸 뒤 문서 도구로 변환합니다.</p>
+            </li>
+            <li>
+              <p><code>--layout</code>, <code>HOSTVEIL_LAYOUT</code>: TUI와 대시보드는 기본 배치 하나만 씁니다.</p>
+            </li>
+          </ul>
+          <h3>새 기능</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>web:</strong> 대시보드에서 수정을 열면 얻는 효과와 깨질 수 있는 것을 먼저 보여 주고, 이력에서 되돌릴 수 있는지와 언제 반영되는지를 적습니다. 접속을 끊거나 서비스를 멈추거나 되돌릴 수 없는 수정 약 45개에는 먼저 확인할 것이 하나씩 붙습니다. 예를 들어 <code>ssh.passwordauth</code>는 두 번째 터미널에서 SSH 키로 로그인해 보라고 안내합니다. 확인 표시를 해야 Apply가 켜집니다. diff는 "Show the exact change" 아래에 있습니다 (<a href="https://github.com/seolcu/hostveil/pull/889">#889</a>).</p>
+            </li>
+            <li>
+              <p><strong>web:</strong> 개요 화면이 점수 아래에 남은 점수를 보여 줍니다. 재시작 후 돌아오는 점수, 직접 고칠 항목의 점수, 아직 수정이 나오지 않은 항목의 점수입니다. <code>hostveil scan</code>은 같은 내용을 한 줄로 출력하고, <code>--json</code>에는 <code>score.left</code>가 들어갑니다 (<a href="https://github.com/seolcu/hostveil/pull/888">#888</a>).</p>
+            </li>
+            <li>
+              <p><strong>core:</strong> 포렌식 준비도는 기본으로 꺼져 있습니다. 90일치 증거는 홈서버보다 조직에 더 의미가 있기 때문입니다. <code>scan</code>, <code>tui</code>, <code>serve</code>, <code>fix</code>, <code>explain</code>, <code>export</code>에 <code>--with forensic</code>을 붙이면 켜집니다. 켜거나 꺼도 그 항목이 새로 생기거나 해결된 것으로 보고되지 않습니다 (<a href="https://github.com/seolcu/hostveil/pull/886">#886</a>).</p>
+            </li>
+            <li>
+              <p><strong>check:</strong> 포렌식 준비도 영역(<code>forensic.*</code>)을 추가했습니다. 재부팅 후에도 남는 저널, 90일치 인증·웹 로그, 웹 서버 계정에 대한 auditd, 동기화된 시계, 접근 로그의 요청 크기, 다른 기계에 보내는 로그 사본을 확인합니다. <code>hostveil triage</code>는 읽기 전용으로 해시가 붙은 증거 묶음을 모으고, 각 지표를 시도, 의심, 침해로 판정합니다 (<a href="https://github.com/seolcu/hostveil/pull/864">#864</a>).</p>
+            </li>
+            <li>
+              <p><strong>cmd:</strong> <code>triage</code>가 프록시, 터널, NAT 뒤에서 내부 주소 하나로 보이는 SSH 추측 공격을 찾아내고, fail2ban 로그에서 차단 기록을 읽습니다 (<a href="https://github.com/seolcu/hostveil/pull/878">#878</a>).</p>
+            </li>
+            <li>
+              <p><strong>cve:</strong> CVE 영역이 <code>trivy rootfs</code>로 호스트 패키지도 스캔합니다. 새 항목 <code>cve.unpatched-host</code>는 배포판이 아직 고치지 않은 취약점을 보여 줍니다. 이제 Trivy만 있으면 이 영역이 실행되고, Docker 데몬에 닿지 못하면 부분 점검으로 보고합니다 (<a href="https://github.com/seolcu/hostveil/pull/879">#879</a>).</p>
+            </li>
+            <li>
+              <p><strong>ui:</strong> TUI, 대시보드, 웹사이트, 저장소의 디자인을 하나로 맞췄습니다. 새 마크, "안전해짐"을 뜻하는 초록 하나와 파란 강조색을 쓰는 새 기본 테마 <code>hostveil</code>, 시스템 산세리프로 바꾼 웹사이트가 포함됩니다 (<a href="https://github.com/seolcu/hostveil/pull/866">#866</a>).</p>
+            </li>
+          </ul>
+          <h3>버그 수정</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>check:</strong> Debian과 Ubuntu 기본값인 0644 <code>/etc/crontab</code>이 High로 잡혀 <code>scan</code>이 종료 코드 1로 끝났습니다. 쓰기 가능한 crontab은 그대로 High이고, 읽기만 가능한 경우는 새 Low 항목 <code>fileperms.crontab-readable</code>입니다. cron과 at의 허용·거부 목록은 이제 쓰기 권한만 봅니다 (<a href="https://github.com/seolcu/hostveil/pull/877">#877</a>).</p>
+            </li>
+            <li>
+              <p><strong>ui:</strong> 제품, 문서, 코드 전반에서 기계가 쓴 것처럼 읽히는 표현을 고쳤고, 테스트가 이를 막습니다. 대기 중인 수정의 표시는 이제 "Applied, waiting to take effect"입니다 (<a href="https://github.com/seolcu/hostveil/pull/887">#887</a>).</p>
+            </li>
+            <li>
+              <p><strong>demo:</strong> 데모 VM의 메모리를 2 GB보다 크게 늘릴 수 있습니다 (<a href="https://github.com/seolcu/hostveil/pull/885">#885</a>).</p>
+            </li>
+          </ul>
           <h2 id="v3.35.0"><a href="https://github.com/seolcu/hostveil/compare/v3.34.0...v3.35.0">3.35.0</a> <span class="changelog-date">2026-10-20</span></h2>
           <p>이제 unattended-upgrades가 건너뛰도록 설정된 업데이트를 찾아냅니다. Raspberry Pi OS, Tailscale, Docker 같은 서드파티 저장소가 허용 origin 목록에 없으면, 자동 업데이트는 정상으로 보이는데 그 저장소의 패키지는 계속 대기 상태로 남습니다. 또 mask된 systemd 유닛이 있는 모든 호스트에서 나오던 High 오탐을 없앴습니다.</p>
           <h3>새 기능</h3>
