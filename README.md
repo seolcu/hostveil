@@ -224,6 +224,10 @@ the Vulnerabilities axis. Every interface also names the overall score: 80 and
 above is *in good shape*, 50 to 79 *middling*, 25 to 49 *exposed* and below 25
 *wide open*.
 
+Below the score, the dashboard and `hostveil scan` list the points left and
+why: points that return after a restart, points held by Manual findings you
+can fix by hand, and points held by findings with no fix published yet.
+
 [Scoring](https://hostveil.seolcu.com/docs/scoring) has the full model and the
 size of each axis.
 

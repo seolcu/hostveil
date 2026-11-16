@@ -298,6 +298,10 @@ ul { list-style: none; margin: 0; padding: 0; }
 .over-head { color: var(--slate); text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px;
   margin: 0 0 8px; padding-top: 14px; border-top: 1px solid var(--line); }
 .over-jump { list-style: none; margin: 0; padding: 0; }
+.over-left { list-style: none; margin: 0 0 20px; padding: 0; }
+.over-left li { display: grid; grid-template-columns: 8ch 1fr; gap: 12px; align-items: baseline;
+padding: 6px 4px; color: var(--slate); }
+.over-left .pts { color: var(--bone); font-weight: 700; text-align: right; }
 .over-jump-row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: baseline;
   padding: 8px 4px; border-bottom: 1px solid var(--ink-2); cursor: pointer; }
 .over-jump-row:hover { background: var(--ink-2); }

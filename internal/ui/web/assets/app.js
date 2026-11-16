@@ -580,6 +580,31 @@ function renderOverview(all, visible, rows) {
       "Each is previewed and backed up first, and reversible from History."));
   }
 
+  // Where the points between the score and 100 are, by what it takes to
+  // win them back. Shown so a score that stays below 100 after every fix
+  // reads as a list of reasons. The parts come from the model
+  // (ScoreBreakdown.Left), so every interface states the same numbers.
+  const left = report.score.left || {};
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const pts = (n) => plural(n, "pt", "pts");
+  const leftRows = [];
+  if (left.pending > 0)
+    leftRows.push(["+" + pts(left.pending),
+      `when ${plural(left.pending_count, "applied fix takes", "applied fixes take")} effect. Restart the services they name.`]);
+  if (left.manual > 0)
+    leftRows.push([pts(left.manual),
+      `held by ${plural(left.manual_count, "finding", "findings")} Hostveil leaves to you. Each one says why and how to fix it by hand.`]);
+  if (left.unavailable > 0)
+    leftRows.push([pts(left.unavailable),
+      `held by ${plural(left.unavailable_count, "finding", "findings")} with no fix published yet. They clear when the vendor ships a patch.`]);
+  if (report.score.applicable !== false && leftRows.length) {
+    box.append(el("div", { class: "over-head" }, "Points left"));
+    const ul = el("ul", { class: "over-left" });
+    for (const [pts, text] of leftRows)
+      ul.append(el("li", {}, el("span", { class: "pts" }, pts), el("span", {}, text)));
+    box.append(ul);
+  }
+
   // Jump list: the most severe handful, so the worst problems are one click
   // away.
   const top = visible.slice(0, 6);
