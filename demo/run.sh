@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Easy on-demand control of the hostveil demo VM. Nothing auto-starts:
+# Easy on-demand control of the Hostveil demo VM. Nothing auto-starts:
 # you bring the demo up only when you want it, and halt it when done.
 #
 #   ./run.sh up        boot the VM + rebuild Hostveil + start the vulnerable stacks
@@ -218,7 +218,7 @@ case "${1:-up}" in
     warn_orphan_domain
     require_free_web_port
     vagrant up
-    echo "==> rebuilding hostveil from the synced source…"
+    echo "==> rebuilding Hostveil from the synced source…"
     rebuild
     echo "==> starting vulnerable stacks…"
     start_stacks
@@ -242,7 +242,7 @@ case "${1:-up}" in
     vagrant snapshot restore clean
     # The snapshot carries whatever binary was current when it was taken, so
     # rebuild to get back in step with the working tree.
-    echo "==> rebuilding hostveil from the synced source…"
+    echo "==> rebuilding Hostveil from the synced source…"
     rebuild
     echo "==> restarting vulnerable stacks…"
     start_stacks

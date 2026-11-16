@@ -57,7 +57,7 @@ nfpms:
     homepage: https://hostveil.seolcu.com/
     description: |-
       Guided security hardening for self-hosted Linux servers.
-      hostveil scans a host for the misconfigurations that get self-hosters
+      Hostveil scans a host for the misconfigurations that get self-hosters
       breached, merges them into one 0-100 score, explains each in plain
       language, and applies fixes with preview, backup, and rollback.
     license: GPL-3.0

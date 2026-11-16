@@ -1,18 +1,18 @@
 name: Bug report
-description: Something hostveil did wrong; a crash, a bad fix, or a finding it got wrong or missed.
+description: Something Hostveil did wrong; a crash, a bad fix, or a finding it got wrong or missed.
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
         Thanks for taking the time to file a report. If this is a **security
-        vulnerability in hostveil itself**, please don't use this form: report
+        vulnerability in Hostveil itself**, please don't use this form: report
         it privately per [SECURITY.md](https://github.com/seolcu/hostveil/blob/main/SECURITY.md) instead.
   - type: textarea
     id: what-happened
     attributes:
       label: What happened
-      description: What did you do, what did hostveil do, and what did you expect instead?
+      description: What did you do, what did Hostveil do, and what did you expect instead?
       placeholder: |
         I ran `hostveil fix ssh.rootlogin` and ...
     validations:
@@ -65,5 +65,5 @@ body:
       options:
         - label: I searched existing issues and this isn't a duplicate.
           required: true
-        - label: This is not a security vulnerability in hostveil itself (those go through SECURITY.md).
+        - label: This is not a security vulnerability in Hostveil itself (those go through SECURITY.md).
           required: true

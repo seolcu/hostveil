@@ -26,7 +26,7 @@ A control run has neither promise to make about rollback, because hostveil
 changed nothing to roll back. It keeps exactly one, and it is the sharper of
 the two: the score has to move when the host is hardened by somebody else's
 standard. A score that only responds to hostveil's own fixes is measuring
-hostveil alone, and that is the failure the control group exists to
+Hostveil alone, and that is the failure the control group exists to
 detect.
 
 Usage: check.py <measurement.json>

@@ -4,7 +4,7 @@
 #
 # Usage:
 #   scripts/e2e/vm.sh up                  # boot it (downloads the image once)
-#   scripts/e2e/vm.sh run SCENARIO...     # build hostveil, copy it in, run the scenarios
+#   scripts/e2e/vm.sh run SCENARIO...     # build Hostveil, copy it in, run the scenarios
 #   scripts/e2e/vm.sh ssh [CMD...]        # get in, as the VM is now
 #   scripts/e2e/vm.sh reset               # throw this run's changes away and boot clean
 #   scripts/e2e/vm.sh down                # stop it

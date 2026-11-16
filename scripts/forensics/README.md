@@ -4,7 +4,7 @@ Measures the forensic-readiness domain (`forensic.*`) and `hostveil triage`
 against tools that already exist, on a throwaway Ubuntu 24.04 web server.
 
 ```bash
-./run.sh up      # cross-compile hostveil, boot + provision the VM, snapshot "clean"
+./run.sh up      # cross-compile Hostveil, boot + provision the VM, snapshot "clean"
 ./run.sh e1      # experiment 1: detection, false positives, time, footprint
 ./run.sh e2      # experiment 2: what a stock vs. a readied host can still answer after a reboot
 ./run.sh score   # results/summary.json and results/summary.md

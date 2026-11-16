@@ -84,7 +84,7 @@ def rollback_verdict(work):
 
     Three tables: before the fixes, after them, and after the rollback. The
     before table is the authority: it was taken off the live filesystem
-    before hostveil wrote anything, which is the only reading a checkpoint
+    before Hostveil wrote anything, which is the only reading a checkpoint
     cannot influence.
 
     A path that only appears after the fixes ran is a file a fix created.
@@ -258,7 +258,7 @@ def main():
     phases = {}
     for phase in PHASE_ORDER:
         # Only the phases that ran. A control run has two of them and
-        # a hostveil run has five, and reading a fixed list would put an
+        # a Hostveil run has five, and reading a fixed list would put an
         # {"error": "No such file"} object under every phase the other kind of
         # run does not have; a report that looks like five failed
         # measurements.

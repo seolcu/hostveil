@@ -173,10 +173,6 @@ pre,
   font-weight: 600;
   letter-spacing: -0.02em;
   font-size: 1.05rem;
-  /* The wordmark is lowercase, as it is in the banners and the social card.
-     The markup keeps "Hostveil" so a screen reader and a copy-paste get the
-     name as it is written in prose. */
-  text-transform: lowercase;
 }
 
 /* The product's mark, not a second one drawn here in CSS.

@@ -80,7 +80,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 
 	// Read once: whether the running firewall already refuses a port
 	// decides whether a datastore listening on it is reachable at all, and
-	// whether hostveil can close it with a rule. ufw or firewalld: reading
+	// whether Hostveil can close it with a rule. ufw or firewalld: reading
 	// only ufw reported ports a Fedora host's firewalld refused as reachable.
 	shield := firewall.ReadShield(ctx, env.Runner)
 

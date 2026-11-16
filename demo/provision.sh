@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Provision a vulnerable Ubuntu 24.04 "home server" for the
-# hostveil demo. Runs as root via Vagrant's shell provisioner. Everything
+# Hostveil demo. Runs as root via Vagrant's shell provisioner. Everything
 # here is REAL (real Docker, real running stacks, real weak configs) so
 # every Hostveil domain fires authentically.
 set -euo pipefail
@@ -71,7 +71,7 @@ usermod -aG docker ci_runner || true
 # dockerd.api-tls-unverified is not seeded; it needs a server keypair, which
 # is more machinery than the demo earns. Unit tests cover it.
 
-echo "==> [3/10] Go ${GO_VERSION} (apt's Go is too old to build hostveil)"
+echo "==> [3/10] Go ${GO_VERSION} (apt's Go is too old to build Hostveil)"
 ARCH=$(dpkg --print-architecture)     # amd64 | arm64
 if ! /usr/local/go/bin/go version 2>/dev/null | grep -q "go${GO_VERSION}"; then
   curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" -o /tmp/go.tgz
@@ -224,10 +224,10 @@ for dir in /opt/stacks/*/; do
   name=$(basename "$dir")
   echo "   • bringing up stack: $name"
   ( cd "$dir" && docker compose pull -q 2>/dev/null; docker compose up -d ) \
-    || echo "     (stack '$name' had a service that failed to start; hostveil still audits its compose file)"
+    || echo "     (stack '$name' had a service that failed to start; Hostveil still audits its compose file)"
 done
 
-echo "==> [10/10] build hostveil from the mounted source"
+echo "==> [10/10] build Hostveil from the mounted source"
 cd "$REPO"
 GOFLAGS=-buildvcs=false /usr/local/go/bin/go build -o /usr/local/bin/hostveil ./cmd/hostveil
 hostveil version || true
@@ -235,7 +235,7 @@ hostveil version || true
 cat <<'BANNER'
 
 ============================================================
-  hostveil demo host is ready: a vulnerable Ubuntu server.
+  Hostveil demo host is ready: a vulnerable Ubuntu server.
 
   Try it (SSH in first with:  vagrant ssh):
     sudo hostveil scan                 # scored findings across all domains

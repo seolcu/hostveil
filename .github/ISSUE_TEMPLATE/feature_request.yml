@@ -1,5 +1,5 @@
 name: Feature request or new detection rule
-description: Suggest a capability, or a security check hostveil should add.
+description: Suggest a capability, or a security check Hostveil should add.
 labels: ["enhancement"]
 body:
   - type: markdown
@@ -18,7 +18,7 @@ body:
   - type: textarea
     id: proposal
     attributes:
-      label: What you'd like hostveil to do
+      label: What you'd like Hostveil to do
       description: >
         For a new check: what should it flag, at what severity, and is there a
         safe automatic fix or is it Manual? For a feature: what should it look

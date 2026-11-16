@@ -142,7 +142,7 @@ def social_preview():
     m = 84
     mark(d, PAD * s, 112 * s, m * s, p["bone"], p["safe"], p["bg"])
     word = ImageFont.truetype(SANS, 84 * s)
-    tracked(d, ((PAD + m + 26) * s, 108 * s), "hostveil", word, p["text"], -84 * s * 0.035)
+    tracked(d, ((PAD + m + 26) * s, 108 * s), "Hostveil", word, p["text"], -84 * s * 0.035)
 
     tag = ImageFont.truetype(SANS, 54 * s)
     y = 250
@@ -170,7 +170,7 @@ def banner(p, name, slogan, tag_font):
 
     word = ImageFont.truetype(SANS, 92 * s)
     x = (PAD + m + 40) * s
-    tracked(d, (x, 86 * s), "hostveil", word, p["text"], -92 * s * 0.035)
+    tracked(d, (x, 86 * s), "Hostveil", word, p["text"], -92 * s * 0.035)
     tag = ImageFont.truetype(tag_font, 34 * s)
     d.text((x + 4 * s, 200 * s), slogan, font=tag, fill=p["muted"])
     save(img, name)
