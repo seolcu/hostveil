@@ -318,6 +318,14 @@ padding: 6px 4px; color: var(--slate); }
 .fixbox-body { padding: 12px 14px; }
 .benefit { color: var(--safe); margin: 0 0 10px; font-size: 12px; }
 .warn { color: var(--high); margin: 0 0 10px; font-size: 12px; }
+.fixfacts { list-style: none; margin: 0 0 12px; padding: 0; color: var(--slate); font-size: 12px; }
+.fixfacts li { margin: 2px 0; }
+.checkfirst { margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line-2); }
+.checkfirst label { display: block; cursor: pointer; color: var(--bone); }
+.checkfirst input { accent-color: var(--safe); }
+.change { margin: 0 0 12px; }
+.change summary { cursor: pointer; color: var(--accent); font-size: 12px; margin: 0 0 8px; }
+.fixbox .row button:disabled { opacity: .45; cursor: not-allowed; }
 .alts { margin: 0 0 12px; }
 .alts label { display: block; margin: 3px 0; cursor: pointer; }
 .alts input { accent-color: var(--safe); }

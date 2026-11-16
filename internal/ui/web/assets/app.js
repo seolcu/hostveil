@@ -711,17 +711,45 @@ function drawPreviewInto(box, f, p) {
   const draw = () => {
     const a = p.actions[chosen];
     head.textContent = p.label;
+    const apply = el("button", { class: "primary", onclick: () => applyFix(f, chosen) }, "Apply");
+    // A fix that names something to check first keeps Apply off until the
+    // reader says they checked it. The sentence is written for someone who
+    // has not read an sshd_config before (internal/fix/checkfirst.go).
+    let confirm = "";
+    if (a.check_first) {
+      apply.disabled = true;
+      const tick = Object.assign(document.createElement("input"), { type: "checkbox" });
+      tick.onchange = () => { apply.disabled = !tick.checked; };
+      confirm = el("div", { class: "checkfirst" },
+        el("div", { class: "howto" }, "Before you apply"),
+        el("label", {}, tick, " " + a.check_first));
+    }
     body.replaceChildren(
       p.actions.length > 1 ? altPicker(p, chosen, (i) => { chosen = i; draw(); }) : "",
       a.benefit ? el("div", { class: "benefit" }, "✓  " + a.benefit) : "",
       a.warning ? el("div", { class: "warn" }, "⚠  " + a.warning) : "",
-      actionBody(a),
-      el("div", { class: "row" },
-        el("button", { class: "primary", onclick: () => applyFix(f, chosen) }, "Apply")
-      )
+      el("ul", { class: "fixfacts" }, ...fixFacts(a).map((t) => el("li", {}, t))),
+      confirm,
+      // The exact change is one click away. The sentences above are what a
+      // first-time reader decides on; the diff is for whoever wants proof.
+      el("details", { class: "change" },
+        el("summary", {}, a.type === "exec" ? "Show the commands" : "Show the exact change"),
+        actionBody(a)),
+      el("div", { class: "row" }, apply)
     );
   };
   draw();
+}
+
+// fixFacts is what applying this action means for undoing it and for when
+// it reaches the host, in the order a reader asks.
+function fixFacts(a) {
+  const out = [];
+  if (a.type === "exec") out.push("Runs a command. Hostveil cannot undo it from History.");
+  else if (a.irreversible) out.push("Recorded in History, but it cannot be rolled back.");
+  else out.push("Backed up first. You can undo it from History.");
+  if (a.takes_effect_on) out.push("Takes effect after " + a.takes_effect_on + ".");
+  return out;
 }
 
 function altPicker(p, chosen, onpick) {
@@ -730,7 +758,7 @@ function altPicker(p, chosen, onpick) {
       const input = Object.assign(document.createElement("input"),
         { type: "radio", name: "alt", checked: i === chosen });
       input.onchange = () => onpick(i);
-      return el("label", {}, input, " " + a.label);
+      return el("label", {}, input, " " + a.label + (i === 0 ? " (recommended)" : ""));
     })
   );
 }
