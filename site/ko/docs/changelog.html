@@ -30,7 +30,7 @@
     <script>
       // Send a Korean-speaking reader to the Korean page, once.
       //
-      // GitHub Pages serves files, not content negotiation, so the only place
+      // GitHub Pages serves files with no content negotiation, so the only place
       // this decision can be made is here, and the risk of making it here is
       // trapping someone: a reader who clicked "English" must not
       // be bounced back on the next click. So the switcher records that choice
@@ -153,7 +153,7 @@
             </li>
           </ul>
           <h2 id="v3.34.0"><a href="https://github.com/seolcu/hostveil/compare/v3.33.4...v3.34.0">3.34.0</a> <span class="changelog-date">2026-10-12</span></h2>
-          <p>이제 방화벽 수정이 ufw뿐 아니라 firewalld에서도 동작합니다. firewalld는 Fedora, RHEL, Rocky, Alma의 기본 방화벽입니다. 지금까지 이런 시스템에서는 방화벽 발견 항목에 수정이 하나도 없었습니다. 실제 Fedora 호스트에서 시험하다가 방화벽 상태를 잘못 읽는 문제도 두 가지 찾았고, 모두 고쳤습니다.</p>
+          <p>이제 방화벽 수정이 ufw와 firewalld에서 모두 동작합니다. firewalld는 Fedora, RHEL, Rocky, Alma의 기본 방화벽입니다. 지금까지 이런 시스템에서는 방화벽 발견 항목에 수정이 하나도 없었습니다. 실제 Fedora 호스트에서 시험하다가 방화벽 상태를 잘못 읽는 문제도 두 가지 찾았고, 모두 고쳤습니다.</p>
           <h3>새 기능</h3>
           <ul class="changelog-entries">
             <li>
@@ -307,7 +307,7 @@
           <h3>새 기능</h3>
           <ul class="changelog-entries">
             <li>
-              <p><strong>check:</strong> Goose를 에이전트 런타임으로 점검합니다. 셸 명령을 포함한 모든 도구 호출을 묻지 않고 승인하는 <code>GOOSE_MODE: auto</code>는 <code>agent.exec-unrestricted</code>로 보고합니다. auto가 Goose의 기본값이므로 <code>GOOSE_MODE</code>를 아예 설정하지 않은 경우도 같이 보고하며, 값이 기본값에서 왔다는 사실을 발견 항목에 적습니다. 루프백 밖에서 대기하는 <code>goose web</code>은 <code>agent.gateway-exposed</code>로 보고합니다. 주소가 설정 파일이 아니라 명령행 플래그로 정해지므로, 대기 중인 소켓을 포트가 아니라 프로세스 이름으로 Goose의 것인지 판별합니다. 키링이 없을 때 Goose가 API 키를 평문으로 저장하는 <code>~/.config/goose/secrets.yaml</code>은 YAML로 읽어, 소유자 외에도 읽을 수 있으면 보고합니다. Goose의 모드 항목은 Manual입니다. 환경 변수가 파일보다 우선하고, 흔한 조치는 없는 키를 새로 넣는 일이기 때문입니다.</p>
+              <p><strong>check:</strong> Goose를 에이전트 런타임으로 점검합니다. 셸 명령을 포함한 모든 도구 호출을 묻지 않고 승인하는 <code>GOOSE_MODE: auto</code>는 <code>agent.exec-unrestricted</code>로 보고합니다. auto가 Goose의 기본값이므로 <code>GOOSE_MODE</code>를 아예 설정하지 않은 경우도 같이 보고하며, 값이 기본값에서 왔다는 사실을 발견 항목에 적습니다. 루프백 밖에서 대기하는 <code>goose web</code>은 <code>agent.gateway-exposed</code>로 보고합니다. 주소는 명령행 플래그로 정해집니다. 그래서 대기 중인 소켓을 프로세스 이름으로 Goose의 것인지 판별합니다. 키링이 없을 때 Goose가 API 키를 평문으로 저장하는 <code>~/.config/goose/secrets.yaml</code>은 YAML로 읽어, 소유자 외에도 읽을 수 있으면 보고합니다. Goose의 모드 항목은 Manual입니다. 환경 변수가 파일보다 우선하고, 흔한 조치는 없는 키를 새로 넣는 일이기 때문입니다.</p>
             </li>
           </ul>
           <h2 id="v3.28.0"><a href="https://github.com/seolcu/hostveil/compare/v3.27.0...v3.28.0">3.28.0</a> <span class="changelog-date">2026-09-30</span></h2>
@@ -332,7 +332,7 @@
           <h3>버그 수정</h3>
           <ul class="changelog-entries">
             <li>
-              <p><strong>model:</strong> Auto 조치 유형의 표시 이름을 모든 곳에서 "Auto-fix" 대신 "Auto"로 통일했습니다. 네 유형 중 유일한 합성어였고, 유형이 아니라 버튼 이름처럼 읽혔습니다.</p>
+              <p><strong>model:</strong> Auto 조치 유형의 표시 이름을 모든 곳에서 "Auto-fix" 대신 "Auto"로 통일했습니다. 네 유형 중 유일한 합성어였고, 버튼 이름처럼 읽혔습니다.</p>
             </li>
             <li>
               <p><strong>docs:</strong> 웹사이트와 두 README가 8월 측정 대신 9월 11일 최종 측정을 인용합니다. Hostveil 28 → 58, Lynis 57 → 79, Docker 브리지 도달성 6 → 1, 롤백 충실도 25/28입니다. 복원되지 않은 경로 세 곳은 빼지 않고 이유를 설명했습니다.</p>
@@ -341,7 +341,7 @@
               <p><strong>docs:</strong> <code>CONTRIBUTING.md</code>가 golangci-lint를 <code>go run</code>으로 실행하라고 안내하고 있었습니다. 이 툴체인에서는 실행이 거부되어 아무것도 검사하지 않습니다. 이제 CI와 같이 릴리스 바이너리를 내려받습니다.</p>
             </li>
             <li>
-              <p><strong>site:</strong> 한국어 페이지의 본문 서체를 나눔명조로 바꿨습니다. 가장 긴 문서 페이지 다섯 개는 영어를 문장 단위로 옮긴 글이 아니라 한국어 문장으로 다시 썼습니다.</p>
+              <p><strong>site:</strong> 한국어 페이지의 본문 서체를 나눔명조로 바꿨습니다. 가장 긴 문서 페이지 다섯 개는 한국어 문장으로 처음부터 다시 썼습니다.</p>
             </li>
           </ul>
           <h2 id="v3.26.2"><a href="https://github.com/seolcu/hostveil/compare/v3.26.1...v3.26.2">3.26.2</a> <span class="changelog-date">2026-08-31</span></h2>
@@ -470,7 +470,7 @@
           <ul class="changelog-entries">
             <li>
               <p><strong>check:</strong> sudo가 비밀번호 없이 root를 내줄 수 있는데, 아무도 보지 않았습니다 (<a href="https://github.com/seolcu/hostveil/issues/753">#753</a>). 계정 영역은 누가 root가 될 수 있는지를 두 번 물었습니다. 두 번째 UID 0과 빈 비밀번호입니다. 그런데 사람들이 실제로 부딪히는 경로를 놓치고 있었습니다. 클라우드와 VM 이미지는 첫 로그인이 되도록 <code>NOPASSWD: ALL</code>을 넣어 두고, 그건 대개 몇 년 뒤에도 그대로 있습니다. 그 계정의 SSH 키를 쥔 사람은 두 번째 자격 증명 없이 즉시 root입니다.</p>
-              <p>sudoers를 읽는 대신 sudo에게 물어봅니다. 그 설정에는 별칭이 있고, <code>/etc/group</code>이 아니라 LDAP로 해석될 수도 있는 그룹 지정이 있고, 넷그룹과 include 순서가 있습니다. 그 전부를 거쳐 실효 값을 다시 유도하는 것은 <code>internal/compose.Discover</code>가 보여 주려고 존재하는 바로 그 실수입니다. 그리고 제한 없는 경우만 표시합니다. 이름 붙은 명령 하나에 걸린 <code>NOPASSWD</code> 규칙은 평범한 운영입니다.</p>
+              <p>sudoers를 읽는 대신 sudo에게 물어봅니다. 그 설정에는 별칭이 있고, LDAP로 해석될 수도 있는 그룹 지정이 있고, 넷그룹과 include 순서가 있습니다. 그 전부를 거쳐 실효 값을 다시 유도하는 것은 <code>internal/compose.Discover</code>가 보여 주려고 존재하는 바로 그 실수입니다. 그리고 제한 없는 경우만 표시합니다. 이름 붙은 명령 하나에 걸린 <code>NOPASSWD</code> 규칙은 평범한 운영입니다.</p>
               <p>뻔한 구현이 틀리는 지점이 셋이고, 각각 그 지점에서 실패하는 테스트가 있습니다. 한 권한 줄 안에서 <code>NOPASSWD</code>는 뒤에 <code>PASSWD</code>가 나와 프롬프트를 되살릴 때까지 유지됩니다. <code>Defaults !authenticate</code>는 호스트의 모든 규칙에서 비밀번호를 끄는데 권한 줄에는 그렇다는 태그가 없습니다. 그리고 <code>sudo -l -U 누군가</code>는 sudo 권한이 아예 없는 계정에 대해서도, "root가 아니면 <code>-U</code>를 못 쓴다"에 대해서도 0이 아닌 값으로 끝나서 상태만으로는 구분되지 않습니다. 그래서 답을 아는 root를 먼저 물어봅니다. 그 대조 실행이 없으면 root 아닌 스캔이, 물어볼 기회조차 얻지 못한 채로 "비밀번호 없이 root가 될 수 있는 사람은 없다"고 보고합니다.</p>
               <p>판단해서 수동입니다. 이미지가 그 규칙을 넣어 둔 것은 그 계정에 비밀번호가 없기 때문이고, 그래서 규칙을 떼면 그 계정이 sudo를 아예 못 쓰게 될 수 있습니다.</p>
             </li>
@@ -480,7 +480,7 @@
             <li>
               <p><strong>platform:</strong> Debian에서 돌고 있는 ufw가 방화벽 없음으로 읽혔습니다 (<a href="https://github.com/seolcu/hostveil/issues/755">#755</a>). Debian은 root가 아닌 사용자의 <code>PATH</code>에서 sbin을 뺐고, <code>ufw</code>와 <code>nft</code>와 <code>iptables</code>는 전부 <code>/usr/sbin</code>에 있습니다. 그래서 설치돼 돌고 있는 방화벽에 대해 <code>exec.LookPath</code>가 실패했고, 방화벽 영역은 찾지 못한 프런트엔드를 설치되지 않은 것으로 읽었고, 프런트엔드가 전부 없는 것을 "활성 방화벽 없음"으로 읽었습니다. 이미 돌고 있는 방화벽을 설치하라는, 이 도구에서 가장 심각한 등급의 발견 항목을 호스트에 건넨 셈입니다. 포트 영역도 같은 실수 위에서 자기 발견 항목을 하나 더 냈습니다.</p>
               <p>같은 기계에서 몇 분 사이에, 권한 없이는 High 하나와 함께 50/100, root로는 100/100 깨끗함이었습니다. Hostveil은 자동으로 권한을 올리기 때문에 지금까지 보이지 않았습니다. <code>HOSTVEIL_NO_SUDO=1</code>은 스크립트와 CI를 위해 문서화돼 있고, 권한 상승은 실패할 수 있고, 컨테이너는 nobody로 돌 수 있습니다.</p>
-              <p><code>LookPath</code>가 관리자 디렉터리로 물러나 찾습니다. 앞이 아니라 뒤에 붙이고, 구분자가 들어간 이름에는 적용하지 않습니다. 바이너리를 찾는 것이 수정의 전부입니다. 탐침은 나머지 절반에 대해서는 이미 조심스러웠기 때문에, 읽을 수 없는 ufw는 이제 비난이 아니라 확인하지 못한 영역이 됩니다.</p>
+              <p><code>LookPath</code>가 관리자 디렉터리로 물러나 찾습니다. 경로의 뒤에 붙이고, 구분자가 들어간 이름에는 적용하지 않습니다. 바이너리를 찾는 것이 수정의 전부입니다. 탐침은 나머지 절반에 대해서는 이미 조심스러웠기 때문에, 읽을 수 없는 ufw는 이제 확인하지 못한 영역으로 보고합니다.</p>
             </li>
           </ul>
           <h3>문서</h3>
@@ -490,7 +490,7 @@
               <p>같은 씨앗인데 점수가 40에서 29로 내려갔고, 페이지가 그 이유를 말합니다. Hostveil이 더 많이 찾아냈고, 3.20.1이 기록만 되고 발효되지 않은 수정을 자기 공으로 세는 것을 그만뒀기 때문입니다. 수치 검사가 볼 수 없는 산문 주장 셋이 사실이 아니게 돼 있었고 바로잡았습니다. 그중 "모든 숫자가 시작한 자리로 돌아왔다"는 흥미로운 방식으로 틀려 있었습니다. 방화벽을 켜는 것은 체크포인트가 없어서 ufw가 롤백을 살아남고, 컨테이너가 공개한 포트 다섯 개는 그것을 <em>통과해서</em> 응답합니다. <code>firewall.docker-bypass</code>가, 그것을 한 번도 들어본 적 없는 계측기 안에서 스스로를 증명한 셈입니다.</p>
             </li>
             <li>
-              <p>이 저장소가 스스로에 대해 증명할 수 있는 것을 공개합니다 (<a href="https://github.com/seolcu/hostveil/issues/757">#757</a>). 수정 커버리지는 릴리스 노트 안에만 있었고, 테스트 체계는 어느 README에도 어느 페이지에도 없었고, 취약하게 시드된 VM은 기여자용 안내로만 적혀 있었습니다. 추가한 숫자는 전부 타이핑한 것이 아니라 계산한 것입니다. 페이지가 <code>data-counted="findings.fixable"</code>을 달고 테스트가 그것을 수정 레지스트리에 맞춰 풀기 때문에, 수정이 없던 발견 항목에 수정을 등록하면 페이지가 따라 움직일 때까지 빌드가 깨집니다.</p>
+              <p>이 저장소가 스스로에 대해 증명할 수 있는 것을 공개합니다 (<a href="https://github.com/seolcu/hostveil/issues/757">#757</a>). 수정 커버리지는 릴리스 노트 안에만 있었고, 테스트 체계는 어느 README에도 어느 페이지에도 없었고, 취약하게 시드된 VM은 기여자용 안내로만 적혀 있었습니다. 추가한 숫자는 전부 코드로 계산합니다. 페이지가 <code>data-counted="findings.fixable"</code>을 달고 테스트가 그것을 수정 레지스트리에 맞춰 풀기 때문에, 수정이 없던 발견 항목에 수정을 등록하면 페이지가 따라 움직일 때까지 빌드가 깨집니다.</p>
             </li>
           </ul>
           <h2 id="v3.20.2"><a href="https://github.com/seolcu/hostveil/compare/v3.20.1...v3.20.2">3.20.2</a> <span class="changelog-date">2026-08-16</span></h2>
@@ -498,8 +498,8 @@
           <h3>버그 수정</h3>
           <ul class="changelog-entries">
             <li>
-              <p><strong>tui:</strong> 미터와 추세선을 룬이 아니라 칸 단위로 그립니다 (<a href="https://github.com/seolcu/hostveil/issues/749">#749</a>). <code>internal/ui/tui/alignment_test.go</code>는 3.16부터 "미터는 룬 수로 만들어져서 <code>RUNEWIDTH_EASTASIAN</code>에서는 모든 스트립이 넘친다, 그건 별도 수정"이라며 스스로를 건너뛰고 있었습니다. 미터를 이루는 글리프가 전부 그 부류라, 축 레일과 점수 게이지와 도메인 미터가 모두 터미널 밖으로 밀려 나가 잘렸습니다. 한국어나 일본어 환경의 운영자가 가장 그럴 법한 모드에서요. 추세선도 같은 문제였는데 그 스킵이 언급하지 않았습니다. 100칸 터미널이 162칸짜리 스파크라인을 그리고 있었습니다.</p>
-              <p><code>█</code>은 모호 폭인데 <code>░</code>는 아니라서, 셀 크기 하나로 나누는 방식도 안 됩니다. 이제 칸 단위로 배치해 두 모드 모두에서 배정된 폭을 정확히 차지합니다. 테스트 세 개가 속성이 아니라 좁은 폭 조건을 주장하고 있었고, 그중 하나는 룬을 칸으로 재고 있었습니다. 바로 그 테스트가 잡으려던 결함이었습니다. 이제 CI가 레이아웃 패키지를 그 변수와 함께 한 번 더 돌립니다. 어떤 잡도 그러지 않았다는 것이, 미터가 있던 모든 릴리스를 이 결함이 살아남은 이유입니다.</p>
+              <p><strong>tui:</strong> 미터와 추세선을 칸 단위로 그립니다 (<a href="https://github.com/seolcu/hostveil/issues/749">#749</a>). <code>internal/ui/tui/alignment_test.go</code>는 3.16부터 "미터는 룬 수로 만들어져서 <code>RUNEWIDTH_EASTASIAN</code>에서는 모든 스트립이 넘친다, 그건 별도 수정"이라며 스스로를 건너뛰고 있었습니다. 미터를 이루는 글리프가 전부 그 부류라, 축 레일과 점수 게이지와 도메인 미터가 모두 터미널 밖으로 밀려 나가 잘렸습니다. 한국어나 일본어 환경의 운영자가 가장 그럴 법한 모드에서요. 추세선도 같은 문제였는데 그 스킵이 언급하지 않았습니다. 100칸 터미널이 162칸짜리 스파크라인을 그리고 있었습니다.</p>
+              <p><code>█</code>은 모호 폭인데 <code>░</code>는 아니라서, 셀 크기 하나로 나누는 방식도 안 됩니다. 이제 칸 단위로 배치해 두 모드 모두에서 배정된 폭을 정확히 차지합니다. 테스트 세 개가 속성 대신 좁은 폭 조건을 검사하고 있었고, 그중 하나는 룬을 칸으로 재고 있었습니다. 바로 그 테스트가 잡으려던 결함이었습니다. 이제 CI가 레이아웃 패키지를 그 변수와 함께 한 번 더 돌립니다. 어떤 잡도 그러지 않았다는 것이, 미터가 있던 모든 릴리스를 이 결함이 살아남은 이유입니다.</p>
             </li>
             <li>
               <p><strong>check:</strong> systemd 드롭인은 이겨야 하고, 이건 확인되지 않고 있었습니다 (<a href="https://github.com/seolcu/hostveil/issues/750">#750</a>). <code>systemd.unit(5)</code>는 드롭인을 <em>어느 디렉터리에 있든</em> 파일명 사전순으로 적용합니다. <code>/etc</code>가 <code>/usr</code>를 이긴다는 규칙은 이름이 같은 파일에만 해당합니다. 그래서 벤더의 <code>90-vendor.conf</code>가, 3.20.0부터 <code>systemd.no-new-privileges</code>가 써 온 <code>50-hostveil.conf</code>를 이겼습니다. 지는 드롭인은 <code>persistSysctl</code>이 막으려고 존재하는 바로 그 결과입니다. 파일은 생기고, 수정은 성공을 보고하고, 체크포인트도 남는데, 값은 다음 <code>daemon-reload</code>에 되돌아옵니다.</p>
@@ -554,7 +554,7 @@
               <p>아키텍처 검사는 이제 실측을 인용하는 모든 파일을 읽되 코드 블록은 건너뜁니다. 측정 대상 호스트에 대한 주장과 릴리스 페이지에 있는 파일 이름은 다른 진술이기 때문입니다. 랜딩 페이지의 대표 수치 네 개에는 <code>data-measured</code>가 붙어 셀 단위로 검사되고, 속성을 붙일 수 없는 서술형 주장은 실측에서 문장을 만들어 그대로 있는지 확인합니다: 숫자를 말로 풀어써서 자릿수 검색으로도 걸리지 않던 사이트 섹션 제목까지 포함해서요.</p>
             </li>
             <li>
-              <p><strong>check:</strong> <code>Match</code> 블록은 깨끗하다는 뜻이 아니라 못 본 영역입니다 (<a href="https://github.com/seolcu/hostveil/issues/737">#737</a>). <code>sshd_config</code> 파서는 첫 <code>Match</code>에서 멈추면서 아무것도 기록하지 않았습니다. 멈추는 것 자체는 옳습니다: sshd는 그 지시어들을 조건에 맞는 접속에만 적용하니까요. 문제는 말없이 멈추는 것입니다. <code>Match Address 0.0.0.0/0</code> 다음에 <code>PasswordAuthentication yes</code>가 오면 존재하는 모든 접속에 비밀번호가 허용되는데, 도메인은 감사가 완료됐다고 보고했고 출력은 그 블록이 없는 같은 파일과 바이트 단위로 동일했습니다. 이제 Degraded로 보고하면서 어떤 파일에서 무엇을 보지 못했는지 밝힙니다. 이 정보는 <code>check.Coverage</code>를 거치므로, 읽지 못한 include와 <code>Match</code> 블록이 동시에 있는 설정은 먼저 발견된 하나가 아니라 둘 다 보고합니다.</p>
+              <p><strong>check:</strong> <code>Match</code> 블록을 못 본 영역으로 보고합니다 (<a href="https://github.com/seolcu/hostveil/issues/737">#737</a>). <code>sshd_config</code> 파서는 첫 <code>Match</code>에서 멈추면서 아무것도 기록하지 않았습니다. 멈추는 것 자체는 옳습니다: sshd는 그 지시어들을 조건에 맞는 접속에만 적용하니까요. 문제는 말없이 멈추는 것입니다. <code>Match Address 0.0.0.0/0</code> 다음에 <code>PasswordAuthentication yes</code>가 오면 존재하는 모든 접속에 비밀번호가 허용되는데, 도메인은 감사가 완료됐다고 보고했고 출력은 그 블록이 없는 같은 파일과 바이트 단위로 동일했습니다. 이제 Degraded로 보고하면서 어떤 파일에서 무엇을 보지 못했는지 밝힙니다. 이 정보는 <code>check.Coverage</code>를 거치므로, 읽지 못한 include와 <code>Match</code> 블록이 동시에 있는 설정은 둘 다 보고합니다.</p>
             </li>
           </ul>
 

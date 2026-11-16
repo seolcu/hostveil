@@ -71,7 +71,7 @@ trigger it alongside the case that must.
   the relevant config and what you expected. These are the most useful reports
   the project gets.
 - **A security vulnerability in Hostveil itself**: see `SECURITY.md`; report
-  it privately rather than in an issue.
+  it privately.
 
 ## License
 

@@ -32,7 +32,7 @@ scripts/gate.sh             # -fast skips the race detector and cross-compile
 > (`/etc/ssh/sshd_config`), inspects Docker Compose projects, and shells out
 > to `ufw`/`firewalld`/`trivy`. It **builds and its tests pass on any OS**
 > (macOS, Windows), but running the binary meaningfully requires Linux with
-> those tools present: use the demo VM below rather than running it against
+> those tools present: use the demo VM below. Do not run it against
 > your own machine.
 
 ## Repository layout
@@ -136,7 +136,7 @@ firefox --headless --no-remote --profile "$(mktemp -d)" \
 # What reaches the terminal, escape sequence by escape sequence.
 # stty is not optional: `vagrant ssh -c` has no terminal for script(1) to copy
 # a size from, so the pty it builds is 0x0 and bubbletea draws nothing into it;
-# you get the altscreen and cursor setup, not one glyph. Feed it a quit key,
+# you get the altscreen and cursor setup and no glyphs. Feed it a quit key,
 # or it runs until the timeout.
 vagrant ssh -c '(sleep 90; printf q) | script -qfc "stty rows 45 cols 200; sudo -E env TERM=xterm-256color hostveil" /tmp/raw.log'
 vagrant ssh -c "grep -o '38;5;[0-9]*' /tmp/raw.log | sort | uniq -c | sort -rn"
@@ -151,8 +151,7 @@ receives is the quantised 256-colour index and not the hex
 ### Capturing the whole interface
 
 All three surfaces draw the same written-down host: `uitest.PublishedReport`,
-so a set of captures is a set of pictures of one machine rather than of three
-machines that happened to be to hand. Every hook is a test that skips unless its
+so a set of captures is a set of pictures of one machine. Every hook is a test that skips unless its
 environment variable is set, so none of them runs in CI.
 
 ```bash
@@ -167,8 +166,7 @@ HOSTVEIL_SCREENSHOT_ADDR=127.0.0.1:8788 go test ./internal/ui/web -run TestScree
 ```
 
 A palette is the one thing only a picture can review, so both hooks take a
-theme ID. An unknown ID is a hard failure rather than a silent fall back to the
-default: a typo would otherwise produce a full set of frames named after the
+theme ID. An unknown ID is a hard failure: a typo would otherwise produce a full set of frames named after the
 palette asked for and drawn in another.
 
 ```bash
@@ -197,7 +195,7 @@ checked. `tui.png` spent two releases showing a four-level severity scale that
 had already been replaced by three. Both are covered now, differently, because
 only one of them can be re-rendered from Go.
 
-**`tui.png` is regenerated, not photographed.** The frame it is made from is
+**`tui.png` is regenerated from code.** The frame it is made from is
 committed at `internal/ui/tui/testdata/site-frame.ans`, and
 `TestSiteFrameIsCurrent` re-renders it on every test run and fails with the
 first differing line when the interface moves. To update both after reviewing

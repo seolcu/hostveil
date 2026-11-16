@@ -4,15 +4,15 @@
 
 Please report security issues **privately** through GitHub's
 [private vulnerability reporting](https://github.com/seolcu/hostveil/security/advisories/new)
-rather than opening a public issue.
+Please do not open a public issue.
 
 Include whatever you have: what you did, what happened, and what you expected.
 A proof of concept helps but is not required. A clear description of the flaw
 is enough to start.
 
 You should get an acknowledgement within a week. Hostveil is maintained by a
-small team rather than a company with an on-call rotation, so please read that
-as a good-faith target and not a guarantee.
+small team with no on-call rotation, so please read that
+as a good-faith target.
 
 ## Supported versions
 

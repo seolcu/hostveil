@@ -34,7 +34,7 @@ High finding that appeared on any host with a masked systemd unit.
 ## [3.34.0](https://github.com/seolcu/hostveil/compare/v3.33.4...v3.34.0) (2026-10-12)
 
 Firewall fixes now work on firewalld, the default firewall on Fedora, RHEL,
-Rocky and Alma, and not only on ufw. Until now every firewall finding on
+Rocky and Alma, as well as on ufw. Until now every firewall finding on
 those systems came with no fix. Testing on a real Fedora host also found the
 firewall reading wrong in two places, and both are fixed.
 
@@ -62,7 +62,7 @@ firewall reading wrong in two places, and both are fixed.
 ## [3.33.4](https://github.com/seolcu/hostveil/compare/v3.33.3...v3.33.4) (2026-10-12)
 
 Hostveil now runs on a real Fedora host in CI, a Fedora 44 VM booted under
-KVM, rather than only scanning a Fedora container. The first run found the
+KVM. Before, CI only scanned a Fedora container. The first run found the
 updates domain wrong in several ways on dnf5 (Fedora 41 and later), and all
 of them are fixed.
 
@@ -129,8 +129,7 @@ are fixed.
   applied, and the fix runs k3s's own procedure: enable, restart, rotate the
   keys, restart. The fix can no longer be rolled back, because removing the
   setting after the keys are rotated would leave Secrets unreadable, and a
-  step that fails is reported, with what ran and what is left, rather than
-  undone.
+  step that fails is reported, with what ran and what is left. Nothing is undone automatically.
 
 ## [3.33.1](https://github.com/seolcu/hostveil/compare/v3.33.0...v3.33.1) (2026-10-07)
 
@@ -270,8 +269,7 @@ rebalanced again to make room for it.
   reports `anonymous-auth=true` set explicitly for the API server or the
   kubelet. `kube.secrets-unencrypted` reports k3s storing Secrets
   unencrypted, its default. All four are Manual. A command line that
-  could not be read is reported as not audited rather than as one with
-  no flags. The new axis is worth 5: Container gave 2 (Kubernetes takes
+  could not be read is reported as not audited. The new axis is worth 5: Container gave 2 (Kubernetes takes
   over from Compose on these hosts), and SSH, Vulnerabilities and Host
   firewall gave one each. Every host's score may move slightly.
 
@@ -307,7 +305,7 @@ mistaking an enabled Proxmox firewall for no firewall at all.
   `pve-firewall status` directly. `policy_in: ACCEPT` in `cluster.fw` is
   reported as `firewall.default-allow`. On a Proxmox host, the advice
   for a missing firewall points at the datacenter firewall, and the
-  ufw fix declines rather than turning ufw on under the platform's own
+  ufw fix declines, because turning ufw on would conflict with the platform's own
   firewall.
 
 ## [3.29.0](https://github.com/seolcu/hostveil/compare/v3.28.0...v3.29.0) (2026-09-30)
@@ -322,8 +320,8 @@ and Hermes Agent.
   reported as `agent.exec-unrestricted`. So is a `GOOSE_MODE` that was
   never set, because auto is Goose's default; the finding says when the
   value came from the default. `goose web` listening off loopback is
-  reported as `agent.gateway-exposed`. Its address is a command-line flag
-  rather than configuration, so the listening socket is attributed by
+  reported as `agent.gateway-exposed`. Its address is a command-line flag,
+  so the listening socket is attributed by
   process name, never by port. `~/.config/goose/secrets.yaml`, the plain
   text file Goose keeps API keys in when there is no keyring, is read as
   YAML and reported when it is readable beyond its owner. The mode
@@ -349,8 +347,7 @@ container.
   neighbouring container first. `file_server browse` is reported under
   the existing `proxy.directory-listing`, which is now one finding
   across nginx and Caddy. A Caddy configured in JSON, or a container
-  whose Caddyfile Hostveil cannot reach, is reported as not audited
-  rather than as clean.
+  whose Caddyfile Hostveil cannot reach, is reported as not audited.
 
 ## [3.27.0](https://github.com/seolcu/hostveil/compare/v3.26.2...v3.27.0) (2026-09-30)
 
@@ -366,7 +363,7 @@ and reset in a new body face.
 * **ui:** give Manual and Unavailable findings their own colours. They
   used to share one grey, so "Hostveil will not do this unattended" and
   "no fix exists yet" read as the same thing. Both colours are
-  muted rather than heat colours, because neither says anything about
+  muted, because neither says anything about
   urgency. They are held to the same contrast floor and 256-colour
   collision tests as the severity colours. The dashboard also gets a
   sortable finding list, a per-item progress dialog for batch fixes
@@ -382,18 +379,17 @@ and reset in a new body face.
 
 * **model:** the Auto remediation kind is labelled "Auto" everywhere,
   not "Auto-fix". It was the only compound name among the four kinds,
-  and it read as the name of a button rather than of a kind.
+  and it read as the name of a button.
 * **docs:** the website and both READMEs quote the final September 11
   measurement run instead of the August one: Hostveil 28 → 58, Lynis
   57 → 79, Docker-bridge reachability 6 → 1, rollback fidelity 25/28.
-  The three paths that were not restored are explained rather than
-  left out.
+  The three paths that were not restored are explained.
 * **docs:** `CONTRIBUTING.md` told contributors to run golangci-lint
   with `go run`, which refuses to run on this toolchain and lints
   nothing. It now fetches the released binary, as CI does.
 * **site:** the Korean pages use Nanum Myeongjo for body text, and the
   five longest documentation pages were rewritten as Korean prose
-  rather than sentence-by-sentence renderings of the English.
+  written directly in Korean.
 
 ## [3.26.2](https://github.com/seolcu/hostveil/compare/v3.26.1...v3.26.2) (2026-08-31)
 
@@ -423,8 +419,7 @@ and reset in a new body face.
   writes request-level entries to the journal. The fix now always states
   `backend = auto` explicitly, which is what switches the jail
   onto the log files, and always names both the access and error log
-  (falling back to fail2ban's own path macros rather than conditionally
-  omitting the line): a bare vhost returning nginx's own 404 never
+  (falling back to fail2ban's own path macros when the path is unknown): a bare vhost returning nginx's own 404 never
   reaches a static-file lookup, so only the access log carries it.
 
 ## [3.26.0](https://github.com/seolcu/hostveil/compare/v3.25.0...v3.26.0) (2026-08-31)
@@ -547,8 +542,7 @@ re-encode that could not be read back.
   instead of publishing stale prose
   ([#785](https://github.com/seolcu/hostveil/issues/785)), and link the
   checks table's Fix column to the matching entry, re-verified against the
-  registry on every generation run rather than trusted from the row's own
-  label ([#786](https://github.com/seolcu/hostveil/issues/786)).
+  registry on every generation run ([#786](https://github.com/seolcu/hostveil/issues/786)).
 * **site:** replace the cream `.split-section`/`.install-section` gradient
   band with a dark-palette treatment, and add a reusable "ledger bar" chart
   component wired to real, test-pinned data; homepage before/after stats,
@@ -558,7 +552,7 @@ re-encode that could not be read back.
 
 ### Bug Fixes
 
-* **fix:** warn before every exec-based Review fix, not just firewall's;
+* **fix:** warn before every exec-based Review fix, firewall's included;
   package upgrades, ten hardening-package installs, and both auto-update
   installers previewed with no warning at all, next to a firewall fix that
   carried a detailed one. `firewall.inactive`/`firewall.default-allow` also
@@ -585,8 +579,7 @@ fix took, with nothing on screen to say so.
   caution was weaker than its siblings' (`accounts.default-umask`,
   `ssh.tcpkeepalive`, `ssh.clientaliveinterval`,
   `ports.redis-protected-mode`), and register seven previously-Manual
-  findings as Review by reusing existing fix machinery rather than inventing
-  new mechanisms; an empty-password account is locked with `passwd -l`,
+  findings as Review by reusing existing fix machinery; an empty-password account is locked with `passwd -l`,
   `firewall.default-allow` reuses `firewall.inactive`'s own mechanism, and
   five systemd hardening flags reuse the generic drop-in fix builder
   ([#774](https://github.com/seolcu/hostveil/issues/774)).
@@ -594,7 +587,7 @@ fix took, with nothing on screen to say so.
   API, selected with `HOSTVEIL_AI_PROVIDER=anthropic` or `HOSTVEIL_AI_PROVIDER=openai`,
   for a host that cannot run a local model well. Ollama stays the default and
   nothing leaves the host unless a provider is named explicitly; both new
-  providers speak raw HTTP rather than pull in the Anthropic SDK, to keep the
+  providers speak raw HTTP without the Anthropic SDK, to keep the
   zero-dependency footprint the rest of the tool has.
 * **check:** raise Lynis-aligned hardening coverage with SSH, account,
   package, kernel-module, compiler and Redis checks and fixes, and promote
@@ -650,8 +643,8 @@ fix took, with nothing on screen to say so.
   ([#773](https://github.com/seolcu/hostveil/issues/773)).
 * **core:** harden privileged file reads, writes, chmods, checkpoints and
   rollback against symlink traversal and concurrent file replacement; a fix
-  now stops and asks for a rescan when its input has changed underneath it
-  rather than acting on stale state. Self-update metadata and archives are
+  now stops and asks for a rescan when its input has changed underneath it,
+  so it never acts on stale state. Self-update metadata and archives are
   validated before use, the installer stages verified exact binaries without
   overwriting a package-managed install, and Ollama responses and origins
   are bounded and validated. Existing behavior is unchanged apart from
@@ -701,9 +694,8 @@ have it.
   years later: anyone holding that account's SSH key is root immediately,
   with no second credential in the way.
 
-  It asks sudo rather than reading sudoers, because that configuration has
-  aliases, group specs that may resolve through LDAP rather than
-  `/etc/group`, netgroups and include ordering: re-deriving the effective
+  It asks sudo directly, because that configuration has
+  aliases, group specs that may resolve through LDAP, netgroups and include ordering: re-deriving the effective
   answer through all of it is the mistake `internal/compose.Discover` exists
   to demonstrate. Only the unrestricted case is flagged: a `NOPASSWD` rule on
   one named command is ordinary administration.
@@ -741,7 +733,7 @@ have it.
   `LookPath` falls back to the administrative directories: appended, never
   prepended, and never for a name carrying a separator. Finding the binary is
   the whole fix: the probe was already careful about the other half, so an
-  unreadable ufw becomes a coverage gap rather than an accusation.
+  unreadable ufw becomes a coverage gap.
 
 ### Documentation
 
@@ -751,7 +743,7 @@ have it.
   first committed run to record the architecture it ran on and a manifest of
   what was seeded: both fields existed and had never produced an artifact,
   which is why an earlier release had to *strip* the architecture claim off
-  the page rather than correct it.
+  the page.
 
   The score fell on the same seed, 40 to 29, and the page says why: Hostveil
   finds more on it, and 3.20.1 stopped crediting fixes that were written but
@@ -767,7 +759,7 @@ have it.
   ([#757](https://github.com/seolcu/hostveil/issues/757)). Fix coverage was
   published only inside a release note, the testing regime appeared in no
   README and on no page, and the VM seeded to be vulnerable was published as
-  a contributor note. Every number added is computed rather than typed:
+  a contributor note. Every number added is computed:
   pages carry `data-counted="findings.fixable"` and a test resolves it
   against the fix registry, so registering a fix for a finding that did not
   have one fails the build until the pages move with it.
@@ -782,7 +774,7 @@ Ambiguous class wide.
 
 ### Bug Fixes
 
-* **tui:** meters and the trend line are drawn in columns, not runes
+* **tui:** meters and the trend line are drawn in columns
   ([#749](https://github.com/seolcu/hostveil/issues/749)).
   `internal/ui/tui/alignment_test.go` had skipped itself since 3.16 with
   "meters are built by rune count, so every strip overflows under
@@ -795,7 +787,7 @@ Ambiguous class wide.
 
   `█` is ambiguous and `░` is not, so a meter cannot divide by one cell
   size either; it is laid out in columns and occupies exactly its budget in
-  both modes. Three tests were asserting the narrow condition rather than
+  both modes. Three tests were asserting the narrow condition in place of
   the property, one of them measuring runes as columns: the exact fault it
   existed to catch. CI now runs the layout packages a second time under the
   variable, which is what no job did and why this survived every release
@@ -834,7 +826,7 @@ Ambiguous class wide.
   showed `ssh.maxauth` (the real id is `ssh.maxauthtries`) and
   `fileperms.envfile`, which is not a finding. Four more were in the
   every-mode fixture. `TestSiteFrameIsCurrent` pins that the picture matches
-  the code that drew it, not that what it says is true; no test read an id.
+  the code that drew it. It did not check that what the picture says is true; no test read an id.
   One does now, over every fixture that reaches a reader.
 
 * **docs:** pages that contradict the binary
@@ -851,7 +843,7 @@ Ambiguous class wide.
 
 * **site:** the changelog is on the website
   ([#739](https://github.com/seolcu/hostveil/issues/739)), in both
-  languages and generated from `CHANGELOG.md` rather than written out, so
+  languages and generated from `CHANGELOG.md`, so
   the page cannot say a different thing from the file. No Markdown
   dependency: the converter implements the subset the file uses and fails
   the build, naming file and line, on anything it cannot render.
@@ -932,7 +924,7 @@ without saying so.
   what, without that sentence this trades a dishonest number for an
   inexplicable one.
 
-  The `dockerd` register is rewritten rather than emptied. "Not answered: the
+  The `dockerd` register is rewritten and keeps its entries. "Not answered: the
   score" was its shared blocker and is now answered, and that unblocks none of
   the seven: five need a key added to or removed from `daemon.json` and
   `internal/json5` only rewrites values that already exist, and the other two
@@ -965,7 +957,7 @@ without saying so.
   including the site's own section heading, which spells its figures as words
   and so was invisible even to a search for the digits.
 
-* **check:** a `Match` block is a coverage gap, not a clean bill
+* **check:** a `Match` block is reported as a coverage gap
   ([#737](https://github.com/seolcu/hostveil/issues/737)). The `sshd_config`
   parser stops at the first `Match` and recorded nothing. Stopping is right:
   sshd applies those directives only to connections that match. Stopping in
@@ -974,8 +966,7 @@ without saying so.
   is, and the domain reported complete, with output byte-identical to the same
   file without the block. It is Degraded now, naming the file and what went
   unexamined. The gaps go through `check.Coverage`, so a config with an
-  unreadable include *and* a `Match` block reports both rather than whichever
-  was found first.
+  unreadable include *and* a `Match` block reports both.
 
 ## [3.20.0](https://github.com/seolcu/hostveil/compare/v3.19.0...v3.20.0) (2026-08-15)
 
@@ -984,14 +975,14 @@ findings. Three of them keep it, and the split is what this release is about.
 
 ### Features
 
-* **check:** `systemd.no-new-privileges` is a fix, not a note
+* **check:** `systemd.no-new-privileges` now has a fix
   ([#733](https://github.com/seolcu/hostveil/issues/733)). Its decline reason
-  read "a drop-in plus a restart is one procedure in two steps rather than two
+  read "a drop-in plus a restart is one procedure in two steps with no
   alternatives, and a service that does not come back fails at the next
   restart." The first half is what `Action.TakesEffectOn` was built for
   (write the artifact now, name what has to happen for it to be in force) and
   every compose fix has stood on it since 3.17. The sentence predates the
-  machinery. The second half still holds, so this is Review rather than Auto.
+  machinery. The second half still holds, so this is Review.
 
   `ProtectSystem`, `ProtectHome` and `PrivateTmp` stay declined and are now
   named one by one instead of covered by a `systemd.*` glob that would have
@@ -1058,8 +1049,8 @@ said it on every row since the day it shipped.
   `http://127.0.0.1:8787/?t=…` and stopped, and on an SSH session that address
   is the server; the URL was correct and unusable, and Hostveil knew it was
   in an SSH session the whole time. It now prints what to run on your own
-  machine, using the address your client reached rather than the
-  machine's hostname: those are guesses about what the client can route to,
+  machine, using the address your client reached. The
+  machine's hostname is not used: those are guesses about what the client can route to,
   this is the address a packet from that client demonstrably arrived on. It
   does not offer to bind the dashboard somewhere routable instead: every
   route on it applies fixes or reads a scan of `/etc/shadow`, as root, and a
@@ -1067,7 +1058,7 @@ said it on every row since the day it shipped.
 
 ### Bug Fixes
 
-* **core:** a crashing fix ends that fix, not the process
+* **core:** a crashing fix ends that fix and the process keeps running
   ([#730](https://github.com/seolcu/hostveil/issues/730)).
   `internal/check.runOne` has said since the beginning that a panic in one
   checker degrades only that domain; the fix path said nothing, and it takes
@@ -1140,11 +1131,11 @@ bugs listed under Bug Fixes. Every one of them was silent.
   is replaced in place, a `.deb` is updated with the release's own `.deb`
   through `apt-get` so dpkg keeps describing the filesystem correctly, an
   `.rpm` the same through `dnf`, and a `go install` binary is rebuilt from
-  source rather than overwritten with somebody else's build. Only an origin
+  source. Only an origin
   Hostveil cannot identify falls back to printing advice, because guessing
   there means overwriting a file another tool believes it owns.
 
-  Verification is a gate rather than a warning. The download is checked against
+  Verification is a gate. The download is checked against
   the release's checksums file and discarded if it does not match, and where
   the GitHub CLI is present the signed build provenance is verified too. A
   provenance check that fails stops the update; one that cannot run because
@@ -1152,7 +1143,7 @@ bugs listed under Bug Fixes. Every one of them was silent.
   intact and nothing about who produced them.
 
   Uninstalling leaves the saved scans and rollback checkpoints alone and prints
-  where they are before it asks rather than after. Those are the backups of
+  where they are before it asks. Those are the backups of
   every file Hostveil edited on that host.
 
 * **cmd:** a once-a-day update check, notice only
@@ -1176,7 +1167,7 @@ bugs listed under Bug Fixes. Every one of them was silent.
   ([#726](https://github.com/seolcu/hostveil/issues/726)). It makes one request
   and writes nothing. It is the one command whose need for root depends on its
   flags, and the guard test that would have caught this was rewritten to state
-  the real rule rather than the shape it had assumed.
+  the real rule.
 
 * **cmd:** an update on a current host is no longer offered forever
   ([#726](https://github.com/seolcu/hostveil/issues/726)). goreleaser stamps
@@ -1204,7 +1195,7 @@ bugs listed under Bug Fixes. Every one of them was silent.
   checkpoint retention; and what counts as a port exposed on all interfaces.
   The README is aligned with the site, which called the same kind two different
   things. Each transcribed constant is pinned to its source, and the SARIF one
-  reads the values out of a real export rather than a second list.
+  reads the values out of a real export.
 
   Em dash density was measured against published guidance on machine-written
   prose and was the one marker the docs carried: 12.4 per thousand
@@ -1338,8 +1329,7 @@ the linter disagreed about where the risk was.
   the same scoring run over the same findings with every Auto and Review fix
   treated as applied, so an operator can tell a 61 that becomes an 88 from a 61
   that stays a 61 because the remaining findings are Manual or have no upstream
-  patch. It is computed by calling the existing scorer twice rather than by a
-  second model of what a fix is worth, which is what keeps the two numbers
+  patch. It is computed by calling the existing scorer twice, which is what keeps the two numbers
   commensurable.
 
 ### Bug Fixes
@@ -1383,8 +1373,7 @@ the linter disagreed about where the risk was.
   so narrowing to one severity offered `fix all 10 safe` and applied three. All
   five places that counted this by hand now go through
   `Report.AutoFixable(Filter)`, and the dashboard's different
-  answer (its chips narrow the list, not the batch) is now deliberate rather
-  than accidental. In the same change: the agent checker stopped running four
+  answer (its chips narrow the list and leave the batch alone) is now intended. In the same change: the agent checker stopped running four
   firewall binaries per scan whose answer it had not read since the severity
   levels merged, the composer's regression net grew from 8 of 10 modes to all
   of them (the missing two included the screen shown when a rollback is
@@ -1415,7 +1404,7 @@ fixture builds a host on more than one distribution.
   Four findings became fixable, and the shape is read off the rule table rather
   than decided in the registry: one safe value is Auto, two are Review.
   `agent.exec-unrestricted` is the Review case; `deny` and `ask` are a choice
-  about how the operator wants to work, not a sequence.
+  about how the operator wants to work, with no order between them.
 
   Three stayed declined, and removing the shared reason is what made their real
   ones visible. `agent.sandbox-off`: Hostveil knows `off` is wrong and nothing
@@ -1430,7 +1419,7 @@ fixture builds a host on more than one distribution.
   every component of that path while Hostveil runs as root, and a preview
   renders whatever it read into a diff.
 
-* **ci:** the measurement fixture builds a host on Fedora and Alpine, not only
+* **ci:** the measurement fixture builds a host on Fedora and Alpine as well as
   Ubuntu ([#698](https://github.com/seolcu/hostveil/issues/698)). Every
   published measurement was taken on Ubuntu, and not as a decision:
   `seed.sh` called `apt-get` and `systemctl` directly, so Ubuntu was the only
@@ -1441,13 +1430,12 @@ fixture builds a host on more than one distribution.
   `Include` the drop-in directory gets the `Include` appended, because a
   drop-in nothing reads seeds nothing.
 
-  What a distribution cannot express is recorded rather than skipped. Alpine
+  What a distribution cannot express is recorded. Alpine
   ships no unattended-upgrade mechanism, so its updates axis reads better for a
   reason that has nothing to do with Hostveil, and publishing that number
   without saying so is an absence read as an all-clear, which is the failure
   this whole tool is built against. The manifest travels into the measurement
-  JSON, and a host seeded by an older copy reports it as *absent* rather than
-  as an empty one.
+  JSON, and a host seeded by an older copy reports it as *absent*.
 
   A published figure may also name the run it came off, so the page can carry
   several hosts side by side with each number still pinned to its own file.
@@ -1506,7 +1494,7 @@ outside.
   `except FileNotFoundError`. That is the rule the scanner itself is built on,
   broken by the thing whose job is to audit the scanner. Both cases are
   explicit now, and the test runs the instruments in an environment without
-  their tools rather than grepping them for the word "error".
+  their tools. It no longer greps them for the word "error".
 
   `DEVELOPMENT.md` also pointed at `/vagrant/scripts/measure/run.sh`, and the
   repository is mounted at `/hostveil` in that VM: three commands in the
@@ -1526,8 +1514,7 @@ to.
 * **ui:** High severity was drawn in grey on every terminal that is not
   truecolor ([#687](https://github.com/seolcu/hostveil/issues/687)). SSH does
   not forward `COLORTERM`, so a remote session runs at 256 colors, which for
-  a tool whose whole subject is remote servers is the normal case, not an edge
-  one. The palette hexes are therefore inputs to a quantiser, and
+  a tool whose whole subject is remote servers is the normal case. The palette hexes are therefore inputs to a quantiser, and
   `ansi.Convert256` maps a colour into the 6×6×6 cube by truncating each
   channel and then takes the nearest *greyscale* entry instead where that is
   closer in HSLuv. One Dark's Crit sat on the wrong side of that line:
@@ -1562,8 +1549,8 @@ to.
   28 low` clipped to the column reported 28 findings of a severity it did not
   name and said nothing about the one it cut. The row is assembled a term at a
   time now and dropped between terms, never through one: the same call the
-  chip bar already makes. The spelling is also chosen once for the whole rail
-  rather than per domain, because the busiest domain has the widest counts, so
+  chip bar already makes. The spelling is also chosen once for the whole rail,
+  because the busiest domain has the widest counts, so
   deciding row by row abbreviated exactly the first row and left the eleven
   under it long.
 
@@ -1600,7 +1587,7 @@ a stock Fedora workstation.
   cache to itself. The warm-up carries the flag it is testing and doubles as
   the capability probe, so a Trivy that rejects `--cache-backend memory` (it
   is experimental, and the value is newer than the flag) falls back to
-  scanning one image at a time rather than failing every image.
+  scanning one image at a time, so the other images still get scanned.
 
 * **demo:** the demo VM could not start on a stock Linux workstation
   ([#683](https://github.com/seolcu/hostveil/issues/683)). An unprivileged
@@ -1613,7 +1600,7 @@ a stock Fedora workstation.
   a leftover domain with the commands that clear it. The troubleshooting entry
   for a VM with no internet was pointing at `virbr0`, which this demo does not
   use, so following it changed nothing; it now reads the right bridge out of
-  the network, keeps the rules across reboots, and accepts replies rather than
+  the network, keeps the rules across reboots, and accepts replies only, with no
   new inbound connections: this VM publishes an unauthenticated Docker API on
   purpose. And a build that cannot find its Go toolchain now says the machine
   is half-provisioned instead of reporting it as a build failure.
@@ -1649,7 +1636,7 @@ nothing walks past is exactly what a stale test looks like from the outside.
   is a number, so `127.0.0.1:8787.evil.example.com` parsed as the host
   `127.0.0.1`, and the allowlist looked at the host, found loopback, and said
   yes to an authority naming somebody else's domain. Nothing was reachable
-  through it, and the accurate reason is the browser rather than anything here: a
+  through it, and the accurate reason is the browser: a
   non-numeric port makes the URL unparseable, so the rebinding attack this list
   defends against cannot produce one. It is fixed anyway, because a host check
   that credits the wrong host is one refactor away from being relied on.
@@ -1676,8 +1663,7 @@ nothing walks past is exactly what a stale test looks like from the outside.
   the step passed on every pull request without once looking at one: a vacuous
   jq selection is indistinguishable from a clean result. It selects by name
   now, and asserts that it matched something before asserting anything about
-  it. Two lists with the same shape are pinned by tests in `internal/docs`
-  rather than by memory: the nightly fuzz matrix against every `Fuzz*` target
+  it. Two lists with the same shape are pinned by tests in `internal/docs`: the nightly fuzz matrix against every `Fuzz*` target
   that exists, and CI's cross-compile loop against the targets
   `.goreleaser.yaml` ships. `.goreleaser.yaml` is itself validated in
   CI now (nothing read it until a tag existed, by which time the release was
@@ -1713,7 +1699,7 @@ than 3.13.0's and the measurement is better.
 * **check:** the measurement seeding wrote OpenClaw's config to
   `~/.config/openclaw/`, which the agent checker does not scan. The domain
   reported "no agent runtime found" on a host seeded to run two, and an
-  excluded axis leaves the denominator rather than scoring zero, so the missing
+  excluded axis leaves the denominator, so the missing
   domain was worth points. Both seeders' paths are now held against the
   checker's own table by a test.
 
@@ -1721,14 +1707,13 @@ than 3.13.0's and the measurement is better.
   so `http://x:11434/` asked for `//api/version`. Ollama tolerates it, which is
   what let it survive: the symptom is the AI saying nothing, which is also
   what success looks like when no server is running. Trimmed at construction;
-  the environment reference used to document the double slash rather than fix
-  it.
+  the environment reference used to document the double slash. It is fixed now.
 
 * **cmd:** both environment-variable harvests were blind to a qualified
   constant, so `os.Getenv(pkg.Const)` fell out of the switch; a new variable
   would be undocumented *and* dropped by sudo's `env_reset` with every test
   green. That is the failure `carriedThroughSudo` exists to prevent, arriving
-  through the test rather than the code.
+  through the test.
 
 * **ci:** the seed wrote an apt config for a package it never installed, which
   no distribution ships. Whether the package is present decides which
@@ -1760,16 +1745,15 @@ answering from off the host go **7 → 1** on the seeded server, and the score
   firewall) is fixable. What was missing was never the commands; it was that
   the checker recorded no SSH port, so Hostveil could not know what to keep
   open. It reads one from the kernel's socket table now, the port sshd is
-  *actually* serving on rather than the one its config claims, and allows that
+  serving on (its config may claim another), and allows that
   port before enabling the policy. **No port, no fix**: a host on 2222 whose
-  port could not be read gets nothing rather than a lockout that looks like
-  knowledge. ufw only, because the other front-ends take rules different enough
+  port could not be read gets no fix, so it cannot be locked out. ufw only, because the other front-ends take rules different enough
   that a guessed one is a lockout by another route.
 
 * **model:** the same mistake made four times is not four mistakes. A compose
   file where four services all lack `user:` is one line missing, written four
   times, and the score charged it as four independent risks, so an axis was
-  buried for running more services rather than worse ones. Repeats of one
+  buried for running more services. Repeats of one
   finding ID on one axis are damped harmonically now: the second costs half its
   weight, the third a third, never zero, because at ten the mistake is
   systematic. Within an ID the heaviest instance is sorted first and pays full
@@ -1818,7 +1802,7 @@ operator takes.
 
 * **ui:** the six arrangements are settled. **C · Console (the domain rail
   down the left) is the default in both the terminal and the browser**, and
-  the other five stay in the picker rather than being deleted. The comparison
+  the other five stay in the picker. The comparison
   settled a different question than it asked: there is no arrangement that is
   right at 1440px and at 80 columns and on a host with four findings and on
   one with forty, so one of them answers the common case and the picker
@@ -1922,7 +1906,7 @@ operator takes.
   all three; the detail screen had no margin at all while the pane beside the
   list had one. There is now one vocabulary (a body margin, a step for nested
   lists, a narrower one inside a column) and the wrap applies it to every
-  line rather than to the first, which is what the dashboard gets for free by
+  line, which is what the dashboard gets for free by
   padding the box instead of the text.
 
 * **tui:** the grid also holds where a terminal draws East Asian Ambiguous
@@ -1937,11 +1921,11 @@ operator takes.
   out down its left edge. All four are measured now, and the grid tests run in
   both modes.
 
-* **tui:** the rail says what the dashboard's says; `3 high · 1 med · 2 low`
-  rather than `3H·1M·2L`, falling back to the compact form only where the
+* **tui:** the rail says what the dashboard's says; `3 high · 1 med · 2 low`,
+  falling back to the compact form only where the
   column cannot hold the words, and its head counts findings the way the
   browser's does. The verdict band's note is dropped whole when it does not
-  fit rather than being cut mid-word, which had been ending a sentence about
+  fit. Cutting it mid-word had been ending a sentence about
   backups at "reversible from histo".
 
 ## [3.11.0](https://github.com/seolcu/hostveil/compare/v3.10.0...v3.11.0) (2026-08-06)
@@ -1953,8 +1937,8 @@ auditors say about a host it has fixed. Three checkers stopped answering
 questions about hosts they had never examined.
 
 **If you read `scan --json` or a scan snapshot, read the first two entries.**
-Severity is `high` / `medium` / `low` rather than four Trivy levels, and every
-enum goes out as a name rather than an integer. `scan`'s exit code and the
+Severity is `high` / `medium` / `low` in place of four Trivy levels, and every
+enum goes out as a name. `scan`'s exit code and the
 SARIF export mean exactly what they always did, and snapshots written by any
 older version still read.
 
@@ -1966,14 +1950,14 @@ will be gone once one of them is chosen.**
 
 ### Features
 
-* **model:** severity is three urgency levels, not four Trivy ones. A finding
+* **model:** severity is three urgency levels. A finding
   is now **`high`** (reachable or usable right now, from off the host, by
   someone holding nothing), **`medium`** (a boundary that gives way to a
   foothold, a guessed credential, or a local account) or **`low`** (no known
   path today; it narrows what a future compromise reaches). Critical / High /
   Medium / Low came from Trivy so a CVE's published rating could pass straight
   through, but vulnerabilities are rolled up per image now, so what reaches a
-  finding is one level for the whole image rather than a rating per CVE, and
+  finding is one level for the whole image, and
   outside that domain the fourth level was asking a question a config file
   cannot answer. "How bad is a container running as root" depends entirely on
   what the container does; how much stands between an attacker and it does
@@ -1981,8 +1965,7 @@ will be gone once one of them is chosen.**
 
   The definitions above are the taxonomy and the names only carry the order,
   which is the one job a name has on a filter chip, in a SARIF level, or in a
-  line of `--json`, and it is why they are the ordinary three rather than
-  something more descriptive.
+  line of `--json`, and it is why they are the ordinary three.
 
   **`high` is exactly what Critical and High were together**, so nothing a
   pipeline reads has moved: `scan` still exits 1 on the same set of findings,
@@ -1994,13 +1977,12 @@ will be gone once one of them is chosen.**
   by name.
 
   Scores do move. A finding that was High now costs half of an axis's
-  remaining credit rather than a third, which is why the merge exists, if
+  remaining credit (it was a third), which is why the merge exists: if
   it is reachable now it is the top level, and the top level costs half. The
   seeded demo host goes from **38 to 32**, with SSH hardening moving 26 → 19
   as `ssh.rootlogin` joins the top level.
 
-  Two conditional escalations collapsed, and that is the taxonomy working
-  rather than information being lost. `dockerd.api-unauthenticated` no longer
+  Two conditional escalations collapsed, and that is the taxonomy working as designed. `dockerd.api-unauthenticated` no longer
   drops a level when the daemon is rootless, and `agent.gateway-exposed` no
   longer rises one when a listener is confirmed with no firewall: blast radius
   and confidence are not urgency. Both differences are still reported, in the
@@ -2013,8 +1995,8 @@ will be gone once one of them is chosen.**
 
 * **model:** `scan --json` names its enums instead of numbering them. `severity`,
   `source`, `remediation` and a domain's `state` go out as lowercase words
-  (`"high"`, `"ssh"`, `"review"`, `"degraded"`) rather than as the bare integers
-  every consumer had to keep its own ordering table for, including Hostveil's
+  (`"high"`, `"ssh"`, `"review"`, `"degraded"`). The bare integers
+  made every consumer keep its own ordering table, including Hostveil's
   own dashboard, which was handed a generated lookup table so it could read its
   own API. Snapshots written by an older version still read: unmarshalling
   accepts a name *or* an integer, for one release, so a host's previous scan is
@@ -2080,7 +2062,7 @@ will be gone once one of them is chosen.**
   Forty-two findings carry one. They say what *stops* the automation, never
   what the finding is: `accounts.uid0` reads "userdel orphans every file the
   account owns with no checkpoint to undo it, and Hostveil cannot tell a
-  backdoor from a deliberate second root", not a restatement of the title.
+  backdoor from a deliberate second root". It no longer restates the title.
   Two tests hold the register and the sentences together; a declined finding
   with nothing to say fails, and a sentence for a finding that has a fix
   fails too.
@@ -2090,7 +2072,7 @@ will be gone once one of them is chosen.**
   *are* and nothing about how a finding lands in one. It now carries the three
   criteria an Auto-fix has to meet (reversible, recoverable in practice,
   unambiguous) each with a worked example from the tool, the reason a failing
-  criterion sometimes means Manual rather than Review (Review needs two
+  criterion sometimes means Manual (Review needs two
   independent alternatives; one option and no way to make it safe is Manual),
   and the two-source resolution rule with a finding you can watch it happen
   on. In both languages, pinned against each other by a new test.
@@ -2104,7 +2086,7 @@ will be gone once one of them is chosen.**
   The Instrument palette is gone and One Dark is the default; four of its twelve
   roles are moved: three lifted in HSL lightness by the smallest step that
   clears the contrast floors every theme here is held to, and the foreground
-  lifted as a judgement rather than a floor, because an editor sets a few
+  lifted as a judgement, because an editor sets a few
   hundred glyphs on screen and this sets thousands. The terminal list gains
   what the dashboard has always had above the fold: a count per severity, how
   many findings Hostveil can offer a fix for at all (Auto *and* Review, which
@@ -2119,7 +2101,7 @@ will be gone once one of them is chosen.**
 * **ui:** six arrangements of the same screen, in both interfaces, behind a
   picker ([#649](https://github.com/seolcu/hostveil/issues/649)). `l` in the
   TUI, a dropdown in the dashboard, `--layout` on the command line. This is
-  scaffolding for a decision rather than a setting to keep: an arrangement that
+  scaffolding for a decision and will not stay a setting: an arrangement that
   reads well in a 1440-column browser and badly in an 80-column terminal is not
   one Hostveil can adopt, and the only way to find that out is to drive both
   against a real host. The default is unchanged, so an operator who never opens
@@ -2130,7 +2112,7 @@ will be gone once one of them is chosen.**
 
 * **cve:** the vulnerability rollup counted its most severe findings twice.
   `summary()` and `evidence()` each walked a severity list written out in
-  `cve.go` rather than asking the model, and that list was the four-level
+  `cve.go` without asking the model, and that list was the four-level
   scale, so when Critical and High merged into one constant, both rows
   stayed and the same constant was read twice. An image whose worst
   vulnerabilities were all top-severity described itself as "2 high, 2 high,
@@ -2148,7 +2130,7 @@ will be gone once one of them is chosen.**
   `.chip.c-<abbr>`) while the stylesheets have them typed in, so renaming a
   level silently unstyles the findings list, the filter chips and the
   landing page's example findings, which reads as a low-contrast theme
-  rather than as a broken stylesheet, and had already shipped that way on
+  and hides a broken stylesheet, and had already shipped that way on
   the landing page. Tests now walk `model.AllSeverities()` against both
   stylesheets, in both directions.
 
@@ -2169,8 +2151,8 @@ will be gone once one of them is chosen.**
   permission checkers are unconditionally available, so a Mac produced a
   plausible-looking number resting on a false finding. All three now skip with
   a reason, through one gate: `platform.AuditableOS`, because "what host is
-  this" belongs with the rest of the host questions rather than in three
-  checkers deciding it three ways. Nothing changes on Linux.
+  this" belongs with the rest of the host questions. Three
+  checkers had decided it three ways. Nothing changes on Linux.
 
 * **tui:** setting `RUNEWIDTH_EASTASIAN` made the terminal UI measure itself
   two ways at once. It is what an operator sets when their terminal draws East
@@ -2201,9 +2183,8 @@ will be gone once one of them is chosen.**
   wrong, found while turning it into user-facing text. `userdel` does not
   take the home directory unless it is given `-r`, which the finding's own
   how-to-fix does not recommend; `dockerd.api-tls-unverified`'s remediation
-  is requiring client certificates, not removing the TCP endpoint;
-  `dockerd.socket-world-writable`'s socket is recreated by systemd, not by
-  dockerd, which the finding's own text already said; and five of the seven
+  is requiring client certificates while keeping the TCP endpoint;
+  `dockerd.socket-world-writable`'s socket is recreated by systemd (the finding's own text already said so); and five of the seven
   agent findings can only come from OpenClaw, so the register's Hermes
   argument does not apply to them.
 
@@ -2255,7 +2236,7 @@ will be gone once one of them is chosen.**
   ([#650](https://github.com/seolcu/hostveil/issues/650)). `scan` prints
   skipped, partial and errored domains as one block. Only the skipped line went
   through the chosen symbol set, so a patched glyph sat next to two ASCII ones,
-  which reads as two kinds of remark rather than three degrees of one.
+  which reads as two kinds of remark where there are three degrees of one.
 
 * **install:** needing root is not the same as needing sudo
   ([#647](https://github.com/seolcu/hostveil/issues/647)).
@@ -2269,7 +2250,7 @@ security-update count was wrong**: read the first fix below.
 
 ### Features
 
-* **check:** check who owns a sensitive file, not just its mode
+* **check:** check who owns a sensitive file as well as its mode
   ([#611](https://github.com/seolcu/hostveil/issues/611)). The file-permission
   rules asked how much access the permission bits grant and stopped there,
   which is half the question. Mode 0600 grants everything to the owner and
@@ -2335,8 +2316,8 @@ outstayed its usefulness in the address bar.
   to `/usr` and `/etc`, whether it can read every user's home directory,
   whether it shares `/tmp` with the rest of the host. Nothing looked at any of
   it before. The new domain asks systemd for each unit's *effective*
-  configuration, so what it reports is what the service will run with
-  rather than what some file says, and it audits only the units you installed
+  configuration, so what it reports is what the service will run with,
+  and it audits only the units you installed
   yourself: your distribution hardens its own on its own schedule, and
   reporting on those would bury your services under findings about software you
   did not choose. Severity follows the account: the privilege-escalation rule
@@ -2350,21 +2331,21 @@ outstayed its usefulness in the address bar.
 
 ### Bug Fixes
 
-* **compose:** audit the project docker composes, not its first file
+* **compose:** audit the whole project docker composes
   ([#641](https://github.com/seolcu/hostveil/issues/641)). `docker compose up`
   reads `docker-compose.override.yml` with no flag asked for, and `-f base.yml
   -f prod.yml` is the standard production pattern, so a project made of several
   files is the ordinary case. Hostveil read the first one and audited that.
   That is not a partial view: it is a wrong one, and in the dangerous
-  direction, because compose *adds* port mappings across files rather than
-  replacing them. A base file binding a database to localhost plus an override
+  direction, because compose *adds* port mappings across files and never
+  replaces them. A base file binding a database to localhost plus an override
   publishing it is published on every interface; Hostveil saw the localhost
   binding, found nothing, and passed the host. An exposed datastore is the
   worst finding the container domain has. It now asks docker for the merged
   configuration, which also resolves `${VARIABLES}` the way they will resolve
   at run time instead of reading them as literal text. Where docker cannot
   answer and the project has several files, the project is reported as ground
-  the scan did not cover rather than guessed at from one of them.
+  the scan did not cover.
 
 * **check:** a docker.service systemd never loaded is not a unit with no flags
   ([#642](https://github.com/seolcu/hostveil/issues/642)). Every mainstream
@@ -2382,7 +2363,7 @@ outstayed its usefulness in the address bar.
   without TLS client verification is unauthenticated root for anyone who can
   reach the port, and it could go unreported while the score said the daemon
   had been checked. A host that does not run systemd now reports these rules as
-  not audited rather than clean: the flags live somewhere Hostveil cannot read,
+  not audited: the flags live somewhere Hostveil cannot read,
   and saying so is the accurate answer.
 
 * **check:** name the file that decides a kernel parameter, and fix that one
@@ -2394,9 +2375,9 @@ outstayed its usefulness in the address bar.
   next boot with nothing to explain why. The scan now works out which file
   decides each parameter and says so, and the fix corrects that file
   instead of writing one that cannot take effect. Where the deciding file
-  belongs to a package rather than to you, Hostveil declines to edit it and
-  says the drop-in will not work, rather than reporting a success the next boot
-  contradicts.
+  belongs to a package, Hostveil declines to edit it and
+  says the drop-in will not work. Reporting success would be contradicted at
+  the next boot.
 
 * **history:** a Save that never finished is not damaged recovery history
   ([#640](https://github.com/seolcu/hostveil/issues/640)). `hostveil history`
@@ -2466,7 +2447,7 @@ never covered, and a rule the code stated five times without enforcing once.
   store keeps deleted its own earliest ones: the fixes it applied first were
   unrollbackable the instant they were applied, and nothing said so. The cap
   named that as the thing that must never happen and then answered it by being
-  a big enough number, which is a hope rather than a mechanism: adding
+  a big enough number, which is a hope with no mechanism behind it: adding
   `no-new-privileges` and setting a restart policy are both applied
   automatically and both apply to nearly every stock compose service, so a
   host with a hundred services reached the limit in one run. Nothing written
@@ -2495,7 +2476,7 @@ never covered, and a rule the code stated five times without enforcing once.
   which is indistinguishable from a host that has no host keys, so an
   unreadable `/etc/ssh` silently cleared a high-severity check on private keys.
   This changes nothing on a standard host, where those paths are readable; it
-  closes the case rather than a failure seen in the wild.
+  closes the case before anyone hits it.
 * **core:** never apply a command-running fix unattended
   ([#630](https://github.com/seolcu/hostveil/issues/630)). "Safe to apply
   automatically" rests on the change being reversible, and a fix that runs a
@@ -2517,7 +2498,7 @@ at.
 
 ### Bug Fixes
 
-* **check:** report every coverage gap, not just the first
+* **check:** report every coverage gap
   ([#625](https://github.com/seolcu/hostveil/issues/625)). A domain can have
   more than one blind spot, and both container checkers decided what to
   report at the moment a gap was found, so whichever one lost the race was
@@ -2546,7 +2527,7 @@ that could describe work that never happened.
 
 ### Bug Fixes
 
-* **ui:** measure text in display columns, not bytes or runes
+* **ui:** measure text in display columns
   ([#621](https://github.com/seolcu/hostveil/issues/621)). Three notions of
   "how wide is this" were in use at once: the padding function counted
   display columns, truncation counted runes, and wrapping (in the TUI and
@@ -2566,7 +2547,7 @@ that could describe work that never happened.
   have laid out screens differently for operators in different countries.
   An explicit table is pinned instead, and a test asserts it agrees with the
   one the terminal layer already uses.
-* **core:** plan a mode change once per apply, not twice
+* **core:** plan a mode change once per apply
   ([#622](https://github.com/seolcu/hostveil/issues/622)). Applying a
   permission fix planned the changes, then rendered its summary by planning
   them a second time. The paths it changed, and the modes it saved
@@ -2603,7 +2584,7 @@ because it would have crashed first.
   history` are directions to a place only one interface has; each appends its
   own. The CLI keeps its per-failure detail and its exit code, and now names
   the skipped count outside the interrupted case as well.
-* **core:** check a fix's shape before offering it, not while applying it
+* **core:** check a fix's shape before offering it
   ([#619](https://github.com/seolcu/hostveil/issues/619)). Every fix declares
   a kind, and the kind is a claim about shape: Auto means exactly one
   mechanical action, Review means two or more real alternatives, an edit
@@ -2619,8 +2600,7 @@ because it would have crashed first.
   its kind is demoted to Manual: the same answer already given when no fix
   is registered, and the same promise the rest of the engine keeps: an
   interface never offers a button that leads nowhere. No fix that ships today
-  was affected; what changed is that the guarantee now covers every finding
-  rather than the sampled ones.
+  was affected; what changed is that the guarantee now covers every finding.
 
 ## [3.8.1](https://github.com/seolcu/hostveil/compare/v3.8.0...v3.8.1) (2026-07-29)
 
@@ -2633,7 +2613,7 @@ log in, and only one of them answered portably. The one that did not was the
 one gating a Critical.
 
 **If you run Arch or NixOS, your account-hygiene score should improve**,
-because it was wrong, not because anything on your host changed.
+because it was wrong. Nothing on your host changed.
 
 ### Bug Fixes
 
@@ -2652,7 +2632,7 @@ because it was wrong, not because anything on your host changed.
   watches) and had already got it right by matching the path's suffix. Both
   now call one predicate that matches the program's base name, because the
   path is not portable and the name is. Two narrowings follow, each removing
-  a false report rather than adding a true one: the empty-password finding
+  a false report: the empty-password finding
   stops firing on non-login accounts on those distributions, and a
   docker-group member whose shell is `/bin/true` is now correctly read as a
   service identity; a shell that exits successfully and immediately ends a
@@ -2711,8 +2691,8 @@ against a capture of every value before and after.
   ([#612](https://github.com/seolcu/hostveil/issues/612)). Without it the new
   domain lands with three of its seven rules unreachable in the one place this
   project can show a finding against a real daemon. Both socket findings are
-  seeded through systemd drop-ins rather than `daemon.json` or `chmod`, because
-  neither alternative survives: dockerd refuses to start when `hosts` and `-H`
+  seeded through systemd drop-ins, because
+  `daemon.json` and `chmod` do not survive: dockerd refuses to start when `hosts` and `-H`
   are both set, and a `chmod` on the socket is gone before Hostveil looks,
   since dockerd recreates it at every start. The drop-in is also the
   misconfiguration operators make.
@@ -2735,8 +2715,8 @@ against a capture of every value before and after.
   found. Clean."** unconditionally, so a host whose every checker had failed
   read as spotless in two interfaces out of three; only the CLI had ever
   refused, because the predicate lived in the CLI's own renderer. The guards
-  moved with it: the coverage tests now walk the constant range rather than
-  `AllSources()`, since a constant declared without a row never appears in the
+  moved with it: the coverage tests now walk the constant range,
+  since a constant declared without a row never appears in the
   projection and every test that iterates it would pass vacuously, in the
   direction that reports the missing domain as fine.
 
@@ -2774,7 +2754,7 @@ now flagged: ufw and firewalld were accepted on the strength of being active,
 while nftables and iptables always had to show a default-deny policy, so
 Hostveil held a hand-written ruleset to a stricter standard than the two
 managed front-ends. And the eight kernel-hardening findings move from Manual
-to Review, which changes the button they carry, not the number.
+to Review, which changes the button they carry and leaves the number alone.
 
 ### Features
 
@@ -2788,10 +2768,9 @@ to Review, which changes the button they carry, not the number.
   what that reveals is two independent alternatives that were there all
   along: write the drop-in (persistent, effective at the next boot) or
   `sysctl -w` (effective now, gone at the next boot). Neither dominates,
-  which is what makes it a choice rather than the sequence Review forbids.
+  which is what makes it a choice. Review forbids a sequence.
   The delicate half is the undo: restoring "this file did not exist" means
-  deleting it, so the checkpoint says so explicitly rather than inferring it
-  from an empty backup, the deletion runs behind the same external-edit check
+  deleting it, so the checkpoint says so explicitly, the deletion runs behind the same external-edit check
   every other restore gets, and a drop-in the operator has since tuned
   declines instead of vanishing.
 * **check:** flag a firewall that runs but accepts everything
@@ -2808,15 +2787,13 @@ to Review, which changes the button they carry, not the number.
   the domains still working while a scan runs: a screen that cannot
   distinguish "still working" from "hung" is the one place progress is not
   decoration, and on a host with many images that wait is minutes. And a
-  declined rollback is now a question in both interfaces rather than a dead
-  end: the file changed after Hostveil wrote it, restoring the backup would
+  declined rollback is now a question in both interfaces: the file changed after Hostveil wrote it, restoring the backup would
   discard whatever was done in between, and rollback keeps no checkpoint of
   its own. Only an explicit `y` overrides it.
 * **cmd:** show how the score has moved
   ([#603](https://github.com/seolcu/hostveil/issues/603)). `hostveil history
   --scans` reads the snapshots Hostveil has been keeping and pruning all
-  along. A scan where no domain could be examined shows N/A rather than a
-  number, and no change is reported against it: a run that cannot be scored is
+  along. A scan where no domain could be examined shows N/A, and no change is reported against it: a run that cannot be scored is
   not a drop to zero.
 * **ui:** draw the score trend in the TUI and the dashboard
   ([#606](https://github.com/seolcu/hostveil/issues/606)). The other half of
@@ -2929,8 +2906,7 @@ host; Hostveil is looking at more of it.
   parameters whose safe value is the same on essentially every server: the
   quiet knobs that stop a local foothold from becoming root and a spoofed
   packet from becoming a route. A knob this kernel does not have is silently
-  fine; one that exists but cannot be read degrades the axis rather than
-  passing for clean. `net.ipv4.ip_forward` is absent: Docker,
+  fine; one that exists but cannot be read degrades the axis. `net.ipv4.ip_forward` is absent: Docker,
   WireGuard, Tailscale exit nodes, and virtualization hosts all legitimately
   enable it, and a rule that accuses most self-hosters' routers erodes trust
   in the whole domain. Every finding is Manual for now and carries the exact
@@ -2958,13 +2934,13 @@ host; Hostveil is looking at more of it.
   and produces no delta: saving it would make the next full scan announce
   every finding from the skipped domains as newly appeared, and would
   overwrite the last complete report on disk. A typo in a domain name is a
-  usage error naming the valid choices, not a silently empty scan.
+  usage error naming the valid choices.
 * **web:** live rescan progress in the dashboard
   ([#590](https://github.com/seolcu/hostveil/issues/590)). Rescan was a
   blocking POST that took minutes on a real host and gave the browser nothing
   to render but a frozen button. It now returns immediately and the page polls
   a status route, narrating which domains are still working. A second rescan
-  while one runs is refused rather than queued, and a closed tab does not
+  while one runs is refused, and a closed tab does not
   abort the scan, but Ctrl-C on the server still does.
 * **web:** add AI explanations to the dashboard
   ([#591](https://github.com/seolcu/hostveil/issues/591)). The finding panel's
@@ -2975,8 +2951,7 @@ host; Hostveil is looking at more of it.
 * **tui:** add AI explanations to the detail view
   ([#592](https://github.com/seolcu/hostveil/issues/592)). Press `e` in a
   finding's detail. The answer is fetched without blocking the interface, and
-  a slow response for a finding you have already left is dropped rather than
-  drawn under whatever is on screen now.
+  a slow response for a finding you have already left is dropped.
 
 ## [3.5.0](https://github.com/seolcu/hostveil/compare/v3.4.0...v3.5.0) (2026-07-28)
 
@@ -3005,7 +2980,7 @@ scan → fix → rollback inside a seeded container on every pull request.
 **Two changes can move your score without your configuration having changed.**
 A compose project whose file cannot be parsed now degrades its domain instead
 of being silently dropped, and a scan where no domain ran at all now reports
-N/A rather than a perfect 100. Both replace a number that was never earned.
+N/A. Both replace a number that was never earned.
 
 ### Features
 
@@ -3148,7 +3123,7 @@ several more. The CLI reference documented a `--no-color` flag on `fix` that
 does not exist (copying it gets you exit 2) and described `rollback` as
 taking no flags months after `--force` was added, leaving the flag that stands
 between an operator and an unrecoverable overwrite of their own edits
-documented nowhere at all, not even in `hostveil help`. Both are fixed, and a
+documented nowhere at all, `hostveil help` included. Both are fixed, and a
 test now reads the flag registrations out of the source and fails the build if
 the reference and the binary disagree in either direction. Three shipped
 features that had never been documented (rollback declining over later edits,
@@ -3281,7 +3256,7 @@ having changed.** This release is about that.
   now be reported privately.
 * CI checks Hostveil's own dependencies with govulncheck
   ([#551](https://github.com/seolcu/hostveil/issues/551)).
-* Releases are cut by hand rather than through release-please
+* Releases are cut by hand, without release-please
   ([#555](https://github.com/seolcu/hostveil/issues/555)), which could never
   satisfy the branch ruleset it was merged under.
 
@@ -3310,16 +3285,15 @@ from here on.
   accounts, file permissions, and self-hosted AI agent runtimes.
 * **CVEs are reported per image**, with a rollup finding you can act on,
   instead of one finding per CVE.
-* **Scoring no longer bottoms out.** Findings erode an axis multiplicatively
-  rather than summing into a clamp, so a host with 27 container findings no
+* **Scoring no longer bottoms out.** Findings erode an axis multiplicatively,
+  so a host with 27 container findings no
   longer scores the same as one with 3.
 * **A scan that could not look no longer reports a clean result.** Partial
   coverage is representable and surfaced as a degraded axis, closing the path
   by which a non-root scan once reported a perfect CVE score.
 * **Rollback from every surface**; a history screen in the TUI and reversible
   applied fixes in the web dashboard.
-* **Compose fixes render as minimal text edits** rather than a whole-file
-  re-encode, so a one-line change stays a one-line diff.
+* **Compose fixes render as minimal text edits**, so a one-line change stays a one-line diff.
 * **Auto-elevation**: commands that benefit from root re-exec under sudo
   instead of failing.
 * **Website generated from a single source** (`cmd/sitegen`), with a docs site,
