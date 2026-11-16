@@ -319,6 +319,5 @@ func buildBindLoopback(f model.Finding) (Fix, error) {
 // did, on the least severe finding in it. The port-rebinding fixes said the
 // opposite.
 func recreateNote(svc string) string {
-	return "This edits the file. The running container changes only after `docker compose up -d " + svc +
-		"` is what puts the change into force."
+	return "This edits the file. The running container changes only after `docker compose up -d " + svc + "`."
 }

@@ -92,6 +92,12 @@ another.
   server over SSH.
 - CLI (`scan`, `fix`, `rollback` with `--json`): for scripts, cron and CI.
 
+The dashboard is available in English and Korean. It follows the browser's
+language, and the picker in its status bar changes it for that browser. Each
+translated finding keeps the English text one click away, because that text
+carries the names, paths and counts from your host. The TUI and the CLI are
+in English.
+
 The TUI and the dashboard share six color themes: `hostveil` (the default),
 `onedark`, `gruvbox`, `nord`, `catppuccin` and `tokyonight`. Press `t` in the
 TUI to pick one and have it remembered, use the picker in the dashboard's

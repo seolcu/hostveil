@@ -86,6 +86,7 @@ Flow: `cmd/hostveil/app.go` builds the engine (every checker + `fix.Default()`) 
   - Pruning is by count and age (`maxCheckpoints`, `minRetention`), oldest first, by directory name.
 - **Config editors**: `internal/compose/edit.go` does text surgery and keeps the yaml.v3 re-encode fallback. `internal/json5` has no fallback (it would delete comments), only replaces existing keys, and is the only JSON5 parser.
 - **Dashboard security**: mutating routes are `POST /api/…`, every route needs `Server.token`, and Origin is compared by parsed URL.
+- **Dashboard language**: only the web dashboard is translated; the TUI and the CLI stay English. English stays in the code. `internal/ui/web/assets/i18n/<lang>.json` maps it: `messages` for `t("…")` in app.js, `server` for text the engine sends (a `{name}` in a key matches any run of text), `findings` by finding ID. A new UI string, finding or fix sentence needs a row in every catalog (`internal/docs/i18n_test.go`).
 - **Elevation**: `cmd/hostveil/elevate.go` re-execs under sudo. The loop guard keys on `SUDO_USER`. `HOSTVEIL_NO_SUDO=1` opts out.
 - State lives in `/var/lib/hostveil` as root, `~/.local/share/hostveil` otherwise.
 - `internal/ai` is optional and advisory. Everything must work with `ai.Noop`.
