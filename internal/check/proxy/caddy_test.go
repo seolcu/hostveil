@@ -223,7 +223,7 @@ func TestCaddyJSONConfigIsAGapNotClean(t *testing.T) {
 	_, err := c.Check(context.Background(), noDocker())
 	var pe *check.PartialError
 	if !errors.As(err, &pe) {
-		t.Fatalf("a JSON configuration is unread, not clean: got %v", err)
+		t.Fatalf("a JSON configuration is unread and must not pass as clean: got %v", err)
 	}
 }
 

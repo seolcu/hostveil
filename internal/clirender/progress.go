@@ -12,7 +12,7 @@ import (
 // ProgressBufferSize is how much room a caller should give the event
 // channel it passes to Engine.Scan.
 //
-// The engine drops an event rather than let a slow consumer stall a scan
+// The engine drops an event so a slow consumer cannot stall a scan
 // (see check.emit), so the buffer is what keeps that safety valve from
 // silently costing progress lines. Two events per domain is the whole traffic
 // of a scan; this is comfortably more.
@@ -28,7 +28,7 @@ const ProgressBufferSize = 64
 // The output is one line, rewritten in place with a carriage return, naming
 // the domains still running. It is cleared before returning so whatever the
 // caller prints next starts on a clean line: the progress display is
-// scaffolding for the wait, not part of the report.
+// scaffolding for the wait.
 //
 // Callers send this to stderr. Progress on stdout would corrupt `--json` and
 // anything piped to a file, which is the case the exit code exists to serve.

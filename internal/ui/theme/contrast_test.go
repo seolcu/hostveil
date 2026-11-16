@@ -34,18 +34,15 @@ func contrast(fg, bg string) float64 {
 //
 // Severity is the only thing color carries here, and it is drawn as small
 // text (a 10px uppercase label in the dashboard, a four-column abbreviation
-// in the TUI) so WCAG's 4.5:1 for normal text is the applicable bar, not the
-// 3:1 large-text one. The floors below were set by Instrument, the palette
+// in the TUI) so WCAG's 4.5:1 for normal text is the applicable bar. The floors below were set by Instrument, the palette
 // Hostveil shipped before any of this existed, which cleared every one of
 // them without being asked to, so they were never a bar a theme had to be
 // designed up to, only one it had to not fall below.
 //
 // Instrument is gone and the floors stay, which is the reason for having
-// written them down: they are what the default has to clear, not what the
-// default happens to score. One Dark does not clear them as published
+// written them down: they are what the default has to clear. One Dark does not clear them as published
 // (its comment grey, its red and its Low grey all land short) and the entry
-// in theme.go lifts exactly those three rather than lowering the bar to
-// meet them.
+// in theme.go lifts exactly those three and keeps the bar where it is.
 //
 // Low is the one exception, at 3.5:1. It is the quietest color
 // in the system: a Low finding that shouted would drown out a High one.
@@ -57,8 +54,7 @@ func TestEveryThemeMeetsTheContrastFloor(t *testing.T) {
 		"bone": 4.5, "slate": 4.5,
 		"crit": 4.5, "high": 4.5, "med": 4.5, "safe": 4.5,
 		// Manual and Unavail share Low's exception and for the same reason:
-		// both are the quietest colors for their meaning, not a
-		// severity, and a host can legitimately carry many Manual findings at
+		// both are the quietest colors for their meaning, and a host can legitimately carry many Manual findings at
 		// once without that reading as an emergency.
 		"low": 3.5, "manual": 3.5, "unavail": 3.5,
 		// The accent is set on panel headers and on the key letters in the
@@ -91,7 +87,7 @@ func TestEveryThemeMeetsTheContrastFloor(t *testing.T) {
 func TestChromeIsDistinguishable(t *testing.T) {
 	for _, th := range All() {
 		p := th.Palette
-		// Line2 is not only a hairline; it is the ground the TUI's cursor row
+		// Line2 is also the ground the TUI's cursor row
 		// and the dashboard's selected row are drawn on, with Bone on top. The
 		// row under the cursor is the one the user is about to act on, so it
 		// is the last place that can afford to be hard to read.

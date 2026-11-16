@@ -61,7 +61,7 @@ func TestAllIsACopy(t *testing.T) {
 
 // The default look must not shift under anyone. This is the table every
 // screenshot, every doc and the brand mark are calibrated to, written out
-// again so that changing it is a decision rather than an unread diff.
+// again so that changing it is a decision.
 func TestHostveilUnchanged(t *testing.T) {
 	want := Palette{
 		Ink: "#111113", Ink2: "#0b0b0c", Ink3: "#1c1c1f",
@@ -123,7 +123,7 @@ func TestOneDarkUnchanged(t *testing.T) {
 // The theme that used to be the default is gone, and nothing may silently
 // bring it back: its palette was tuned against a near-black page that no
 // remaining theme has, so a stray "instrument" entry would be an
-// unmaintained twelfth of the design system rather than a choice.
+// unmaintained twelfth of the design system.
 func TestInstrumentIsGone(t *testing.T) {
 	if _, ok := Lookup("instrument"); ok {
 		t.Error("the instrument theme is back in the registry")
@@ -135,8 +135,7 @@ func TestCSSCoversEveryTheme(t *testing.T) {
 	if !strings.Contains(css, ":root {") {
 		t.Error("CSS has no bare :root block, so the page has no palette before script runs")
 	}
-	// The bare :root block must carry the requested default, not the registry
-	// default, that block is what paints the first frame.
+	// The bare :root block must carry the requested default: that block is what paints the first frame.
 	root := css[strings.Index(css, ":root {"):strings.Index(css, `:root[data-theme=`)]
 	nord, _ := Lookup("nord")
 	if !strings.Contains(root, nord.Palette.Ink) {

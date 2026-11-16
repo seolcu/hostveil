@@ -43,7 +43,7 @@ func TestScanJailFindingSilentWhenFail2banNotInstalled(t *testing.T) {
 
 	fs, err := c.Check(context.Background(), env)
 	if err != nil {
-		t.Fatalf("fail2ban not being installed is a real answer, not a gap: %v", err)
+		t.Fatalf("fail2ban not being installed is a real answer: %v", err)
 	}
 	if f := has(fs, "proxy.no-scan-jail"); f != nil {
 		t.Errorf("updates.fail2ban already covers this host; proxy should stay silent, got %v", f)

@@ -24,7 +24,7 @@ type Project struct {
 	// in a message. It is NOT the file a fix should edit: on a layered
 	// project the merged state is what docker runs, and the setting that
 	// decides it may be declared in any of Files, or, for the sequence-typed
-	// keys compose appends rather than replaces, in several at once.
+	// keys compose appends, in several at once.
 	File string
 	// Files is every config file docker composes this project from, in the
 	// order it applies them. Later files win for scalars; ports and volumes
@@ -54,8 +54,7 @@ type Service struct {
 	EnvFile     StringOrList `yaml:"env_file"`
 	// Command is the service's argv override, and it is where a reverse
 	// proxy's most dangerous setting usually lives: nearly every Traefik
-	// tutorial passes `--api.insecure=true` here rather than in a config
-	// file. StringOrList because compose accepts both the shell form and the
+	// tutorial passes `--api.insecure=true` here. StringOrList because compose accepts both the shell form and the
 	// exec form.
 	Command     StringOrList      `yaml:"command"`
 	Healthcheck *yaml.Node        `yaml:"healthcheck"`

@@ -54,8 +54,8 @@ import (
 // heats. A host can legitimately carry a dozen Manual findings by design (no
 // safe automatable action exists) and that must not read as a dozen problems
 // screaming for attention the way a dozen Crit findings would. Both sit at
-// Low's contrast floor rather than Bone's for the same reason Low does: they
-// are meant to be findable, not to compete with severity for the eye. Manual
+// Low's contrast floor for the same reason Low does: they are meant to be
+// findable while severity keeps the eye. Manual
 // is a muted warm (clay/tan) tone so it never gets mistaken for Med's amber;
 // Unavail is a muted cool (dusty violet) tone so it never gets mistaken for
 // Accent's blue or for the neutral greys (Slate, Low). Before this pair
@@ -102,7 +102,7 @@ var themes = []Theme{
 			// been made safe. The neutrals are hueless so the
 			// only colour on a clean screen is Safe.
 			//
-			// Accent is a blue rather than a second green. Structure has to
+			// Accent is a blue. Structure has to
 			// be told apart from safety at a glance, and a panel header drawn
 			// in Safe would be saying the panel is fine.
 			Ink: "#111113", Ink2: "#0b0b0c", Ink3: "#1c1c1f",
@@ -120,13 +120,12 @@ var themes = []Theme{
 			// Atom's One Dark. Eight of the thirteen roles map onto its
 			// published values unchanged; the other four needed a decision.
 			// (Three of the four are the contrast lifts below; the fourth is
-			// Bone, which is a judgement rather than a floor. This said
+			// Bone, which is a judgement. This said
 			// "nine ... three" and then described four changes, which is the
 			// kind of arithmetic a comment gets to be wrong about forever.)
 			//
 			// Line is #181a1f, which is DARKER than the page. That is the look
-			// and not a mistake: One Dark seams its panels rather than boxing
-			// them in a bright hairline, and swapping it for a lighter rule is
+			// and intended: One Dark seams its panels with a dark line, and swapping it for a lighter rule is
 			// most of what makes a One Dark port read as generic.
 			//
 			// Slate, Crit and Low are lifted, because One Dark's published
@@ -139,12 +138,11 @@ var themes = []Theme{
 			// treatment for the same reason; see its entry below.
 			//
 			// Bone is One Dark's foreground (#abb2bf) lifted as well, though
-			// that one is a judgement rather than a floor: an editor sets a few
+			// that one is a judgement: an editor sets a few
 			// hundred glyphs on screen and this sets thousands, and at editor
-			// weight the denser view reads grey rather than written.
+			// weight the denser view reads grey.
 			//
-			// Crit carries a second lift, for the quantiser rather than for a
-			// human eye. At #e17079 it fell off the colour cube entirely and
+			// Crit carries a second lift, for the quantiser. At #e17079 it fell off the colour cube entirely and
 			// came out as xterm 246 (a flat grey) on every terminal without
 			// truecolor, which over SSH is nearly all of them. High severity,
 			// the level that means reachable now from off the host, was drawn
@@ -284,7 +282,7 @@ func (p Palette) block(selector string) string {
 	// a <select>'s dropdown, a scrollbar) follow color-scheme, not --ink. Left
 	// unset they come out of the light default, which is why an unticked
 	// batch-select box was a white square sitting in the middle of a dark
-	// findings list. Written per block rather than once on :root so it travels
+	// findings list. Written per block so it travels
 	// with the palette it describes; TestEveryPaletteIsDark holds the claim,
 	// and a light theme would have to answer it here.
 	b.WriteString("  color-scheme: dark;\n")
@@ -319,7 +317,7 @@ func CSS(defaultID string) string {
 
 // JS renders the theme list and the applier that runs before first paint.
 //
-// It is served as its own file rather than inlined into the page because the
+// It is served as its own file because the
 // dashboard's Content-Security-Policy is default-src 'self', which blocks
 // inline script. Loading it as a blocking script in <head> is what keeps the
 // saved theme from flashing the default palette on every page load.

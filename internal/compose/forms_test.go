@@ -48,7 +48,7 @@ func TestEnvironmentAcceptsBothComposeForms(t *testing.T) {
 		{
 			// `- NAME` with no value passes the variable through from the
 			// host's environment. The value is unknown here, and it
-			// must come back empty rather than as the name: a secret rule
+			// must come back empty: a secret rule
 			// that saw POSTGRES_PASSWORD=POSTGRES_PASSWORD would report a
 			// hardcoded secret on a compose file that hardcodes nothing.
 			name: "list form, pass-through with no value",
@@ -114,7 +114,7 @@ func TestEnvFileAcceptsAScalarOrAList(t *testing.T) {
 	}
 }
 
-// The forms have to reach the rules, not just the struct. This is the same
+// The forms have to reach the rules as well as the struct. This is the same
 // compose file written both ways, and the audit must not read them
 // differently: the list form was the one no test had ever run.
 func TestTheSameServiceWrittenBothWaysAuditsTheSame(t *testing.T) {

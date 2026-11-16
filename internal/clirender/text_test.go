@@ -102,8 +102,8 @@ func TestTextRendersSkippedAndErroredDomains(t *testing.T) {
 // about what the scan could not see, so all three markers have to come from
 // the set the operator picked. They did not: --glyphs nerd drew the skipped
 // line's minus-circle from the patched font and left the two lines beside it
-// on the ASCII "~" and "!", which reads as two kinds of remark rather than
-// three degrees of one.
+// on the ASCII "~" and "!", which reads as two kinds of remark when there
+// are three degrees of one.
 func TestCoverageMarkersAllComeFromTheChosenSet(t *testing.T) {
 	report := model.Report{
 		Domains: []model.DomainResult{
@@ -222,7 +222,7 @@ func TestDeltaSummaryNamesWhatMoved(t *testing.T) {
 	if !strings.Contains(out, "severity medium → high") {
 		t.Errorf("summary does not report the severity move:\n%s", out)
 	}
-	// An oversized list reports its membership change, not its payload.
+	// An oversized list reports its membership change.
 	if !strings.Contains(out, "cves +1 (CVE-2024-9999)") {
 		t.Errorf("summary does not name the added item:\n%s", out)
 	}

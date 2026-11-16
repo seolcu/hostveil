@@ -184,7 +184,7 @@ func (d *Doc) renderMinimal() ([]byte, bool) {
 // valueEnd returns the index just past the scalar value that starts at
 // 0-based `start`, i.e. before any trailing spaces or "# comment". Quotes are
 // respected so a value never ends inside them. Returns ok=false on an
-// unterminated quote, so the caller falls back rather than risk a bad edit.
+// unterminated quote, so the caller falls back.
 func valueEnd(line string, start int) (int, bool) {
 	inSingle, inDouble := false, false
 	for i := start; i < len(line); i++ {
@@ -329,7 +329,7 @@ func (d *Doc) BindPortLoopback(service, hostPort string) error {
 		case yaml.MappingNode:
 			if hp := mapGet(entry, "published"); hp != nil && strings.Trim(hp.Value, `"`) == hostPort {
 				// Long-form entries add a host_ip key; leave that to the full
-				// re-encode rather than guess the insertion point.
+				// re-encode.
 				d.minimalOff = true
 				mapSet(entry, "host_ip", scalar("127.0.0.1"))
 				return nil
@@ -342,7 +342,7 @@ func (d *Doc) BindPortLoopback(service, hostPort string) error {
 // RemoveKey deletes service.<key> and everything under it. It is the shape
 // of every removal-type fix (privileged, network_mode, pid, ipc,
 // userns_mode) where the remediation is taking out a line the author put
-// there. A key that is not present is an error rather than a no-op, because
+// there. A key that is not present is an error, because
 // the fix was built from a finding that said it was.
 func (d *Doc) RemoveKey(service, key string) error {
 	svc := d.service(service)

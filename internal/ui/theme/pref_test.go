@@ -36,7 +36,7 @@ func TestSaveRefusesUnknown(t *testing.T) {
 }
 
 // A missing, unreadable, or stale preference must read as "no preference"
-// rather than as an error a UI has to handle before it can draw anything.
+// so a UI never has to handle an error before it can draw anything.
 func TestLoadTolerant(t *testing.T) {
 	dir := t.TempDir()
 	if got := Load(dir); got != "" {
