@@ -4,8 +4,8 @@
 // password at all, and (through sudo itself)
 // an account that can run anything as root without being asked for one.
 //
-// The first two come out of /etc/passwd and /etc/shadow. The third does not,
-// on purpose: see sudoListArgv.
+// The first two come out of /etc/passwd and /etc/shadow. The third does not:
+// see sudoListArgv.
 package accounts
 
 import (

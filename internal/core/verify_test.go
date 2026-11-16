@@ -80,7 +80,7 @@ func verifySetup(t *testing.T, r *verifyRunner, marker string) (*Engine, string,
 	return e, path, f
 }
 
-// The whole point: a fix that would produce a file the service refuses must
+// A fix that would produce a file the service refuses must
 // not touch the host. sshd keeps serving from the config it already loaded,
 // so a broken sshd_config looks like nothing at all until the next restart,
 // and repairing it then needs the SSH access it just removed.

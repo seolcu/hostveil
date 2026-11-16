@@ -186,7 +186,7 @@ func (c *countingChecker) Check(ctx context.Context, env platform.Env) ([]model.
 	return c.stubChecker.Check(ctx, env)
 }
 
-// A batch re-checks nothing, on purpose. applyFix runs in a loop there, and
+// A batch re-checks nothing. applyFix runs in a loop there, and
 // verifying each would re-run a checker once per fix: twenty compose
 // findings would mean twenty enumerations of every container on the host.
 // A batch ends with the operator rescanning anyway.

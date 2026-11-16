@@ -52,8 +52,7 @@ func registerAgent(r *Registry) {
 }
 
 // riskyAgentKey wraps buildAgentConfigKey for the agent findings that were
-// declined for what the edit can cut off rather than for not knowing what to
-// write. The edit is the same json5 one; what this adds is the Warning, the
+// declined for what the edit can cut off. Hostveil knows what to write. The edit is the same json5 one; what this adds is the Warning, the
 // note that the gateway reads its config at start, and IndividualOnly.
 func riskyAgentKey(warning, takesEffectOn string) Builder {
 	return func(f model.Finding) (Fix, error) {

@@ -343,7 +343,7 @@ func (f *facts) socketFindings() []model.Finding {
 		"Docker socket is writable by every account on this host",
 		model.SeverityHigh, model.SourceDockerd, model.RemediationReview,
 		model.WithDescription("Every local account can connect to the Docker socket, and the Docker API grants whoever reaches it the ability to start a container with the host filesystem mounted inside. Any unprivileged user, and any process running as one (a web application, a compromised service account) can therefore become root on this host without a password and without an exploit."),
-		model.WithHowToFix("Restore the socket to group-only access. The mode is set by systemd, so a `chmod` is undone at the next restart: put `[Socket]` / `SocketMode=0660` in a drop-in under /etc/systemd/system/docker.socket.d/, then `systemctl daemon-reload && systemctl restart docker.socket`. Grant access by adding accounts to the socket's group rather than by widening the mode."),
+		model.WithHowToFix("Restore the socket to group-only access. The mode is set by systemd, so a `chmod` is undone at the next restart: put `[Socket]` / `SocketMode=0660` in a drop-in under /etc/systemd/system/docker.socket.d/, then `systemctl daemon-reload && systemctl restart docker.socket`. Grant access by adding accounts to the socket's group, and keep the mode at 0660."),
 		model.WithEvidence("path", f.sock.path),
 		model.WithEvidence("mode", fmt.Sprintf("%04o", f.sock.perm)),
 	)}

@@ -98,8 +98,8 @@ func newStyles(t theme.Theme) *styles {
 // host can carry many Manual findings by design, which must not read as an
 // emergency, so both are muted (see the Palette doc
 // comment) and merely distinct from each other and from the neutral grey.
-// Unset stays on the plain dim grey: it is not a kind Hostveil ever assigns
-// on purpose, so it gets no color of its own to be muted about.
+// Unset stays on the plain dim grey: it is not a kind Hostveil ever assigns,
+// so it gets no color of its own to be muted about.
 func (s *styles) kindStyle(f model.Finding) lipgloss.Style {
 	// Pending is drawn in the accent, and the
 	// distinction matters: green on this column has meant "Hostveil can
