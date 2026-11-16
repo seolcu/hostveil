@@ -16,7 +16,7 @@ var withDomains []model.Source
 
 // addWithFlag registers --with on a command that scans.
 //
-// A flag on each command rather than an environment variable, because sudo's
+// A flag on each command, because sudo's
 // env_reset would drop the variable on the re-exec (see elevate.go), and
 // because "no config file" rules out remembering the choice anywhere else.
 func addWithFlag(fs *flag.FlagSet) {

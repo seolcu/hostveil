@@ -43,7 +43,7 @@ func maybeElevate(cmd string) {
 		// password; this is the case where it cannot ask, and it said nothing
 		// at all, so the operator learned they needed root domain by domain,
 		// half way through a scan, from findings that read like a broken tool
-		// rather than a missing privilege. Same channel and same reason:
+		// when the cause is a missing privilege. Same channel and same reason:
 		// stderr, so --json on stdout stays clean.
 		fmt.Fprintln(os.Stderr, "hostveil: no sudo on PATH, so this runs as "+
 			"the current user; the checks that need root will report what they could not read.")
@@ -90,8 +90,7 @@ func maybeElevate(cmd string) {
 // CI never saw it because the end-to-end job runs as root with
 // HOSTVEIL_NO_SUDO=1, which is both branches that skip the re-exec.
 //
-// The variables go across as `sudo NAME=value …` rather than through
-// --preserve-env, because the assignment form is what sudo has always had and
+// The variables go across as `sudo NAME=value …`, because the assignment form is what sudo has always had and
 // it says exactly what is being carried. Only variables that are set
 // are passed, so a host where none is set builds the argv it built before.
 //
@@ -107,7 +106,7 @@ var carriedThroughSudo = []string{
 	"HOSTVEIL_OLLAMA_HOST",
 	"HOSTVEIL_OLLAMA_MODEL",
 	// explain elevates, same as above, and an API key that did not survive
-	// the re-exec would fail closed rather than open (Available() would
+	// the re-exec would fail closed (Available() would
 	// just report the provider unreachable) but silently, which is exactly
 	// what this list exists to prevent.
 	"ANTHROPIC_API_KEY",
@@ -115,7 +114,7 @@ var carriedThroughSudo = []string{
 	"HOSTVEIL_OPENAI_BASE_URL",
 	"HOSTVEIL_OPENAI_API_KEY",
 	"HOSTVEIL_OPENAI_MODEL",
-	// Carried, not excused. scan elevates, so the process that would make the
+	// Carried. scan elevates, so the process that would make the
 	// request is the child: a variable that did not survive the re-exec would
 	// look like it had turned the check off while the elevated run went on
 	// making it, which is the exact failure this list exists to prevent.
@@ -129,10 +128,10 @@ var carriedThroughSudo = []string{
 	// Worth knowing: every other name here is opt-in, so the assignment form
 	// below is exercised only when somebody set one. sshd sets this on every
 	// remote session, so from here on nearly every elevated remote run passes
-	// an assignment to sudo. That is the same mechanism, not a new one, and
+	// an assignment to sudo. That is the same mechanism, and
 	// sudo permits it because SSH_CONNECTION is not one of the names its
 	// env_delete blocks, but the blast radius of the mechanism failing is
-	// now every remote run rather than the few that set a theme.
+	// now every remote run.
 	"SSH_CONNECTION",
 	"NO_COLOR",
 }
@@ -154,7 +153,7 @@ func elevatedArgv(exe string, _ []string, getenv func(string) string) []string {
 }
 
 // alreadyElevated reports whether sudo has already run, so re-running it would
-// loop rather than gain anything.
+// loop and gain nothing.
 //
 // This used to pass HOSTVEIL_ELEVATED=1 through to the child and look for it
 // there. sudo strips it: env_reset is the default on every mainstream
@@ -166,7 +165,7 @@ func elevatedArgv(exe string, _ []string, getenv func(string) string) []string {
 // again.
 //
 // SUDO_USER is the signal that works, because sudo sets it in the target
-// environment itself rather than passing it through. It is present even when
+// environment itself. It is present even when
 // the target is *not* root, which is exactly the case worth catching: on a
 // host whose sudoers sets a non-root runas_default, the child comes back
 // unprivileged with SUDO_USER set and stops here.

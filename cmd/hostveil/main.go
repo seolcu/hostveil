@@ -35,8 +35,7 @@ func main() {
 //
 // Every command threads the context down to Engine.Scan, which passes it to
 // exec.CommandContext, so an interrupt stops the docker and trivy
-// processes a scan has running rather than leaving them to finish against a
-// unattended terminal. Nothing was cancellable before: the TUI puts
+// processes a scan has running. Nothing was cancellable before: the TUI puts
 // the terminal in raw mode and reads Ctrl-C as a key, so a scan there could
 // not be interrupted at all.
 //
@@ -47,7 +46,7 @@ func main() {
 // mid-apply, an HTTP server with no shutdown wired up) becomes
 // uninterruptible, and the operator's only remaining move is SIGKILL from
 // another shell. The second signal is the operator saying they meant it, so
-// it exits rather than being swallowed. 130 is the conventional
+// it exits. 130 is the conventional
 // 128+SIGINT status for a program killed by an interrupt.
 func notifyContext(parent context.Context) (context.Context, func()) {
 	ctx, cancel := context.WithCancel(parent)
@@ -78,8 +77,7 @@ func run(ctx context.Context, args []string) (code int) {
 	// report Hostveil wants back" internal/core/contain.go already talks
 	// about, with no way for anyone to give it one.
 	//
-	// debug.Stack() runs here, directly in the recover, not inside
-	// reportCrash: a stack captured one call further down would start from
+	// debug.Stack() runs here, directly in the recover: a stack captured one call further down would start from
 	// reportCrash's own frame instead of the one that panicked.
 	defer func() {
 		if r := recover(); r != nil {

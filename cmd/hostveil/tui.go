@@ -54,7 +54,7 @@ func cmdTUI(ctx context.Context, args []string) int {
 		return 1
 	}
 	// After the alternate screen is gone, so it lands in the scrollback the
-	// operator keeps rather than in a frame that is about to be erased. A
+	// operator keeps. A
 	// status bar inside the TUI would compete with the scan for the one line
 	// this program has to say something urgent on.
 	if note := updateNotice(); note != "" {

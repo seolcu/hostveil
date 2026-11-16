@@ -34,8 +34,7 @@ func TestFixActionsCoversEveryRegisteredID(t *testing.T) {
 
 // TestFixActionsNeverPublishesTestScaffolding is the regression guard the
 // doc comment on fixtest.Finding promises: a fixture path that looks like a
-// test wrote it (under /tmp) reads as broken on a real docs page, not as
-// illustrative. This is what would have caught it before a human had to.
+// test wrote it (under /tmp) reads as broken on a real docs page. This is what would have caught it before a human had to.
 func TestFixActionsNeverPublishesTestScaffolding(t *testing.T) {
 	out, err := renderFixActions("en")
 	if err != nil {

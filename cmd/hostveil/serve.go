@@ -30,7 +30,7 @@ func cmdServe(ctx context.Context, args []string) int {
 		return 2
 	}
 
-	// What gates access is the Host header, not the bind address: the
+	// What gates access is the Host header: the
 	// dashboard answers only requests addressed to a loopback name, which is
 	// the DNS-rebinding defense and is not negotiable from a flag.
 	//
@@ -57,7 +57,7 @@ func cmdServe(ctx context.Context, args []string) int {
 	// dashboard off the network but not away from other accounts on this
 	// machine, and every route here applies fixes or reads a scan of
 	// /etc/shadow, as root.
-	// Say "scanning first" rather than "listening": the initial scan runs
+	// Say "scanning first": the initial scan runs
 	// before the listener opens, and on a host with many images that is
 	// minutes. Announcing the URL as live meant the operator opened it,
 	// got connection-refused, and had nothing to tell them to wait.

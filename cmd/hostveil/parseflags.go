@@ -34,7 +34,7 @@ func parseFlags(fs *flag.FlagSet, args []string) int {
 // leading flag to scan, which is root-benefiting, so a typo cost a password
 // every time.
 //
-// Doing it here rather than at each call site keeps the two in one place, and
+// Doing it here keeps the two in one place, and
 // fs.Name() is already the subcommand name needsRoot is keyed on. The two
 // print-only commands never reach this, which is what keeps `version` and
 // `help` from prompting.

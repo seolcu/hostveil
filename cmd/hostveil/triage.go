@@ -62,7 +62,7 @@ func cmdTriage(ctx context.Context, args []string) int {
 	}
 
 	// Collection runs commands that read the whole system, so they get
-	// minutes rather than the scan's seconds, and room for large outputs.
+	// minutes, and room for large outputs.
 	runner := platform.DefaultRunner{Timeout: 10 * time.Minute, MaxOutput: 512 << 20}
 	env := platform.Detect(ctx, runner)
 	exe, _ := os.Executable()

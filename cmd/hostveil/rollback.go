@@ -69,7 +69,7 @@ func cmdRollback(ctx context.Context, args []string) int {
 // user has every reason to expect, and which the CLI reference says does
 // not exist) printed the human table and exited 0. Every other subcommand
 // exits 2 on an unknown flag. Parsing an empty flag set is what makes the
-// documented "no flags" true rather than merely written down.
+// documented "no flags" true.
 func cmdHistory(_ context.Context, args []string) int {
 	fs := flag.NewFlagSet("history", flag.ContinueOnError)
 	scans := fs.Bool("scans", false, "show the score of every past scan instead of the applied-fix log")
@@ -80,7 +80,7 @@ func cmdHistory(_ context.Context, args []string) int {
 		return printScanHistory()
 	}
 	cps, err := newEngine().ListCheckpoints()
-	// An unreadable checkpoint is a warning over a usable list, not a failure:
+	// An unreadable checkpoint is a warning over a usable list:
 	// the entries that survived still name fixes the operator can roll back,
 	// and staying silent about the rest would hide that part of their recovery
 	// history is gone.

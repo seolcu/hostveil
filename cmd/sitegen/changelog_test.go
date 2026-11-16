@@ -158,7 +158,7 @@ func TestUnsupportedMarkdownFailsTheBuild(t *testing.T) {
 // content fragment carries the page's introduction and a marker, and the
 // releases are injected there. A fragment that lost the marker would render a
 // changelog page with no changelog on it, and every other test here would still
-// pass because they exercise the converter rather than the page.
+// pass because they exercise only the converter.
 func TestTheChangelogPageIsGeneratedNotWritten(t *testing.T) {
 	inRepoRoot(t)
 

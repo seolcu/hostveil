@@ -90,7 +90,7 @@ func cmdUpdate(ctx context.Context, args []string) int {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1
 	}
-	// Confirmed, not assumed. `apt-get install` on a package whose version
+	// Confirmed. `apt-get install` on a package whose version
 	// dpkg already records exits 0 having done nothing, and a `go install`
 	// that resolves to a cached build does the same. Printing a tick over
 	// that is the one thing this project refuses to do anywhere else.
@@ -181,7 +181,7 @@ func cmdUninstall(ctx context.Context, args []string) int {
 	}
 
 	fmt.Printf("This will remove Hostveil %s, installed by %s.\n", version, origin)
-	// Said before the prompt, not after. The checkpoints are the backups of
+	// Said before the prompt. The checkpoints are the backups of
 	// every file Hostveil edited here, and whether they matter is exactly what
 	// the operator is being asked to decide.
 	if note := selfupdate.StateNote(history.DefaultDir()); note != "" {

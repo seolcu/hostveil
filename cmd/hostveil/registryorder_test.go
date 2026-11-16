@@ -21,8 +21,8 @@ import (
 // It also catches the plainer mistake: a checker package written, tested,
 // and never registered. buildEngine is the only place that turns a checker
 // into something that runs, and a domain missing from here reports nothing
-// while its axis reports N/A, which reads as "not installed", not as "we
-// forgot to call it".
+// while its axis reports N/A, which reads as "not installed" and hides
+// the missing registration.
 func TestCheckerRegistrationMatchesSourceOrder(t *testing.T) {
 	var registered []model.Source
 	for _, c := range buildRegistry().Checkers() {

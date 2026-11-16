@@ -69,7 +69,7 @@ func TestExitCodeReflectsDomainState(t *testing.T) {
 	}{
 		{"a failed domain is not a clean host", nil, []model.DomainResult{domain(model.ScanError)}, 3},
 		{"a skipped domain is ordinary", nil, []model.DomainResult{domain(model.ScanSkipped)}, 0},
-		{"a degraded domain is reported, not gated", nil, []model.DomainResult{domain(model.ScanDegraded)}, 0},
+		{"a degraded domain is reported and does not gate", nil, []model.DomainResult{domain(model.ScanDegraded)}, 0},
 		{"everything ran and found nothing", nil, []model.DomainResult{domain(model.ScanDone)}, 0},
 		{
 			// Findings win: the gate exists to answer "is this host exposed",
@@ -95,7 +95,7 @@ func TestExitCodeReflectsDomainState(t *testing.T) {
 	}
 }
 
-// -h is a request, not a mistake. Go's flag package reports it as
+// -h is a request. Go's flag package reports it as
 // flag.ErrHelp after printing usage, and treating that as a parse failure
 // made `hostveil scan --help` exit 2. The top-level form was fixed in #520
 // and the same bug survived one level down in every subcommand.
@@ -166,8 +166,8 @@ func TestResolveCommand(t *testing.T) {
 		{"nothing when piped prints a scan", nil, false, "scan", nil},
 
 		// The regressions. Both must reach scan with the flag intact, on a
-		// terminal as well as piped, so the flag is either honored or refused
-		// rather than silently dropped.
+		// terminal as well as piped, so the flag is either honored or refused,
+		// and never silently dropped.
 		{"--json on a terminal reaches scan", []string{"--json"}, true, "scan", []string{"--json"}},
 		{"--json piped reaches scan", []string{"--json"}, false, "scan", []string{"--json"}},
 		{"unknown flag reaches scan to be rejected", []string{"--bogus"}, true, "scan", []string{"--bogus"}},
@@ -202,10 +202,10 @@ func TestFlagHandlingDoesNotDependOnTTY(t *testing.T) {
 	}
 }
 
-// A mistyped --theme is a usage error, not a silent fall back to the default:
+// A mistyped --theme is a usage error:
 // the user asked for something specific and did not get it. It is caught
 // before the TUI's terminal check, so it reports the same way when piped.
-// The subcommands are called directly rather than through run(): run() would
+// The subcommands are called directly: run() would
 // re-exec under sudo, and a *valid* theme would leave cmdServe listening
 // forever. Both must refuse before either of those can happen.
 func TestUnknownThemeIsAUsageError(t *testing.T) {
@@ -249,8 +249,8 @@ func TestResolveThemeReadsTheEnvironment(t *testing.T) {
 // now, and nothing that did not has started to. A pipeline that has been
 // green stays green for the same reasons.
 //
-// It is written against the old scale's ordinals rather than its constants,
-// which no longer exist. That is deliberate: the numbers are what a snapshot
+// It is written against the old scale's ordinals, because its constants
+// no longer exist and the numbers are what a snapshot
 // on disk holds, and reading one back is the only way left to name a level
 // this build has never heard of.
 func TestTheGateStillMeansWhatItMeant(t *testing.T) {

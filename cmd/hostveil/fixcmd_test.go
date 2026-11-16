@@ -242,7 +242,7 @@ func TestHistoryThenRollbackRestoresTheFile(t *testing.T) {
 
 // An operator's later edit is not something to discard silently. Rollback
 // keeps no backup of its own, so it declines, and the CLI has to report
-// that as a decision, not as a crash.
+// that as a decision.
 func TestRollbackDeclinesOverAnExternalEdit(t *testing.T) {
 	path := fixtureHost(t)
 	if code, _ := runCmd(t, func() int {

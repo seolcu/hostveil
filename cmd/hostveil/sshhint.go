@@ -21,8 +21,8 @@ import (
 // port is the same access with the authentication already done.
 //
 // The host in the command is the address the client reached, read out
-// of SSH_CONNECTION's third field, rather than the machine's hostname or an
-// interface address. Those are guesses about what the client can route to;
+// of SSH_CONNECTION's third field. The machine's hostname and interface
+// addresses are guesses about what the client can route to;
 // this one is the address a packet from that client demonstrably arrived on.
 //
 // Returns "" when this is not an SSH session, which is the ordinary console

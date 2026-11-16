@@ -88,7 +88,7 @@ func TestDocumentedFixKindsMatchTheRegistry(t *testing.T) {
 				continue
 			}
 
-			// EffectiveKind, not Kind: an Auto-shaped fix that runs a command
+			// EffectiveKind: an Auto-shaped fix that runs a command
 			// reaches the user as Review, and the column has to say so. This
 			// is the half of the resolution the docs used to bake in from the
 			// wrong side: updates.disabled is registered Auto and documented
@@ -180,7 +180,7 @@ func TestDocumentedAxisWeightsMatchTheCode(t *testing.T) {
 // on listing the previous names (beside a sample payload that also carried
 // one) while the prose two paragraphs up had already been updated, so the
 // page contradicted itself and still built green. Nothing read these values
-// because they are prose in a <code> tag rather than a table row.
+// because they are prose in a <code> tag.
 func TestTheDocumentedJSONValuesAreTheOnesTheModelEmits(t *testing.T) {
 	for _, lang := range docLangs {
 		page := docsPage(t, lang, "cli")
@@ -191,7 +191,7 @@ func TestTheDocumentedJSONValuesAreTheOnesTheModelEmits(t *testing.T) {
 			}
 		}
 		// And nothing a previous release emitted, which is what makes this a
-		// tripwire rather than a spell-checker: a name that only survives in
+		// tripwire: a name that only survives in
 		// the legacy read path must not be documented as output.
 		for _, gone := range []string{"exposed", "weak", "hardening", "critical"} {
 			if strings.Contains(page, "<code>"+gone+"</code>") {
@@ -203,7 +203,7 @@ func TestTheDocumentedJSONValuesAreTheOnesTheModelEmits(t *testing.T) {
 }
 
 // jsonEnumNames is every name the enumerated fields of `scan --json` can
-// hold, taken from the model rather than restated.
+// hold, taken from the model.
 func jsonEnumNames() []string {
 	var out []string
 	for _, s := range model.AllSeverities() {
@@ -227,7 +227,7 @@ func jsonEnumNames() []string {
 // languages restated a model enum with nothing checking the restatement, and
 // when the four-level scale became three, a missed cell would have gone on
 // naming a level that no longer exists, styled by a CSS class that no longer
-// exists, which renders as unstyled text rather than as an error.
+// exists, which renders as unstyled text and raises no error.
 func TestEverySeverityChipNamesARealLevel(t *testing.T) {
 	known := map[string]bool{}
 	for _, s := range model.AllSeverities() {
@@ -288,7 +288,7 @@ func TestProseCitesOnlyRealFindings(t *testing.T) {
 	for _, row := range findingRow.FindAllStringSubmatch(checksPage(t, "en"), -1) {
 		documented[row[1]] = true
 	}
-	// sysctl.d is a directory path, not a finding, and it is spelled the same
+	// sysctl.d is a directory path, and it is spelled the same
 	// way. Anything else the pattern picks up has to be real.
 	notAFinding := map[string]bool{"sysctl.d": true}
 
@@ -319,7 +319,7 @@ var capTableRow = regexp.MustCompile(`<tr><td>([^<]+)</td><td>(\d+)</td><td>`)
 // drift from sourceDefs here with a green build, on the page that presents
 // itself as the whole model, which is the worst place for them to be wrong.
 //
-// It reads the table by its id rather than the whole page, because the same
+// It reads the table by its id, because the same
 // page carries two funding tables whose middle column is a point count.
 func TestScoringPageCapsMatchTheCode(t *testing.T) {
 	var want []int

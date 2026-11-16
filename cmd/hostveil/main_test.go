@@ -39,7 +39,7 @@ func captureStdout(t *testing.T, fn func()) string {
 }
 
 // TestTopLevelHelpFlags guards issue #520: `--help`/`-h` must print the
-// top-level usage, not the scan subcommand's flag usage.
+// top-level usage.
 func TestTopLevelHelpFlags(t *testing.T) {
 	for _, arg := range []string{"help", "--help", "-h"} {
 		var code int
@@ -57,7 +57,7 @@ func TestTopLevelHelpFlags(t *testing.T) {
 }
 
 // TestTopLevelVersionFlags guards issue #520: `--version`/`-V` must print the
-// version, not error out inside the scan flag set.
+// version and exit 0.
 func TestTopLevelVersionFlags(t *testing.T) {
 	for _, arg := range []string{"version", "--version", "-V"} {
 		var code int

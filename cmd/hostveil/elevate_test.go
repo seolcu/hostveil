@@ -32,7 +32,7 @@ func TestNeedsRoot(t *testing.T) {
 // 13: the child sees it empty.
 //
 // So the scenario its own comment named, sudo running without yielding root,
-// was an unbounded chain of sudo invocations rather than one attempt and a
+// was an unbounded chain of sudo invocations. It should be one attempt and a
 // graceful fall back to an unprivileged scan.
 func TestAlreadyElevatedFiresOnWhatSudoActuallySets(t *testing.T) {
 	// SUDO_USER is set by sudo in the target environment, and (verified on a
