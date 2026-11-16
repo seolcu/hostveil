@@ -245,7 +245,7 @@ another five-minute timeout:
 
 - **It is not `virbr0`.** That is the `default` libvirt network, which this
   demo does not use: the VM is on `vagrant-libvirt`, usually `virbr1`. Hence
-  reading the name out of the network rather than typing it.
+  reading the name out of the network.
 - **`--permanent` is not optional in practice.** Runtime rules are gone after
   a reboot, and Docker sets the policy again the moment it starts, so the
   problem comes back looking brand new.
@@ -298,9 +298,9 @@ The stacks live in `stacks/`, the weak SSH snippet and the agent configs in
 > configuration and file layout instead, which is what the agent domain
 > inspects anyway. The one part this cannot show is the listener
 > cross-check. The finding is **High** either way (the firewall and the
-> listener change how confident it is, not how urgent) but with nothing
+> listener change how confident it is and leave the urgency alone) but with nothing
 > bound to the gateway port its evidence says the binding came from the
-> config rather than from an observed socket. Start something on the port to
+> config. No socket was observed. Start something on the port to
 > see the other case:
 >
 > ```bash
