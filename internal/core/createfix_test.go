@@ -52,7 +52,7 @@ func createEngine(t *testing.T, path string) *Engine {
 }
 
 // The whole point: a fix creates a file that was not there, and rolling it
-// back leaves the host as it found it; no file, not an empty one. An empty
+// back leaves the host as it found it, with no file at all. An empty
 // drop-in would look configured while configuring nothing.
 func TestCreateThenRollbackRemovesTheFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "60-hostveil-kptr.conf")
@@ -184,9 +184,8 @@ func TestForcingADeclinedRollbackRestoresAndRescores(t *testing.T) {
 	}
 }
 
-// Deleting a file that is already gone is the desired end state, not a
-// failure. An operator who removed the drop-in by hand and then rolled back
-// should get success, not an error describing what they already did.
+// Deleting a file that is already gone reaches the desired end state. An operator who removed the drop-in by hand and then rolled back
+// should get success.
 func TestRollbackOfAnAlreadyDeletedFileSucceeds(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "60-hostveil-kptr.conf")
 	e := createEngine(t, path)

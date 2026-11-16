@@ -23,7 +23,7 @@ func systemdFinding(dropin string) model.Finding {
 // The whole claim this fix rests on is that creating a file is reversible by
 // deleting it, which is what the checker's own instructions already tell the
 // operator ("Remove the file to undo it"). That is a claim about the recovery
-// layer, so it is worth watching happen rather than reasoning about.
+// layer, so it is worth watching happen.
 func TestTheSystemdDropInIsWrittenAndCanBeUndone(t *testing.T) {
 	dir := t.TempDir()
 	dropin := filepath.Join(dir, "gitea.service.d", "50-hostveil.conf")

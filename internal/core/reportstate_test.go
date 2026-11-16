@@ -97,7 +97,7 @@ func TestUnmarkFixedFallsBackToTheBareID(t *testing.T) {
 }
 
 // Every exported operation under concurrent use, so the lock discipline is
-// exercised rather than assumed. Run under -race this is the guard for the
+// exercised. Run under -race this is the guard for the
 // failure the type was extracted to make structural.
 func TestReportStateIsSafeForConcurrentUse(t *testing.T) {
 	s := stateWith("ssh.rootlogin", "ssh.passwordauth", "ssh.x11")

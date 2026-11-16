@@ -258,8 +258,7 @@ func TestAnInForceFixMovesTheScoreAndAPendingOneDoesNot(t *testing.T) {
 				t.Fatalf("Pending = %v, want %v (verified %s)", out.Pending, tc.wantPending, out.Verified)
 			}
 			// Fixed either way. Applied and in force are two facts, and this
-			// change separates them rather than collapsing the first into the
-			// second: see model.FixVerification.
+			// change keeps them separate: see model.FixVerification.
 			if !engine.state.current.Findings[0].Fixed {
 				t.Error("the fix was applied and the finding is not marked fixed")
 			}
@@ -286,7 +285,7 @@ func TestAnInForceFixMovesTheScoreAndAPendingOneDoesNot(t *testing.T) {
 //
 // ApplyBatch does not re-check (twenty compose findings would
 // mean twenty enumerations of every container on the host) so if pending were
-// decided by verification rather than by the fix's own declaration, the batch
+// decided by verification, the batch
 // would be the optimistic path and `fix --all` would score a host higher than
 // applying the same fixes one at a time. Action.TakesEffectOn is on the fix
 // so both paths reach the same answer with no re-check.
@@ -563,7 +562,7 @@ func TestModeCheckpointStoresNoContents(t *testing.T) {
 			continue
 		}
 		found = true
-		// Still reversible; it restores modes, not bytes.
+		// Still reversible; it restores modes.
 		if !cp.Reversible {
 			t.Error("a mode checkpoint must be reversible")
 		}
@@ -770,7 +769,7 @@ func TestCurrentIsASnapshot(t *testing.T) {
 // would turn "tighten your agent config" into root breaking the host's
 // account database.
 //
-// The fix refuses rather than skipping, because a mode fix that silently
+// The fix refuses the whole plan, because a mode fix that silently
 // tightened some of its paths would report success over a file it left
 // exposed.
 func TestModeFixRefusesToFollowASymlink(t *testing.T) {
@@ -792,7 +791,7 @@ func TestModeFixRefusesToFollowASymlink(t *testing.T) {
 
 	engine := fixEngine(t)
 	if _, err := engine.PreviewFix(f); err == nil {
-		t.Error("previewing a mode fix on a symlink must fail, not report a plan")
+		t.Error("previewing a mode fix on a symlink must fail")
 	}
 	if _, err := engine.ApplyFix(context.Background(), f, 0); err == nil {
 		t.Fatal("applying a mode fix to a symlink must fail")

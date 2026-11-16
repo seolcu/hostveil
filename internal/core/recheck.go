@@ -11,7 +11,7 @@ import (
 // verifyFix re-runs the finding's own domain and reports whether it is
 // still there.
 //
-// It runs the one checker directly rather than going through ScanWith, for
+// It runs the one checker directly, for
 // two reasons that are each sufficient. ScanWith takes applyMu, which
 // ApplyFix already holds, so calling it here would deadlock. And a scoped
 // scan replaces the current report wholesale with just that domain's
@@ -20,7 +20,7 @@ import (
 //
 // The runner is the uncached one. e.runner is what fixes use,
 // because a cached answer would report the state of the host before the fix
-// rather than after it, which is the entire question being asked.
+// when the question is about the host after it.
 func (e *Engine) verifyFix(ctx context.Context, f model.Finding) (model.FixVerification, string) {
 	if e.registry == nil {
 		return model.VerifyNotRun, ""
@@ -47,7 +47,7 @@ func (e *Engine) verifyFix(ctx context.Context, f model.Finding) (model.FixVerif
 	// the finding is gone, and "could not look" must never read as either
 	// answer.
 	//
-	// Complete, not Ran: a degraded re-check *did* run, so Ran accepts it,
+	// Complete: a degraded re-check *did* run, so Ran accepts it,
 	// but it covered only part of its ground and the finding may live in
 	// the part it missed.
 	if !r.State.Complete() {

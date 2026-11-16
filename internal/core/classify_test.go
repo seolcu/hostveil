@@ -106,7 +106,7 @@ func TestAnUnsetCheckerDefersToTheRegistry(t *testing.T) {
 	e.classify(findings)
 
 	if got := findings[0].Remediation; got != model.RemediationAuto {
-		t.Fatalf("a checker that declared nothing got %v, not the registry's Auto", got)
+		t.Fatalf("a checker that declared nothing got %v, want the registry's Auto", got)
 	}
 }
 

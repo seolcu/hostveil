@@ -88,7 +88,7 @@ func TestScoreHistoryCarriesTheNotApplicableFlag(t *testing.T) {
 	}
 }
 
-// One damaged snapshot costs that snapshot, not the series. This is a
+// One damaged snapshot costs that snapshot and leaves the series intact. This is a
 // history view, and the same reasoning Store.List follows when it returns
 // what it could read: a file that will not parse is one missing point, not
 // a reason to refuse the other twenty-nine.
@@ -134,7 +134,7 @@ func TestScoreHistoryOnAFreshStateDirectory(t *testing.T) {
 }
 
 // The retention cap already applied to snapshots applies to the trend, by
-// construction rather than by a second limit: the series is exactly what
+// construction: the series is exactly what
 // the store kept.
 func TestScoreHistoryIsBoundedByRetention(t *testing.T) {
 	store := history.NewStore(t.TempDir())

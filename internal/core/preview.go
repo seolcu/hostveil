@@ -31,7 +31,7 @@ func (e *Engine) PreviewFix(f model.Finding) (model.FixPreview, error) {
 		return model.FixPreview{}, fmt.Errorf("no fix available for %s", f.ID)
 	}
 
-	// Report the resolved kind, not the registry's raw one: classify may
+	// Report the resolved kind: classify may
 	// hold a fix at Review that the registry shapes as Auto, and a preview
 	// labelled "Auto" next to a finding labelled "Review" would be a
 	// contradiction the user has to resolve. It has to be the *same*

@@ -66,8 +66,7 @@ func TestAdvisePlainWorksWithoutAI(t *testing.T) {
 
 // core.New defaults an unset Config.AI to ai.Noop, which reports itself
 // unavailable, so asking for AI with nothing configured is the same
-// accurate "no AI provider is reachable" answer Explain already gives, not a
-// silent success.
+// accurate "no AI provider is reachable" answer Explain already gives.
 func TestAdviseWithAIRequestedButNothingConfigured(t *testing.T) {
 	e := New(Config{Store: history.NewStore(t.TempDir())})
 	adv := e.Advise(context.Background(), []model.Finding{reviewFinding("r", "review one")}, true)

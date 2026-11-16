@@ -13,8 +13,7 @@ import (
 // real loop over eligible findings without paying for ApplyFix's verify step
 // once per item (see ApplyFix's and ApplyOne's doc comments). These pin that
 // it offers exactly ApplyBatch's own eligibility rule and no-verify
-// semantics, not a third set of rules a batch and a per-item loop could
-// silently disagree on.
+// semantics, so a batch and a per-item loop cannot disagree.
 func TestApplyOneAppliesAnEligibleAutoFinding(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "docker-compose.yml")
@@ -35,7 +34,7 @@ func TestApplyOneAppliesAnEligibleAutoFinding(t *testing.T) {
 	if !out.Success {
 		t.Errorf("outcome.Success = false, want true")
 	}
-	// The whole reason this exists rather than a loop over ApplyFix: no
+	// The reason this exists separately from ApplyFix: no
 	// verify step ran, so there is nothing in Verified/VerifyMessage.
 	if out.Verified != model.VerifyNotRun || out.VerifyMessage != "" {
 		t.Errorf("ApplyOne ran a verify step (Verified=%v, VerifyMessage=%q); "+

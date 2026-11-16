@@ -32,13 +32,11 @@ func (e *Engine) Explain(ctx context.Context, f model.Finding, useAI bool) model
 
 // AIContext returns the operator's own saved description of this host:
 // "a personal media server, want fast security patches more than
-// stability": used to make an AI judgment situational rather than
-// generic. "" means nothing has been set.
+// stability": used to make an AI judgment specific to this host. "" means nothing has been set.
 func (e *Engine) AIContext() string { return ai.LoadContext(e.store.Dir()) }
 
 // SetAIContext records or clears the saved host description (text == ""
-// clears it). It lives on Engine, not behind a UI-injected callback like
-// theme/layout's Save, because the state directory is already reachable
+// clears it). It lives on Engine because the state directory is already reachable
 // through e.store.Dir(): internal/core is not layering-restricted the way
 // internal/ui is.
 func (e *Engine) SetAIContext(text string) error { return ai.SaveContext(e.store.Dir(), text) }
