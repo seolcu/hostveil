@@ -17,20 +17,19 @@ import "encoding/json"
 // The four levels this replaced (Critical/High/Medium/Low) came from
 // Trivy, and Hostveil kept them so a CVE's rating could pass straight
 // through. That reason is gone: vulnerabilities are rolled up per image, so
-// what reaches a finding is one level for the whole image rather than a
-// rating per CVE, and outside the CVE domain four levels were asking a
+// what reaches a finding is one level for the whole image, and outside the CVE domain four levels were asking a
 // question no config file can answer. "How bad is a container
 // running as root" has no number; it depends entirely on what the container
 // is. What a scanner *can* see is how much stands between an attacker and
 // this problem right now.
 //
 // The levels were briefly called Exposed/Weak/Hardening, and those names
-// stated their definitions rather than their order, which is what a name
+// stated their definitions and hid their order, which is what a name
 // on a chip, in a SARIF level, or in one line of --json cannot afford.
 // Nothing about which finding lands where changed when they were renamed:
 // High is exactly the set that was Exposed, and before that Critical ∪
 // High. "Hardening" was the clearest failure: it reads as something done
-// well rather than as the bottom of a scale.
+// well, which hid that it was the bottom of a scale.
 type Severity int
 
 const (
@@ -49,7 +48,7 @@ const (
 	// future compromise reaches.
 	SeverityLow
 
-	severityCount // sentinel, not a severity; keep last
+	severityCount // sentinel; keep last
 )
 
 type severityDef struct {
@@ -71,7 +70,7 @@ type severityDef struct {
 // credit. cmd/sitegen pins the ratio against the prose on the website.
 //
 // The gap between 8 and 2 defines the taxonomy, and it is why this
-// is three levels wearing familiar names rather than the familiar four.
+// is three levels wearing familiar names.
 // Under four levels the top two were 8 and 5, which said a thing you can
 // reach today and a thing you cannot are within a third of each other. They
 // are not.
@@ -108,7 +107,7 @@ func (s Severity) Abbr() string {
 // Penalty is the per-finding score deduction for this severity, summed
 // per axis and capped in scoring.
 //
-// The miss path returns Medium's penalty rather than a row's, and it must
+// The miss path returns Medium's penalty, and it must
 // stay written out: a table lookup that fell back to the zero value would
 // return 0, and weight() would price an unrecognised severity at nothing.
 // A finding that costs a perfect score nothing is the same lie as scoring
@@ -186,7 +185,7 @@ func ParseSeverity(s string) (Severity, bool) {
 	return sev, ok
 }
 
-// MarshalJSON writes the name rather than the ordinal. See enum.go.
+// MarshalJSON writes the name. See enum.go.
 func (s Severity) MarshalJSON() ([]byte, error) { return marshalEnum(s.String()) }
 
 // UnmarshalJSON accepts a current name, any name a previous build wrote,

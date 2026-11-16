@@ -18,9 +18,9 @@ func TestOneHighStillCostsHalf(t *testing.T) {
 // The same mistake written four times is not four independent risks. A
 // compose file where every service is missing one line is one line missing,
 // and a self-hoster runs many services from one template, so the old
-// arithmetic buried an axis for having more services rather than worse ones.
+// arithmetic buried an axis for having more services.
 //
-// Pinned as an ordering rather than an exact number, because the number is
+// Pinned as an ordering, because the number is
 // the harmonic series and rounding it into an integer score is not the claim.
 func TestRepeatsOfOneFindingCostLessEachTime(t *testing.T) {
 	axis := func(fs []Finding) int {

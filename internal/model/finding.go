@@ -28,10 +28,9 @@ type Finding struct {
 	// compose fix marked the finding Fixed and moved the number while the
 	// container still ran the old configuration: the same mismatch
 	// Action.TakesEffectOn and VerifyPending were added to *describe*, arriving
-	// in the one place that is supposed to be measuring the host rather than
-	// Hostveil's own activity.
+	// in the one place that is supposed to be measuring the host.
 	//
-	// Ask Active, not this field, for whether a risk is still standing; Fixed
+	// Ask Active for whether a risk is still standing; Fixed
 	// keeps its own meaning of "Hostveil applied a fix here" and is what the
 	// apply paths test so a pending fix is never applied twice.
 	//
@@ -71,8 +70,8 @@ type Finding struct {
 
 	// IndividualOnly is fix.Fix.IndividualOnly carried to the finding, set by
 	// Engine.classify: the fix exists and is offered, but no batch applies it,
-	// including `fix --all --review`. A UI uses it to say so rather than let a
-	// reviewed batch look as though it skipped something by mistake.
+	// including `fix --all --review`. A UI uses it to say so, so a reviewed
+	// batch never looks as though it skipped something by mistake.
 	IndividualOnly bool `json:"individual_only,omitempty"`
 }
 
@@ -176,7 +175,7 @@ func (f Finding) IsAutoFixable() bool {
 //
 // It is the question the score, the SARIF results, the exit status, the delta
 // and every visible list are asking, and it is one named
-// predicate rather than "!f.Fixed || f.Pending" written out at each of them.
+// predicate, so "!f.Fixed || f.Pending" is not written out at each of them.
 // A rule that lives in prose until one renderer forgets it is the drift
 // internal/docs/afterfixes_test.go exists to catch, and there is no reason to
 // hand it a fresh instance.

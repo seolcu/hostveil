@@ -77,8 +77,7 @@ func marshalEnum(name string) ([]byte, error) { return json.Marshal(name) }
 // unmarshalEnum reads an enum written either as its name or as the bare
 // integer this package used to emit.
 //
-// An unrecognised value is an error rather than a fallback. The two answers
-// are not interchangeable: silently resolving to a zero value would turn a
+// An unrecognised value is an error: silently resolving to a zero value would turn a
 // snapshot Hostveil cannot read into one it reads wrongly, which is the same
 // trade the scanner refuses everywhere else. Callers that survive a bad
 // snapshot (ScoreHistory skips one that will not unmarshal) already handle

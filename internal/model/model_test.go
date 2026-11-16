@@ -145,8 +145,7 @@ func TestAxisCapsSumTo100(t *testing.T) {
 // of sourceDefs and Valid is membership in it. Asserting them here would
 // only be checking that the table equals itself.
 //
-// The assertion that survives the collapse is the one about identity
-// rather than presence: the string columns are keys. name is the
+// The assertion that survives the collapse is the one about identity: the string columns are keys. name is the
 // finding-ID prefix and the first field of Finding.Key(); axisID keys the
 // axis a UI renders. Two rows sharing either would merge two domains into
 // one wherever those keys are used, and nothing about a table prevents a
@@ -181,8 +180,7 @@ func TestSourceKeyColumnsAreDistinct(t *testing.T) {
 //
 // That every *real* domain has a label is now checked by walking the const
 // range in TestEverySourceConstHasATableRow. What still has to be pinned
-// here is the other end: Label returns "" for a non-domain rather than
-// falling back to String(), which is what makes a forgotten row show up as
+// here is the other end: Label returns "" for a non-domain, which is what makes a forgotten row show up as
 // a failing test instead of shipping as a plausible-looking lowercase name.
 func TestOnlyRealDomainsHaveLabels(t *testing.T) {
 	for _, s := range []Source{SourceUnset, sourceCount, -1, 99} {
@@ -306,12 +304,11 @@ func TestScoreFlagsDegradedAxis(t *testing.T) {
 	}
 }
 
-// Error and Skipped both mean "did not run", so both drop out of scoring
-// rather than being handed a perfect 100.
+// Error and Skipped both mean "did not run", so both drop out of scoring.
 func TestScoreExcludesErroredAxis(t *testing.T) {
 	states := map[Source]ScanState{SourceCompose: ScanDone, SourceCVE: ScanError}
 	if cve := axesBySource(ScoreReport(nil, states))[SourceCVE]; cve.Applicable {
-		t.Error("an errored domain's axis must be N/A, not a perfect score")
+		t.Error("an errored domain's axis must be N/A")
 	}
 }
 
@@ -411,7 +408,7 @@ func TestScoreSmallCapAxisIsNotZeroedByOneFinding(t *testing.T) {
 	}, nil)
 	for _, ax := range sb.Axes {
 		if ax.Source == SourceFilePerms && ax.Score == 0 {
-			t.Error("one finding zeroed the smallest axis; cap must be a weight, not a threshold")
+			t.Error("one finding zeroed the smallest axis; cap must act as a weight")
 		}
 	}
 }

@@ -26,7 +26,7 @@ func TestAfterFixesIsTheScoreWithEveryOfferedFixApplied(t *testing.T) {
 		case SourceCompose:
 			// One Auto and one Manual: better, but not clean.
 			if ax.AfterFixes <= ax.Score {
-				t.Errorf("compose axis after fixes = %d, not better than %d", ax.AfterFixes, ax.Score)
+				t.Errorf("compose axis after fixes = %d, want more than %d", ax.AfterFixes, ax.Score)
 			}
 			if ax.AfterFixes == 100 {
 				t.Error("compose axis reports 100 after fixes while a Manual finding stands")

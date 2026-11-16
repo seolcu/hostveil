@@ -10,13 +10,13 @@ package model
 type RemediationKind int
 
 const (
-	RemediationUnset       RemediationKind = iota // 0 = not classified, not fixable
+	RemediationUnset       RemediationKind = iota // 0 = unclassified and unfixable
 	RemediationAuto                               // exactly one mechanical action
 	RemediationReview                             // multiple independent alternatives; user picks
 	RemediationManual                             // guidance only, no automatable action
 	RemediationUnavailable                        // known issue, no fix exists yet (e.g. CVE with no patch)
 
-	remediationCount // sentinel, not a kind; keep last
+	remediationCount // sentinel; keep last
 )
 
 type remediationDef struct {
@@ -36,7 +36,7 @@ type remediationDef struct {
 // the whole enum-table shape has to protect.
 //
 // RemediationUnset has a row so the zero value has a name and a label of
-// its own rather than falling out of a default arm. Its false fixability
+// its own. Its false fixability
 // is not a judgement about the finding: an unclassified finding is not
 // "known to have no fix", it is one that was never classified, and both must
 // refuse to offer a fix button.
@@ -58,7 +58,7 @@ func (r RemediationKind) IsFixable() bool {
 
 // Valid reports whether the kind was classified (i.e. not the zero value).
 //
-// This asks only about Unset, not about table membership. A value outside
+// This asks only about Unset. A value outside
 // the enum entirely is a bug or a corrupt snapshot, and the right answer
 // to that is a finding rendered "Unclassified" with no fix button, which
 // is what the other three methods already do. Failing Valid instead would
@@ -75,7 +75,7 @@ func (r RemediationKind) Valid() bool {
 // column to that width and a longer one would shift every row. That is the
 // same contract Severity.Abbr carries, and the same reason.
 //
-// "n/a" rather than "none" for Unavailable: the finding is real and the
+// "n/a" for Unavailable: the finding is real and the
 // absence is of a *fix*, which is what N/A says on the score axes already.
 func (r RemediationKind) Abbr() string {
 	if d, ok := remediationIndex[r]; ok {
@@ -116,7 +116,7 @@ func ParseRemediationKind(s string) (RemediationKind, bool) {
 	return kind, ok
 }
 
-// MarshalJSON writes the name rather than the ordinal. See enum.go.
+// MarshalJSON writes the name. See enum.go.
 func (r RemediationKind) MarshalJSON() ([]byte, error) { return marshalEnum(r.String()) }
 
 // UnmarshalJSON accepts the name or the integer older snapshots hold.

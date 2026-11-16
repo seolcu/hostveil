@@ -7,7 +7,7 @@ package model
 // SourceUnset is the zero value: a finding built without an
 // explicit source is invalid, never a silently-valid default. Routing by
 // this typed enum (not by string-prefixing the ID) is only safe because
-// the zero value means "unset" rather than a real domain.
+// the zero value means "unset".
 type Source int
 
 const (
@@ -29,7 +29,7 @@ const (
 	SourceKube
 	SourceForensic
 
-	sourceCount // sentinel, not a domain; keep last
+	sourceCount // sentinel; keep last
 )
 
 // sourceDef is everything Hostveil knows about a detection domain.
@@ -51,7 +51,7 @@ const (
 // to go stale.
 type sourceDef struct {
 	source Source
-	// name is the stable lowercase domain name, and it is not just a
+	// name is the stable lowercase domain name, and more than a
 	// display string: it is the finding-ID prefix each checker owns, it is
 	// the first field of Finding.Key(), and the fix registry matches globs
 	// against it. Changing one renames things on disk.
@@ -74,13 +74,12 @@ type sourceDef struct {
 
 // sourceDefs describes every detection domain, in scan and report order.
 //
-// That one order serves two purposes, and the coupling is a decision
-// rather than an accident: AllSources order drives scan projection and the
+// That one order serves two purposes, and the coupling is intended: AllSources order drives scan projection and the
 // dashboard's live progress list, and the same order drives the scoring
 // axes down the page. Both are "most consequential first", which is why
 // they have agreed through eleven domains. If a future change needs the
 // axes displayed in some other order (worst-first, say) that is a
-// projection to add here, not a reason to keep two hand-maintained lists.
+// projection to add here. Two hand-maintained lists would drift.
 //
 // A third copy of this order lives in cmd/hostveil/app.go, where the
 // checkers are registered; it is what orders Report.Domains, and
@@ -129,18 +128,18 @@ func (s Source) String() string {
 //
 // There is no fallback for an unknown domain, so that a domain
 // with no row here renders as "" and trips TestEverySourceConstHasATableRow
-// rather than drawing a bare integer somewhere no one looks.
+// so a bare integer is never drawn somewhere no one looks.
 func (s Source) Label() string {
 	return sourceIndex[s].label
 }
 
 // Valid reports whether the source was set to a real domain.
 //
-// This is table membership, not a range check. The bound used to be
+// This is table membership. The bound used to be
 // written out as `s <= SourceDockerd` and had to be edited by hand for
 // every new domain; forgetting was silent and total, because every finding
 // from the new domain then failed Validate() and was dropped after the
-// scan, so the domain reported clean rather than reporting nothing. A
+// scan, so the domain reported clean. A
 // membership test cannot fall behind the table it tests.
 func (s Source) Valid() bool {
 	_, ok := sourceIndex[s]
@@ -193,7 +192,7 @@ func ParseSource(s string) (Source, bool) {
 	return src, ok
 }
 
-// MarshalJSON writes the name rather than the ordinal. See enum.go.
+// MarshalJSON writes the name. See enum.go.
 func (s Source) MarshalJSON() ([]byte, error) { return marshalEnum(s.String()) }
 
 // UnmarshalJSON accepts the name or the integer older snapshots hold.

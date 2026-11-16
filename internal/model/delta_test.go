@@ -88,7 +88,7 @@ func TestComputeDeltaDetectsSeverityMovement(t *testing.T) {
 	}
 }
 
-// Prose is edited by releases, not by the host. Rewording a description
+// Prose is edited by releases. The host does not change it. Rewording a description
 // must not make every finding on every machine report as changed.
 func TestComputeDeltaIgnoresProse(t *testing.T) {
 	before := NewFinding("ssh.rootlogin", "t", SeverityHigh, SourceSSH,

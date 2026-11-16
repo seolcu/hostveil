@@ -13,11 +13,11 @@ const (
 	ScanPending  ScanState = iota // not started
 	ScanRunning                   // checker executing
 	ScanDone                      // completed successfully
-	ScanSkipped                   // dependency absent (e.g. Trivy not installed), not an error
+	ScanSkipped                   // dependency absent (e.g. Trivy not installed)
 	ScanDegraded                  // ran but produced a partial result
 	ScanError                     // failed
 
-	scanStateCount // sentinel, not a state; keep last
+	scanStateCount // sentinel; keep last
 )
 
 type scanStateDef struct {
@@ -73,7 +73,7 @@ func ParseScanState(s string) (ScanState, bool) {
 	return st, ok
 }
 
-// MarshalJSON writes the name rather than the ordinal. See enum.go.
+// MarshalJSON writes the name. See enum.go.
 func (s ScanState) MarshalJSON() ([]byte, error) { return marshalEnum(s.String()) }
 
 // UnmarshalJSON accepts the name or the integer older snapshots hold.
@@ -257,7 +257,7 @@ type ScorePoint struct {
 
 // Sparkline renders a score series as one line of block glyphs.
 //
-// It lives on the model rather than in either interface because both draw
+// It lives on the model because both draw
 // the same picture from the same points, and a bucketing rule written twice
 // is the shape that has already gone wrong here twice: the severity
 // palette before internal/ui/theme, the domain table before /model.js.
@@ -270,11 +270,11 @@ type ScorePoint struct {
 // flat line indistinguishable from a host at 4, which is a chart that lies
 // about the only thing it is for.
 //
-// A scan with no applicable score contributes a gap rather than a bar. It
+// A scan with no applicable score contributes a gap. It
 // is not a zero (the scan could not look) and drawing it as the lowest bucket
 // would be the same lie the aggregate score refuses to tell.
 func Sparkline(points []ScorePoint) string {
-	// Runes, not a string: every bar is three bytes, so indexing by
+	// Runes: every bar is three bytes, so indexing by
 	// len("▁▂▃▄▅▆▇█") would reach for element 24 of an eight-element ramp.
 	bars := []rune("▁▂▃▄▅▆▇█")
 	const gap = '·'
@@ -286,8 +286,7 @@ func Sparkline(points []ScorePoint) string {
 			continue
 		}
 		// 0 lands in the first bucket and 100 in the last; the division is
-		// by 100 rather than by len(bars)+1 so a perfect score is a full
-		// bar, with the top clamped rather than overflowing.
+		// by 100 so a perfect score is a full bar, with the top clamped.
 		i := int(p.Overall) * len(bars) / 100
 		if i >= len(bars) {
 			i = len(bars) - 1

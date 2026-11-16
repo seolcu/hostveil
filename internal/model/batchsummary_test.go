@@ -66,7 +66,7 @@ func TestBatchOutcomeSummary(t *testing.T) {
 	}
 }
 
-// The total in "3 of 5" is derived rather than passed in, which only works
+// The total in "3 of 5" is derived, which only works
 // because every finding handed to a batch lands in exactly one bucket.
 func TestBatchSummaryTotalCoversEveryBucket(t *testing.T) {
 	out := BatchOutcome{
