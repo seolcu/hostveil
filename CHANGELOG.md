@@ -2,6 +2,24 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.37.0](https://github.com/seolcu/hostveil/compare/v3.36.0...v3.37.0) (2026-11-17)
+
+### Features
+
+* **web:** the dashboard is available in Korean. It opens in the browser's
+  language, and a picker beside the theme picker changes it for that
+  browser. Every finding's title, description and how-to-fix, every fix
+  sentence and every label are translated. A translated finding keeps the
+  English under "Original text (English)", because that text carries the
+  names, paths and counts from your host. The TUI and the CLI stay in
+  English ([#891](https://github.com/seolcu/hostveil/pull/891)).
+
+### Bug Fixes
+
+* **fix:** the note on every Compose fix now reads "The running container
+  changes only after `docker compose up -d <service>`." The earlier wording
+  was not a sentence ([#891](https://github.com/seolcu/hostveil/pull/891)).
+
 ## [3.36.0](https://github.com/seolcu/hostveil/compare/v3.35.0...v3.36.0) (2026-11-17)
 
 This release is written for people who run a server at home and do not

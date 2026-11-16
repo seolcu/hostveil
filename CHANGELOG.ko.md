@@ -7,6 +7,23 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.37.0](https://github.com/seolcu/hostveil/compare/v3.36.0...v3.37.0) (2026-11-17)
+
+### 새 기능
+
+* **web:** 대시보드를 한국어로 볼 수 있습니다. 브라우저의 언어로 열리고,
+  테마 선택기 옆의 선택기로 바꾸면 그 브라우저에서 기억합니다. 모든 발견
+  항목의 제목, 설명, 고치는 방법과 모든 수정 문구, 라벨을 번역했습니다.
+  번역한 항목은 "원문 (영어)" 아래에 영어 원문을 둡니다. 원문에는 호스트의
+  이름, 경로, 개수가 그대로 들어 있습니다. TUI와 CLI는 영어로만 나옵니다
+  ([#891](https://github.com/seolcu/hostveil/pull/891)).
+
+### 버그 수정
+
+* **fix:** Compose 수정마다 붙는 안내가 이제 "The running container changes
+  only after `docker compose up -d <service>`."입니다. 이전 문구는 문장이
+  성립하지 않았습니다 ([#891](https://github.com/seolcu/hostveil/pull/891)).
+
 ## [3.36.0](https://github.com/seolcu/hostveil/compare/v3.35.0...v3.36.0) (2026-11-17)
 
 이번 릴리스는 보안이 본업이 아닌 홈서버 운영자를 위한 변경이 중심입니다.
