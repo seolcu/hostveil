@@ -9,7 +9,7 @@ package fix
 // It covers the fixes that can lock the operator out, take a service down
 // or cannot be undone. TestEveryCheckFirstNamesARegisteredFix holds every key
 // to a registration.
-var checkFirst = map[string]string{
+var checkFirst = map[string]string{ //nolint:gosec // G101: finding IDs mapped to advice; the "password" in them names an SSH option
 	"ssh.passwordauth":       "Open a second terminal and log in with your SSH key. Apply this only if that login works without a password.",
 	"ssh.rootlogin":          "Log in as your normal user and run `sudo -v`. Apply this only if that works.",
 	"ssh.kbdinteractive":     "If your SSH login asks for a one-time code, leave this alone.",
