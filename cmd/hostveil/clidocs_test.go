@@ -19,7 +19,7 @@ import (
 // nothing checked the restatement. It was wrong in both directions at once:
 // the fix table listed a --no-color flag that does not exist (typing it exits
 // 2), and rollback was documented as taking no flags months after --force was
-// added — the flag that stands between an operator and an unrecoverable
+// added; the flag that stands between an operator and an unrecoverable
 // overwrite of their own edits.
 //
 // Prose cannot fail a build. This gives it a way to.
@@ -63,8 +63,7 @@ func repoRoot(t *testing.T) string {
 }
 
 // declaredFlags walks this package's own source for the flag names each
-// subcommand registers. Reading the AST rather than the flag.FlagSet values
-// keeps the production code free of test seams: the flag sets are built
+// subcommand registers. Reading the AST keeps the production code free of test seams: the flag sets are built
 // inside the cmd functions, which cannot be called without running the
 // command they belong to.
 func declaredFlags(t *testing.T) map[string][]string {
@@ -216,7 +215,7 @@ func TestCLIReferenceMatchesTheFlagSets(t *testing.T) {
 			}
 			for _, flag := range got {
 				if !slices.Contains(want, flag) {
-					t.Errorf("%s: the CLI reference lists --%s for `hostveil %s`, which does not accept it — "+
+					t.Errorf("%s: the CLI reference lists --%s for `hostveil %s`, which does not accept it; "+
 						"a reader who types it gets exit 2", lang, flag, section)
 				}
 			}
@@ -245,13 +244,13 @@ func TestEverySubcommandHasAReferenceSection(t *testing.T) {
 
 // Every subcommand this package defines has to be classified and documented.
 //
-// Both lists that decide those things are hand-maintained maps — docSection
-// here, and needsRoot's switch — and adding a subcommand fails neither of
-// them. A command that nobody added to needsRoot runs unprivileged and
-// discovers it needed root half way through; one nobody added to the CLI
+// Both lists that decide those things are hand-maintained maps (docSection
+// here, and needsRoot's switch) and adding a subcommand fails neither of
+// them. A command missing from needsRoot runs unprivileged and
+// discovers it needed root half way through; one missing from the CLI
 // reference is a command users find by reading the help text and nowhere else.
 //
-// The harvest is from the dispatch switch rather than from function names, so
+// The harvest is from the dispatch switch, so
 // a cmdXxx helper that is not a subcommand does not have to be excused here.
 func TestEverySubcommandIsClassifiedAndDocumented(t *testing.T) {
 	fset := token.NewFileSet()
@@ -294,7 +293,7 @@ func TestEverySubcommandIsClassifiedAndDocumented(t *testing.T) {
 	for name, handler := range dispatched {
 		if _, ok := runsAsInvokingUser[name]; ok {
 			if needsRoot(name) {
-				t.Errorf("%q is listed as running as the invoking user on purpose, and needsRoot elevates it", name)
+				t.Errorf("%q is listed as running as the invoking user, and needsRoot elevates it", name)
 			}
 		} else if !needsRoot(name) {
 			t.Errorf("%q dispatches to %s and needsRoot says it does not need root; "+
@@ -309,8 +308,7 @@ func TestEverySubcommandIsClassifiedAndDocumented(t *testing.T) {
 }
 
 // runsAsInvokingUser are the commands that do real work and still must not
-// elevate, each with the reason. It is a list rather than an absence from
-// needsRoot so that leaving a new command out of needsRoot by accident still
+// elevate, each with the reason. It is an explicit list so that leaving a new command out of needsRoot by accident still
 // fails the test above.
 var runsAsInvokingUser = map[string]string{}
 
@@ -323,7 +321,7 @@ var runsAsInvokingUser = map[string]string{}
 // and the symptom is that `hostveil update` on a current host announces an
 // update and reinstalls what is already there.
 //
-// Pinned against the real `version` variable rather than a literal, so a change
+// Pinned against the real `version` variable, so a change
 // to how the build stamps it lands here.
 func TestTheStampedVersionComparesAgainstAResolvedTag(t *testing.T) {
 	stamped := version
@@ -344,7 +342,7 @@ func TestTheStampedVersionComparesAgainstAResolvedTag(t *testing.T) {
 // its client must not follow redirects. A release asset URL answers 302 and
 // sends the caller to objects.githubusercontent.com, so the download client
 // must. One shared no-redirect client made every download fail with "returned
-// 302 Found" — on the one path a `--check` smoke test never reaches, which is
+// 302 Found", on the one path a `--check` smoke test never reaches, which is
 // exactly how it survived being tested.
 func TestTheUpdateClientsDisagreeAboutRedirectsOnPurpose(t *testing.T) {
 	if resolveClient().CheckRedirect == nil {
@@ -358,7 +356,7 @@ func TestTheUpdateClientsDisagreeAboutRedirectsOnPurpose(t *testing.T) {
 // TestTheBuiltInHelpDocumentsEveryFlag.
 //
 // The site's flag tables are held to the flag sets by the test above, and
-// `hostveil help` was held to a hand-written list of four flags — so six
+// `hostveil help` was held to a hand-written list of four flags, so six
 // drifted out of it and nothing said anything. `fix --review`,
 // `history --scans`, `update --yes` and `uninstall --yes` all existed,
 // worked, and were absent from the only reference a user has without a

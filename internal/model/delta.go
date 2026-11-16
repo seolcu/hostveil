@@ -8,7 +8,7 @@ import (
 
 // Delta compares two scans so a re-run can show progress: what got fixed,
 // what is new, what got worse or better in place, and what still remains
-// since last time. The four are disjoint — a changed finding is not also
+// since last time. The four are disjoint: a changed finding is not also
 // counted as still present.
 type Delta struct {
 	Resolved     []Finding       `json:"resolved"` // present before, gone now
@@ -53,7 +53,7 @@ func (c FindingChange) ChangedEvidence() []string {
 // EvidenceSeparator is the convention for list-valued evidence: checkers
 // join multiple items with it (accounts' account names, fileperms' file
 // list, firewall's available tools, cve's vulnerability IDs). The space is
-// load-bearing — clirender wraps on whitespace, so a comma-only join would
+// required: clirender wraps on whitespace, so a comma-only join would
 // be one unbreakable word that overflows a terminal.
 //
 // It is for evidence a person reads. Anything a fix has to parse back out
@@ -65,9 +65,9 @@ const EvidenceSeparator = ", "
 // Paths need their own separator because EvidenceSeparator can appear inside
 // one: ", " is legal in a POSIX filename, and a directory named "logs, old"
 // under a user's home is not exotic. Splitting such a value on ", " yields
-// two paths that do not exist. Today that fails safe — planModes stats every
-// path and aborts the whole fix when one is missing, so nothing is chmod'ed —
-// but it fails, on a fix that should have worked, for a reason nobody
+// two paths that do not exist. Today that fails safe (planModes stats every
+// path and aborts the whole fix when one is missing, so nothing is chmod'ed)
+// but it fails, on a fix that should have worked, for a reason no one
 // reading the output could guess.
 //
 // ASCII unit separator: it cannot occur in a path (the kernel allows any
@@ -192,11 +192,11 @@ func onlyDomains(r Report, keep map[Source]bool) Report {
 	return out
 }
 
-// All three of these ask Finding.Active rather than testing Fixed, so a fix
+// All three of these ask Finding.Active, so a fix
 // that is applied and not yet in force reads as what it is: still there. A
 // delta that counted it under Fixed would announce the risk resolved one scan
 // before anything on the host had changed, and then have nothing to say at the
-// scan where it actually was.
+// scan where it was.
 
 func activeByKey(r Report) map[string]Finding {
 	out := make(map[string]Finding, len(r.Findings))

@@ -17,14 +17,14 @@ func TestCoverageWithNoGapsIsNotAnError(t *testing.T) {
 	}
 
 	// The zero value too: a checker that examined nothing and missed nothing
-	// (a host with no containers) is clean, not partial.
+	// (a host with no containers) is clean.
 	var empty Coverage
 	if err := empty.Err(); err != nil {
 		t.Errorf("the zero ledger produced %v", err)
 	}
 }
 
-// The whole reason this type exists. Recording two gaps must report two —
+// The whole reason this type exists. Recording two gaps must report two:
 // the bug it replaces was a checker returning at the first one, which made
 // the second invisible in both the reason and the counters.
 func TestCoverageReportsEveryGap(t *testing.T) {

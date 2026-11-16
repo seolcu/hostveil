@@ -23,7 +23,7 @@ import (
 // ONLY path that mutates the host.
 //
 // The second rescore is why the tail is shaped this way. The score used to be
-// computed once, inside applyFix, before anything had looked at the host — so
+// computed once, inside applyFix, before anything had looked at the host, so
 // a fix that writes a compose file and a fix that changes what is running
 // moved the number identically, and the operator was told the finding was
 // still reported by a message printed underneath a score that had already
@@ -36,25 +36,25 @@ func (e *Engine) ApplyFix(ctx context.Context, f model.Finding, actionIdx int) (
 		return out, err
 	}
 	// Verify only on the single-fix path. ApplyBatch calls applyFix in a
-	// loop, and re-checking there would re-run a checker once per fix —
+	// loop, and re-checking there would re-run a checker once per fix:
 	// twenty compose findings would mean twenty enumerations of every
 	// container on the host. A batch ends with the operator rescanning
 	// anyway; a single fix is the one they are watching.
 	out.Verified, out.VerifyNote = e.verifyFix(ctx, f)
 	// A re-check that no longer sees the finding has established that the
-	// artifact the fix wrote is correct — and where that artifact is not what
+	// artifact the fix wrote is correct, and where that artifact is not what
 	// the host is running from, that is all it has established. See
 	// fix.Action.TakesEffectOn. applyFix has already read that declaration
-	// into out.Pending, so this needs the sentence, not a second Build.
+	// into out.Pending, so this needs only the sentence.
 	if out.Verified == model.VerifyGone && out.Pending {
 		out.Verified, out.VerifyNote = model.VerifyPending, out.TakesEffectOn
 	}
 	// Pending is monotone and only ever set by positive evidence.
 	//
 	// A checker that has just re-reported the finding is holding evidence the
-	// host has not changed, so the score must not credit the fix — whatever
+	// host has not changed, so the score must not credit the fix: whatever
 	// the fix declared about itself. VerifyUnavailable is the opposite and
-	// deliberately does nothing here: "could not look" is not evidence, and
+	// does nothing here: "could not look" is not evidence, and
 	// treating it as pending would mean re-checking made the number worse, so
 	// an operator applying fixes one at a time would score below one who ran
 	// `fix --all` over exactly the same fixes.
@@ -98,19 +98,19 @@ func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (
 		return model.FixOutcome{Success: false, Error: err.Error()}, err
 	}
 
-	// Whether the host has actually changed, taken from the action already in
+	// Whether the host has changed, taken from the action already in
 	// hand. A fix that names what puts it in force is a fix whose artifact is
 	// not what the host reads, so writing it changed nothing an attacker can
-	// see — and the score below must not pretend otherwise.
+	// see, and the score below must not pretend otherwise.
 	//
-	// Read from the fix's own declaration rather than from a re-check so that
+	// Read from the fix's own declaration so that
 	// it is the same answer on both paths: ApplyBatch does not verify, and a
 	// rule that needed verification would have made the batch the optimistic
 	// one, scoring a host higher for having fixed it in bulk.
 	outcome.Pending = action.TakesEffectOn != ""
 	outcome.TakesEffectOn = action.TakesEffectOn
 
-	// Mark the finding fixed and rescore — both inside the engine so no UI
+	// Mark the finding fixed and rescore: both inside the engine so no UI
 	// reimplements either.
 	e.state.markFixed(f, outcome.Pending)
 	outcome.Success = true
@@ -121,9 +121,9 @@ func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (
 // buildFix resolves the registered fix for a finding and checks that its
 // shape matches the kind it claims.
 //
-// fix.Validate is the contract — Auto is exactly one action, Review is two
+// fix.Validate is the contract (Auto is exactly one action, Review is two
 // or more alternatives, an edit carries a Transform, an exec carries a
-// command — and until now nothing but a test ever ran it. That left the
+// command) and until now nothing but a test ever ran it. That left the
 // registry's shape guaranteed only for the representative findings
 // internal/fix/fix_test.go happens to build. A registration that came out
 // malformed for some other finding got no complaint at all: classify saw a
@@ -131,8 +131,7 @@ func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (
 // the first thing to notice was applyEdit calling a nil Transform. There is
 // no recover on that path.
 //
-// A registered fix whose shape contradicts its kind is therefore an error
-// rather than a fix. Reporting it as "registered, but broken" is what lets
+// A registered fix whose shape contradicts its kind is therefore an error. Reporting it as "registered, but broken" is what lets
 // classify demote the finding to Manual, which is the same answer it
 // already gives when no fix is registered and the same promise the rest of
 // the engine makes: a UI never offers a button that leads nowhere.
@@ -140,7 +139,7 @@ func (e *Engine) buildFix(f model.Finding) (built fix.Fix, ok bool, err error) {
 	if e.fixes == nil {
 		return fix.Fix{}, false, nil
 	}
-	// The whole body, not just Build: Validate reads the shape a builder
+	// The whole body, Build included: Validate reads the shape a builder
 	// returned, and a builder that half-built one is exactly the case where
 	// both can go wrong. See contain.go.
 	defer func() {
@@ -186,8 +185,8 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		RestartService: f.Service,
 		// Record what this fix is about to write, so a later rollback can
 		// tell "still exactly as Hostveil left it" from "the operator has
-		// edited this since" and decline rather than silently discard their
-		// work. Computed before the write so the checkpoint is complete
+		// edited this since" and decline, so their work is never silently
+		// discarded. Computed before the write so the checkpoint is complete
 		// before anything on the host changes.
 		AppliedSHA256: map[string]string{a.Path: history.SHA256Hex(next)},
 		AfterRestore:  afterRestore(a),
@@ -196,7 +195,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		cp.SafeRoots = map[string]string{a.Path: a.SafeRoot}
 	}
 	// A file that did not exist has nothing to back up, and the checkpoint
-	// has to say so rather than record an empty backup: restoring an empty
+	// has to say so: restoring an empty
 	// file is not the same as restoring its absence, and a host left with a
 	// zero-byte drop-in would look configured while configuring nothing.
 	save := func() (history.Checkpoint, error) {
@@ -214,7 +213,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	}
 	saved, err := save()
 	if err != nil {
-		return model.FixOutcome{}, fmt.Errorf("backup failed, not applying: %w", err)
+		return model.FixOutcome{}, fmt.Errorf("backup failed, so the fix was not applied: %w", err)
 	}
 
 	mode := os.FileMode(0o644)
@@ -224,10 +223,10 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	// A file that may not exist may not have a directory either, and the two
 	// are the same situation from the caller's side. The sysctl and apt
 	// drop-ins land in directories every distribution ships, so this went
-	// unnoticed until a systemd drop-in — /etc/systemd/system/<unit>.d/ is
-	// created by whoever first overrides that unit, which is usually nobody.
+	// unnoticed until a systemd drop-in: /etc/systemd/system/<unit>.d/ is
+	// created by whoever first overrides that unit, and usually no one does.
 	// WriteFileAtomic stages its temp file beside the target, so a missing
-	// directory fails there rather than at the rename, after the checkpoint
+	// directory fails there, before the rename and before the checkpoint
 	// is already written.
 	//
 	// Rollback deletes the file and leaves the directory. By then it may hold
@@ -239,9 +238,9 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		// cat` run by the operator as themselves reads the drop-in Hostveil
 		// wrote; at 0750 root:root it would not, and Hostveil would have
 		// hidden the change it just made from the person who asked for it.
-		// Nothing secret is written here — the file holds one directive that
+		// Nothing secret is written here; the file holds one directive that
 		// is also in the finding, the preview and the checkpoint.
-		//nolint:gosec // G301: a config directory under /etc, readable on purpose
+		//nolint:gosec // G301: a config directory under /etc, readable
 		if err := os.MkdirAll(filepath.Dir(a.Path), 0o755); err != nil {
 			return model.FixOutcome{}, fmt.Errorf("creating the directory for %s: %w", a.Path, err)
 		}
@@ -266,7 +265,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	}
 	if err := write(); err != nil {
 		// The checkpoint is already on disk and `hostveil history` will list
-		// it as an applied, reversible fix — for a change that never landed.
+		// it as an applied, reversible fix, for a change that never landed.
 		// Worse, its AppliedSHA256 permanently asserts to recordedWrites that
 		// Hostveil wrote bytes it did not, which weakens the external-edit
 		// guard for this path from here on.
@@ -276,7 +275,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		// partial by nature; an edit is one atomic rename, so here there is
 		// nothing to keep.
 		if rmErr := e.store.Discard(saved.ID); rmErr != nil {
-			return model.FixOutcome{}, fmt.Errorf("%w — and the backup at %s could not be discarded: %v",
+			return model.FixOutcome{}, fmt.Errorf("%w, and the backup at %s could not be discarded: %v",
 				err, saved.ID, rmErr)
 		}
 		return model.FixOutcome{}, err
@@ -285,8 +284,8 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	if err := e.runAfterWrite(ctx, a); err != nil {
 		if a.Irreversible {
 			// Not undone: see fix.Action.Irreversible. The file stays, the
-			// record stays, and the operator is told exactly where it stopped
-			// — what already ran, and what is left, starting with the step
+			// record stays, and the operator is told exactly where it stopped:
+			// what already ran, and what is left, starting with the step
 			// that failed.
 			var stop *stoppedAt
 			left := a.AfterWrite
@@ -297,7 +296,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 					ran = commandList(a.AfterWrite[:stop.index])
 				}
 			}
-			return model.FixOutcome{}, fmt.Errorf("%w — %s was written and kept, and is recorded in `hostveil history`. "+
+			return model.FixOutcome{}, fmt.Errorf("%w; %s was written and kept, and is recorded in `hostveil history`. "+
 				"Already done: %s. Still to do, by hand: %s", err, a.Path, ran, commandList(left))
 		}
 		return model.FixOutcome{}, e.undoAfterFailedFollowUp(ctx, a, saved.ID, err)
@@ -321,11 +320,11 @@ func (e *Engine) runAfterWrite(ctx context.Context, a fix.Action) error {
 // runEach runs commands in order, stopping at the first that fails.
 //
 // Every unit a command starts has its failed state cleared first. systemd
-// counts starts against a limit — docker.service allows three a minute — and
-// past it refuses the next one outright, failed or not. Two Hostveil paths hit
+// counts starts against a limit (docker.service allows three a minute) and
+// past it refuses the next one completely, failed or not. Two Hostveil paths hit
 // it on a real Docker (scripts/e2e/individual.sh): the retry after a restart
 // the new file broke, when the daemon's own Restart=always had already used up
-// the limit, which left Docker down — the one outcome that retry exists to
+// the limit, which left Docker down; the one outcome that retry exists to
 // prevent; and an operator applying and rolling back daemon fixes within a
 // minute, whose next fix failed with nothing wrong in it. reset-failed also
 // clears the start counter, so each restart Hostveil asks for is a real one.
@@ -353,43 +352,42 @@ func (s *stoppedAt) Error() string { return s.err.Error() }
 func (s *stoppedAt) Unwrap() error { return s.err }
 
 // undoAfterFailedFollowUp handles an edit that landed and whose restart did
-// not. The likeliest reason is the edit itself — a daemon refusing the new
-// file — so the original goes back and the commands run again, which brings
+// not. The likeliest reason is the edit itself (a daemon refusing the new
+// file) so the original goes back and the commands run again, which brings
 // the service back under the configuration it was running before. The
 // checkpoint then describes a change that is no longer on the host, so it is
 // discarded the way a failed write's is.
 //
-// Every way this can go further wrong is named in the error rather than
-// hidden, because the state it describes is one the operator has to act on.
+// Every way this can go further wrong is named in the error, because the state it describes is one the operator has to act on.
 func (e *Engine) undoAfterFailedFollowUp(ctx context.Context, a fix.Action, id string, cause error) error {
 	if _, err := e.store.Rollback(id); err != nil {
-		return fmt.Errorf("%w — and restoring the original %s failed too (%v); checkpoint %s still holds it, "+
+		return fmt.Errorf("%w, and restoring the original %s failed too (%v); checkpoint %s still holds it, "+
 			"restore it with `hostveil rollback %s`", cause, a.Path, err, id, id)
 	}
 	if err := e.runAfterWrite(ctx, a); err != nil {
 		_ = e.store.Discard(id)
-		return fmt.Errorf("%w — the original %s was restored, but running the commands again under it failed "+
+		return fmt.Errorf("%w; the original %s was restored, but running the commands again under it failed "+
 			"as well (%v), so the service may be down", cause, a.Path, err)
 	}
 	if err := e.store.Discard(id); err != nil {
-		return fmt.Errorf("%w — the original %s was restored and the service restarted under it, "+
+		return fmt.Errorf("%w; the original %s was restored and the service restarted under it, "+
 			"but checkpoint %s could not be discarded: %v", cause, a.Path, id, err)
 	}
-	return fmt.Errorf("%w — nothing changed: the original %s was restored and the service restarted under it", cause, a.Path)
+	return fmt.Errorf("%w; nothing changed: the original %s was restored and the service restarted under it", cause, a.Path)
 }
 
 // runEditValidator checks that the bytes an edit action produced are something the
-// service will actually accept, before they reach the live file.
+// service will accept, before they reach the live file.
 //
 // The validator runs twice: once on the original file, once on the new
 // content, both in a temporary directory. Only a validator that accepts the
 // original is trusted to reject the replacement. That control run is what
-// makes this usable at all — `sshd -t` needs to read the host keys, so on a
+// makes this usable at all: `sshd -t` needs to read the host keys, so on a
 // host where it cannot, it fails on every config including the one already
 // in service. Without the control, a fix would be blocked by the checker's
-// own inability to run rather than by anything wrong with the file.
+// own inability to run, with nothing wrong in the file.
 //
-// Checking before the write rather than after means there is nothing to undo
+// Checking before the write means there is nothing to undo
 // when it fails: the live file was never touched.
 func (e *Engine) runEditValidator(ctx context.Context, a fix.Action, orig, next []byte) error {
 	if len(a.VerifyCmd) == 0 {
@@ -448,7 +446,7 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 		return model.FixOutcome{}, fmt.Errorf("permissions on %v are already as strict as required", a.Paths)
 	}
 
-	// From the plan already in hand, not a second one: the summary must
+	// From the plan already in hand: the summary must
 	// describe the changes this call is about to make.
 	summary := modeTable(changes)
 
@@ -476,11 +474,11 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 	}
 	saved, err := e.store.SaveModesAndOwners(cp, prior, owners)
 	if err != nil {
-		return model.FixOutcome{}, fmt.Errorf("backup failed, not applying: %w", err)
+		return model.FixOutcome{}, fmt.Errorf("backup failed, so the fix was not applied: %w", err)
 	}
 
 	for i, c := range changes {
-		// Through the descriptor, not the path: planModes vetted the type,
+		// Through the descriptor: planModes vetted the type,
 		// but the file can be swapped for a symlink between the plan and this
 		// line, and os.Chmod would follow it.
 		var chmodErr error
@@ -498,7 +496,7 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 			// Naming how far it got is the part that was missing: the outcome
 			// said only "failed", while some files really had been tightened.
 			return model.FixOutcome{}, fmt.Errorf(
-				"%w — %d of %d paths were already changed; undo them with `hostveil rollback %s`",
+				"%w; %d of %d paths were already changed; undo them with `hostveil rollback %s`",
 				chmodErr, i, len(changes), saved.ID)
 		}
 	}
@@ -509,8 +507,8 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 // failure.
 //
 // The record is written whether or not every command succeeded, and that is
-// the point. A fix like updates' — `apt-get install -y unattended-upgrades`
-// then `systemctl enable --now` — changes the host on the first command; if
+// required. A fix like the updates one (`apt-get install -y unattended-upgrades`
+// then `systemctl enable --now`) changes the host on the first command; if
 // the second fails, returning before the Save left the host modified with no
 // history entry at all, reported only as `Success: false`. The operator was
 // then told the fix failed while a package sat newly installed and unnamed.
@@ -559,7 +557,7 @@ func (e *Engine) applyExec(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		if _, err := e.store.Save(cp, nil); err != nil {
 			return model.FixOutcome{}, fmt.Errorf("%w (and the partial change could not be recorded: %v)", runErr, err)
 		}
-		return model.FixOutcome{}, fmt.Errorf("%w — %d of %d commands had already run and are recorded in `hostveil history`",
+		return model.FixOutcome{}, fmt.Errorf("%w; %d of %d commands had already run and are recorded in `hostveil history`",
 			runErr, len(ran), countCommands(a.Commands))
 	}
 
@@ -583,7 +581,7 @@ func countCommands(cmds [][]string) int {
 // takesEffectOn is gone. It built the fix a second time purely to re-read
 // Action.TakesEffectOn out of an action applyFix already held in a local, and
 // once that value decides the score as well as the message, the second build
-// is not only wasted work but a second opinion: a registry that answered
+// is wasted work and also a second opinion: a registry that answered
 // differently between the two calls would mark a finding pending and score it
 // as though it were not. applyFix reads the action once and puts both the flag
 // and the sentence on the outcome.

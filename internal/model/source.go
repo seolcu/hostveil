@@ -4,10 +4,10 @@ package model
 // also the finding-ID namespace prefix ("compose.ds016", "ssh.rootlogin")
 // and the key used to route findings to scoring axes.
 //
-// SourceUnset is the zero value on purpose: a finding built without an
+// SourceUnset is the zero value: a finding built without an
 // explicit source is invalid, never a silently-valid default. Routing by
 // this typed enum (not by string-prefixing the ID) is only safe because
-// the zero value means "unset" rather than a real domain.
+// the zero value means "unset".
 type Source int
 
 const (
@@ -29,7 +29,7 @@ const (
 	SourceKube
 	SourceForensic
 
-	sourceCount // sentinel, not a domain; keep last
+	sourceCount // sentinel; keep last
 )
 
 // sourceDef is everything Hostveil knows about a detection domain.
@@ -38,10 +38,10 @@ const (
 // all maintained by hand: the const block, a String switch, a Label switch,
 // the upper bound of Valid, the AllSources slice, and axisDefs over in
 // score.go. Adding a domain meant finding all six, and the record shows
-// that nobody did. When the sysctl domain landed, the two display tables
+// that no one did. When the sysctl domain landed, the two display tables
 // that then lived in the UIs were missed, and the dashboard dropped a whole
 // domain's filter chip while announcing its failures as "10". Those were
-// pulled back here — and the dashboard immediately grew a *seventh* copy,
+// pulled back here, and the dashboard immediately grew a *seventh* copy,
 // keyed by axis ID this time, which fell behind by two domains before
 // anyone noticed.
 //
@@ -51,14 +51,14 @@ const (
 // to go stale.
 type sourceDef struct {
 	source Source
-	// name is the stable lowercase domain name, and it is not just a
+	// name is the stable lowercase domain name, and more than a
 	// display string: it is the finding-ID prefix each checker owns, it is
 	// the first field of Finding.Key(), and the fix registry matches globs
 	// against it. Changing one renames things on disk.
 	name string
-	// label is the short display name every interface shows — the filter
+	// label is the short display name every interface shows: the filter
 	// chip in the dashboard, the filter line in the TUI. It is shorter
-	// than axisLabel on purpose: an axis names a subject in a table with
+	// than axisLabel: an axis names a subject in a table with
 	// room for it, a chip sits in a row of eleven and has to stay narrow.
 	label string
 	// axisID and axisLabel name the domain's scoring axis; cap is its
@@ -74,24 +74,23 @@ type sourceDef struct {
 
 // sourceDefs describes every detection domain, in scan and report order.
 //
-// That one order serves two purposes, and the coupling is a decision
-// rather than an accident: AllSources order drives scan projection and the
+// That one order serves two purposes, and the coupling is intended: AllSources order drives scan projection and the
 // dashboard's live progress list, and the same order drives the scoring
 // axes down the page. Both are "most consequential first", which is why
 // they have agreed through eleven domains. If a future change needs the
-// axes displayed in some other order — worst-first, say — that is a
-// projection to add here, not a reason to keep two hand-maintained lists.
+// axes displayed in some other order (worst-first, say) that is a
+// projection to add here. Two hand-maintained lists would drift.
 //
 // A third copy of this order lives in cmd/hostveil/app.go, where the
-// checkers are registered; it is what actually orders Report.Domains, and
+// checkers are registered; it is what orders Report.Domains, and
 // TestCheckerRegistrationMatchesSourceOrder there holds it to this one.
 //
 // The Source is an explicit column and every lookup is keyed by it. Rows
 // must never be found by position: SourceUnset owns 0, so this table's
 // rows sit one off from their values, while the severity table's do not.
 // These values are serialized as bare integers into on-disk scan
-// snapshots, so an off-by-one here would survive every test — they all
-// round-trip through this same table — and would surface only as a
+// snapshots, so an off-by-one here would survive every test (they all
+// round-trip through this same table) and would surface only as a
 // previous scan whose findings had all changed domain, which reads to a
 // user as "everything on this host is new and everything old is fixed".
 var sourceDefs = []sourceDef{
@@ -127,20 +126,20 @@ func (s Source) String() string {
 // Label returns the short display name every interface shows for the
 // domain.
 //
-// There is no fallback for an unknown domain, which is the point: a domain
+// There is no fallback for an unknown domain, so that a domain
 // with no row here renders as "" and trips TestEverySourceConstHasATableRow
-// rather than drawing a bare integer somewhere nobody looks.
+// so a bare integer is never drawn somewhere no one looks.
 func (s Source) Label() string {
 	return sourceIndex[s].label
 }
 
 // Valid reports whether the source was set to a real domain.
 //
-// This is table membership, not a range check. The bound used to be
+// This is table membership. The bound used to be
 // written out as `s <= SourceDockerd` and had to be edited by hand for
 // every new domain; forgetting was silent and total, because every finding
 // from the new domain then failed Validate() and was dropped after the
-// scan, so the domain reported clean rather than reporting nothing. A
+// scan, so the domain reported clean. A
 // membership test cannot fall behind the table it tests.
 func (s Source) Valid() bool {
 	_, ok := sourceIndex[s]
@@ -177,7 +176,7 @@ func AllSources() []Source {
 // sourceByName carries a row sourceDefs does not: SourceUnset owns the zero
 // value and has no table entry, but String() renders it "unset", and a
 // marshaller that writes a name it cannot read back is a one-way door. It is
-// the only enum here needing this — RemediationKind gives its Unset a real
+// the only enum here needing this: RemediationKind gives its Unset a real
 // row, and Severity's and ScanState's zero values are ordinary members.
 var sourceByName = func() map[string]Source {
 	m := nameIndex(sourceDefs,
@@ -193,7 +192,7 @@ func ParseSource(s string) (Source, bool) {
 	return src, ok
 }
 
-// MarshalJSON writes the name rather than the ordinal. See enum.go.
+// MarshalJSON writes the name. See enum.go.
 func (s Source) MarshalJSON() ([]byte, error) { return marshalEnum(s.String()) }
 
 // UnmarshalJSON accepts the name or the integer older snapshots hold.

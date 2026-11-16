@@ -14,23 +14,22 @@ import "encoding/json"
 // definitions below are the whole taxonomy; the names only have to carry
 // the order.
 //
-// The four levels this replaced — Critical/High/Medium/Low — came from
+// The four levels this replaced (Critical/High/Medium/Low) came from
 // Trivy, and Hostveil kept them so a CVE's rating could pass straight
 // through. That reason is gone: vulnerabilities are rolled up per image, so
-// what reaches a finding is one level for the whole image rather than a
-// rating per CVE, and outside the CVE domain four levels were asking a
-// question nobody can answer from a config file. "How bad is a container
+// what reaches a finding is one level for the whole image, and outside the CVE domain four levels were asking a
+// question no config file can answer. "How bad is a container
 // running as root" has no number; it depends entirely on what the container
 // is. What a scanner *can* see is how much stands between an attacker and
 // this problem right now.
 //
 // The levels were briefly called Exposed/Weak/Hardening, and those names
-// stated their definitions rather than their order — which is what a name
+// stated their definitions and hid their order, which is what a name
 // on a chip, in a SARIF level, or in one line of --json cannot afford.
 // Nothing about which finding lands where changed when they were renamed:
 // High is exactly the set that was Exposed, and before that Critical ∪
-// High. "Hardening" was the clearest failure — it reads as something done
-// well rather than as the bottom of a scale.
+// High. "Hardening" was the clearest failure: it reads as something done
+// well, which hid that it was the bottom of a scale.
 type Severity int
 
 const (
@@ -49,7 +48,7 @@ const (
 	// future compromise reaches.
 	SeverityLow
 
-	severityCount // sentinel, not a severity; keep last
+	severityCount // sentinel; keep last
 )
 
 type severityDef struct {
@@ -61,17 +60,17 @@ type severityDef struct {
 }
 
 // severityDefs describes the enum once. Unlike the other tables here this
-// one happens to start at 0, so its rows do line up with their values —
+// one happens to start at 0, so its rows do line up with their values,
 // which is exactly why the lookup is still keyed by the value column. Two
 // tables in one package, one offset by a zero-value constant and one not,
 // is how an index-by-position habit turns into a silent off-by-one.
 //
-// The penalties are load-bearing: weight() divides them by topHalves, so
+// The penalties matter: weight() divides them by topHalves, so
 // 8/2/1 is what makes one High finding cost half of an axis's remaining
 // credit. cmd/sitegen pins the ratio against the prose on the website.
 //
-// The gap between 8 and 2 is the point of the taxonomy, and it is why this
-// is three levels wearing familiar names rather than the familiar four.
+// The gap between 8 and 2 defines the taxonomy, and it is why this
+// is three levels wearing familiar names.
 // Under four levels the top two were 8 and 5, which said a thing you can
 // reach today and a thing you cannot are within a third of each other. They
 // are not.
@@ -94,7 +93,7 @@ func (s Severity) String() string {
 	return "unknown"
 }
 
-// Abbr returns the short lowercase form for surfaces with a width budget —
+// Abbr returns the short lowercase form for surfaces with a width budget:
 // the TUI's finding rows (which upper-case it) and the dashboard's chips.
 // Every abbreviation is at most four characters, because the TUI pads the
 // column to that width and a longer one would shift every row.
@@ -108,11 +107,11 @@ func (s Severity) Abbr() string {
 // Penalty is the per-finding score deduction for this severity, summed
 // per axis and capped in scoring.
 //
-// The miss path returns Medium's penalty rather than a row's, and it must
+// The miss path returns Medium's penalty, and it must
 // stay written out: a table lookup that fell back to the zero value would
 // return 0, and weight() would price an unrecognised severity at nothing.
 // A finding that costs a perfect score nothing is the same lie as scoring
-// a domain nobody could scan at 100.
+// a domain that could not be scanned at 100.
 func (s Severity) Penalty() int {
 	if d, ok := severityIndex[s]; ok {
 		return d.penalty
@@ -153,7 +152,7 @@ var severityByName = nameIndex(severityDefs,
 // it is lossy in one place: critical and high were merged, which is what
 // keeps `scan`'s exit code meaning what it always did. Note that "high" and
 // "medium" and "low" appear in *both* generations and mean the same level
-// in each — high folds to the top either way — so the collision is
+// in each (high folds to the top either way) so the collision is
 // harmless, which is the only reason one table can serve both.
 //
 // The integer path cannot be folded into this. A name is unambiguous; an
@@ -186,7 +185,7 @@ func ParseSeverity(s string) (Severity, bool) {
 	return sev, ok
 }
 
-// MarshalJSON writes the name rather than the ordinal. See enum.go.
+// MarshalJSON writes the name. See enum.go.
 func (s Severity) MarshalJSON() ([]byte, error) { return marshalEnum(s.String()) }
 
 // UnmarshalJSON accepts a current name, any name a previous build wrote,

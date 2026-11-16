@@ -14,10 +14,10 @@ import (
 )
 
 // The compose round trip, on the layout internal/compose/discover.go calls
-// "the ordinary case, not an exotic one": a base file and an override.
+// "the ordinary case": a base file and an override.
 //
-// The checker resolves the merge by asking docker, which is the whole point of
-// effectiveProject — "a checker that re-implements somebody else's precedence
+// The checker resolves the merge by asking docker, which is the reason for
+// effectiveProject; "a checker that re-implements somebody else's precedence
 // rules is a checker that will disagree with reality on the hosts that
 // matter." The fix layer does not. Parse labels the merged content with
 // files[0], that path reaches the finding as Metadata["file"], and
@@ -25,7 +25,7 @@ import (
 // and the fix edits the first file of it.
 //
 // That is the AGENTS.md invariant in one sentence: "the file a fix creates is
-// not necessarily the file that decides the outcome — and a fix that writes
+// not necessarily the file that decides the outcome, and a fix that writes
 // the wrong one still reports success, still records a checkpoint, and is
 // contradicted at the next restart with nothing anywhere to explain it."
 
@@ -43,7 +43,7 @@ const composeOverride = `services:
 `
 
 // merged is what `docker compose -f base -f override config` prints: compose
-// APPENDS port mappings rather than replacing them, so the same publication
+// APPENDS port mappings across files, so the same publication
 // appears twice and the effective state is published on every interface.
 const composeMerged = `services:
   redis:
@@ -84,7 +84,7 @@ func composeRunner(base, override string) *checktest.Runner {
 //
 // Editing base and reporting success is the failure this pins. What Hostveil
 // should do instead is what persistSysctl does when the file it would write
-// is outranked — decline, and say why — because a fix that cannot name the
+// is outranked (decline, and say why) because a fix that cannot name the
 // deciding file has not got one.
 func TestTheComposeFixDoesNotEditAFileThatDoesNotDecide(t *testing.T) {
 	dir := t.TempDir()
@@ -107,7 +107,7 @@ func TestTheComposeFixDoesNotEditAFileThatDoesNotDecide(t *testing.T) {
 
 	fx, ok, err := fix.Default().Build(f)
 	if err != nil {
-		// Declining is the correct outcome — but it has to name both files
+		// Declining is the correct outcome, but it has to name both files
 		// and say why, or the operator is left with a fix button that
 		// vanished and no account of it.
 		for _, want := range []string{base, override, "appends"} {
@@ -147,7 +147,7 @@ func TestTheComposeFixDoesNotEditAFileThatDoesNotDecide(t *testing.T) {
 	}
 	if strings.Contains(string(rest), `"6379:6379"`) {
 		t.Errorf("the fix edited %s and reported success, but %s still publishes the port on every interface, "+
-			"so the merged project docker actually runs is unchanged:\n--- edited ---\n%s\n--- untouched ---\n%s",
+			"so the merged project docker runs is unchanged:\n--- edited ---\n%s\n--- untouched ---\n%s",
 			filepath.Base(a.Path), filepath.Base(other), out, rest)
 	}
 }
@@ -160,12 +160,12 @@ func idsOfFindings(fs []model.Finding) []string {
 	return out
 }
 
-// The layout discover.go's comment is actually about: a base binding redis to
+// The layout discover.go's comment is about: a base binding redis to
 // loopback and an override republishing it. Exactly one file publishes the
 // port on every interface, so exactly one file decides, and Hostveil edits it.
 //
 // This is the case the old code got wrong in the quiet direction. It edited
-// the base — where the binding is already 127.0.0.1 — so BindPortLoopback
+// the base (where the binding is already 127.0.0.1) so BindPortLoopback
 // found nothing to rewrite, the builder returned "port not found on service",
 // and Engine.classify demoted a fixable finding to Manual with no explanation
 // anywhere. A capability lost to a resolution bug reads exactly like a

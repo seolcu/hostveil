@@ -12,7 +12,7 @@ import (
 // A checkpoint whose metadata cannot be read comes back as a non-nil error
 // *alongside* the ones that could, because the list is still worth showing
 // and the operator still needs telling that part of their recovery history is
-// gone. Use IsIncompleteHistory to tell that from an outright failure.
+// gone. Use IsIncompleteHistory to tell that from a complete failure.
 func (e *Engine) ListCheckpoints() ([]model.Checkpoint, error) {
 	cps, err := e.store.List()
 	if err != nil && !history.IsDamaged(err) {
@@ -26,7 +26,7 @@ func (e *Engine) ListCheckpoints() ([]model.Checkpoint, error) {
 }
 
 // IsIncompleteHistory reports whether an error from ListCheckpoints means
-// "some checkpoints are unreadable" rather than "the list failed".
+// "some checkpoints are unreadable" while the list itself succeeded.
 //
 // It exists for the same reason IsExternalEdit does: the layering tests
 // forbid internal/ui/* from importing internal/history, so a UI has no access

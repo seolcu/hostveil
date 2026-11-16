@@ -23,18 +23,18 @@ type modeChange struct {
 }
 
 // planModes stats every path and computes its new mode, purely. It reports
-// only the paths that would actually change, so a fix cannot claim credit
+// only the paths that would change, so a fix cannot claim credit
 // for files that were already compliant.
 //
-// A stat failure aborts the whole plan rather than skipping the file: a fix
+// A stat failure aborts the whole plan: a fix
 // that silently tightened three of four files would report success while
 // leaving the fourth exposed.
 //
 // Lstat plus a type check, never Stat. Mode fixes reach into user homes
 // (agent.config-perms), where the path is the account's to shape: a symlink
 // left where the config file was would send root's chmod to whatever the
-// link points at. Refusing loudly rather than skipping keeps the no-silent-
-// partial-success rule above.
+// link points at. Refusing loudly keeps the no-silent-partial-success
+// rule above.
 func planModes(a fix.Action) ([]modeChange, error) {
 	var changes []modeChange
 	for _, p := range a.Paths {
@@ -74,7 +74,7 @@ func planModes(a fix.Action) ([]modeChange, error) {
 //
 // It is separate from previewMode so that applyMode can describe the very
 // changes it is about to make. applyMode used to call planModes and then
-// previewMode, which planned again — two Lstat passes over the same paths
+// previewMode, which planned again: two Lstat passes over the same paths
 // inside one apply, and two chances for the answer to differ. The paths it
 // chmod'ed and recorded for rollback came from the first pass while the
 // summary stored in the checkpoint came from the second, so a mode altered
@@ -83,7 +83,7 @@ func planModes(a fix.Action) ([]modeChange, error) {
 // the record of what happened was the part that lied.
 //
 // The column is measured in display columns. len() counts bytes, which
-// misaligns the arrows for any path that is not ASCII — and paths come from
+// misaligns the arrows for any path that is not ASCII, and paths come from
 // the operator.
 func modeTable(changes []modeChange) string {
 	if len(changes) == 0 {

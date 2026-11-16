@@ -22,7 +22,7 @@ func TestFromEnvDefaultsToALocalOllama(t *testing.T) {
 	t.Setenv("HOSTVEIL_OLLAMA_MODEL", "")
 	c, ok := FromEnv().(*OpenAICompat)
 	if !ok || c.BaseURL != "http://127.0.0.1:11434/v1" || c.Model != "llama3.2" {
-		t.Errorf("FromEnv() = %#v, want the local Ollama when HOSTVEIL_AI_PROVIDER is unset — nothing should leave the host by default", FromEnv())
+		t.Errorf("FromEnv() = %#v, want the local Ollama when HOSTVEIL_AI_PROVIDER is unset; nothing should leave the host by default", FromEnv())
 	}
 }
 
@@ -45,8 +45,7 @@ func TestFromEnvSelectsByName(t *testing.T) {
 }
 
 // The Ollama preset reaches Ollama's OpenAI-compatible routes under the host
-// it was given, and its errors name the Ollama variables rather than the
-// HOSTVEIL_OPENAI_* ones the operator never set.
+// it was given, and its errors name the Ollama variables.
 func TestOllamaUsesTheV1RoutesAndNamesItsOwnVariables(t *testing.T) {
 	var paths []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +88,7 @@ func TestFromEnvNamesTheBadValueRatherThanSilentlyFallingBack(t *testing.T) {
 	t.Setenv("HOSTVEIL_AI_PROVIDER", "chatgpt")
 	e := FromEnv()
 	if !e.Available(context.Background()) {
-		t.Fatal("unknownProvider must report Available so Explain actually runs and surfaces the bad value")
+		t.Fatal("unknownProvider must report Available so Explain runs and surfaces the bad value")
 	}
 	_, err := e.Explain(context.Background(), finding(), "")
 	if err == nil || !strings.Contains(err.Error(), "chatgpt") {

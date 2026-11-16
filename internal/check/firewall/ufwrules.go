@@ -13,7 +13,7 @@ import (
 // default incoming policy decides a port no rule names.
 type UFWView struct {
 	// Active is false when ufw is not installed, not running, or its status
-	// could not be read — in every one of those cases nothing here can say a
+	// could not be read, in every one of those cases nothing here can say a
 	// port is blocked.
 	Active bool
 
@@ -42,7 +42,7 @@ func ReadUFW(ctx context.Context, r platform.CommandRunner) UFWView {
 }
 
 // Blocks reports whether inbound TCP to port is refused for both address
-// families. Any allow that comes first — from anywhere or from one subnet —
+// families. Any allow that comes first (from anywhere or from one subnet)
 // means somebody can reach it, so the answer is no.
 func (v UFWView) Blocks(port int) bool {
 	if !v.Active {
@@ -113,8 +113,7 @@ func splitColumns(s string) []string {
 
 // portMatcher reads the port part of a To column: "Anywhere", "6379",
 // "6379/tcp", "80,443/tcp", "6000:6007/tcp". A rule bound to an address or an
-// interface, or for UDP only, is not one this reads; it is skipped rather than
-// guessed at, which can only make a port look less blocked than it is.
+// interface, or for UDP only, is not one this reads; it is skipped, which can only make a port look less blocked than it is.
 func portMatcher(to string) (func(int) bool, bool) {
 	if strings.EqualFold(to, "anywhere") {
 		return func(int) bool { return true }, true

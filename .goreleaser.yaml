@@ -27,8 +27,8 @@ archives:
       {{ .ProjectName }}-{{ .Os }}-{{ .Arch }}
     formats: ["tar.gz"]
 
-# Native packages, for the audience this tool is actually for. Hostveil
-# runs meaningfully only on Linux, and its users administer servers — where
+# Native packages, for the audience this tool is for. Hostveil
+# runs meaningfully only on Linux, and its users administer servers, where
 # `apt install ./hostveil.deb` is the ordinary way software arrives and a
 # tarball extracted into /usr/bin is the exception. Until now the only
 # supported path was piping install.sh to bash, which is exactly the habit
@@ -38,16 +38,16 @@ archives:
 # in either. The darwin binaries still ship as archives.
 #
 # The package installs the same single binary to the same path install.sh
-# uses, /usr/bin/hostveil, so the two are interchangeable — an operator can
+# uses, /usr/bin/hostveil, so the two are interchangeable: an operator can
 # move from one to the other without ending up with two copies on PATH.
 #
 # There is no postinstall script, no service unit, and no config file to
 # ship. Hostveil is a command you run, its state lives in /var/lib/hostveil
 # (created on first use as root), and it has no daemon. Packaging it as
-# though it did would invent a lifecycle the tool does not have — and a
+# though it did would invent a lifecycle the tool does not have, and a
 # package that removed /var/lib/hostveil on purge would delete the
 # checkpoints that are the only backup of every file it ever edited, which
-# is precisely why install.sh --uninstall leaves them alone too.
+# is why install.sh --uninstall leaves them alone too.
 nfpms:
   - id: packages
     package_name: hostveil
@@ -63,9 +63,8 @@ nfpms:
     license: GPL-3.0
     section: admin
     bindir: /usr/bin
-    # Every one of these is optional and each unlocks a domain rather than
-    # being required to run: no Docker means the container and CVE domains
-    # report N/A, not that Hostveil fails. Recommends, never Depends —
+    # Every one of these is optional and each unlocks a domain: no Docker means the container and CVE domains
+    # report N/A and Hostveil still runs. Recommends, never Depends:
     # pulling Docker onto a host as a side effect of installing a scanner
     # would be indefensible.
     recommends:

@@ -10,14 +10,14 @@ import (
 
 // The compose findings below were in the declined register until Review was
 // allowed a single action. Each has exactly one mechanical remediation, and
-// each can break a deployment that set the key on purpose — which is why none
+// each can break a deployment that set the key intentionally, which is why none
 // of them is Auto and every one of them says so in its Warning. What changed
 // is not the risk, it is who decides: the operator reads the Warning and the
 // diff, and presses the button or does not.
 //
-// None of them is applied by a batch, not even `fix --all --review`: each is
+// None of them is applied by a batch, `fix --all --review` included: each is
 // IndividualOnly, because the person who has to read the Warning is the one
-// who knows whether this service set the key on purpose.
+// who knows whether this service set the key intentionally.
 //
 // They are all file edits, so every one leaves a checkpoint and rolls back
 // exactly. None of them is in force until the service is recreated, and
@@ -47,7 +47,7 @@ const rollbackNote = "This is a file edit with a checkpoint, so rolling it back 
 // A removal is the opposite question from composeScalarTarget's: not which
 // file decides a value, but which file wrote the line. Deleting it from a file
 // that does not contain it is an error, and deleting it from one of two that
-// do leaves the other one in force while the finding clears — so exactly one
+// do leaves the other one in force while the finding clears, so exactly one
 // file must carry it, or Hostveil says it cannot tell.
 func composeKeyTarget(f model.Finding, has func(compose.Service) bool) (string, error) {
 	files, err := composeFiles(f)
@@ -104,8 +104,8 @@ func buildRemovePrivileged(f model.Finding) (Fix, error) {
 		"Delete `privileged: true`",
 		"A compromise of this container stops being a compromise of the host: it loses direct access to "+
 			"every device and almost every kernel capability root has.",
-		"If the service really does need host devices or kernel access — a VPN client, a hardware "+
-			"monitor, Docker-in-Docker — it will fail to start or quietly lose that function. Check its "+
+		"If the service really does need host devices or kernel access; a VPN client, a hardware "+
+			"monitor, Docker-in-Docker; it will fail to start or silently lose that function. Check its "+
 			"logs after recreating it, and if it needs one specific capability, grant just that with cap_add.",
 		func(d *compose.Doc, svc string) error { return d.RemoveKey(svc, "privileged") })
 }
@@ -127,7 +127,7 @@ func buildRemoveCapability(f model.Finding) (Fix, error) {
 		"Remove "+capability+" from cap_add",
 		"Takes away a capability that can be escalated into a container escape, so a compromise of "+
 			"this service stays inside it.",
-		"Services add capabilities on purpose: NET_ADMIN for a VPN or a firewall container, SYS_ADMIN "+
+		"Services add capabilities intentionally: NET_ADMIN for a VPN or a firewall container, SYS_ADMIN "+
 			"for FUSE mounts, SYS_PTRACE for a debugger. If this one needs "+capability+", it will fail "+
 			"the operation that uses it once recreated.",
 		func(d *compose.Doc, svc string) error { return d.RemoveCapAdd(svc, capability) })
@@ -140,7 +140,7 @@ func buildRemoveHostNetwork(f model.Finding) (Fix, error) {
 		"The container gets its own network namespace again, so it can no longer bind any port on the "+
 			"host or reach services that listen only on the host's loopback.",
 		"With host networking gone, whatever port the service listens on is no longer reachable from "+
-			"outside the container until you publish it under `ports:` — Hostveil cannot tell which ports "+
+			"outside the container until you publish it under `ports:`; Hostveil cannot tell which ports "+
 			"those are. Services that discover devices on the LAN (Home Assistant, Plex/Jellyfin DLNA) "+
 			"also lose that.",
 		func(d *compose.Doc, svc string) error { return d.RemoveKey(svc, "network_mode") })
@@ -163,7 +163,7 @@ func buildRemoveHostIpc(f model.Finding) (Fix, error) {
 		"Delete `ipc: host`",
 		"The container can no longer read or tamper with shared memory that host processes and other "+
 			"containers use.",
-		"If the service shares memory with a process on the host on purpose, that sharing stops; if it "+
+		"If the service shares memory with a process on the host intentionally, that sharing stops; if it "+
 			"only needs to share with one other container, `ipc: \"service:NAME\"` is the narrower setting.",
 		func(d *compose.Doc, svc string) error { return d.RemoveKey(svc, "ipc") })
 }
@@ -196,7 +196,7 @@ func buildRemoveSeccompUnconfined(f model.Finding) (Fix, error) {
 		"Remove `seccomp:unconfined` from security_opt",
 		"Docker's default syscall filter applies again, blocking the kernel interfaces a container "+
 			"escape usually goes through.",
-		"Someone disabled the filter for a reason — usually one syscall an application needs, such as "+
+		"Someone disabled the filter for a reason, usually one syscall an application needs, such as "+
 			"a browser sandbox or a FUSE mount. That call will now fail with EPERM; if it does, a profile "+
 			"allowing just that syscall is the narrow fix.",
 		func(d *compose.Doc, svc string) error { return d.RemoveSecurityOpt(svc, "seccomp:unconfined") })
@@ -233,7 +233,7 @@ func buildRemoveDockerSocket(f model.Finding) (Fix, error) {
 	return riskyComposeFix(f, hasVolume(mount, false),
 		"Unmount the Docker socket from "+f.Service,
 		"Remove the "+mount+" volume",
-		"The container loses the Docker API, which is root on the host for anything that can reach it — "+
+		"The container loses the Docker API, which is root on the host for anything that can reach it; "+
 			"so compromising this service stops meaning compromising the machine.",
 		"Portainer, Traefik's Docker provider, Watchtower and similar tools exist to talk to that API "+
 			"and stop working without it. If this is one of them, a socket proxy that allows only the "+
@@ -251,7 +251,7 @@ func buildMountReadOnly(f model.Finding) (Fix, error) {
 		"Add `:ro` to the "+mount+" mount",
 		"A compromise of this container can still read "+mount+" but can no longer plant SSH keys, cron "+
 			"jobs or anything else there to persist on the host.",
-		"If the service writes under that mount — a backup tool restoring files, a config manager — those "+
+		"If the service writes under that mount (a backup tool restoring files, a config manager) those "+
 			"writes start failing with a read-only filesystem error.",
 		func(d *compose.Doc, svc string) error { return d.SetVolumeReadOnly(svc, mount) })
 }
@@ -276,8 +276,8 @@ func buildReadOnlyRootfs(f model.Finding) (Fix, error) {
 			"A process that breaks in can no longer replace the container's own binaries or leave tools "+
 				"behind in its filesystem; anything it writes outside the tmpfs mounts fails, and what it "+
 				"writes inside them is gone at the next restart.",
-			"Many images write somewhere other than "+strings.Join(readOnlyTmpfs, " and ")+" — a cache "+
-				"directory, a PID file, logs — and fail to start, or fail later, on a read-only root. "+
+			"Many images write somewhere other than "+strings.Join(readOnlyTmpfs, " and ")+"; a cache "+
+				"directory, a PID file, logs, and fail to start, or fail later, on a read-only root. "+
 				"Watch the logs after recreating it; each path it complains about needs a tmpfs or a "+
 				"volume. "+rollbackNote+" "+recreateNote(svc),
 			svc,
@@ -300,15 +300,15 @@ func buildRunAsNonRoot(f model.Finding) (Fix, error) {
 		return Fix{}, err
 	}
 	svc := f.Service
-	warning := "Images that start as root to set up and then drop privileges themselves — postgres " +
-		"chowning its data directory, nginx binding port 80 — fail to start when a user is forced on " +
+	warning := "Images that start as root to set up and then drop privileges themselves; postgres " +
+		"chowning its data directory, nginx binding port 80; fail to start when a user is forced on " +
 		"them, and files already on a volume stay owned by whoever wrote them. Check the image's " +
 		"documentation for the UID it expects. " + rollbackNote + " " + recreateNote(svc)
 	benefit := "A process that escapes this container lands on the host as an unprivileged UID instead of root."
 	actions := make([]Action, 0, len(nonRootUsers))
 	for _, u := range nonRootUsers {
 		actions = append(actions, composeEdit(path,
-			fmt.Sprintf("Run %s as %s — %s", svc, u.value, u.why), benefit, warning, svc,
+			fmt.Sprintf("Run %s as %s; %s", svc, u.value, u.why), benefit, warning, svc,
 			func(d *compose.Doc) error { return d.SetScalar(svc, "user", u.value) }))
 	}
 	return Fix{

@@ -1,7 +1,7 @@
 name: E2E
 
-# Drives the real binary through the sequence that changes a host —
-# scan → fix → rescan → rollback → rescan — and checks the outcome at each
+# Drives the real binary through the sequence that changes a host
+# (scan → fix → rescan → rollback → rescan) and checks the outcome at each
 # step, against a container seeded with genuine misconfigurations.
 #
 # Everything above this is a unit test against a fake CommandRunner, which
@@ -11,8 +11,8 @@ name: E2E
 # and the demo VM is manual and asserts nothing. This is the smallest thing
 # that closes the gap and runs on every pull request.
 #
-# Deliberately no Docker and no Trivy: the container domains need a daemon,
-# and the point here is the apply/rollback machinery, not coverage breadth.
+# No Docker and no Trivy: the container domains need a daemon,
+# and this job tests the apply/rollback machinery.
 # The domains that cannot run report Skipped, which is itself asserted.
 
 on:
@@ -39,7 +39,7 @@ permissions: {}
 jobs:
   # One static binary for every job below. It is what an operator downloads,
   # and building it once replaces a setup-go and a build in each job. Named
-  # binary rather than build because ci.yml's required check is called build.
+  # binary because ci.yml's required check is already called build.
   binary:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -63,12 +63,12 @@ jobs:
     needs: binary
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Debian, not the runner itself: the test writes /etc/ssh/sshd_config and
+    # Debian: the test writes /etc/ssh/sshd_config and
     # chmods files under /etc, and doing that to the runner would be both
     # rude and unrepeatable. A container gives a disposable root filesystem.
     container:
       image: debian:13
-    # This job uses a container *as* a host filesystem — the comment above says
+    # This job uses a container *as* a host filesystem; the comment above says
     # so, and it writes /etc/ssh/sshd_config to prove it. Hostveil now declines
     # two domains inside a container, because neither can be acted on from in
     # there: the firewall it cannot see and the kernel parameters it cannot
@@ -120,7 +120,7 @@ jobs:
           set -e
           # 1 means unfixed Critical or High findings, which is the whole
           # point of the seed. 0 would mean the scan found nothing; 3 would
-          # mean a domain failed outright.
+          # mean a domain failed completely.
           test "$code" = 1
 
           for id in ssh.rootlogin ssh.passwordauth ssh.emptypasswords; do
@@ -141,7 +141,7 @@ jobs:
           test "$after" -gt "$before"
 
           # The Auto SSH fixes are edits, so they must have taken effect on
-          # the real file — and sshd must still accept the result, which is
+          # the real file, and sshd must still accept the result, which is
           # what the fix's own validator promised.
           grep -q "PermitEmptyPasswords no" /etc/ssh/sshd_config.d/00-hostveil-demo.conf
           sshd -t
@@ -152,15 +152,15 @@ jobs:
           export HOSTVEIL_NO_SUDO=1
 
           # Enabling automatic security updates is a real remediation that
-          # Hostveil knows how to apply, and it runs a command — so it leaves
+          # Hostveil knows how to apply, and it runs a command, so it leaves
           # no restore point, and "fix everything safe" has to decline it.
           # The package must still be absent and the finding must still be
           # open after the batch above.
           #
           # Unit tests pin the classification against a fake registry. This is
           # the only place it meets a real apt, on a host where the finding
-          # genuinely fires, with a real `fix --all` deciding what to run.
-          # Written as an if rather than `! dpkg …`: a negated command is
+          # fires, with a real `fix --all` deciding what to run.
+          # Written as an if: a negated command is
           # exempt from errexit, so the assertion would report nothing however
           # it turned out.
           if dpkg -s unattended-upgrades >/dev/null 2>&1; then
@@ -220,7 +220,7 @@ jobs:
 
           # Rollback keeps no backup of its own, so overwriting those edits
           # would be unrecoverable. It has to refuse and leave the file exactly
-          # as it found it — a refusal that still wrote would be the worst
+          # as it found it: a refusal that still wrote would be the worst
           # outcome this layer can produce.
           set +e
           hostveil rollback "$id" > /tmp/declined.txt 2>&1
@@ -230,8 +230,7 @@ jobs:
           grep -q -- "--force" /tmp/declined.txt
           test "$(sha256sum "$conf" | cut -d' ' -f1)" = "$before"
 
-          # And --force has to be a real escape hatch rather than a sentence
-          # in an error message: it restores the backup, edits and all.
+          # And --force has to be a real escape hatch: it restores the backup, edits and all.
           hostveil rollback "$id" --force
           if grep -q "edited by the operator after the fix" "$conf"; then
             echo "--force did not restore the backup: the operator's edit is still there"
@@ -252,11 +251,11 @@ jobs:
           set -eux
           export HOSTVEIL_NO_SUDO=1
           # No Docker daemon and no Trivy here. The invariant is that those
-          # domains are excluded rather than awarded a perfect score, so a
+          # domains are excluded, so a
           # scan that could not look never reads as a scan that found nothing.
           # scan exits 1 whenever unfixed Critical/High findings exist,
-          # which is exactly the state under test — so the status here is
-          # expected, not a failure.
+          # which is exactly the state under test, so the status here is
+          # expected.
           hostveil scan --json > /tmp/scan3.json || true
 
           # Nothing below is worth anything if the selection matches no
@@ -265,10 +264,10 @@ jobs:
           # #656 changed the encoding that matched nothing, `bad` was empty
           # however the scan turned out, and a step named for the invariant
           # went on passing without ever testing it. There is no Docker and no
-          # Trivy here, so at least one domain is always Skipped — if none is,
+          # Trivy here, so at least one domain is always Skipped, if none is,
           # the report changed shape and this step is looking at the wrong
           # thing. internal/docs/e2e_test.go pins the literal below against
-          # what the model actually writes.
+          # what the model writes.
           skipped=$(jq '[.domains[] | select(.state == "skipped")] | length' /tmp/scan3.json)
           test "$skipped" -gt 0 || {
             echo "no domain reported Skipped, so this step asserts nothing"; exit 1; }
@@ -296,7 +295,7 @@ jobs:
           HOSTVEIL_DEBUG=1 hostveil scan --json 2>/dev/null | jq -e . >/dev/null
 
       # update and uninstall are the two commands that rewrite the installed
-      # binary and delete files, and they had no integration coverage at all —
+      # binary and delete files, and they had no integration coverage at all:
       # 57% and 44% in unit tests, which is the furthest a unit test gets from
       # the thing being tested when the thing is "does it really remove the
       # file".
@@ -307,7 +306,7 @@ jobs:
       # nft and iptables all live in /usr/sbin. exec.LookPath therefore failed
       # for a firewall that was installed and running, the firewall domain read
       # a front-end it could not find as one that was not installed, and every
-      # front-end missing as "no firewall is active" — so the host was handed
+      # front-end missing as "no firewall is active", so the host was handed
       # the tool's most severe finding telling it to install a firewall it was
       # already running.
       #
@@ -315,7 +314,7 @@ jobs:
       # whole path, because the defect was never in LookPath's own behaviour:
       # it was in what three layers above it concluded from a lookup that
       # failed. It has to run unprivileged, in a login shell, or the PATH that
-      # causes it is never the PATH in effect — which is exactly why every
+      # causes it is never the PATH in effect, which is exactly why every
       # scan that auto-elevated hid this.
       - name: an unprivileged scan does not invent a missing firewall
         run: |
@@ -326,13 +325,13 @@ jobs:
 
           # A login shell, so PATH is the one login.defs hands a non-root user.
           # shellcheck disable=SC2016 # $PATH must expand inside that shell,
-          # not in this one — expanding it here would print root's PATH, which
+          # not in this one: expanding it here would print root's PATH, which
           # is the very difference being tested.
           su - hvtest -c 'echo "$PATH"' | tee /tmp/path.txt
           grep -q sbin /tmp/path.txt && exit 1
           su - hvtest -c 'command -v ufw' && exit 1   # invisible to this user
 
-          # HOSTVEIL_ASSUME_HOST inline, not from the job env: `su -` starts a
+          # HOSTVEIL_ASSUME_HOST inline: `su -` starts a
           # login shell and resets the environment, the same way it resets
           # PATH above. Without it the firewall domain skips for being in a
           # container and this step stops testing the thing it is named for.
@@ -343,7 +342,7 @@ jobs:
           # and it is the most severe thing this program can say.
           grep -q 'firewall.inactive' /tmp/fw.txt && exit 1
 
-          # And the honest answer in its place: a coverage gap, because a
+          # And the accurate answer in its place: a coverage gap, because a
           # non-root user cannot read the firewall state either.
           grep -q 'firewall partial' /tmp/fw.txt
 
@@ -374,7 +373,7 @@ jobs:
           # refused there, in the documented words. Conditional on the release
           # lookup having worked, and said out loud when it did not: a GitHub
           # outage must not turn into a red build over something this step
-          # never got to observe, and it must not pass quietly either.
+          # never got to observe, and it must not pass silently either.
           if grep -q 'is available' /tmp/up.txt; then
             grep -qi 'could not tell how this binary was installed' /tmp/up.txt
           else
@@ -383,7 +382,7 @@ jobs:
           fi
 
           # --check writes nothing, whatever it finds. That is its whole
-          # contract: a cron job runs it on hosts nobody is watching.
+          # contract: a cron job runs it on unattended hosts.
           hostveil update --check >/tmp/upc.txt 2>&1 || true
           test "$(sha256sum /usr/local/bin/hostveil | cut -d' ' -f1)" = "$before"
 
@@ -407,9 +406,9 @@ jobs:
           test -d /var/lib/hostveil
           grep -q '/var/lib/hostveil' /tmp/un2.txt
 
-  # The fixes that no batch applies. `fix --all --review` — the path the
-  # roundtrip job above and scripts/measure/run.sh both take — skips every
-  # individual-only fix on purpose, so until this job they had only ever run
+  # The fixes that no batch applies. `fix --all --review` (the path the
+  # roundtrip job above and scripts/measure/run.sh both take) skips every
+  # individual-only fix, so until this job they had only ever run
   # against a fake CommandRunner. These scenarios need a Docker daemon and
   # systemd as PID 1, which a job container does not have, so they run on the
   # runner VM itself; it is discarded when the job ends, which is what makes
@@ -482,7 +481,7 @@ jobs:
           done
           exit "$rc"
 
-  # Fedora as a host, not a container. No runner is Fedora, so this boots one
+  # Fedora as a full host. No runner is Fedora, so this boots one
   # under KVM with scripts/e2e/vm.sh, the same VM a developer runs locally.
   # Every dnf-side probe of the updates domain was wrong on dnf5 and right
   # against the fake runner: zero pending security updates on a host with
@@ -512,7 +511,7 @@ jobs:
           sudo apt-get install -y -qq qemu-system-x86 qemu-utils genisoimage >/dev/null
 
       # The cloud image only; provisioning runs every time, so what is tested
-      # is a fresh install, not a disk somebody's earlier run left behind.
+      # is a fresh install.
       - uses: actions/cache@v6
         with:
           path: ~/.cache/hostveil/e2e/fedora/Fedora-Cloud-Base-*.qcow2
@@ -566,7 +565,7 @@ jobs:
   # and until now it had never been run on one. Both gaps are real: the CVE
   # and container domains sit behind a daemon, the updates domain branches on
   # apt versus dnf and skips on apk, and the binary is only static because
-  # CGO_ENABLED=0 is set in one place that nothing checks — enable cgo by
+  # CGO_ENABLED=0 is set in one place that nothing checks; enable cgo by
   # accident and Alpine support disappears with no test to notice.
   #
   # The assertion is the invariant this repository states most often, in the
@@ -575,9 +574,8 @@ jobs:
   # same empty list and mean opposite things, and a reason is the only thing
   # separating them on the operator's screen.
   #
-  # The binary is built on the runner and mounted in, rather than built inside
-  # each image. That is what an operator downloads, so it is what should be
-  # tested — and running it under musl is the point on Alpine.
+  # The binary is built on the runner and mounted in. That is what an operator downloads, so it is what should be
+  # tested, and Alpine exists here to run it under musl.
   distros:
     needs: binary
     runs-on: ubuntu-latest
@@ -620,7 +618,7 @@ jobs:
           jq -e '[.domains[] | select(.state == "done")] | length > 0' /tmp/scan.json
 
           # These images really are containers, so the container gate must
-          # fire — and the firewall domain must be the one that goes. Before
+          # fire, and the firewall domain must be the one that goes. Before
           # it existed both of these scored the firewall axis 50/100 on a
           # fabricated High about a firewall a container cannot have.
           jq -e '.domains[] | select(.source == "firewall") | select(.state != "done")' /tmp/scan.json

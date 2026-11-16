@@ -15,13 +15,13 @@ import (
 // support question there is: "it says my firewall is inactive, but it
 // isn't." Every claim the tool makes about a host comes from a command run
 // through this interface, so a log of what was run and what came back is
-// the whole diagnosis — and without it the only evidence was a domain's
+// the whole diagnosis, and without it the only evidence was a domain's
 // Reason string, which collapses stderr to one line and truncates it to 200
 // runes.
 //
-// What it deliberately does not record is stdout. `docker inspect` alone
+// What it does not record is stdout. `docker inspect` alone
 // reaches megabytes, and the output frequently contains environment
-// variables — a trace an operator pastes into a bug report must not be a
+// variables: a trace an operator pastes into a bug report must not be a
 // credential leak. The command, how long it took, and whether it failed are
 // what identify the problem; the parse of a successful command is a
 // different kind of bug.

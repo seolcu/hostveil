@@ -36,7 +36,7 @@ func cmdRollback(ctx context.Context, args []string) int {
 	out, err := engine.Rollback(id)
 
 	// Declining is not failing. The file changed after Hostveil wrote it, so
-	// restoring the backup would discard whatever was done in between — and
+	// restoring the backup would discard whatever was done in between, and
 	// rollback keeps no checkpoint of its own, so there would be no way back.
 	// Say exactly that, and let the user decide.
 	if core.IsExternalEdit(err) {
@@ -65,11 +65,11 @@ func cmdRollback(ctx context.Context, args []string) int {
 }
 
 // cmdHistory takes no flags, which is not the same as ignoring them. It
-// used to discard args entirely, so `hostveil history --json` — a flag a
+// used to discard args entirely, so `hostveil history --json` (a flag a
 // user has every reason to expect, and which the CLI reference says does
-// not exist — printed the human table and exited 0. Every other subcommand
+// not exist) printed the human table and exited 0. Every other subcommand
 // exits 2 on an unknown flag. Parsing an empty flag set is what makes the
-// documented "no flags" true rather than merely written down.
+// documented "no flags" true.
 func cmdHistory(_ context.Context, args []string) int {
 	fs := flag.NewFlagSet("history", flag.ContinueOnError)
 	scans := fs.Bool("scans", false, "show the score of every past scan instead of the applied-fix log")
@@ -80,7 +80,7 @@ func cmdHistory(_ context.Context, args []string) int {
 		return printScanHistory()
 	}
 	cps, err := newEngine().ListCheckpoints()
-	// An unreadable checkpoint is a warning over a usable list, not a failure:
+	// An unreadable checkpoint is a warning over a usable list:
 	// the entries that survived still name fixes the operator can roll back,
 	// and staying silent about the rest would hide that part of their recovery
 	// history is gone.
@@ -122,7 +122,7 @@ func warnAboutStateDirectory() {
 	}
 	fmt.Fprintf(os.Stderr,
 		"\nhostveil: reading %s because this run is not root.\n"+
-			"Fixes applied as root are recorded in /var/lib/hostveil instead — re-run with sudo to see those.\n",
+			"Fixes applied as root are recorded in /var/lib/hostveil instead; re-run with sudo to see those.\n",
 		history.DefaultDir())
 }
 
@@ -150,7 +150,7 @@ func printScanHistory() int {
 		p := points[i]
 		// N/A, not 0. A scan where every domain was skipped or failed has
 		// no score, and printing a number for it would draw a cliff where
-		// the truth is that nobody could look.
+		// the truth is that the scan could not look.
 		score := "  N/A"
 		if p.Applicable {
 			score = fmt.Sprintf("%3d/100", p.Overall)

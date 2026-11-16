@@ -9,7 +9,7 @@ var (
 	ipv4Pattern = regexp.MustCompile(`\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b`)
 	// A conservative match: any colon-separated run of hex groups that could
 	// be an IPv6 address. redactIPv6 below is what keeps it from also
-	// catching an ordinary H:MM:SS-shaped timestamp or duration — this
+	// catching an ordinary H:MM:SS-shaped timestamp or duration; this
 	// codebase prints plenty of those, and they contain only digits.
 	ipv6Pattern  = regexp.MustCompile(`\b(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}\b`)
 	homePattern  = regexp.MustCompile(`/home/[^/\s"']+`)
@@ -17,11 +17,11 @@ var (
 )
 
 // Redact replaces the things a bug report should not carry verbatim: IPv4
-// and IPv6 addresses (loopback and unspecified addresses are left alone —
+// and IPv6 addresses (loopback and unspecified addresses are left alone;
 // they say nothing about the host they came from), and the account name
 // embedded in a home directory path.
 //
-// It is a heuristic pass over free-form text, not a guarantee — that is what
+// It is a heuristic pass over free-form text with no guarantee. That is what
 // --unredacted's own warning in cmd/hostveil/diagnostics.go says, and what
 // keeps this from being sold as more than it is.
 func Redact(s string) string {
@@ -44,8 +44,8 @@ func redactIPv6(s string) string {
 		return s
 	}
 	// Require a hex letter or a "::" compression before treating this as an
-	// address at all. Without it, "15:04:05" — a timestamp format this
-	// codebase uses throughout its own CLI and history output — matches the
+	// address at all. Without it, "15:04:05" (a timestamp format this
+	// codebase uses throughout its own CLI and history output) matches the
 	// pattern above just as well as a real address does, and both this
 	// function and every fixture testing it would rather that pass through
 	// unredacted than eat a date on every report.

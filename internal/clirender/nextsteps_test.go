@@ -32,8 +32,8 @@ func TestReportEndsWithActionableCommands(t *testing.T) {
 	}
 }
 
-// fix --all is only worth naming when something can actually use it, and the
-// count has to be the number of Auto findings, not the total.
+// fix --all is only worth naming when something can use it, and the
+// count has to be the number of Auto findings.
 func TestFixAllOfferedOnlyWithAutoFindings(t *testing.T) {
 	withAuto := Text(report(
 		fnd("ssh.maxauthtries", model.SeverityLow, model.RemediationAuto),
@@ -96,7 +96,7 @@ func TestColoredOutputResetsEveryEscape(t *testing.T) {
 	const reset = "\x1b[0m"
 	last := strings.LastIndex(out, "\x1b[")
 	if last < 0 || !strings.HasPrefix(out[last:], reset) {
-		t.Errorf("output ends with an unreset color escape (%q) — the terminal would stay colored", out[last:min(last+20, len(out))])
+		t.Errorf("output ends with an unreset color escape (%q); the terminal would stay colored", out[last:min(last+20, len(out))])
 	}
 }
 

@@ -8,17 +8,16 @@ import (
 )
 
 // FormatInfo is core's own copy of a report.Format, so TUI and web can list
-// export formats without importing internal/report themselves — the
+// export formats without importing internal/report themselves: the
 // layering rule (AGENTS.md: "UIs may import only core, model, theme,
 // glyph") holds even though the mechanical layering test only denies four
-// specific package names, not a fifth one like internal/report.
+// specific package names, and internal/report is not one of them.
 type FormatInfo struct {
 	ID, Label, Ext string
 }
 
 // ExportFormats lists every format Export accepts, in display order. It is
-// a package-level function rather than a method — like theme.All() and
-// Layouts() — because it needs no engine state, which is what lets a UI's
+// a package-level function (like theme.All() and Layouts()) because it needs no engine state, which is what lets a UI's
 // format picker be built from a bare model literal the way every other
 // picker's fixtures already are.
 func ExportFormats() []FormatInfo {
@@ -33,7 +32,7 @@ func ExportFormats() []FormatInfo {
 // Export renders r in the named format ("json", "sarif" or "markdown"),
 // returning the bytes, a suggested filename, and the
 // MIME type a caller should advertise. It is the one place a UI reaches
-// report rendering from — see FormatInfo's comment.
+// report rendering from: see FormatInfo's comment.
 func (e *Engine) Export(r model.Report, formatID string) (data []byte, filename, contentType string, err error) {
 	data, f, err := report.Export(r, e.version, formatID)
 	if err != nil {

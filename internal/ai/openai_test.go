@@ -182,7 +182,7 @@ func TestNewOpenAICompatReadsTheEnvironment(t *testing.T) {
 		t.Errorf("default BaseURL = %q, want the OpenAI origin", c.BaseURL)
 	}
 	if c.Model != "" {
-		t.Errorf("default Model = %q, want empty — there is no cross-vendor default", c.Model)
+		t.Errorf("default Model = %q, want empty; there is no cross-vendor default", c.Model)
 	}
 
 	t.Setenv("HOSTVEIL_OPENAI_BASE_URL", "https://openrouter.ai/api/v1/")

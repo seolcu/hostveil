@@ -4,19 +4,19 @@
 # This is the instrument that answers the question a score cannot: after the
 # fixes, is the datastore still answering the network? It runs from inside a
 # container on the default bridge, connecting back to the host's bridge
-# address — so it reaches exactly what a service bound to 0.0.0.0 exposes and
+# address, so it reaches exactly what a service bound to 0.0.0.0 exposes and
 # nothing bound to loopback, which is the distinction the whole exercise is
 # about.
 #
-# A container rather than a second machine because it needs no fixture and
+# A container because it needs no fixture and
 # no credentials, and because the bridge address is off-host by every
 # definition that matters here: a different network namespace, arriving on an
 # interface, subject to the host firewall.
 #
-# Three outcomes, not two. A port that answers, a port that refuses, and a
+# Three outcomes. A port that answers, a port that refuses, and a
 # port whose packets vanish are three different states, and collapsing the
 # last two into "closed" would erase the difference between "the service
-# stopped listening" and "the firewall now drops it" — which is precisely the
+# stopped listening" and "the firewall now drops it", which is the
 # distinction between two of the fixes being measured.
 set -euo pipefail
 
@@ -29,7 +29,7 @@ PORTS=${EXTSCAN_PORTS:-"22 80 443 2375 2376 3306 5432 6379 6380 8080 8086 8096 9
 gw=$(ip -4 addr show docker0 2>/dev/null | grep -oP '(?<=inet )[\d.]+' | head -1)
 [ -n "$gw" ] || { echo '{"error":"no docker0 bridge to scan from"}'; exit 0; }
 
-# busybox nc's -w is a *connect* timeout and nothing else — it does not bound
+# busybox nc's -w is a *connect* timeout and nothing else: it does not bound
 # the wait for data. So a port that accepts and then says nothing hangs
 # forever, which is every one of the datastores this is pointed at. The outer
 # `timeout` is what bounds that, and the pair of them is also what separates

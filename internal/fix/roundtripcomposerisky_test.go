@@ -72,7 +72,7 @@ func TestEveryRiskyComposeFixClearsItsFindingAndNoOther(t *testing.T) {
 
 			// The cap_add rule reports the first dangerous capability it
 			// meets, so dropping NET_ADMIN surfaces SYS_ADMIN under the same
-			// ID. That is the next finding, not this one surviving.
+			// ID. That is the next finding; this one is gone.
 			if g, still := after[id]; still && g.Evidence["capability"] == f.Evidence["capability"] {
 				t.Errorf("%s survived its own fix.\n--- before ---\n%s\n--- after ---\n%s", id, in, out)
 			}
@@ -96,7 +96,7 @@ func TestEveryRiskyComposeFixClearsItsFindingAndNoOther(t *testing.T) {
 
 // Every one of these is offered only on its own. A reviewed batch applies the
 // first alternative of anything Review without asking, and these are Review
-// precisely because somebody has to ask.
+// because somebody has to ask.
 func TestRiskyComposeFixesAreReviewAndIndividualOnly(t *testing.T) {
 	checker := composeRiskyHost(t, t.TempDir())
 	found := runRisky(t, checker)

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// countingRunner records how many times each command actually reached the
+// countingRunner records how many times each command reached the
 // host, and can be held mid-call to force overlapping requests.
 type countingRunner struct {
 	runs      atomic.Int64
@@ -80,10 +80,10 @@ func TestScanCacheKeysOnArguments(t *testing.T) {
 	}
 }
 
-// The single-flight behaviour is the point rather than a refinement: the
+// The single-flight behaviour is the purpose of the cache: the
 // compose and CVE checkers start together and ask for `docker compose ls` at
 // the same moment, so a cache that only remembered completed calls would let
-// both miss and both run — the exact duplication this exists to remove.
+// both miss and both run; the exact duplication this exists to remove.
 func TestScanCacheCollapsesConcurrentDuplicates(t *testing.T) {
 	inner := &countingRunner{
 		release:   make(chan struct{}),
@@ -108,7 +108,7 @@ func TestScanCacheCollapsesConcurrentDuplicates(t *testing.T) {
 	}
 
 	// Hold the first caller inside the host call so the rest pile onto the
-	// same in-flight key rather than finding a completed entry.
+	// same in-flight key.
 	<-inner.entered
 	close(inner.release)
 	wg.Wait()
@@ -168,14 +168,14 @@ func TestScanCacheSeparatesRunFromLookPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	if path != "/usr/bin/docker" {
-		t.Errorf("LookPath returned %q — it read the Run cache", path)
+		t.Errorf("LookPath returned %q; it read the Run cache", path)
 	}
 }
 
 // A caller waiting on someone else's in-flight command must still honour its
 // own cancellation. The flight carries the deadline of whoever started it, so
-// without this a checker with a tighter deadline — or a scan the user just
-// cancelled — would sit here until an unrelated command finished.
+// without this a checker with a tighter deadline (or a scan the user just
+// cancelled) would sit here until an unrelated command finished.
 func TestWaiterHonoursItsOwnCancellation(t *testing.T) {
 	r := &countingRunner{release: make(chan struct{}), entered: make(chan struct{})}
 	c := NewScanCache(r)

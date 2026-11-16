@@ -19,7 +19,7 @@ func registerAccounts(r *Registry) {
 			"easiest way a stray world-readable file leaks something it shouldn't.",
 		[]loginDefault{{"UMASK", "027"}}))
 	r.Register("accounts.password-aging", buildLoginDefaults("Harden password aging defaults",
-		"Forces credentials to actually expire and blocks changing a password back to itself "+
+		"Forces credentials to expire and blocks changing a password back to itself "+
 			"immediately, so a leaked password has a shelf life instead of being valid forever.",
 		[]loginDefault{{"PASS_MIN_DAYS", "1"}, {"PASS_MAX_DAYS", "365"}}))
 	r.Register("accounts.core-dumps", buildCoreDumpLimit)
@@ -29,10 +29,10 @@ func registerAccounts(r *Registry) {
 }
 
 // buildLockEmptyPasswordAccount locks the first account the finding names
-// rather than setting a new password: Hostveil has no way to collect one
+// and sets no new password: Hostveil has no way to collect one
 // from the operator, and inventing a credential is the same mistake the
 // per-CVE fixes were declined for. `passwd -l` is exec, so EffectiveKind
-// floors this to Review whatever it declares here — and it should, since the
+// floors this to Review whatever it declares here, and it should, since the
 // account it locks may be the operator's only way to reach the machine
 // (console, su) and /etc/shadow does not say which this is. That risk is
 // disclosed via Warning and left to the operator, the same shape
@@ -40,7 +40,7 @@ func registerAccounts(r *Registry) {
 //
 // Only the first account when several are affected. Locking is per-account
 // exec with no shared state, unlike firewall.inactive's ports which all need
-// to stay open together — batching several accounts into one action would
+// to stay open together: batching several accounts into one action would
 // raise the blast radius of a single Fix for no offsetting benefit. The
 // remaining accounts are re-detected on the next scan.
 func buildLockEmptyPasswordAccount(f model.Finding) (Fix, error) {
@@ -60,7 +60,7 @@ func buildLockEmptyPasswordAccount(f model.Finding) (Fix, error) {
 				"tries it, including a stranger who has never touched this host before.",
 			Warning: "If " + account + " is your only way to reach this machine locally (console, su) " +
 				"and it has no other credential, locking it removes that access. Confirm you have another " +
-				"route in — an SSH key, a different sudo-capable account — before applying. The remote SSH " +
+				"route in (an SSH key, a different sudo-capable account) before applying. The remote SSH " +
 				"path is already closed by ssh.emptypasswords; this only closes the local one.",
 			Kind:     ActionExec,
 			Commands: [][]string{{"passwd", "-l", account}},
@@ -75,7 +75,7 @@ func buildCoreDumpLimit(f model.Finding) (Fix, error) {
 	}
 	return Fix{Label: "Disable core dumps through PAM limits", Kind: model.RemediationAuto, Actions: []Action{{
 		Label: "Set a hard core-size limit of zero",
-		Benefit: "Stops a crashed privileged process writing a core file to disk — the easiest place " +
+		Benefit: "Stops a crashed privileged process writing a core file to disk; the easiest place " +
 			"a live secret in memory (a password, a key) ends up sitting in plaintext after a crash.",
 		Kind: ActionEdit, Path: path, Transform: func(in []byte) ([]byte, error) {
 			if hasCoreLimit(in) {

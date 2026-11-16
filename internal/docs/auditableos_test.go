@@ -12,14 +12,14 @@ import (
 // osGated are the checkers whose Available must consult platform.AuditableOS,
 // and the reason each one has to.
 //
-// The others do not need it: they probe something a non-Linux host genuinely
-// lacks — /proc/sys, systemd, apt-get, ss, a reachable Docker daemon — and
+// The others do not need it: they probe something a non-Linux host
+// lacks (/proc/sys, systemd, apt-get, ss, a reachable Docker daemon) and
 // skip cleanly on their own. These probe something that exists on macOS and
 // means something else there, so without the gate each produces an answer
 // about a host it never examined.
 var osGated = map[string]string{
 	"firewall": "probes only ufw, firewall-cmd, nft and iptables; on a host with none of them " +
-		"nothing fails, and the absence of a failure was read as the absence of a firewall — a " +
+		"nothing fails, and the absence of a failure was read as the absence of a firewall; a " +
 		"top-severity finding on every Mac, whose packet filter is pf",
 	"accounts": "/etc/passwd exists on macOS as a stub (the account database is Open Directory), " +
 		"so the UID-0 scan passes against something that does not describe the host, and the " +
@@ -27,10 +27,10 @@ var osGated = map[string]string{
 	"agent": "enumerates homes out of that same /etc/passwd keeping uid 0 and 1000..65533; macOS " +
 		"accounts start at 501, so it finds only /var/root and reports 'no agent runtime' about a " +
 		"host whose /Users it never opened",
-	"forensic": "reads journald, auditd, logrotate and rsyslog, none of which macOS has — its " +
-		"logging is the unified log — so every check would either find nothing to judge or report " +
+	"forensic": "reads journald, auditd, logrotate and rsyslog, none of which macOS has; its " +
+		"logging is the unified log, so every check would either find nothing to judge or report " +
 		"'no log leaves this host' about a system whose logging it never examined",
-	"proxy": "reads /etc/nginx, which Homebrew's nginx does not use — its configuration is under " +
+	"proxy": "reads /etc/nginx, which Homebrew's nginx does not use; its configuration is under " +
 		"the prefix, so the domain would report a clean proxy on a Mac that is running one, and " +
 		"the Traefik half would be deciding from a Docker daemon on a host whose own reverse " +
 		"proxy it never opened",
@@ -39,13 +39,13 @@ var osGated = map[string]string{
 // TestTheOSGateIsWhereItHasToBe pins which checkers consult platform.Auditable
 // OS from their Available.
 //
-// A checker dropping the call is silent on Linux — every test here runs on
+// A checker dropping the call is silent on Linux: every test here runs on
 // Linux, CI cross-compiles darwin but never executes it, and the demo VM is
 // Ubuntu. The failure only appears on a user's Mac, as a finding about
 // something Hostveil did not look at, which is the one thing this codebase
 // says a checker must never produce.
 //
-// It reads the source rather than calling Available, because on this platform
+// It reads the source, because on this platform
 // the gate returns true and a checker that had stopped calling it would
 // behave identically.
 func TestTheOSGateIsWhereItHasToBe(t *testing.T) {
@@ -57,7 +57,7 @@ func TestTheOSGateIsWhereItHasToBe(t *testing.T) {
 			continue
 		}
 		if !availableCallsAuditableOS(file) {
-			t.Errorf("internal/check/%s's Available does not consult platform.AuditableOS — %s",
+			t.Errorf("internal/check/%s's Available does not consult platform.AuditableOS; %s",
 				domain, osGated[domain])
 		}
 	}
@@ -65,7 +65,7 @@ func TestTheOSGateIsWhereItHasToBe(t *testing.T) {
 
 // And the other direction: a checker that grew the gate without a recorded
 // reason. The gate makes a domain report nothing at all on a platform, which
-// is a large thing to do quietly.
+// is a large thing to do silently.
 func TestNoCheckerIsOSGatedWithoutAReason(t *testing.T) {
 	for _, domain := range checkDomains(t) {
 		if _, listed := osGated[domain]; listed {
@@ -77,7 +77,7 @@ func TestNoCheckerIsOSGatedWithoutAReason(t *testing.T) {
 			continue // a domain whose entry point is named differently; the test above covers the gated three
 		}
 		if availableCallsAuditableOS(file) {
-			t.Errorf("internal/check/%s is OS-gated but osGated has no entry saying why — the gate "+
+			t.Errorf("internal/check/%s is OS-gated but osGated has no entry saying why; the gate "+
 				"silences a whole domain on a platform, which needs a sentence", domain)
 		}
 	}
@@ -104,7 +104,7 @@ func checkDomains(t *testing.T) []string {
 	}
 	sort.Strings(out)
 	if len(out) < 10 {
-		t.Fatalf("only %d detection domains found (%v) — the discovery is broken, not the tree",
+		t.Fatalf("only %d detection domains found (%v); the discovery is broken",
 			len(out), out)
 	}
 	return out

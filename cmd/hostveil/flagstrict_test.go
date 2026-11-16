@@ -10,7 +10,7 @@ import (
 
 // captureStderr mirrors captureStdout for the stream usage errors go to.
 // A usage error that does not say which flags conflict is only half an
-// answer, so the message is worth asserting, not just the exit code.
+// answer, so the message is asserted along with the exit code.
 func captureStderr(t *testing.T, fn func()) string {
 	t.Helper()
 	r, w, err := os.Pipe()
@@ -30,7 +30,7 @@ func captureStderr(t *testing.T, fn func()) string {
 	return <-done
 }
 
-// Every subcommand exits 2 on a flag it does not accept — that is the
+// Every subcommand exits 2 on a flag it does not accept, that is the
 // documented usage-error contract, and it is what tells a user their
 // invocation did not do what they typed.
 //
@@ -65,7 +65,7 @@ func TestCommandsRejectFlagsTheyDoNotAccept(t *testing.T) {
 // --all applies every Auto fix on the host. There is no single finding to
 // disambiguate with --service, and no alternative to pick with --action:
 // an Auto fix has exactly one action by definition. Combining them is a
-// contradiction, so it is a usage error rather than a silent drop.
+// contradiction, so it is a usage error.
 func TestFixAllRejectsSingleFindingFlags(t *testing.T) {
 	for _, tc := range []struct {
 		name string

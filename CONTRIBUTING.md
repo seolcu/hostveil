@@ -25,7 +25,7 @@ rsyncs your working tree in and rebuilds:
 cd demo && ./run.sh up      # then: ./run.sh scan | web | shell | reset | halt
 ```
 
-The VM is misconfigured on purpose, so it has something to find.
+The VM is misconfigured intentionally, so it has something to find.
 `./run.sh reset` puts it back.
 
 ## Before you open a pull request
@@ -71,7 +71,7 @@ trigger it alongside the case that must.
   the relevant config and what you expected. These are the most useful reports
   the project gets.
 - **A security vulnerability in Hostveil itself**: see `SECURITY.md`; report
-  it privately rather than in an issue.
+  it privately.
 
 ## License
 

@@ -6,8 +6,7 @@ on:
   pull_request:
     branches: [main]
   # Callable so the release workflow can run this exact gate against the
-  # commit being tagged, rather than trusting that some earlier run of it
-  # passed. Adding this does not change when CI runs on its own.
+  # commit being tagged. An earlier run passing is not enough. Adding this does not change when CI runs on its own.
   workflow_call:
 
 permissions:
@@ -15,7 +14,7 @@ permissions:
 
 # One run per pull request at a time: pushing twice in a minute used to leave
 # both runs queued for a runner, and the answer everyone waits for is the one
-# for the newest commit. Cancelling is scoped to pull requests — a push to
+# for the newest commit. Cancelling is scoped to pull requests: a push to
 # main and the release workflow's call of this gate must never be cancelled by
 # anything, least of all by each other.
 concurrency:
@@ -25,8 +24,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # The gate takes about two minutes. Ten is not a target, it is the point
-    # past which the job is stuck rather than slow, and a stuck job holds the
+    # The gate takes about two minutes. Ten is a ceiling, set
+    # past which the job is stuck, and a stuck job holds the
     # pull request until somebody notices.
     timeout-minutes: 15
     steps:
@@ -59,7 +58,7 @@ jobs:
           version: v2.12.2
 
       # The release workflow calls this one, and a broken `uses:` path or a
-      # dangling `needs:` in that wiring is invisible until a tag is pushed —
+      # dangling `needs:` in that wiring is invisible until a tag is pushed,
       # by which time the thing that was supposed to gate the release is the
       # thing that is broken. actionlint catches both statically. Pinned for
       # the same reason golangci-lint is: a floating version can start
@@ -73,8 +72,7 @@ jobs:
 
       # A tool that reports other people's vulnerabilities should not ship
       # its own. govulncheck reports only vulnerabilities in code paths this
-      # binary actually reaches, so a finding here is real rather than a
-      # dependency-graph coincidence — which is why it gates the build
+      # binary reaches, so a finding here is real, which is why it gates the build
       # instead of merely warning.
       - name: Check dependencies for known vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
@@ -111,7 +109,7 @@ jobs:
       # The cross-compile below covers what goreleaser *builds*; this covers
       # what it is *told* to build. Archives, checksums, SBOM hooks and the
       # ldflags that stamp the version live in .goreleaser.yaml, and nothing
-      # reads that file until a tag exists — by which time the release has
+      # reads that file until a tag exists, by which time the release has
       # already been published, because a maintainer creates it to make the
       # tag. A config error there therefore surfaces as a live release with no
       # artifacts, which is the situation demote-on-failure exists to clean up
@@ -124,10 +122,10 @@ jobs:
 
       # goreleaser builds linux and darwin on amd64 and arm64, and until this
       # existed the first compile of three of those four targets happened
-      # during a release — where a failure demotes the release to a draft
-      # rather than being caught on the pull request that caused it.
+      # during a release, where a failure demotes the release to a draft.
+      # This catches it on the pull request that caused it.
       # Compiling is enough: the tests only pass meaningfully on the platform
-      # they run on, and a build break is what actually escapes review.
+      # they run on, and a build break is what escapes review.
       # Concurrently, and without linux/amd64: the Build step above is that
       # target, so compiling it again is a third of this step spent proving
       # something already proved. The remaining three are independent, and
@@ -149,12 +147,12 @@ jobs:
       # login and adds a second UID 0 account, and is published beside an
       # invitation to run it. The runner ships shellcheck.
       #
-      # Every script, found rather than listed. The list used to name those
+      # Every script, found automatically. The list used to name those
       # two, and the eleven it left out were no less privileged: measure/run.sh
       # is root and edits the host it measures, and instruments/rollback.sh
       # computes the rollback-fidelity claim check.py fails the run over. All
       # of them were already clean, so naming two was costing coverage and
-      # buying nothing — and a hand-kept list is how the next script joins the
+      # buying nothing, and a hand-kept list is how the next script joins the
       # repo unchecked.
       - name: Lint shell scripts
         run: find . -name '*.sh' -not -path './.git/*' -print0 | xargs -0 shellcheck
@@ -166,7 +164,7 @@ jobs:
       # own audience is most likely to be in.
       #
       # RUNEWIDTH_EASTASIAN=1 is an operator saying their terminal draws the
-      # East Asian Ambiguous class two columns wide, and Hostveil honours it —
+      # East Asian Ambiguous class two columns wide, and Hostveil honours it:
       # internal/textwidth explains why it must, and lipgloss reads the same
       # variable. Every glyph the frame and the meters are drawn from is in
       # that class, so the whole layout is a different arithmetic there, and
@@ -175,16 +173,15 @@ jobs:
       # every release that has had a meter in it.
       #
       # Only the packages that lay anything out, and without -race: this is a
-      # second pass over the same code for a different environment, not a
-      # second search for data races.
+      # second pass over the same code for a different environment.
       - name: Test in a double-width terminal
         env:
           RUNEWIDTH_EASTASIAN: "1"
         run: go test -count=1 ./internal/ui/... ./internal/textwidth/ ./internal/clirender/ ./internal/glyph/ ./internal/model/
 
-      # Reported, not gated. A threshold on a repository this size mostly
+      # Reported only. A threshold on a repository this size mostly
       # teaches people to write tests that move the number, and the useful
-      # signal is which package dropped — which is visible right here in the
+      # signal is which package dropped, which is visible right here in the
       # job summary next to the diff that caused it.
       - name: Coverage by package
         run: |

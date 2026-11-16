@@ -14,7 +14,7 @@ import (
 // name happened to be a list of counts, or the word "clean". The branch says
 // which row belongs to which name.
 //
-// Both kinds of second row carry it — the severity mix and the reason a domain
+// Both kinds of second row carry it: the severity mix and the reason a domain
 // did not run. They had different indents, two columns and four, so the rail
 // drew two depths of hierarchy at once, which is no hierarchy at all.
 func TestEverySecondRailRowIsBranchedUnderItsDomain(t *testing.T) {
@@ -58,7 +58,7 @@ func TestEverySecondRailRowIsBranchedUnderItsDomain(t *testing.T) {
 }
 
 // isRailHead reports whether a rail row is a domain's own line: it ends in a
-// score or N/A rather than in a mix or a reason.
+// score or N/A. Mix and reason rows end otherwise.
 func isRailHead(txt string) bool {
 	fields := strings.Fields(txt)
 	if len(fields) == 0 {
@@ -77,20 +77,19 @@ func isRailHead(txt string) bool {
 	return last != ""
 }
 
-// The branch is measured in columns, not runes.
+// The branch is measured in columns.
 //
 // "└" is East Asian Ambiguous, so under RUNEWIDTH_EASTASIAN it is two columns
-// and the prefix is five. Three budgets are keyed to it — the one that decides
+// and the prefix is five. Three budgets are keyed to it (the one that decides
 // the mix's spelling for the whole rail, the one that sizes each domain's mix,
-// and the gate on the headroom note — and they have to move together, or
+// and the gate on the headroom note) and they have to move together, or
 // mixIsCompact chooses against a width the render does not have.
 func TestTheRailBranchIsBudgetedInColumns(t *testing.T) {
 	if got := railBranchW; got != lipgloss.Width(railBranch) {
 		t.Errorf("railBranchW = %d, want %d columns", got, lipgloss.Width(railBranch))
 	}
 	// The branched rows only. A domain's own row carries a meter, and the
-	// meter is built from block elements by rune count rather than to a column
-	// budget — so under this variable every one of them is over-wide for a
+	// meter is built from block elements by rune count, so under this variable every one of them is over-wide for a
 	// reason that predates the branch and belongs to its own fix. See the skip
 	// in TestTheHeaderComposesRowsThatFitBeforeTheFrameClipsThem.
 	m := layoutModel(100, 44)
@@ -127,7 +126,7 @@ func TestTheFullDetailKeepsItsHeader(t *testing.T) {
 
 // The facts stay in one copy across both renderings. A second copy is a
 // second place for the AI box, the how-to, or the why-no-fix note to be
-// forgotten — which is what detailBodyRows' own note has said since the pane
+// forgotten, which is what detailBodyRows' own note has said since the pane
 // was added.
 func TestTheDetailRenderingsShareTheirFacts(t *testing.T) {
 	m := layoutModel(120, 34)

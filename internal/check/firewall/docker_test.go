@@ -171,7 +171,7 @@ func TestBypassScopedToUFW(t *testing.T) {
 }
 
 // Whether the operator already closed the bypass is the one thing that
-// cannot be guessed. Unreadable means say so, not assume either answer:
+// cannot be guessed. Unreadable means say so:
 // assuming closed hides a real exposure, assuming open accuses a host
 // that may be correctly configured.
 func TestUnreadableDockerUserChainIsPartial(t *testing.T) {

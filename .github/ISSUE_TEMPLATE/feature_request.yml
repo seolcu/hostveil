@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         New detection rules are welcome. A rule that fires on a correctly
-        configured host is worse than no rule at all — so if you're proposing a
+        configured host is worse than no rule at all, so if you're proposing a
         check, please describe the case that must **not** trigger it too.
   - type: textarea
     id: problem

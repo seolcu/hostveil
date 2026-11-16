@@ -18,13 +18,13 @@ import (
 // fix it applied reversible.
 //
 // It did not. Pruning runs on every checkpoint save, so a batch that wrote
-// more restore points than the store keeps deleted its own earliest ones —
+// more restore points than the store keeps deleted its own earliest ones:
 // those fixes were unrollbackable the instant they were applied, and nothing
 // told the operator. Two Auto compose rules (no-new-privileges, and a missing
 // restart policy) fire on nearly every stock service, so this is a host with
-// enough containers, not a pathological one.
+// enough containers.
 //
-// The batch size is deliberately not tied to the store's cap: the claim is
+// The batch size is not tied to the store's cap: the claim is
 // that everything applied stays reversible, whatever the cap happens to be.
 func TestALargeBatchLeavesEveryFixRollbackable(t *testing.T) {
 	const services = 250
@@ -73,12 +73,12 @@ func TestALargeBatchLeavesEveryFixRollbackable(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(cps) != services {
-		t.Fatalf("the batch applied %d fixes but left %d restore points — "+
+		t.Fatalf("the batch applied %d fixes but left %d restore points; "+
 			"%d fixes cannot be undone", services, len(cps), services-len(cps))
 	}
 
-	// Not just present: usable. List is newest-first, so the last entry is the
-	// batch's first fix — the one pruning destroyed, and the one whose
+	// Present and usable. List is newest-first, so the last entry is the
+	// batch's first fix: the one pruning destroyed, and the one whose
 	// checkpoint has to still restore the file it backed up.
 	oldest := cps[len(cps)-1]
 	if _, err := e.Rollback(oldest.ID); err != nil {
@@ -94,9 +94,9 @@ func TestALargeBatchLeavesEveryFixRollbackable(t *testing.T) {
 }
 
 // A fix that exists and cannot be built is a defect in Hostveil, and the
-// batch used to report it as Skipped — the same word it uses for "there is no
+// batch used to report it as Skipped: the same word it uses for "there is no
 // fix for this finding". One of those is a fact about the host and the other
-// is a bug, and collapsing them is what guarantees nobody looks.
+// is a bug, and collapsing them is what guarantees the operator never looks.
 func TestABatchReportsABrokenFixAsFailedNotSkipped(t *testing.T) {
 	broken := fix.NewRegistry()
 	broken.Register("compose.ds018", func(model.Finding) (fix.Fix, error) {

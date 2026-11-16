@@ -6,7 +6,7 @@
 // domain here looks at something behind that.
 //
 // Two surfaces, because there are two ways people run one and covering only
-// the fashionable one would leave the common one unexamined — the same
+// the fashionable one would leave the common one unexamined: the same
 // argument the ports domain makes about a natively installed database that a
 // Compose audit cannot see:
 //
@@ -14,15 +14,14 @@
 //     following include and import directives.
 //   - Traefik and Caddy as containers, read from the Compose files the
 //     container domain already discovers. Traefik's most dangerous setting is
-//     almost always on the service's command line rather than in a config
-//     file, because that is how every tutorial writes it; a Caddy container's
+//     almost always on the service's command line, because that is how every tutorial writes it; a Caddy container's
 //     Caddyfile is read through its bind mount. What is read from Caddy, and
 //     why, is in caddy.go.
 //
-// # What is deliberately not audited
+// # What is not audited
 //
-// **A proxy serving plain HTTP.** The obvious rule — listening on 80 with no
-// TLS anywhere — accuses two configurations that are completely correct: a
+// **A proxy serving plain HTTP.** The obvious rule (listening on 80 with no
+// TLS anywhere) accuses two configurations that are completely correct: a
 // vhost whose only job is `return 301 https://$host$request_uri`, and a proxy
 // behind something else that already terminates TLS (a tunnel, a load
 // balancer, Cloudflare). Neither is distinguishable from the config, and a
@@ -34,7 +33,7 @@
 // severity budget on them teaches people to ignore it.
 //
 // **Anything about certificates.** Expiry and issuer are facts about the
-// network, not about a file, and a scanner reading a config cannot see them.
+// network, and a scanner reading a config cannot see them.
 package proxy
 
 import (
@@ -59,7 +58,7 @@ type Checker struct {
 	// the packaged-Caddy half, which is what keeps a test that sets only
 	// NginxRoot from reading the /etc/caddy of whatever host runs it.
 	CaddyRoot string
-	// Discover finds Compose projects. nil means the real one — injected so a
+	// Discover finds Compose projects. nil means the real one: injected so a
 	// test can exercise the Traefik half without a Docker daemon.
 	Discover func(ctx context.Context, r platform.CommandRunner) ([]compose.Project, []string, error)
 	// Fail2banConfDir is fail2ban's configuration directory (holding
@@ -78,8 +77,8 @@ func (*Checker) Source() model.Source { return model.SourceProxy }
 //
 // A host with no nginx or Caddy configuration and no reachable Docker daemon has
 // no proxy for this domain to have an opinion about, and the axis is
-// renormalized away rather than scored on an absence. That is the opposite of
-// the firewall domain, where absence *is* the finding — nobody is insecure for
+// renormalized away. That is the opposite of
+// the firewall domain, where absence *is* the finding: no host is insecure for
 // not running a reverse proxy.
 func (c *Checker) Available(ctx context.Context, env platform.Env) (bool, string) {
 	if ok, why := platform.AuditableOS(); !ok {
@@ -91,7 +90,7 @@ func (c *Checker) Available(ctx context.Context, env platform.Env) (bool, string
 	if ok, _ := platform.DockerReachable(ctx, env.Runner); ok {
 		return true, ""
 	}
-	return false, "no reverse proxy found — no " + c.root() + " or /etc/caddy, and no reachable Docker daemon to look for one in"
+	return false, "no reverse proxy found; no " + c.root() + " or /etc/caddy, and no reachable Docker daemon to look for one in"
 }
 
 func isDir(p string) bool {
@@ -121,7 +120,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		cov.Covered(1)
 		if len(unread) > 0 {
 			cov.Missed(0, "could not read "+strings.Join(unread, ", ")+
-				" — directives there were not audited; re-run with sudo")
+				"; directives there were not audited; re-run with sudo")
 		}
 		findings = append(findings, c.auditScanProtection(ctx, env.Runner, &cov)...)
 	}
@@ -142,7 +141,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		projects, unparsed, err := c.discover(ctx, env.Runner)
 		switch {
 		case err != nil:
-			cov.Missed(0, "cannot enumerate Compose projects — a containerised proxy was not audited")
+			cov.Missed(0, "cannot enumerate Compose projects; a containerised proxy was not audited")
 		default:
 			cov.Covered(1)
 			fs, listing, gaps := auditCompose(projects)
@@ -153,16 +152,16 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			}
 			if len(unparsed) > 0 {
 				cov.Missed(0, "could not read "+strings.Join(unparsed, ", ")+
-					" — a proxy defined there was not audited")
+					"; a proxy defined there was not audited")
 			}
 		}
 	} else if why != "" {
 		// Only a gap when there is a daemon to fail to reach. "Docker not
 		// installed" on a host running nginx from a package is a complete
-		// answer, not a blind spot — the same direction dockerd's config
+		// answer: the same direction dockerd's config
 		// merge got wrong.
 		if !strings.Contains(why, "not installed") {
-			cov.Missed(0, why+" — a containerised proxy was not audited")
+			cov.Missed(0, why+": a containerised proxy was not audited")
 		}
 	}
 
@@ -207,8 +206,8 @@ func auditCompose(projects []compose.Project) (out []model.Finding, listing, gap
 	return out, listing, gaps
 }
 
-// isTraefik decides from the image reference. The name is not enough — a
-// service may be called anything — and the image is what actually determines
+// isTraefik decides from the image reference. The name is not enough (a
+// service may be called anything) and the image is what determines
 // which program reads the flags below.
 func isTraefik(s compose.Service) bool {
 	return imageBase(s.Image) == "traefik"
@@ -229,7 +228,7 @@ func traefikInsecureAPI(s compose.Service) (string, bool) {
 		case a == "--api.insecure" || a == "--api.insecure=true":
 			return "command: " + strings.TrimSpace(arg), true
 		case strings.HasPrefix(a, "--api.insecure="):
-			// Anything but true is an explicit off, which is the point of
+			// Anything but true is an explicit off, which is the reason for
 			// writing it out.
 			if strings.TrimPrefix(a, "--api.insecure=") == "true" {
 				return "command: " + strings.TrimSpace(arg), true
@@ -263,7 +262,7 @@ func traefikFinding(p compose.Project, name string, svc compose.Service, where s
 		model.WithHowToFix(
 			"Remove the insecure API setting (" + where + "). If you want the dashboard, expose it through a router with authentication instead: " +
 				"keep `--api=true` without `--api.insecure`, add a router for `api@internal` on a hostname you control, and put a basicauth or forward-auth middleware in front of it. " +
-				"Recreate the container afterwards — Traefik reads these at start."),
+				"Recreate the container afterwards: Traefik reads these at start."),
 		model.WithEvidence("set-in", where),
 		model.WithEvidence("image", svc.Image),
 	}
@@ -323,7 +322,7 @@ func auditNginx(root string) ([]model.Finding, []string, []string) {
 
 // deprecatedTLS is the set nothing should still be offering. TLS 1.0 and 1.1
 // were deprecated by RFC 8996 in 2021 and every current browser refuses them,
-// so a server still offering them is not serving anybody — it is only widening
+// so a server still offering them is not serving anybody: it is only widening
 // what an attacker can negotiate down to. SSLv2 and SSLv3 are older still.
 var deprecatedTLS = []string{"sslv2", "sslv3", "tlsv1", "tlsv1.1"}
 
@@ -332,12 +331,12 @@ var deprecatedTLS = []string{"sslv2", "sslv3", "tlsv1", "tlsv1.1"}
 // Line-oriented reading is the obvious approach and it is wrong in the
 // direction that matters. nginx's grammar is terminated by `;` and blocks are
 // delimited by braces, so `location /files { autoindex on; }` is three
-// statements on one line — and a reader that took a line at a time would miss
+// statements on one line, and a reader that took a line at a time would miss
 // the setting entirely. A false negative is the failure this whole package is
 // least allowed: it reports a proxy as clean.
 //
 // Comments are stripped first, per line, because `#` runs to the end of a line
-// regardless of the braces around it — and a distribution's nginx.conf is
+// regardless of the braces around it, and a distribution's nginx.conf is
 // mostly its own examples left in place behind one.
 func statements(body string) [][]string {
 	var sb strings.Builder
@@ -369,8 +368,8 @@ func weakProtocols(fields []string) []string {
 	for _, f := range fields[1:] {
 		got := strings.ToLower(f)
 		for _, bad := range deprecatedTLS {
-			// Exact, not prefix: "tlsv1" must not match "tlsv1.2", which is
-			// the whole reason this list is compared rather than searched for.
+			// Exact match: "tlsv1" must not match "tlsv1.2", which is why
+			// this list is compared for equality.
 			if got == bad {
 				found = append(found, f)
 			}
@@ -407,11 +406,11 @@ func weakTLSFinding(weak map[string][]string) model.Finding {
 		model.SeverityMedium, model.SourceProxy, kind, model.WithWhyNoFix(why),
 		model.WithDescription(
 			"An `ssl_protocols` line here enables "+strings.Join(protos, ", ")+". "+
-				"RFC 8996 deprecated TLS 1.0 and 1.1 in 2021 and every current browser refuses them, so offering them serves no client that could not already connect — "+
+				"RFC 8996 deprecated TLS 1.0 and 1.1 in 2021 and every current browser refuses them, so offering them serves no client that could not already connect: "+
 				"it only widens what an attacker in the middle can negotiate the connection down to."),
 		model.WithHowToFix(
 			"Set `ssl_protocols TLSv1.2 TLSv1.3;` in "+strings.Join(files, ", ")+", then `nginx -t` to check the file parses and `systemctl reload nginx` to apply it. "+
-				"Reload rather than restart: nginx keeps serving from the configuration it already loaded, so a broken file looks like nothing at all until the next restart."),
+				"Run a reload: nginx keeps serving from the configuration it already loaded, so a broken file looks like nothing at all until the next restart."),
 		model.WithEvidence("protocols", strings.Join(protos, ", ")),
 		model.WithEvidence("config", strings.Join(files, ", ")),
 	)
@@ -437,11 +436,11 @@ func directoryListingFinding(nginx, caddy []string) model.Finding {
 		model.SeverityMedium, model.SourceProxy, kind, model.WithWhyNoFix(why),
 		model.WithDescription(
 			strings.Join(what, ", and ")+" generate a browsable listing for any directory with no index file. "+
-				"Everything in the directory is then enumerable by anyone who can reach it — backups left beside the site, a stray .env, a database dump, the file somebody meant to delete. "+
-				"It is a disclosure of what exists rather than of one file, which is what makes it worth more than the single file anybody had in mind."),
+				"Everything in the directory is then enumerable by anyone who can reach it: backups left beside the site, a stray .env, a database dump, the file somebody meant to delete. "+
+				"It discloses everything that exists in the directory, which is worth more to an attacker than the single file anybody had in mind."),
 		model.WithHowToFix(
 			strings.Join(fix, " ")+
-				" If a directory really is meant to be browsable, keep listing on for that path alone rather than for the whole site."),
+				" If a directory really is meant to be browsable, keep listing on for that path alone."),
 		model.WithEvidence("config", strings.Join(files, ", ")),
 	)
 }
@@ -449,7 +448,7 @@ func directoryListingFinding(nginx, caddy []string) model.Finding {
 // nginxFiles returns every configuration file reachable from root, following
 // include directives, plus the paths it could not read.
 //
-// Includes are followed rather than assumed, because nginx's own layout puts
+// Includes are followed, because nginx's own layout puts
 // almost nothing in nginx.conf: Debian ships conf.d/*.conf and sites-enabled/*,
 // and a rule that read only the top-level file would audit an empty shell on
 // the distribution most of this program's users run. That is the same mistake
@@ -460,7 +459,7 @@ func nginxFiles(root string) ([]string, []string) {
 
 	var walk func(path string, depth int)
 	walk = func(path string, depth int) {
-		// A bound rather than a cycle check: nginx itself refuses to nest
+		// A bound: nginx itself refuses to nest
 		// includes forever, and a config that reaches this depth is not one
 		// Hostveil should be following anyway.
 		if depth > 10 || seen[path] {

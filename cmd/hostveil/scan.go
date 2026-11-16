@@ -79,7 +79,7 @@ func cmdScan(ctx context.Context, args []string) int {
 		rendered = out + "\n"
 	default:
 		// A report written to a file is read later, without the terminal it
-		// was produced on — never color it.
+		// was produced on; never color it.
 		opts := clirender.Options{
 			Color: output == "" && !noColor && colorEnabled(), Verbose: verbose, Glyphs: gl,
 		}
@@ -142,7 +142,7 @@ func writeReport(path string, data []byte) error {
 // The display goes to stderr and only when stderr is a terminal, so `--json`,
 // a redirect, and a cron run all produce exactly the bytes they did before.
 // When there is nowhere useful to draw, the scan runs with a nil channel and
-// no goroutine — the same path as before this existed.
+// no goroutine: the same path as before this existed.
 func scanWithProgress(ctx context.Context, engine *core.Engine, opts core.ScanOptions) model.Report {
 	if !isCharDevice(os.Stderr) {
 		return engine.ScanWith(ctx, nil, opts)
@@ -155,7 +155,7 @@ func scanWithProgress(ctx context.Context, engine *core.Engine, opts core.ScanOp
 		// A panic in the progress bar's own rendering must not take the scan
 		// with it: this goroutine has no caller left to catch one, and the
 		// caller below is blocked on <-done, which the deferred close still
-		// delivers even mid-panic — recovering here is what keeps that from
+		// delivers even mid-panic; recovering here is what keeps that from
 		// continuing to unwind and killing the process once it does.
 		defer func() { _ = recover() }()
 		clirender.Progress(os.Stderr, events)
@@ -169,7 +169,7 @@ func scanWithProgress(ctx context.Context, engine *core.Engine, opts core.ScanOp
 
 // scanSelection turns --only/--skip into ScanOptions, validating domain
 // names against the real source set so a typo is a usage error naming the
-// valid choices rather than a silently empty scan.
+// valid choices.
 func scanSelection(only, skip string) (core.ScanOptions, string) {
 	if only != "" && skip != "" {
 		return core.ScanOptions{}, "--only and --skip are mutually exclusive"
@@ -223,11 +223,11 @@ func scanSelection(only, skip string) (core.ScanOptions, string) {
 }
 
 // Exit codes for scan. These are the CI and cron contract, so they are
-// named rather than written as bare integers at the return sites.
+// named constants.
 const (
 	exitClean      = 0 // the scan ran and found nothing serious
 	exitFindings   = 1 // unfixed High findings
-	exitIncomplete = 3 // a domain failed outright; the result describes less than the host
+	exitIncomplete = 3 // a domain failed completely; the result describes less than the host
 )
 
 // exitCode is what a CI or cron gate reads.
@@ -235,29 +235,28 @@ const (
 // Findings come first: an unfixed High finding is the answer the gate
 // exists for, and it stays 1 whatever else happened.
 //
-// High is exactly the set the old Critical and High were together — both
-// folded into it when the scale went to three levels — so a pipeline that has
+// High is exactly the set the old Critical and High were together (both
+// folded into it when the scale went to three levels) so a pipeline that has
 // been gating on this code sees no change.
 //
 // A domain in ScanError is the second answer, and it used to have none.
 // The code was derived from findings alone, and a failed domain contributes
-// zero findings — so an unreachable Docker socket silenced the two heaviest
+// zero findings, so an unreachable Docker socket silenced the two heaviest
 // axes and the pipeline saw exit 0. A blind scan and a clean host were
 // indistinguishable to the one consumer that cannot look at the output.
 //
-// Skipped and Degraded deliberately do not qualify. Skipped is the ordinary
+// Skipped and Degraded do not qualify. Skipped is the ordinary
 // state of a host that has no Docker or no Trivy, and failing every such
 // pipeline would train people to ignore the code. Degraded means the checker
 // covered part of its ground and said so, and those findings are real and
-// scored; it is reported in the output, not in the exit status.
+// scored; it is reported in the output and leaves the exit status alone.
 func exitCode(r model.Report) int {
 	for _, f := range r.Findings {
 		// Active, not !Fixed, so the gate keeps meaning what it says: a High
 		// whose fix is written and not yet in force has not been dealt with.
-		// Defensive today — cmdScan always renders a fresh scan and ScanWith
-		// replaces the report wholesale, so neither flag survives into here —
-		// which is exactly why it is worth spelling out rather than leaving
-		// the next caller to discover the distinction.
+		// Defensive today (cmdScan always renders a fresh scan and ScanWith
+		// replaces the report wholesale, so neither flag survives into here)
+		// which is why it is spelled out here.
 		if !f.Active() {
 			continue
 		}

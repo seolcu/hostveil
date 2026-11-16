@@ -2,7 +2,7 @@
 // evidence an investigation would need if something went wrong.
 //
 // Every other domain asks whether an attacker can get in. This one asks a
-// question the operator meets only afterwards — "was I broken into?" — and
+// question the operator meets only afterwards: "was I broken into?", and
 // whether the host will be able to answer it. A self-hosted server usually
 // cannot, and not because the evidence was destroyed: it was never written.
 // The journal lives in memory and is gone at the next reboot, a web server
@@ -15,9 +15,9 @@
 // measures how urgently something can be used against the host, and a
 // missing log cannot be. What they cost is the ability to tell an attempt
 // from a compromise later, which is why the domain exists at all and why its
-// cap is small rather than zero.
+// cap is small and above zero.
 //
-// The checks are deliberately limited to settings with one defensible value
+// The checks are limited to settings with one defensible value
 // on a single self-hosted server. Retention targets are ninety days, the
 // window in which most intrusions are noticed by someone other than the
 // attacker; anything shorter means "last month" is already unanswerable.
@@ -41,7 +41,7 @@ const retentionDays = 90
 // Checker reports gaps in what this host records for a later investigation.
 type Checker struct {
 	// Root is prepended to every file path read directly; overridable for
-	// tests. Commands are not affected — they go through the runner.
+	// tests. Commands are not affected: they go through the runner.
 	Root string
 }
 
@@ -52,8 +52,7 @@ func New() *Checker { return &Checker{Root: "/"} }
 func (*Checker) Source() model.Source { return model.SourceForensic }
 
 // Available requires a Linux host. Each check gates itself on the tool it
-// needs, because a host with no auditd is a finding of this domain, not a
-// reason to skip it.
+// needs, because a host with no auditd is a finding of this domain.
 func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 	if ok, why := platform.AuditableOS(); !ok {
 		return false, why
@@ -62,7 +61,7 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 }
 
 // Check runs every readiness check. A check whose tool did not answer is a
-// coverage gap, reported as partial rather than as a clean result.
+// coverage gap, reported as partial.
 func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	var (
 		findings []model.Finding

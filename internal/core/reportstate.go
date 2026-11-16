@@ -13,7 +13,7 @@ import (
 //
 // It is its own type because it is its own object. Five of the Engine's
 // fields existed only to serve it, and every method that touched them
-// touched nothing else — no registry, no store, no host. Sharing a body
+// touched nothing else: no registry, no store, no host. Sharing a body
 // with the rest of the engine bought nothing and cost the one invariant
 // that matters here.
 //
@@ -61,13 +61,13 @@ func (s *reportState) replace(r model.Report, d model.Delta) {
 // in force yet.
 //
 // pending is the caller's answer to "has the host changed", and it is passed
-// in rather than derived here because only the apply path knows: it holds the
+// in because only the apply path knows: it holds the
 // action, and Action.TakesEffectOn is where a fix declares that its artifact
 // is not what the host is running from. See model.Finding.Pending.
 //
 // The match is on the key alone. It used to require !f.Fixed as well, which
 // was harmless while this only ever set a flag one way, and is not once the
-// call can arrive a second time for the same finding — ApplyFix re-marks after
+// call can arrive a second time for the same finding: ApplyFix re-marks after
 // a re-check comes back still-present, and that call has to be able to land.
 //
 // It used to return "the list of additional findings marked (currently
@@ -75,7 +75,7 @@ func (s *reportState) replace(r model.Report, d model.Delta) {
 // that list to the UIs as `also_fixed`. Nothing ever populated it and no
 // interface ever read it, so the field promised a behaviour the engine did
 // not have; both are gone. If a cascade is ever built, it should be built
-// with the thing that reports it, not ahead of it.
+// together with the thing that reports it.
 func (s *reportState) markFixed(target model.Finding, pending bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -111,10 +111,10 @@ func (s *reportState) unmarkFixed(cp history.Checkpoint) []string {
 			continue
 		}
 		f.Fixed = false
-		// Both flags, so the finding goes back to plainly standing. Rolling
-		// back a pending fix leaves the score where it was — it was already
-		// being charged — which is correct and is why Unfixed, not the score,
-		// is the honest signal that anything happened.
+		// Both flags, so the finding goes back to standing. Rolling
+		// back a pending fix leaves the score where it was (it was already
+		// being charged) which is correct and is why Unfixed is the accurate
+		// signal that anything happened.
 		f.Pending = false
 		unfixed = append(unfixed, f.ID)
 	}

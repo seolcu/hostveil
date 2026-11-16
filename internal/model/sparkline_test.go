@@ -7,7 +7,7 @@ import (
 
 // The sparkline lives on the model because both interfaces draw the same
 // picture from the same points. A bucketing rule written twice is the shape
-// that has already gone wrong here twice — the severity palette before
+// that has already gone wrong here twice: the severity palette before
 // internal/ui/theme, the domain table before /model.js.
 
 func point(score uint8, applicable bool) ScorePoint {
@@ -16,7 +16,7 @@ func point(score uint8, applicable bool) ScorePoint {
 
 // Scores bucket against the fixed 0-100 range, never against the series'
 // own min and max. Auto-scaling would turn 71→73 into a dramatic climb and
-// a week flat at 42 into a line indistinguishable from a week flat at 4 —
+// a week flat at 42 into a line indistinguishable from a week flat at 4:
 // a chart that lies about the only thing it is for.
 func TestSparklineBucketsAgainstTheFullRange(t *testing.T) {
 	// A flat series is flat, wherever it sits, and two flat series at
@@ -32,7 +32,7 @@ func TestSparklineBucketsAgainstTheFullRange(t *testing.T) {
 		}
 	}
 	if low == high {
-		t.Errorf("4 and 42 render identically (%q) — the scale is relative, not absolute", low)
+		t.Errorf("4 and 42 render identically (%q); the scale must be relative", low)
 	}
 
 	// A near-flat climb at the top must not look like a climb from nothing.
@@ -64,7 +64,7 @@ func TestSparklineSpansTheWholeRamp(t *testing.T) {
 	}
 }
 
-// A scan nobody could score is a gap, not a bar. It is not a zero — the
+// A scan that could not be scored is a gap. It is not a zero: the
 // aggregate score already refuses to say so, and a chart must not say it
 // either.
 func TestSparklineDrawsAGapForAnUnscorableScan(t *testing.T) {
@@ -74,7 +74,7 @@ func TestSparklineDrawsAGapForAnUnscorableScan(t *testing.T) {
 		t.Fatalf("got %q, want 3 glyphs", got)
 	}
 	if r[1] == r[0] || strings.ContainsAny(string(r[1]), "▁▂▃▄▅▆▇█") {
-		t.Errorf("an unscorable scan drew a bar (%q) — it must be a gap", got)
+		t.Errorf("an unscorable scan drew a bar (%q); it must be a gap", got)
 	}
 	// And specifically not the lowest bar, which is what a naive
 	// zero-valued point would produce.

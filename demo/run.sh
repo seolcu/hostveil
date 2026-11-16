@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Easy on-demand control of the hostveil demo VM. Nothing auto-starts —
+# Easy on-demand control of the hostveil demo VM. Nothing auto-starts:
 # you bring the demo up only when you want it, and halt it when done.
 #
 #   ./run.sh up        boot the VM + rebuild Hostveil + start the vulnerable stacks
@@ -16,13 +16,13 @@ cd "$(dirname "$0")"
 export VAGRANT_CWD="$PWD"
 
 # demo/.env, if present, is sourced for exactly the AI env vars ai_env_argv
-# forwards below — see .env.example for the ones it reads. This is the demo
+# forwards below: see .env.example for the ones it reads. This is the demo
 # scripts' own convenience file, not Hostveil's: Hostveil itself still has no
 # config file. demo/.gitignore excludes .env, so a real key placed here never
 # reaches a commit; .env.example ships instead, with placeholders.
 #
 # set -a exports every name .env assigns, without listing them a second time
-# here — the single list that matters is ai_env_argv's.
+# here: the single list that matters is ai_env_argv's.
 if [ -f .env ]; then
   set -a
   # shellcheck disable=SC1091
@@ -33,13 +33,13 @@ fi
 # An unprivileged libvirt client resolves to qemu:///session, and this demo
 # cannot run there: session mode has no management network, so the VM boots,
 # never gets an address, and vagrant gives up several minutes later with "not
-# yet ready for SSH". What it leaves behind is worse than the failure — a
+# yet ready for SSH". What it leaves behind is worse than the failure: a
 # defined domain with no Vagrant metadata, so the *next* attempt refuses with
 # "Name demo_default of domain about to create is already taken", which names
 # nothing that led there and no way out. The forwarded port and the NAT the
 # Vagrantfile assumes are system-connection features besides.
 #
-# Set here rather than written down in the README, because neither message
+# Set here, because neither message
 # describes what went wrong and every command below shells out to vagrant. An
 # explicit LIBVIRT_DEFAULT_URI wins, so a session setup somebody has made to
 # work is left alone.
@@ -48,7 +48,7 @@ if [ "$(uname -s)" = Linux ] && [ -z "${LIBVIRT_DEFAULT_URI:-}" ]; then
 fi
 
 # Reaching that connection needs libvirtd running and this account in the
-# libvirt group — the one-time setup in README.md, both of which otherwise
+# libvirt group: the one-time setup in README.md, both of which otherwise
 # surface late and in somebody else's words. Skipped where the question
 # cannot be answered (no virsh) or where libvirt may not be the provider at
 # all (VirtualBox installed, macOS, a URI you set yourself).
@@ -95,8 +95,7 @@ clear_stale_forward() {
   [ -n "$pids" ] || return 0
 
   echo "==> stopping stale demo port forward on localhost:8787…"
-  # Each PID came from an exact command-line match above, not from a port-wide
-  # kill. Split on newlines/spaces deliberately; kill accepts the resulting
+  # Each PID came from an exact command-line match above. Split on newlines/spaces; kill accepts the resulting
   # PID list as separate arguments.
   # shellcheck disable=SC2086
   kill $pids
@@ -129,10 +128,10 @@ EOF
 }
 
 # A defined domain that Vagrant has no record of is the wreckage of a
-# creation that did not finish — a host suspend, a Ctrl-C, or the session-URI
+# creation that did not finish: a host suspend, a Ctrl-C, or the session-URI
 # trap above before it was closed. Vagrant's own words for it are "already
 # taken", which reads as a name collision and sends you looking for the wrong
-# thing. Reported rather than removed: it is a virtual machine, and deleting
+# thing. Reported only: it is a virtual machine, and deleting
 # one is not a thing to guess at on somebody's behalf.
 warn_orphan_domain() {
   [ -f .vagrant/machines/default/libvirt/id ] && return 0
@@ -154,26 +153,26 @@ EOF
 }
 
 # Bring every stack up inside the VM (idempotent). Stacks have no restart
-# policy on purpose, so they need starting after each boot.
+# policy, so they need starting after each boot.
 start_stacks() {
-  # Single quotes on purpose: $d is the guest's loop variable and must reach
+  # Single quotes: $d is the guest's loop variable and must reach
   # the guest shell unexpanded. Expanding it here would send one empty path.
   # shellcheck disable=SC2016
   vagrant ssh -c 'for d in /opt/stacks/*/; do (cd "$d" && sudo docker compose up -d); done' 2>/dev/null
 }
 
-# The AI-related env vars, forwarded onto the guest's `sudo` command line —
+# The AI-related env vars, forwarded onto the guest's `sudo` command line:
 # `sudo NAME=value cmd` sets them for that command regardless of env_reset,
 # the same mechanism cmd/hostveil/elevate.go's carriedThroughSudo already
 # relies on one layer further in, once these are inside the VM. `vagrant ssh
 # -c` does not forward the host's environment on its own, so without this an
 # operator's own `export HOSTVEIL_OPENAI_API_KEY=...` never reaches
-# `hostveil` here — nothing else in this file passes any environment into
+# `hostveil` here: nothing else in this file passes any environment into
 # the guest at all.
 #
-# Only variables the host actually has set are emitted, so a host with none
+# Only variables the host has set are emitted, so a host with none
 # of these set builds the exact command line it built before. No provider or
-# model is ever assumed here — see demo/README.md for how to point this at
+# model is ever assumed here: see demo/README.md for how to point this at
 # OpenCode Zen/Go, Anthropic, or a local Ollama.
 ai_env_argv() {
   for name in HOSTVEIL_AI_PROVIDER HOSTVEIL_OLLAMA_HOST HOSTVEIL_OLLAMA_MODEL \
@@ -186,15 +185,15 @@ ai_env_argv() {
 
 # Re-sync the repo and rebuild Hostveil inside the VM. `vagrant up` only runs
 # provisioners the first time a VM is created, and the build lives in
-# provision.sh — so without this every later boot leaves the VM running
+# provision.sh, so without this every later boot leaves the VM running
 # whatever binary the *first* provision produced, silently testing stale code.
 rebuild() {
   vagrant rsync
   vagrant ssh -c 'cd /hostveil && sudo /usr/local/go/bin/go build -o /usr/local/bin/hostveil ./cmd/hostveil' && return 0
 
   # A build that cannot find its compiler usually means provision.sh never
-  # reached the end — the first `up` timed out installing something, which on
-  # a host running Docker is the norm rather than the exception (see
+  # reached the end: the first `up` timed out installing something, which on
+  # a host running Docker is the norm (see
   # Troubleshooting in README.md). Vagrant records the VM as provisioned
   # anyway, so the next `up` skips straight past it and this build is the
   # first thing to notice, in words about Go. Costs an extra round trip only
@@ -202,8 +201,8 @@ rebuild() {
   vagrant ssh -c 'test -x /usr/local/go/bin/go' >/dev/null 2>&1 && return 1
   cat >&2 <<'EOF'
 
-There is no Go toolchain in the VM, so provisioning never finished — this is
-a half-built machine, not a build failure. Finish it:
+There is no Go toolchain in the VM, so provisioning never finished: this is
+a half-built machine. Finish it:
 
   vagrant provision
 
@@ -234,7 +233,7 @@ case "${1:-up}" in
     # 0.0.0.0 so Vagrant's NAT port-forward can reach the listener; the
     # browser still addresses it as localhost, which is what the dashboard's
     # Host allowlist checks. Open the tokenized URL Hostveil prints below.
-    echo "Dashboard: http://localhost:8787   (open the URL printed below — it carries the access token)"
+    echo "Dashboard: http://localhost:8787   (open the URL printed below; it carries the access token)"
     vagrant ssh -c "sudo $(ai_env_argv)hostveil serve --addr 0.0.0.0:8787"
     ;;
   shell)   vagrant ssh ;;

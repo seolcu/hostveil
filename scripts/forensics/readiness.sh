@@ -14,7 +14,7 @@ apt-get install -y -q auditd >/dev/null
 systemctl enable --now auditd >/dev/null
 
 # Manual: request size and time in the Apache access log (forensic.weblog-no-size).
-# %I needs mod_logio, which Ubuntu builds into the server rather than ships as a module.
+# %I needs mod_logio, which Ubuntu builds into the server.
 apache2ctl -l | grep -q mod_logio || a2enmod -q logio >/dev/null
 cat > /etc/apache2/conf-available/forensic-log.conf <<'CONF'
 LogFormat "%h %l %u %t \"%r\" %>s %O \"%{Referer}i\" \"%{User-Agent}i\" %I %D" forensic

@@ -31,10 +31,10 @@ var nonLoginShellNames = map[string]bool{
 //
 // This is one function because it was two, and they disagreed. The account
 // domain matched the whole path against a fixed list of six spellings, so
-// an Arch or NixOS host — where nologin sits at neither of the two paths it
-// knew — had its service accounts read as ordinary logins, and any of them
+// an Arch or NixOS host (where nologin sits at neither of the two paths it
+// knew) had its service accounts read as ordinary logins, and any of them
 // with an empty password field produced a top-severity finding
-// "accounts.emptypassword" for an account nobody can log in to. The Docker
+// "accounts.emptypassword" for an account no one can log in to. The Docker
 // daemon domain, asking the same question about docker-group members, had
 // already got this right with a suffix test. A predicate that decides
 // whether to report a top-severity finding is not one to keep two copies of.

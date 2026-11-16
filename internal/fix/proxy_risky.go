@@ -26,7 +26,7 @@ func registerProxyRisky(r *Registry) {
 // to validate an included fragment, and then reloads. A failure at either
 // step brings the original file back.
 //
-// try-reload-or-restart rather than reload: on a host where nginx is installed
+// try-reload-or-restart: on a host where nginx is installed
 // and stopped, reload fails and the fix would be undone for nothing, while
 // reload-or-restart would start a service somebody stopped. This reloads a
 // running nginx and leaves a stopped one stopped, with the file fixed for when
@@ -58,7 +58,7 @@ func buildNginxModernTLS(f model.Finding) (Fix, error) {
 		Label: "Set every ssl_protocols in " + p + " to TLSv1.2 TLSv1.3, then reload nginx",
 		Benefit: "Connections can no longer be negotiated down to TLS 1.0 or 1.1, which every current browser " +
 			"already refuses, so nothing that can connect today loses anything.",
-		Warning: "A client that only speaks TLS 1.0 or 1.1 — a very old Android or Java, an embedded device — stops " +
+		Warning: "A client that only speaks TLS 1.0 or 1.1 (a very old Android or Java, an embedded device) stops " +
 			"connecting. " + proxyRevertNote,
 		Kind: ActionEdit, Path: p,
 		Transform: func(in []byte) ([]byte, error) {
@@ -82,8 +82,8 @@ func buildNginxNoAutoindex(f model.Finding) (Fix, error) {
 		Label: "Set every `autoindex on;` in " + p + " to off, then reload nginx",
 		Benefit: "Directories without an index file stop listing what is in them, so a stray backup or .env " +
 			"beside the site is no longer one click away.",
-		Warning: "A directory somebody meant to be browsable — a download mirror, a shared folder — stops listing " +
-			"and answers 403 instead. Listing is sometimes on for one location on purpose; if so, put it back for " +
+		Warning: "A directory somebody meant to be browsable (a download mirror, a shared folder) stops listing " +
+			"and answers 403 instead. Listing is sometimes on for one location intentionally; if so, put it back for " +
 			"that location alone. " + proxyRevertNote,
 		Kind: ActionEdit, Path: p,
 		Transform: func(in []byte) ([]byte, error) {
@@ -105,7 +105,7 @@ func buildTraefikSecureAPI(f model.Finding) (Fix, error) {
 	where := f.Evidence["set-in"]
 	flag, ok := strings.CutPrefix(where, "command: ")
 	if !ok {
-		return Fix{}, fmt.Errorf("finding %s is set by %q, not by a command flag", f.ID, where)
+		return Fix{}, fmt.Errorf("finding %s is set by %q; no command flag sets it", f.ID, where)
 	}
 	flag = strings.Trim(strings.TrimSpace(flag), `"`)
 	p, err := composeKeyTarget(f, func(s compose.Service) bool {
@@ -154,8 +154,8 @@ func buildCaddyAdminLoopback(f model.Finding) (Fix, error) {
 			Label: "Set `admin localhost:2019` in " + p + ", then validate and reload Caddy",
 			Benefit: "The API that can replace the proxy's whole configuration stops answering anyone but processes " +
 				"on this host.",
-			Warning: "Whatever calls the admin API from elsewhere — a deploy script, a config manager, a certificate " +
-				"sidecar on another machine — stops being able to, and the proxy keeps serving until something needs " +
+			Warning: "Whatever calls the admin API from elsewhere; a deploy script, a config manager, a certificate " +
+				"sidecar on another machine; stops being able to, and the proxy keeps serving until something needs " +
 				"to change and then cannot. " + proxyRevertNote,
 			Kind: ActionEdit, Path: p,
 			Transform: func(in []byte) ([]byte, error) {

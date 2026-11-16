@@ -10,7 +10,7 @@ import (
 )
 
 // The plan names an owner change and the summary shows it, without applying
-// anything — planning is pure, so it can be tested without the root a chown
+// anything: planning is pure, so it can be tested without the root a chown
 // to another account would need.
 func TestAnOwnerChangeIsPlannedAndShown(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "shadow")

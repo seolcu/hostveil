@@ -1,5 +1,5 @@
 // Package ai provides OPTIONAL, advisory-only explanations. Everything
-// Hostveil does — detection, scoring, fixes — works with no AI at all;
+// Hostveil does (detection, scoring, fixes) works with no AI at all;
 // this only adds a plain-language second opinion when the user opts in.
 // HOSTVEIL_AI_PROVIDER (see FromEnv) selects the backend and defaults to a
 // local LLM (Ollama), so nothing leaves the host unless an operator names
@@ -23,11 +23,11 @@ type Explainer interface {
 	Available(ctx context.Context) bool
 	// Explain returns an advisory explanation for the finding. siteContext
 	// is the operator's own description of this host (ai.LoadContext),
-	// or "" if none has been set — see buildPrompt for what changes when
+	// or "" if none has been set: see buildPrompt for what changes when
 	// it's given.
 	Explain(ctx context.Context, f model.Finding, siteContext string) (string, error)
-	// Advise judges a whole set of findings at once — "which of these
-	// fixes make sense here, and which don't" — under the same siteContext
+	// Advise judges a whole set of findings at once: "which of these
+	// fixes make sense here, and which don't": under the same siteContext
 	// convention as Explain.
 	Advise(ctx context.Context, findings []model.Finding, siteContext string) (string, error)
 }
@@ -45,9 +45,9 @@ func (Noop) Explain(context.Context, model.Finding, string) (string, error) { re
 // Advise returns an empty verdict.
 func (Noop) Advise(context.Context, []model.Finding, string) (string, error) { return "", nil }
 
-// buildPrompt composes the advisory prompt for one finding. It deliberately
-// sends only the finding's human-readable fields — title, description,
-// suggested fix, service, and its fix's Benefit/SideEffect — and never raw
+// buildPrompt composes the advisory prompt for one finding. It
+// sends only the finding's human-readable fields (title, description,
+// suggested fix, service, and its fix's Benefit/SideEffect) and never raw
 // evidence values, so secrets and paths captured as evidence do not leave
 // the host.
 //
@@ -87,7 +87,7 @@ func buildPrompt(f model.Finding, siteContext string) string {
 }
 
 // buildAdvisePrompt composes the advisory prompt for a whole batch of
-// findings at once — the same redaction discipline as buildPrompt, extended
+// findings at once: the same redaction discipline as buildPrompt, extended
 // to a list. Asked to keep to one line per finding so the answer stays
 // scannable regardless of how many are sent.
 func buildAdvisePrompt(findings []model.Finding, siteContext string) string {
@@ -96,7 +96,7 @@ func buildAdvisePrompt(findings []model.Finding, siteContext string) string {
 	b.WriteString("Below is a list of security findings Hostveil can fix, and what applying each fix would get them and cost them.\n")
 	if siteContext != "" {
 		fmt.Fprintf(&b, "The operator describes this host as: %q. ", siteContext)
-		b.WriteString("For each finding, give a one-line verdict — Apply, Skip, or Depends — and one short reason tailored to that description.\n")
+		b.WriteString("For each finding, give a one-line verdict (Apply, Skip, or Depends) and one short reason tailored to that description.\n")
 	} else {
 		b.WriteString("No description of the host was given, so judge generally: call out any fix whose cost looks like it could plausibly outweigh its benefit on an average self-hosted server, and say the rest look fine to apply.\n")
 	}
@@ -120,7 +120,7 @@ func buildAdvisePrompt(findings []model.Finding, siteContext string) string {
 // safeEndpoint appends path to a validated http(s) origin with no
 // credentials, query, or fragment, then returns the joined URL. Rejecting
 // those guards against a base URL smuggling a target the caller did not
-// intend — an embedded password, or a query string a proxy in front of the
+// intend: an embedded password, or a query string a proxy in front of the
 // provider might interpret.
 func safeEndpoint(base, path string) (string, error) {
 	u, err := url.Parse(base)

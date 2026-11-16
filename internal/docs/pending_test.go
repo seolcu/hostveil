@@ -18,7 +18,7 @@ import (
 // for that one a pending fix counts.
 //
 // Every site that asks the first and tests Fixed is a place a pending finding
-// silently stops being charged, stops being listed, or stops being emitted —
+// silently stops being charged, stops being listed, or stops being emitted,
 // and each is invisible until somebody applies a compose fix and reads the
 // number. That is the shape of drift internal/docs/afterfixes_test.go was
 // written about, one field over: a rule that holds only as long as every
@@ -29,7 +29,7 @@ import (
 // The exceptions are the second question, and they are named.
 var fixedIsTheRightQuestion = map[string]string{
 	"internal/core/batch.go": "the batch skip asks whether Hostveil has already applied something here, " +
-		"and for a pending fix it has — asking Active would re-apply it on every run until the " +
+		"and for a pending fix it has; asking Active would re-apply it on every run until the " +
 		"operator restarted the service, writing a checkpoint each time over an unchanged file",
 	"internal/core/reportstate.go": "markFixed and unmarkFixed are what set and clear the flag, so they " +
 		"are the one place that has to name it",
@@ -38,7 +38,7 @@ var fixedIsTheRightQuestion = map[string]string{
 }
 
 // TestNoRendererDecidesForItselfWhetherAPendingFindingCounts reads the source
-// rather than the behaviour, for the same reason TestTheOSGateIsWhereItHasTo
+// for the same reason TestTheOSGateIsWhereItHasTo
 // Be does: on a report where nothing has been applied the two predicates agree
 // exactly, so every test in this repo that builds its own findings passes
 // either way. The disagreement only appears after a real apply, which is the
@@ -91,11 +91,10 @@ func TestNoRendererDecidesForItselfWhetherAPendingFindingCounts(t *testing.T) {
 	}
 }
 
-// fixedInACondition returns the source lines where a .Fixed selector is read
-// rather than assigned to.
+// fixedInACondition returns the source lines where a .Fixed selector is read.
 //
-// Assignment targets are how the flag legitimately gets written — markFixed
-// sets it, unmarkFixed and the AfterFixes pass clear it — and a write decides
+// Assignment targets are how the flag legitimately gets written (markFixed
+// sets it, unmarkFixed and the AfterFixes pass clear it) and a write decides
 // nothing. Only the reads pick between the two questions.
 func fixedInACondition(fset *token.FileSet, file *ast.File) []int {
 	assigned := map[ast.Expr]bool{}
@@ -136,11 +135,11 @@ func TestTheDashboardsCopyOfTheActiveRuleMatches(t *testing.T) {
 
 	for _, want := range []struct{ rule, why string }{
 		{"!x.fixed || x.pending",
-			"active() must keep a pending finding on the page — the score is still charging it, " +
+			"active() must keep a pending finding on the page; the score is still charging it, " +
 				"and a row that vanished while the number stayed put is a number with nothing behind it"},
 		{"!f.fixed && !!(REM[f.remediation]",
 			"isAuto() must exclude a pending finding, or the operator can mark a row into a batch " +
-				"that reports it back as skipped — the word that also means there is no fix for it"},
+				"that reports it back as skipped; the word that also means there is no fix for it"},
 	} {
 		if !strings.Contains(js, want.rule) {
 			t.Errorf("app.js no longer contains %q.\n  %s", want.rule, want.why)

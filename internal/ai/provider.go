@@ -8,7 +8,7 @@ import (
 )
 
 // FromEnv builds the Explainer selected by HOSTVEIL_AI_PROVIDER: "ollama"
-// (the default — local, so nothing leaves the host), "anthropic" (the
+// (the default; local, so nothing leaves the host), "anthropic" (the
 // Claude API), or "openai" (any vendor speaking the OpenAI chat-completions
 // shape). Ollama and openai are the same client pointed at different
 // servers. An operator must name an off-host provider explicitly; enabling
@@ -26,10 +26,10 @@ func FromEnv() Explainer {
 	}
 }
 
-// unknownProvider reports itself Available so the engine actually calls
-// Explain and surfaces which value was wrong, rather than the generic
+// unknownProvider reports itself Available so the engine calls
+// Explain and surfaces which value was wrong. The generic
 // "no AI provider is reachable" message every other misconfiguration
-// produces — a typo in HOSTVEIL_AI_PROVIDER is a configuration error, not
+// produces: a typo in HOSTVEIL_AI_PROVIDER is a configuration error, not
 // an unreachable server, and deserves to say so.
 type unknownProvider struct{ name string }
 

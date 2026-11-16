@@ -17,17 +17,17 @@ import (
 	"github.com/seolcu/hostveil/internal/ui/theme"
 )
 
-// The palettes are written as 24-bit hex and almost nobody sees them that way.
+// The palettes are written as 24-bit hex and almost no terminal shows them that way.
 //
 // Hostveil's subject is servers, and a server is reached over SSH, which does
 // not forward COLORTERM. Without it colorprofile degrades the TUI to the
 // xterm-256 palette, so the hexes in internal/ui/theme are not colors that get
-// drawn — they are inputs to a quantiser, and what the operator sees is
+// drawn: they are inputs to a quantiser, and what the operator sees is
 // whatever comes out of it.
 //
 // What comes out is not a rounding error. ansi.Convert256 maps a color into
 // the 6x6x6 cube by truncating each channel, works out the nearest entry on
-// the greyscale ramp, and returns whichever is closer *in HSLuv* — a choice
+// the greyscale ramp, and returns whichever is closer *in HSLuv*: a choice
 // its own source marks with "XXX: this is where it differs from tmux". For a
 // mid-lightness color of moderate chroma the grey wins, and the color is drawn
 // as grey.
@@ -39,11 +39,11 @@ import (
 // The severity that means "reachable now, from off-host, by someone holding
 // nothing" was drawn in the color that means "this is the part you can skip".
 //
-// So the palettes are held to what the terminal actually renders, on both
+// So the palettes are held to what the terminal renders, on both
 // profiles, and this test is the only place that asks.
 //
-// It lives here rather than in internal/ui/theme because that package is pure
-// data and string formatting by design — no lipgloss, no image/color — which
+// It lives here because that package is pure
+// data and string formatting by design (no lipgloss, no image/color) which
 // is what lets the web dashboard depend on it. The quantiser is lipgloss's.
 
 // chromatic roles must survive as colors. Each is a thing the design system
@@ -62,13 +62,13 @@ func chromaticRoles(p theme.Palette) map[string]string {
 
 // distinctRoles must stay telling apart. Low is in the list but not in
 // chromaticRoles: "no known path today" is allowed to be a grey, and is one on
-// purpose — it just may not be *the same* grey as the muted text it sits
+// purpose; it just may not be *the same* grey as the muted text it sits
 // beside, or as the body text.
 //
-// Manual and Unavail join Low here for the same reason, not chromaticRoles:
-// both are deliberately muted rather than heats (see the Palette doc
+// Manual and Unavail join Low here for the same reason:
+// both are muted colours (see the Palette doc
 // comment), so a 256-color terminal collapsing one to a cube greyscale entry
-// is acceptable — it just may not be the *same* entry as Low, Slate, Bone, or
+// is acceptable; it just may not be the *same* entry as Low, Slate, Bone, or
 // each other, which is exactly the collision the two used to share when both
 // fell back to one dim grey in kindStyle.
 func distinctRoles(p theme.Palette) map[string]string {
@@ -81,7 +81,7 @@ func distinctRoles(p theme.Palette) map[string]string {
 	return m
 }
 
-// index256 is the palette entry a terminal without truecolor will actually
+// index256 is the palette entry a terminal without truecolor will
 // draw for a hex, through the same code path the TUI renders with.
 func index256(hex string) int {
 	return int(ansi.Convert256(lipgloss.Color(hex)))
@@ -95,11 +95,11 @@ func TestEveryHeatSurvivesA256ColorTerminal(t *testing.T) {
 	for _, th := range theme.All() {
 		for role, hex := range chromaticRoles(th.Palette) {
 			if i := index256(hex); isGrey(i) {
-				t.Errorf("%s: %s is %s, which a 256-color terminal draws as xterm %d — "+
+				t.Errorf("%s: %s is %s, which a 256-color terminal draws as xterm %d; "+
 					"a grey. Over SSH, where COLORTERM is not forwarded, that is what "+
 					"the operator sees. Raise its chroma until the cube beats the "+
 					"greyscale ramp; the hue is what the theme is recognised by, so "+
-					"move lightness and saturation rather than hue.",
+					"move lightness and saturation and keep the hue.",
 					th.ID, role, hex, i)
 			}
 		}
@@ -115,7 +115,7 @@ func TestNoTwoRolesCollapseOntoOneColor(t *testing.T) {
 			if other, ok := seen[i]; ok {
 				t.Errorf("%s: %s (%s) and %s (%s) both quantise to xterm %d, so on a "+
 					"256-color terminal they are the same pixel value. Nord shipped "+
-					"like this — its muted text and a Low finding were one colour, "+
+					"like this: its muted text and a Low finding were one colour, "+
 					"and no amount of looking gets that distinction back.",
 					th.ID, role, hex, other, distinctRoles(th.Palette)[other], i)
 				continue
@@ -125,7 +125,7 @@ func TestNoTwoRolesCollapseOntoOneColor(t *testing.T) {
 	}
 }
 
-// The truecolor path is the one nobody was worried about, which is exactly why
+// The truecolor path is the one no one was worried about, which is exactly why
 // it is worth a line: a hex nudged until it clears the quantiser is still the
 // color a modern terminal draws, and moving one far enough to fix 256 colors
 // while wrecking 24-bit would be trading one operator's screen for another's.
@@ -145,14 +145,14 @@ func TestNudgingForThe256PathLeavesTruecolorAlone(t *testing.T) {
 
 // The two tests above hold the palette to the quantiser. This one holds the
 // *rendering* to the palette, which is a different claim and the one that
-// actually broke: a correct color is worth nothing if the row draws something
+// broke: a correct color is worth nothing if the row draws something
 // else with it. The screenshot that started this had 42 High findings on it
 // and not one red pixel, and no test in this package noticed, because they all
-// compare rendered output against rendered output — both sides built from the
+// compare rendered output against rendered output: both sides built from the
 // same styles, so both sides are wrong together.
 //
 // So this renders a real row and puts it through colorprofile's writer at
-// ANSI256, which is the code path an SSH session's bytes actually take, then
+// ANSI256, which is the code path an SSH session's bytes take, then
 // reads the escape sequence back off the wire.
 func TestAHighRowIsDrawnInAColorOverSSH(t *testing.T) {
 	m := modeModels(200, 40)["list"]
@@ -193,7 +193,7 @@ func TestAHighRowIsDrawnInAColorOverSSH(t *testing.T) {
 	}
 	// And the assertion that does not lean on the palette to grade the
 	// palette. Everything above compares the row against Crit, so it passes
-	// whatever Crit happens to be — including the grey that shipped. What a
+	// whatever Crit happens to be, including the grey that shipped. What a
 	// reader needs is not that the row agrees with the theme file; it is that
 	// the row arrives in a color at all.
 	if isGrey(want) {

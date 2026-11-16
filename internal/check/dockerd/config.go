@@ -24,7 +24,7 @@ const maxConfigBytes = 1 << 20
 // Only the settings `docker info` cannot report are collected here. Anything
 // the running daemon can be asked about directly is read from there instead,
 // because this file records what the operator asked for and `docker info`
-// records what the daemon is doing — and after an edit-without-restart those
+// records what the daemon is doing, and after an edit-without-restart those
 // are different answers to different questions.
 type config struct {
 	hosts     []string
@@ -60,11 +60,11 @@ func (c config) origin() string {
 }
 
 // exposedEndpoints lists the configured TCP endpoints reachable from off this
-// host, in sorted order so a repeat scan produces no delta nobody caused.
+// host, in sorted order so a repeat scan produces no spurious delta.
 //
-// Unix and fd sockets are not endpoints in this sense — they are the local
+// Unix and fd sockets are not endpoints in this sense: they are the local
 // socket, judged by its permissions instead. A loopback TCP socket is
-// deliberately clean: it is the documented way to put a proxy in front of the
+// clean: it is the documented way to put a proxy in front of the
 // daemon, and it is reachable by nothing the unix socket was not.
 func (c config) exposedEndpoints() []string {
 	var out []string
@@ -86,7 +86,7 @@ func (c config) exposedEndpoints() []string {
 
 // splitEndpoint parses a Docker host string such as "tcp://0.0.0.0:2375".
 // Anything that is not TCP is not an endpoint this domain judges, and is
-// rejected rather than guessed at.
+// rejected.
 func splitEndpoint(h string) (host string, port int, ok bool) {
 	rest, found := strings.CutPrefix(strings.TrimSpace(h), "tcp://")
 	if !found {
@@ -109,11 +109,11 @@ func splitEndpoint(h string) (host string, port int, ok bool) {
 // Both are read because either alone is a partial view: the packaged unit
 // ships `-H fd://` on ExecStart while an operator adding a TCP socket may
 // edit either, and Docker refuses to start when `hosts` is set in both at
-// once — so in a reachable daemon at most one of them is carrying the
+// once, so in a reachable daemon at most one of them is carrying the
 // setting, and the checker cannot know in advance which.
 //
 // It reports not-known only when neither source could be consulted. An absent
-// daemon.json is a complete answer, not a failed read: it means no options
+// daemon.json is a complete answer: it means no options
 // are set there, which is the default state of most hosts.
 func (c *Checker) readConfig(ctx context.Context, env platform.Env) (config, bool, string) {
 	var cfg config
@@ -145,14 +145,14 @@ func (c *Checker) readConfig(ctx context.Context, env platform.Env) (config, boo
 	// The substitution runs one way only, and the guard here used to run it
 	// both ways.
 	//
-	// Having parsed the unit does make up for an unreadable daemon.json — the
+	// Having parsed the unit does make up for an unreadable daemon.json: the
 	// unit carries the socket flags and the TLS flags alike, and `hosts` set in
 	// both places stops Docker from starting at all, so in a daemon that
 	// answered at most one of them holds it. That direction stays.
 	//
 	// The reverse was never claimed and is not true. An absent daemon.json is a
-	// complete answer *about that file* — no options are set there, the default
-	// state of most hosts — and says nothing whatever about the unit, which is
+	// complete answer *about that file* (no options are set there, the default
+	// state of most hosts) and says nothing whatever about the unit, which is
 	// where every mainstream package puts the listening socket. Requiring both
 	// sources to fail therefore never fired on the ordinary shape of the
 	// failure: no daemon.json plus an unreadable unit reported "audited, no
@@ -161,22 +161,22 @@ func (c *Checker) readConfig(ctx context.Context, env platform.Env) (config, boo
 	//
 	// A daemon.json that does carry `hosts` does not cover for it either. That
 	// exclusion binds `hosts` and nothing else, while `tlsverify` lives on the
-	// unit just as often and has no such rule — so trusting the file alone
+	// unit just as often and has no such rule, so trusting the file alone
 	// there reports an unauthenticated API, the worst thing this domain can
 	// find, on a
 	// host running mutual TLS.
 	if unitReason != "" {
 		if len(failed) > 0 {
 			return config{}, false, failed[0] + " and " + unitReason +
-				" — the API socket and TLS settings were not audited"
+				": the API socket and TLS settings were not audited"
 		}
-		return config{}, false, unitReason + " — the API socket and TLS settings were not audited"
+		return config{}, false, unitReason + ": the API socket and TLS settings were not audited"
 	}
 	return cfg, true, ""
 }
 
 // daemonJSON is the narrow view of daemon.json this domain needs. Docker
-// accepts dozens of keys; decoding into a struct rather than a map means an
+// accepts dozens of keys; decoding into a struct means an
 // unrelated key added by a future Docker release cannot change what is read.
 type daemonJSON struct {
 	Hosts     []string `json:"hosts"`
@@ -222,13 +222,13 @@ func readDaemonJSON(path string) (config, error) {
 // distinguishes the two, and it is the whole reason this asks for a property it
 // does not otherwise use.
 //
-// That matters wherever the daemon's unit is not literally docker.service — a
+// That matters wherever the daemon's unit is not literally docker.service: a
 // snap install (snap.docker.dockerd.service), a rootless daemon whose unit
 // lives in the user manager, or a host where something else starts it. On any
 // of those, a TCP socket on the real unit was invisible while this domain
 // reported its API rules fully audited.
 //
-// The reason is returned rather than a bool so readConfig can say *which*
+// The reason is returned so readConfig can say *which*
 // source it lost; a host with no systemd at all and a host whose systemctl
 // refused are both gaps, but not the same one to an operator.
 func (c *Checker) readUnit(ctx context.Context, env platform.Env) (hosts []string, tls, verify bool, argvs []string, reason string) {

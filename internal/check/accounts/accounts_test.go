@@ -22,7 +22,7 @@ func noSudo() platform.Env { return checktest.New().Without("sudo").Env() }
 
 // withSudo scripts `sudo -l -U <user>` for each named user through the very
 // argv the checker builds, so a change to the flags breaks the fixture instead
-// of falling through to the fake's unscripted-command error — which every
+// of falling through to the fake's unscripted-command error, which every
 // checker reads as a tool that would not answer, the same value a broken host
 // produces. A fixture that spelled the argv out again would go on passing while
 // covering the opposite case.
@@ -103,7 +103,7 @@ func TestRogueUID0(t *testing.T) {
 
 func TestRogueUID0LeadingZero(t *testing.T) {
 	// The kernel parses "00" as UID 0, so a leading-zero backdoor must still
-	// be caught — a naive string compare against "0" would miss it.
+	// be caught: a naive string compare against "0" would miss it.
 	pw := writeFile(t, "passwd", cleanPasswd+"backdoor:x:00:0::/root:/bin/bash\n")
 	sh := writeFile(t, "shadow", "root:$6$abc:19000:0:99999:7:::\n")
 	c := &Checker{PasswdPath: pw, ShadowPath: sh}
@@ -147,7 +147,7 @@ func TestEmptyPasswordOnNonLoginAccountIgnored(t *testing.T) {
 // An unreadable /etc/shadow costs the empty-password half of this domain.
 // The findings from the readable half are still real and must survive, but
 // the result must say so: reporting clean would score identically to "every
-// account has a password" while meaning "nobody looked", and the axis would
+// account has a password" while meaning "the scan did not look", and the axis would
 // hand a non-root scan full marks for account hygiene it never checked.
 func TestShadowUnreadableIsPartialNotClean(t *testing.T) {
 	pw := writeFile(t, "passwd", cleanPasswd+"backdoor:x:0:0::/root:/bin/bash\n")
@@ -180,7 +180,7 @@ func TestUnavailableWithoutPasswd(t *testing.T) {
 // This used to depend on where the distribution keeps nologin. The shell
 // was matched against a fixed list of six full paths, so Debian and Fedora
 // were recognised and Arch (/usr/bin/nologin) and NixOS (under
-// /run/current-system/sw/bin) were not — on those hosts every such account
+// /run/current-system/sw/bin) were not, on those hosts every such account
 // was read as an ordinary login.
 func TestEmptyPasswordIgnoresNonLoginShellsAtAnyPath(t *testing.T) {
 	for _, shell := range []string{

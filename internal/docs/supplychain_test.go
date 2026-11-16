@@ -10,7 +10,7 @@ import (
 // Supply-chain integrity is the one claim on this site a reader cannot check
 // from the outside without acting on it.
 //
-// Every other published figure describes something — a score, a measured run —
+// Every other published figure describes something (a score, a measured run)
 // that is wrong if the number is wrong. "Every release carries a signed build
 // provenance attestation" is different: a reader who believes it stops
 // checking, and a reader who checks and finds nothing has been told to trust a
@@ -18,7 +18,7 @@ import (
 //
 // So the sentence answers to the pipeline. If a page says SBOM, .goreleaser
 // must produce one; if it says provenance, release.yml must mint one; and the
-// verify command a page prints has to name this repository, not an example.
+// verify command a page prints has to name this repository.
 func TestEveryPublishedSupplyChainClaimMatchesTheReleasePipeline(t *testing.T) {
 	goreleaser := readRepoFile(t, ".goreleaser.yaml")
 	release := readRepoFile(t, filepath.Join(".github", "workflows", "release.yml"))
@@ -45,7 +45,7 @@ func TestEveryPublishedSupplyChainClaimMatchesTheReleasePipeline(t *testing.T) {
 //
 // `gh attestation verify … --repo X` is a command a reader copies and runs.
 // Against the wrong X it fails, and the natural conclusion from a failed
-// verification is that the download is bad — so a typo here reads as evidence
+// verification is that the download is bad, so a typo here reads as evidence
 // of exactly the compromise the command exists to rule out.
 func TestEveryVerifyCommandNamesThisRepository(t *testing.T) {
 	mod := readRepoFile(t, "go.mod")

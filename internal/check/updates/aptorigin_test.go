@@ -15,7 +15,7 @@ import (
 //
 // apt reads every file in apt.conf.d in lexical order and the last assignment
 // wins, so this host does NOT run unattended upgrades. Hostveil read
-// 20auto-upgrades alone, saw "1", and reported the domain clean — while the
+// 20auto-upgrades alone, saw "1", and reported the domain clean, while the
 // fix for the finding it was not reporting would have written "1" into the
 // same losing file.
 //
@@ -34,7 +34,7 @@ APT::Periodic::Unattended-Upgrade "1";
 		AptConfigPath:  filepath.Join(dir, "20auto-upgrades"),
 		AptConfDirPath: dir,
 	}
-	// apt answers what apt actually resolves.
+	// apt answers what apt resolves.
 	env := checktest.New().Also("apt-config", "unattended-upgrade", "apt").
 		Script(`APT::Periodic::Unattended-Upgrade "0";`+"\n",
 			"apt-config", "dump", "APT::Periodic::Unattended-Upgrade").Env()
@@ -52,7 +52,7 @@ APT::Periodic::Unattended-Upgrade "1";
 		t.Fatal("unattended upgrades are switched off by the last fragment apt reads, and the domain reported nothing")
 	}
 	if want := filepath.Join(dir, "99-disable-auto-upgrades"); got.Evidence["set-by"] != want {
-		t.Errorf("set-by = %q, want %q — the fix has to edit the file whose assignment apt reads last, not the one that loses",
+		t.Errorf("set-by = %q, want %q; the fix has to edit the file whose assignment apt reads last",
 			got.Evidence["set-by"], want)
 	}
 	if got.Evidence["config"] != got.Evidence["set-by"] {
@@ -108,8 +108,8 @@ func TestWithoutAptConfigTheSingleFileIsTheFallback(t *testing.T) {
 	}
 }
 
-// apt ignores fragments whose extension is not .conf — dpkg's .dpkg-dist
-// leftovers, editor backups — so naming one as the winner would send the fix
+// apt ignores fragments whose extension is not .conf (dpkg's .dpkg-dist
+// leftovers, editor backups) so naming one as the winner would send the fix
 // to edit a file apt never opens.
 func TestAFragmentAptIgnoresIsNotTheWinner(t *testing.T) {
 	dir := t.TempDir()
@@ -118,7 +118,7 @@ func TestAFragmentAptIgnoresIsNotTheWinner(t *testing.T) {
 	write(t, filepath.Join(dir, "99-backup~"), `APT::Periodic::Unattended-Upgrade "0";`+"\n")
 
 	if got, want := aptOrigin(dir), filepath.Join(dir, "20auto-upgrades"); got != want {
-		t.Errorf("aptOrigin = %q, want %q — apt does not read the other two", got, want)
+		t.Errorf("aptOrigin = %q, want %q; apt does not read the other two", got, want)
 	}
 }
 

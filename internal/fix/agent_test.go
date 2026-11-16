@@ -7,7 +7,7 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// seededOpenClawConfig is the shape of config these fixes actually meet: the
+// seededOpenClawConfig is the shape of config these fixes meet: the
 // commented, trailing-comma JSON5 a self-hoster writes while trying to make
 // the thing work. demo/seed/openclaw.json is the same file, and it exists
 // because a fixture that parses only as strict JSON would not exercise the
@@ -45,7 +45,7 @@ func agentFinding(id string, ev map[string]string) model.Finding {
 
 // One safe value is one action, which is the Auto shape. Two are two
 // independent alternatives, which is the Review shape. Neither is decided
-// here — both are read off the evidence the checker recorded.
+// here: both are read off the evidence the checker recorded.
 func TestAgentConfigKeyShapeFollowsTheSafeValues(t *testing.T) {
 	auto := agentFinding("agent.elevated-enabled", map[string]string{
 		"config": "/home/alice/.openclaw/openclaw.json",
@@ -146,7 +146,7 @@ func TestAgentConfigKeyRefusesToFollowSymlinks(t *testing.T) {
 	}
 }
 
-// A key that has gone from the config since the scan is a config nobody has
+// A key that has gone from the config since the scan is a config the operator has
 // looked at, and writing to it on the strength of a stale finding is worse
 // than declining.
 func TestAgentConfigKeyRefusesAKeyThatHasSinceGone(t *testing.T) {

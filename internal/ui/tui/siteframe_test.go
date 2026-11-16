@@ -19,7 +19,7 @@ const siteFramePath = "testdata/site-frame.ans"
 // Everything else the website says about Hostveil is held to the code by a
 // test: the domain names, the finding IDs, the fix column, the measured
 // figures. The screenshots were outside all of it, and they drifted exactly
-// the way an unchecked claim does — the published terminal frame kept showing
+// the way an unchecked claim does: the published terminal frame kept showing
 // a four-level severity scale for two releases after the scale became three,
 // so the one part of the page a reader trusts on sight was the part saying
 // something untrue.
@@ -27,10 +27,9 @@ const siteFramePath = "testdata/site-frame.ans"
 // A PNG cannot be compared here: it comes out of scripts/ansi2png.py through
 // PIL and a font, and neither is pinned, so a byte comparison would fail on a
 // Pillow upgrade and say nothing about hostveil. What can be pinned is what
-// the terminal actually drew, which is the thing the picture is a picture of.
+// the terminal drew, which is the thing the picture is a picture of.
 // So the frame is committed, this re-renders it, and a difference fails the
-// build with instructions rather than leaving a stale image to be noticed by
-// a reader.
+// build with instructions, so a stale image never reaches a reader.
 //
 // Regenerating both, after reviewing the diff this test prints:
 //
@@ -43,12 +42,12 @@ func TestSiteFrameIsCurrent(t *testing.T) {
 	// whole layout is recomputed and a byte comparison fails on a picture that
 	// is perfectly correct for the terminal it was taken on. The published
 	// screenshot is narrow-mode because the page it sits on is read in a
-	// browser, not a terminal.
+	// browser.
 	//
-	// Skipped rather than parameterised: two committed frames would be two
+	// Skipped: two committed frames would be two
 	// things to regenerate, and the second would go stale first. The layout
 	// under this mode is covered by the alignment sweep and by
-	// TestNoRowOverrunsItsColumn, both of which measure rather than compare.
+	// TestNoRowOverrunsItsColumn, both of which measure.
 	if textwidth.Of("█") > 1 {
 		t.Skip("the committed frame is a narrow-mode capture; this mode composes a different one")
 	}
@@ -71,9 +70,9 @@ func TestSiteFrameIsCurrent(t *testing.T) {
 }
 
 // firstDifference reports the first line that differs, with the escape
-// sequences made visible. A raw diff of two ANSI frames is unreadable — the
-// colour codes are most of the bytes — and the failure that matters is
-// usually one line of text, not the styling around it.
+// sequences made visible. A raw diff of two ANSI frames is unreadable (the
+// colour codes are most of the bytes) and the failure that matters is
+// usually one line of text.
 func firstDifference(want, got string) string {
 	wl, gl := strings.Split(want, "\n"), strings.Split(got, "\n")
 	for i := 0; i < len(wl) || i < len(gl); i++ {
@@ -107,7 +106,7 @@ func itoa(n int) string {
 }
 
 // visible replaces the escape character so a failure is readable in a test
-// log, and keeps the codes rather than stripping them: a colour that changed
+// log, and keeps the codes: a colour that changed
 // is a real difference and the reader has to be able to see which one.
 func visible(s string) string {
 	return strings.ReplaceAll(s, "\x1b", "\\e")
@@ -118,8 +117,7 @@ func visible(s string) string {
 // severity mix and multi-select; a frame showing neither is a caption the
 // picture contradicts.
 //
-// The labels come from model.AllSeverities rather than from a list written
-// out here, because a list written out here is the thing that went stale in
+// The labels come from model.AllSeverities, because a list written out here is the thing that went stale in
 // the first place: the frame kept a four-level scale for two releases after
 // the scale became three, and any copy of the levels in this file would have
 // gone stale with it.

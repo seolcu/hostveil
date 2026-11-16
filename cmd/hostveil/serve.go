@@ -30,12 +30,12 @@ func cmdServe(ctx context.Context, args []string) int {
 		return 2
 	}
 
-	// What gates access is the Host header, not the bind address: the
+	// What gates access is the Host header: the
 	// dashboard answers only requests addressed to a loopback name, which is
 	// the DNS-rebinding defense and is not negotiable from a flag.
 	//
-	// So the old warning — "binding to a non-loopback address exposes it to
-	// the network" — was wrong in both directions. It does not expose the
+	// So the old warning; "binding to a non-loopback address exposes it to
+	// the network"; was wrong in both directions. It does not expose the
 	// dashboard, because a client that addresses this machine by IP or
 	// hostname is refused. And it is not necessarily useless, because a
 	// port-forward still works: the browser says localhost either way, which
@@ -43,7 +43,7 @@ func cmdServe(ctx context.Context, args []string) int {
 	if !strings.HasPrefix(addr, "127.0.0.1") && !strings.HasPrefix(addr, "localhost") {
 		fmt.Fprintf(os.Stderr,
 			"hostveil: bound to %s, but the dashboard still answers only requests addressed to localhost.\n"+
-				"That works through a port-forward — the browser sends localhost either way — and refuses\n"+
+				"That works through a port-forward (the browser sends localhost either way) and refuses\n"+
 				"anything that reaches this machine by IP or hostname. For remote access prefer an SSH\n"+
 				"tunnel: ssh -L 8787:127.0.0.1:8787 you@this-host\n", addr)
 	}
@@ -55,9 +55,9 @@ func cmdServe(ctx context.Context, args []string) int {
 	srv := web.New(buildEngineWithAI(true), addr, web.Opts{Theme: t.ID})
 	// The URL carries a one-off access token, because loopback keeps the
 	// dashboard off the network but not away from other accounts on this
-	// machine — and every route here applies fixes or reads a scan of
+	// machine, and every route here applies fixes or reads a scan of
 	// /etc/shadow, as root.
-	// Say "scanning first" rather than "listening": the initial scan runs
+	// Say "scanning first": the initial scan runs
 	// before the listener opens, and on a host with many images that is
 	// minutes. Announcing the URL as live meant the operator opened it,
 	// got connection-refused, and had nothing to tell them to wait.
@@ -73,11 +73,11 @@ func cmdServe(ctx context.Context, args []string) int {
 	// on the operator's laptop is the laptop. Say so, and say what to run.
 	where := "Then open this exact URL"
 	if hint := sshHint(os.Getenv, addr); hint != "" {
-		fmt.Printf("\nYou are connected over SSH, so that address is this machine, not yours.\n"+
+		fmt.Printf("\nYou are connected over SSH, so that address is this machine. Your own computer is a different one.\n"+
 			"Run this on your own machine and leave it open:\n\n  %s\n", hint)
 		where = "\nThen open this exact URL there"
 	}
-	fmt.Printf("%s — it carries the access token for this run:\n  %s\n", where, srv.URL())
+	fmt.Printf("%s; it carries the access token for this run:\n  %s\n", where, srv.URL())
 	if err := srv.ListenAndServe(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1

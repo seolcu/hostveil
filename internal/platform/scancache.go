@@ -13,17 +13,17 @@ import (
 // the same time, so several of them independently ask the host the same
 // question. The compose and CVE checkers each ran `docker compose ls`,
 // parsed every compose file, then ran `docker ps` and `docker inspect`
-// across every container ID — twice per scan, concurrently, with the
+// across every container ID: twice per scan, concurrently, with the
 // inspect output alone reaching megabytes on a busy host. The ports checker
 // separately re-probed the firewall the firewall checker had just probed.
 //
-// Deduplicating at the runner rather than in the checkers is what keeps that
+// Deduplicating at the runner is what keeps that
 // from becoming an inventory object every checker has to be taught about:
 // nothing in check/ changes, and a future checker gets the sharing for free.
 //
-// The single-flight behaviour is the point, not an optimization on top of
+// The single-flight behaviour is the purpose, and more than an optimization on top of
 // the cache. The duplicate callers start together, so a plain
-// cache-after-the-fact would let both miss and both run — exactly the case
+// cache-after-the-fact would let both miss and both run: exactly the case
 // this exists to remove.
 //
 // # Scope
@@ -41,7 +41,7 @@ type ScanCache struct {
 }
 
 // cachedCall is one command's result, or its in-flight execution. done is
-// closed when out/err are final; readers wait on it rather than re-running.
+// closed when out/err are final; readers wait on it.
 type cachedCall struct {
 	done chan struct{}
 	out  []byte
@@ -57,8 +57,8 @@ func NewScanCache(r CommandRunner) *ScanCache {
 // first request for it.
 //
 // The returned slice is shared with every other caller of the same command.
-// That is safe for the way command output is used here — parsed, never
-// written to — and copying a multi-megabyte `docker inspect` result per
+// That is safe for the way command output is used here (parsed, never
+// written to) and copying a multi-megabyte `docker inspect` result per
 // caller would give back the memory the sharing just saved.
 func (c *ScanCache) Run(ctx context.Context, name string, args ...string) ([]byte, error) {
 	key := name + "\x00" + strings.Join(args, "\x00")

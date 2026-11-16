@@ -16,8 +16,8 @@ SGR_RE = re.compile(r"\x1b\[([0-9;]*)m")
 # the two roles internal/ui/theme gives Hostveil's default theme.
 #
 # They have to come from somewhere, because a terminal capture does not carry
-# them. A TUI does not paint its own background — it draws on whatever the
-# terminal is already showing — and `tmux capture-pane` records the cells,
+# them. A TUI does not paint its own background (it draws on whatever the
+# terminal is already showing) and `tmux capture-pane` records the cells,
 # not the window underneath them. So every glyph that leaves the colour at
 # the terminal default arrives here as a bare `39`/`49`, and this file has to
 # decide what those mean.
@@ -28,7 +28,7 @@ SGR_RE = re.compile(r"\x1b\[([0-9;]*)m")
 # on my machine" was reading a colour scheme that does not exist.
 #
 # HOSTVEIL_ANSI2PNG_BG and _FG override them, which is what a capture of a
-# non-default theme needs — the values are in internal/ui/theme, one Ink and
+# non-default theme needs: the values are in internal/ui/theme, one Ink and
 # one Bone per theme.
 DEFAULT_BG = (0x11, 0x11, 0x13)  # hostveil Ink
 DEFAULT_FG = (0xF5, 0xF5, 0xF7)  # hostveil Bone
@@ -58,10 +58,10 @@ def parse_hex(value: str, what: str) -> tuple[int, int, int]:
 def xterm256(index: int) -> tuple[int, int, int]:
     """One entry of the xterm-256 palette as RGB.
 
-    This exists because a screenshot taken the honest way is a 256-colour
+    This exists because a screenshot taken from a real terminal is a 256-colour
     screenshot. hostveil's subject is servers, servers are reached over SSH,
     SSH does not forward COLORTERM, and so colorprofile degrades the TUI to
-    xterm-256 on very nearly every real session — the same fact
+    xterm-256 on very nearly every real session: the same fact
     internal/ui/tui/quantize_test.go holds the palettes to. A capture off a
     real host therefore arrives as `38;5;N`, and a renderer that understands
     only truecolor drops every colour on the floor and produces a monochrome
@@ -184,10 +184,10 @@ def ansi_to_image(text: str, font_path: str, font_size: int = 13) -> Image.Image
     return img
 
 
-# Where DejaVu Sans Mono actually lives, by packaging convention. The first
+# Where DejaVu Sans Mono lives, by packaging convention. The first
 # entry is Debian's and was the only one this script knew, so it worked on the
-# machine it was written on and raised "cannot open resource" everywhere else
-# — including Fedora, where the same font is packaged under a different path.
+# machine it was written on and raised "cannot open resource" everywhere else,
+# including Fedora, where the same font is packaged under a different path.
 # The published screenshot is rendered with this font, so falling back to
 # whatever else is installed would silently change how the website looks.
 FONT_CANDIDATES = (
@@ -206,7 +206,7 @@ def resolve_font() -> str:
     host that keeps its fonts somewhere none of the candidates name. It is
     not a default: rendering the site's screenshot in a different typeface
     is a change to how the website looks, and it should be something
-    somebody asked for rather than something a missing package chose.
+    somebody asked for.
     """
     override = os.environ.get("HOSTVEIL_ANSI2PNG_FONT")
     if override:

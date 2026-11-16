@@ -13,11 +13,11 @@ import (
 // registerDockerd wires the Docker daemon findings. Every one of them was
 // declined because the daemon reads its configuration once, at start: an
 // edit to daemon.json changed nothing until a restart that stops every
-// container on the host. AfterWrite is the answer to that — the restart is
+// container on the host. AfterWrite is the answer to that (the restart is
 // part of the action, and a daemon that refuses the new file gets the old one
-// back — so each of these is now a fix that is in force when it reports
+// back) so each of these is now a fix that is in force when it reports
 // success. They are all IndividualOnly: restarting Docker is the operator's
-// outage to schedule, not a batch's.
+// outage to schedule.
 func registerDockerd(r *Registry) {
 	r.Register("dockerd.no-new-privileges", buildDockerdNoNewPrivileges)
 	r.Register("dockerd.userns-remap", buildDockerdUsernsRemap)
@@ -30,8 +30,8 @@ func registerDockerd(r *Registry) {
 
 // dockerdValidate is `dockerd --validate`, Docker 23's own check of a config
 // file. Older daemons do not have it, fail it on the original file as well,
-// and runEditValidator's control run then sets it aside rather than letting
-// it block a good edit.
+// and runEditValidator's control run then sets it aside so it cannot
+// block a good edit.
 var dockerdValidate = []string{"dockerd", "--validate", "--config-file", VerifyPathToken}
 
 var restartDocker = [][]string{{"systemctl", "restart", "docker"}}
@@ -86,8 +86,8 @@ func buildDockerdNoNewPrivileges(f model.Finding) (Fix, error) {
 	return daemonDefaultFix(f, "no-new-privileges", "true", "Make no-new-privileges the daemon default",
 		"Every container started from now on runs with no-new-privileges, so a setuid binary inside one "+
 			"can no longer turn a foothold in an application into root in its container.",
-		"A container that relies on setuid escalation — sudo inside the container, an image whose entrypoint "+
-			"switches users through a setuid helper — fails once recreated, and needs "+
+		"A container that relies on setuid escalation: sudo inside the container, an image whose entrypoint "+
+			"switches users through a setuid helper: fails once recreated, and needs "+
 			"`security_opt: [\"no-new-privileges:false\"]` to opt back out.")
 }
 
@@ -133,14 +133,14 @@ func splitList(s string) []string {
 
 // removeTCPAction takes the network endpoints off whichever source declared
 // them. A finding whose endpoints come from both daemon.json and the unit
-// cannot be one action — Docker refuses to start with hosts in both anyway,
-// so a daemon that answered has them in one — and is declined.
+// cannot be one action (Docker refuses to start with hosts in both anyway,
+// so a daemon that answered has them in one) and is declined.
 func removeTCPAction(f model.Finding) (Action, error) {
 	fileEPs, unitEPs := splitList(f.Metadata["file_endpoints"]), splitList(f.Metadata["unit_endpoints"])
 	benefit := "Nothing on the network can reach the Docker API any more, which closes a port that is root on " +
 		"this host for anyone who can connect to it."
-	risk := "Anything that administers this daemon over TCP from another machine — a Portainer or Docker " +
-		"context on your laptop, a CI runner, a remote agent — loses it. `DOCKER_HOST=ssh://user@host` is the " +
+	risk := "Anything that administers this daemon over TCP from another machine; a Portainer or Docker " +
+		"context on your laptop, a CI runner, a remote agent; loses it. `DOCKER_HOST=ssh://user@host` is the " +
 		"supported replacement and needs no open port. Restarting Docker stops every container and starts the " +
 		"ones with a restart policy again. " + dockerdRevertNote
 	switch {
@@ -227,7 +227,7 @@ func buildDockerdRemoveTCP(f model.Finding) (Fix, error) {
 // buildDockerdRequireClientCerts offers both answers to a TLS socket that
 // does not verify clients: remove it, or make it verify. The second is only
 // possible from daemon.json, and only works if a CA is configured, which the
-// daemon's own refusal to start will say — and the revert will undo.
+// daemon's own refusal to start will say, and the revert will undo.
 func buildDockerdRequireClientCerts(f model.Finding) (Fix, error) {
 	var actions []Action
 	if f.Metadata["unit_endpoints"] == "" && f.Metadata["daemon_json"] != "" {
@@ -267,8 +267,8 @@ func buildDockerdSocketMode(f model.Finding) (Fix, error) {
 			Label: "Set SocketMode=0660 in " + dropin + " and chmod the live socket",
 			Benefit: "Only root and the socket's group can reach the Docker API, so an ordinary account or a " +
 				"compromised service on this host can no longer become root through it.",
-			Warning: "Any account or service that reached Docker only because the socket was world-writable — " +
-				"not through the group — loses access now. Add it to the group if it should keep it. The drop-in " +
+			Warning: "Any account or service that reached Docker only because the socket was world-writable; " +
+				"not through the group; loses access now. Add it to the group if it should keep it. The drop-in " +
 				"is a new file with a checkpoint; rolling back deletes it, but the live socket keeps mode 0660 " +
 				"until Docker next recreates it.",
 			Kind: ActionEdit, Path: dropin, CreateIfMissing: true,
@@ -295,7 +295,7 @@ func buildDockerdRemoveGroupMember(f model.Finding) (Fix, error) {
 			Benefit: member + " can no longer become root on this host through the Docker API, which takes a " +
 				"password-free, unlogged root grant away from an account that may not need it.",
 			Warning: "If " + member + " is how you administer containers, `docker` stops working for it without " +
-				"sudo; if it is a service — Portainer's agent, Watchtower, a CI runner — that service stops being " +
+				"sudo; if it is a service (Portainer's agent, Watchtower, a CI runner) that service stops being " +
 				"able to manage containers. Do not remove the account you are using right now until you have " +
 				"another route in. Existing sessions keep the group until they log out. There is no checkpoint: " +
 				"to reverse it, `usermod -aG " + group + " " + member + "`.",

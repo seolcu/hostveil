@@ -20,11 +20,11 @@ const (
 
 // ModeRule declares the strictest acceptable permission for one path inside a
 // runtime's state directory, relative to the owning user's home. A path is
-// flagged when perm &^ Max != 0 — the same test fileperms.Rule uses.
+// flagged when perm &^ Max != 0: the same test fileperms.Rule uses.
 //
 // Secret marks a path that holds raw credentials. It changes which finding is
-// emitted (agent.secret-exposed rather than agent.config-perms) and, for
-// files, requires that the contents actually look like credentials before the
+// emitted (agent.secret-exposed in place of agent.config-perms) and, for
+// files, requires that the contents look like credentials before the
 // finding fires.
 type ModeRule struct {
 	Rel    string
@@ -38,11 +38,11 @@ type ModeRule struct {
 // both string enums ("full") and booleans ("true").
 //
 // Several rules may share an ID: two different keys can describe the same
-// weakening, and the operator should see one finding, not two.
+// weakening, and the operator should see one finding.
 //
 // Good names the safe values this key may be set to, most-preferred first,
-// and it is what makes the finding fixable. An empty Good is a deliberate
-// statement rather than an omission: it means Hostveil knows the value is
+// and it is what makes the finding fixable. An empty Good is an intended
+// statement: it means Hostveil knows the value is
 // dangerous and does not know which value is right, so the finding stays
 // Manual. agents.defaults.sandbox.mode used to be the case, until OpenClaw's
 // sandbox reference documented the values: "non-main" sandboxes every session
@@ -53,8 +53,8 @@ type ModeRule struct {
 // not a sequence. tools.exec.security is deny or ask, and which one is right
 // depends on whether the agent is expected to run commands at all.
 //
-// Unset is the value the runtime behaves as if the key held when it is absent
-// — from the config, or because there is no config file at all. Leave it empty
+// Unset is the value the runtime behaves as if the key held when it is absent:
+// from the config, or because there is no config file at all. Leave it empty
 // when absence is safe or undocumented; that is every OpenClaw key, whose
 // defaults fail closed. It exists for the runtime whose default is the
 // dangerous value: Goose runs with GOOSE_MODE=auto unless told otherwise, so
@@ -73,7 +73,7 @@ type DangerRule struct {
 }
 
 // GatewayDesc describes a runtime's network surface, so the checker can judge
-// the configured intent and cross-check it against what the host is actually
+// the configured intent and cross-check it against what the host is
 // listening on.
 type GatewayDesc struct {
 	DefaultPort int    // used when PortKey is absent or unset
@@ -81,9 +81,9 @@ type GatewayDesc struct {
 	BindKey     string
 
 	// BindDefault is the documented bind when BindKey is absent. Leave it
-	// empty when the default is genuinely unknown: an empty resolved bind
+	// empty when the default is unknown: an empty resolved bind
 	// means "we cannot tell from config", and the checker falls back to the
-	// observed listener rather than guessing a finding into existence.
+	// observed listener.
 	BindDefault string
 
 	// LoopbackOnly are bind values that mean "not reachable from the network".
@@ -100,17 +100,17 @@ type GatewayDesc struct {
 	ProcNames []string
 
 	// ListenerOnly is for a gateway whose bind is not in any file Hostveil
-	// reads — Goose's web UI takes it from a command-line flag. With no
+	// reads: Goose's web UI takes it from a command-line flag. With no
 	// config to judge, the observed listener is the whole answer, so it must
-	// be attributed by process name rather than by port: port 3000 is
+	// be attributed by process name: port 3000 is
 	// Grafana's as often as anybody's. That is only sound because every name
-	// in ProcNames is the runtime's own binary, not an interpreter; see
+	// in ProcNames is the runtime's own binary; see
 	// matchListener for why node and python3 could never be used this way.
 	ListenerOnly bool
 }
 
 // Runtime describes one self-hosted AI agent runtime entirely as data.
-// Adding a third runtime should be an entry in defaultRuntimes, not new code.
+// Adding a third runtime should be an entry in defaultRuntimes.
 type Runtime struct {
 	Name    string // short lowercase name, used in Service; never in a finding ID
 	Display string
@@ -139,8 +139,8 @@ type Runtime struct {
 // mirrors upstream documentation; keep it that way, and prefer a small set of
 // stable high-signal keys over a full port of each project's own hardening
 // matrix. OpenClaw ships `openclaw security audit`, which covers its config
-// exhaustively; Hostveil's job is the host-observable half — what is actually
-// listening, what is actually readable — scored beside the other domains.
+// exhaustively; Hostveil's job is the host-observable half (what is
+// listening, what is readable) scored beside the other domains.
 func defaultRuntimes() []Runtime {
 	return runtimes()
 }
@@ -151,7 +151,7 @@ func defaultRuntimes() []Runtime {
 //
 // It is exported for the same reason platform.DockerProbeArgv is. A fixture
 // that writes ~/.config/openclaw/config.json instead of ~/.openclaw/openclaw.json
-// does not fail — the domain reports "no agent runtime found", which is a clean
+// does not fail: the domain reports "no agent runtime found", which is a clean
 // result, on a host seeded to run two. Nothing catches that except a test that
 // can read this table, and a test in this package cannot see the scripts.
 func DefaultRuntimes() []Runtime { return runtimes() }
@@ -175,15 +175,15 @@ func runtimes() []Runtime {
 				BindKey:     "gateway.bind",
 				BindDefault: "loopback",
 				// "auto" and "tailnet" are not loopback, but neither is
-				// plainly reachable from an untrusted network; they are
+				// reachable from an untrusted network; they are
 				// treated as exposed so the auth check still applies.
 				LoopbackOnly: []string{"loopback"},
 				AuthKey:      "gateway.auth.mode",
-				// Unset is deliberately absent: OpenClaw fails closed when
+				// Unset is absent: OpenClaw fails closed when
 				// gateway.auth.mode is unset, so an absent key is not "open".
 				AuthDisabled: []string{"none"},
 				// The gateway's process is "openclaw-gateway", which the kernel
-				// truncates to fifteen characters in what ss reports — observed
+				// truncates to fifteen characters in what ss reports; observed
 				// on a real gateway by scripts/e2e/individual.sh.
 				ProcNames: []string{"openclaw", "openclaw-gatewa", "node"},
 			},
@@ -193,7 +193,7 @@ func runtimes() []Runtime {
 					Good:     []any{"deny", "ask"},
 					Sev:      model.SeverityHigh,
 					Title:    "Agent can run shell commands without approval",
-					Desc:     "The agent is allowed to execute shell commands on this host with no approval step. Anything that can steer the agent — a malicious web page it reads, a poisoned document, a message from an untrusted contact — can run commands as the user it runs as.",
+					Desc:     "The agent is allowed to execute shell commands on this host with no approval step. Anything that can steer the agent (a malicious web page it reads, a poisoned document, a message from an untrusted contact) can run commands as the user it runs as.",
 					HowToFix: "Set `tools.exec.security` to `deny` (or `ask`) and `tools.exec.ask` to `always`, so command execution requires an explicit approval.",
 				},
 				{
@@ -201,7 +201,7 @@ func runtimes() []Runtime {
 					Good:     []any{"always"},
 					Sev:      model.SeverityHigh,
 					Title:    "Agent can run shell commands without approval",
-					Desc:     "The agent is allowed to execute shell commands on this host with no approval step. Anything that can steer the agent — a malicious web page it reads, a poisoned document, a message from an untrusted contact — can run commands as the user it runs as.",
+					Desc:     "The agent is allowed to execute shell commands on this host with no approval step. Anything that can steer the agent (a malicious web page it reads, a poisoned document, a message from an untrusted contact) can run commands as the user it runs as.",
 					HowToFix: "Set `tools.exec.ask` to `always` so command execution requires an explicit approval.",
 				},
 				{
@@ -210,7 +210,7 @@ func runtimes() []Runtime {
 					Sev:      model.SeverityHigh,
 					Title:    "Agent is permitted to run elevated commands",
 					Desc:     "Elevated mode is the documented escape hatch out of the agent's sandbox and onto the host. Combined with any path by which an attacker can influence the agent's input, it turns prompt injection into host compromise.",
-					HowToFix: "Set `tools.elevated.enabled` to `false`. If some workflow genuinely needs it, restrict `tools.elevated.allowFrom` to a single trusted channel.",
+					HowToFix: "Set `tools.elevated.enabled` to `false`. If some workflow needs it, restrict `tools.elevated.allowFrom` to a single trusted channel.",
 				},
 				{
 					ID: "agent.sandbox-off", Key: "agents.defaults.sandbox.mode", Bad: []string{"off"},
@@ -222,15 +222,15 @@ func runtimes() []Runtime {
 					Good:     []any{"non-main", "all"},
 					Sev:      model.SeverityHigh,
 					Title:    "Agent tools run unsandboxed on the host",
-					Desc:     "With the sandbox off, the agent's tools run directly on the gateway host rather than in an isolated container, so a tool call that goes wrong reaches your real filesystem and network.",
-					HowToFix: "Enable the sandbox (`agents.defaults.sandbox.mode`) and keep `workspaceAccess` at `none` or `ro` unless the agent genuinely needs to write.",
+					Desc:     "With the sandbox off, the agent's tools run directly on the gateway host with no isolated container, so a tool call that goes wrong reaches your real filesystem and network.",
+					HowToFix: "Enable the sandbox (`agents.defaults.sandbox.mode`) and keep `workspaceAccess` at `none` or `ro` unless the agent needs to write.",
 				},
 				{
 					ID: "agent.control-ui-insecure", Key: "gateway.controlUi.allowInsecureAuth", Bad: []string{"true"},
 					Good:     []any{false},
 					Sev:      model.SeverityHigh,
 					Title:    "Agent control UI has its auth safeguards disabled",
-					Desc:     "The control UI drives the agent. With its authentication safeguards switched off, anyone who can reach the UI — including anything running locally on this host — can operate the agent.",
+					Desc:     "The control UI drives the agent. With its authentication safeguards switched off, anyone who can reach the UI (including anything running locally on this host) can operate the agent.",
 					HowToFix: "Remove `gateway.controlUi.allowInsecureAuth` (and `dangerouslyDisableDeviceAuth`) from the config and reach the UI over an SSH tunnel or a tailnet instead.",
 				},
 				{
@@ -246,7 +246,7 @@ func runtimes() []Runtime {
 					Good:     []any{false},
 					Sev:      model.SeverityMedium,
 					Title:    "Agent browser may reach private network addresses",
-					Desc:     "The agent's browser is permitted to fetch private and link-local addresses, so a page it visits can steer it into your LAN or a cloud metadata endpoint and read back the response — a server-side request forgery with an LLM driving it.",
+					Desc:     "The agent's browser is permitted to fetch private and link-local addresses, so a page it visits can steer it into your LAN or a cloud metadata endpoint and read back the response; a server-side request forgery with an LLM driving it.",
 					HowToFix: "Remove `browser.ssrfPolicy.dangerouslyAllowPrivateNetwork` so the default private-network block applies.",
 				},
 			},
@@ -269,7 +269,7 @@ func runtimes() []Runtime {
 			Gateway: GatewayDesc{
 				DefaultPort: 9119,
 				BindKey:     "dashboard.host",
-				// Left empty on purpose: the dashboard binds 0.0.0.0 in the
+				// Left empty: the dashboard binds 0.0.0.0 in the
 				// container image but the native default is not documented,
 				// so an unset key means "ask ss", not "assume exposed".
 				BindDefault:  "",
@@ -293,7 +293,7 @@ func runtimes() []Runtime {
 				// The keyring fallback, and it is the case on a server:
 				// with no desktop keyring service (or GOOSE_DISABLE_KEYRING
 				// set) Goose writes API keys here in plain text, and sets
-				// the file to 0600 itself — so anything looser was loosened
+				// the file to 0600 itself, so anything looser was loosened
 				// after the fact.
 				{Rel: ".config/goose/secrets.yaml", Max: 0o600, Secret: true},
 			},
@@ -308,14 +308,14 @@ func runtimes() []Runtime {
 			Danger: []DangerRule{
 				{
 					ID: "agent.exec-unrestricted", Key: "GOOSE_MODE", Bad: []string{"auto"},
-					// The documented default. A host where nobody chose a
+					// The documented default. A host where no one chose a
 					// mode is running the one that approves everything.
 					Unset: "auto",
 					Good:  []any{"approve", "smart_approve"},
 					Sev:   model.SeverityHigh,
 					Title: "Agent can run shell commands without approval",
-					Desc: "Goose is in `auto` mode, which approves every tool call — shell commands and file edits included — without asking. It is also what Goose does when `GOOSE_MODE` is not set at all. " +
-						"Anything that can steer the agent — a malicious web page it reads, a poisoned document, an instruction hidden in a repository it opens — can run commands as the user it runs as. " +
+					Desc: "Goose is in `auto` mode, which approves every tool call (shell commands and file edits included) without asking. It is also what Goose does when `GOOSE_MODE` is not set at all. " +
+						"Anything that can steer the agent (a malicious web page it reads, a poisoned document, an instruction hidden in a repository it opens) can run commands as the user it runs as. " +
 						"A `GOOSE_MODE` environment variable overrides this file and is not something Hostveil can see.",
 					HowToFix: "Set `GOOSE_MODE: approve` (ask before every tool call) or `GOOSE_MODE: smart_approve` (ask only for the ones judged risky) in ~/.config/goose/config.yaml, and make sure no `GOOSE_MODE=auto` is exported where Goose is started.",
 				},

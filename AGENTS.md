@@ -22,9 +22,9 @@ Run `scripts/gate.sh` before every push. Do not hand-chain the steps: `gofmt -l 
 - If `go version` carries a distro suffix (`go1.26.5-X:nodwarf5`), a local govulncheck skips the standard library. Only CI's result counts then.
 - Only if touched: `actionlint` for `.github/workflows/`, `shellcheck` for shell scripts, `goreleaser check` for `.goreleaser.yaml`, and regenerate `scripts/install.sh.sha256` for `install.sh`.
 
-CI also cross-compiles every release target and runs e2e (`.github/workflows/e2e.yml`): the real binary through scan → fix → history → rollback → rescan in a seeded container, plus the individual-only fixes on the runner VM (`scripts/e2e/individual.sh`). Debug e2e scenarios locally with `scripts/e2e/vm.sh run <scenario>` (KVM, `HOSTVEIL_BIN` for your own binary, `HOSTVEIL_E2E_DISTRO=fedora`), not by round-tripping CI.
+CI also cross-compiles every release target and runs e2e (`.github/workflows/e2e.yml`): the real binary through scan → fix → history → rollback → rescan in a seeded container, plus the individual-only fixes on the runner VM (`scripts/e2e/individual.sh`). Debug e2e scenarios locally with `scripts/e2e/vm.sh run <scenario>` (KVM, `HOSTVEIL_BIN` for your own binary, `HOSTVEIL_E2E_DISTRO=fedora`). A CI round trip per attempt is too slow.
 
-Never run the binary against your own machine. Use the demo VM: `cd demo && ./run.sh up` (see `demo/README.md`; the repo syncs on `up`/`reload`, not on `provision`).
+Never run the binary against your own machine. Use the demo VM: `cd demo && ./run.sh up` (see `demo/README.md`; the repo syncs on `up` and `reload` only; `provision` does not sync it).
 
 ## Architecture
 
@@ -35,7 +35,7 @@ Flow: `cmd/hostveil/app.go` builds the engine (every checker + `fix.Default()`) 
 ### Seams
 
 - **`internal/platform`** is the only door to the OS. Inject `CommandRunner`; never call `os/exec` in a checker or fix. Runners must be concurrency-safe. `DefaultRunner` pins `LC_ALL=C` and a default timeout. Any parser that matches words assumes C locale.
-- **`internal/check`**: a `Checker` is `Source()` / `Available()` / `Check()` and is strictly read-only. A missing dependency means `Available() = (false, reason)`, which marks the domain Skipped. Test against `internal/check/checktest`, not a hand-written fake.
+- **`internal/check`**: a `Checker` is `Source()` / `Available()` / `Check()` and is strictly read-only. A missing dependency means `Available() = (false, reason)`, which marks the domain Skipped. Test against `internal/check/checktest`; hand-written fakes drift from it.
   - Adding a domain: one package under `internal/check/`, a `model.Source` const plus its row in `sourceDefs` (`internal/model/source.go`, caps must still sum to 100), registration in `cmd/hostveil/app.go` in `AllSources()` order, the domain regex in `internal/docs/findings_test.go`, the README and both `checks.html` files, then `go run ./cmd/sitegen`.
 - **`internal/fix`**: a `Fix` is a set of `Action`s.
   - Edit actions carry a **pure** `Transform(in []byte) ([]byte, error)` used by both preview and apply. Keep it pure.
@@ -62,7 +62,7 @@ Flow: `cmd/hostveil/app.go` builds the engine (every checker + `fix.Default()`) 
   - `high` equals the old Critical ∪ High (`TestTheGateStillMeansWhatItMeant`). Checkers must not enumerate the scale themselves.
 - **Applied is not in force.** `Finding.Pending` keeps a finding charged until the change takes effect (`fix.Action.TakesEffectOn`, upgraded only by `VerifyStillPresent`). Use `Finding.Active()` and `IsAutoFixable()`, not `.Fixed` (`internal/docs/pending_test.go`).
 - **"Couldn't look" never passes for "nothing there."**
-  - `Available()` probes the capability (`platform.DockerReachable`), not the binary.
+  - `Available()` probes the capability (`platform.DockerReachable`). A binary on `PATH` proves nothing.
   - Partial coverage returns findings plus `check.PartialError`, which marks the domain Degraded. Degraded axes are scored and every UI shows the flag. Total failure is an ordinary error, and the axis is excluded.
   - Report every blind spot with `check.Coverage`. Match with `errors.As`.
   - Exit 0 is not an answer: require `LoadState=loaded` from systemctl.
@@ -97,12 +97,31 @@ Flow: `cmd/hostveil/app.go` builds the engine (every checker + `fix.Default()`) 
 - `site/assets/fonts/` is a Hangul subset made by `scripts/korean-subset.py`. Re-run it after editing Korean copy, after sitegen (`TestEveryKoreanSyllableOnTheSiteHasAGlyph`).
 - `scripts/social-preview.py` draws the social card and the README banners, and `scripts/ansi2png.py` renders terminal captures. Re-run them after palette, mark or slogan changes.
 
-## Copy rules (site, READMEs, changelogs, release notes, UI text)
+## Writing rules (everything: copy, docs, UI text, findings, code comments, tests, commits)
 
-- No "A, not B" contrast, and none of its relatives ("not just X", "rather than X" as a flourish), in English or Korean. Say A and why. Code doc comments are exempt.
-- No em dashes in prose. Korean copy has none at all. A dash meaning "none" in a table, or a quoted UI label, is fine.
-- Avoid model-cluster words: *deliberately, honest(ly), quietly, plainly, genuinely, load-bearing, outright*, a rhetorical *nobody*, "worth noting". In Korean avoid 일부러, 정직하게, 조용히, "짚어 둘 만합니다". No "seamless/robust/powerful", no closing "Overall,".
-- **Korean is written in Korean, not translated.** Use 합니다체 throughout. Use short sentences and do not stack clauses. Do not open with 그리고/그런데. `당신` is fine where the sentence is about the reader. FAQ answers state the answer directly.
+These patterns read as machine-written. They apply to every file in the repository and to commit messages, PR bodies and release notes. `internal/docs/aipatterns_test.go` enforces the mechanical ones; the rest are on the writer.
+
+**Sentence shapes**
+- No negative parallelism: "not A but B", "A, not B", "not just A", "not only A but also B", "rather than A", "A instead of B" used as a flourish, "it isn't A. It's B", "less A than B". Say B and give the reason. In Korean: "A가 아니라 B", "A라기보다 B", "단순한 A가 아닌".
+- No em dashes (—). Use a period, a comma, a colon or parentheses. An en dash in a number range (0–100) is fine, and so is a lone dash meaning "none" in a table cell.
+- No reflexive triads (three adjectives, three parallel clauses) when one or two would do.
+- No trailing "-ing" commentary that rates the sentence before it ("…, ensuring that…", "…, highlighting…", "…, making it…").
+- No copula dodging: write "is" in place of "serves as", "stands as", "functions as", "acts as". Korean: "기능합니다", "역할을 합니다" → "입니다".
+- No metaphor, simile or personification to explain a mechanism ("a one-way door", "a medicine label", "the file wins", "the score was crediting"). Name the thing and what it does.
+- No rhetorical questions answered in the next sentence, and no "The answer: …" reveals.
+- No closing summaries ("Overall,", "In short,", "In summary,", "The upshot", 결론적으로, 종합하면, 요컨대) and no moralising last line.
+
+**Words**
+- English: *deliberately, on purpose* (write "intentionally" only where someone's intent is the subject), *honest(ly), quietly, plainly, genuinely, truly, actually* (as emphasis), *outright, precisely, load-bearing, crucial, pivotal, vital, key* (adjective), *robust, seamless, powerful, comprehensive, leverage, delve, landscape, testament, underscore, showcase, foster, notably, worth noting, it's important to note, the point is, here's the thing*, a rhetorical *nobody* or *no one*.
+- Korean: 일부러, 정직하게, 솔직히, 조용히, 사실상(강조로), 핵심은, 짚어 둘 만합니다, 주목할 만한, 이처럼, 결론적으로, 종합하면.
+
+**Formatting**
+- Headings are noun phrases ("Measured results"). A sentence or a question ("Does it actually work?") is not a heading. Use sentence case.
+- Do not enlarge or bold a number to make it impressive. Numbers sit in the sentence at body size; a table is fine.
+- Bold is for a term being defined or a UI label, at most once per paragraph. No bold run-in labels on every list item.
+- No emoji in prose, headings or list bullets.
+
+**Write Korean directly in Korean; do not translate from English.** Use 합니다체 throughout. Use short sentences and do not stack clauses. Do not open with 그리고/그런데. `당신` is fine where the sentence is about the reader. FAQ answers state the answer directly. Avoid subjectless passives (~이 요구됩니다, ~이 강조됩니다) and abstract nouns where a concrete one exists.
 
 ## Releasing
 

@@ -1,6 +1,6 @@
-// Deliberately insecure OpenClaw gateway config for the hostveil demo.
+// Intentionally insecure OpenClaw gateway config for the hostveil demo.
 //
-// This file is JSON5 on purpose — comments and trailing commas and all.
+// This file is JSON5: comments and trailing commas and all.
 // OpenClaw documents its config as JSON5 and users comment it heavily, so a
 // config that parses ONLY as strict JSON would not exercise the checker's
 // real input. If hostveil ever regresses to a strict-JSON parse, the agent
@@ -8,7 +8,7 @@
 //
 // Every setting below is one a real self-hoster plausibly sets while trying
 // to make the thing work, with a comment explaining the reasoning that leads
-// there. That is the point: none of it looks reckless in isolation.
+// there. None of it looks reckless in isolation.
 {
   "gateway": {
     // "so I can reach it from the tablet in the kitchen"

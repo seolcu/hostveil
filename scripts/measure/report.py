@@ -2,8 +2,7 @@
 """Assemble one measurement run into the JSON that gets committed.
 
 run.sh leaves every phase and every hash table in a working directory; this
-turns that pile into a document. It is a separate file rather than a heredoc
-because the rollback comparison is the part of the harness most easily got
+turns that pile into a document. It is a separate file because the rollback comparison is the part of the harness most easily got
 subtly wrong, and a heredoc cannot be read on its own or tested.
 
 Usage: report.py <workdir> <profile>
@@ -18,7 +17,7 @@ ABSENT = "ABSENT"
 
 
 def read_json(path):
-    """A phase file that is missing or unparseable is reported, not dropped."""
+    """A phase file that is missing or unparseable is reported."""
     try:
         with open(path) as fh:
             return json.load(fh)
@@ -74,7 +73,7 @@ def host():
         pass
     out["kernel"] = os.uname().release
     # The architecture, because the page wants to say it and had nothing to
-    # say it from. It named one anyway, out of the filename — which is the
+    # say it from. It named one anyway, out of the filename, which is the
     # one claim on that page nothing checked.
     out["arch"] = os.uname().machine
     return out
@@ -84,14 +83,14 @@ def rollback_verdict(work):
     """Did undoing every fix put the watched paths back byte for byte?
 
     Three tables: before the fixes, after them, and after the rollback. The
-    before table is the authority — it was taken off the live filesystem
+    before table is the authority: it was taken off the live filesystem
     before hostveil wrote anything, which is the only reading a checkpoint
     cannot influence.
 
     A path that only appears after the fixes ran is a file a fix created.
     Whether its absence beforehand is *known* depends on where it lives: the
     directories run.sh enumerates whole were listed entry by entry, so a name
-    missing from that listing was genuinely not there. Anywhere else, the
+    missing from that listing was not there. Anywhere else, the
     before-state was never observed, and the run says so instead of assuming
     it.
     """
@@ -130,8 +129,8 @@ def rollback_verdict(work):
 
 # The identifier sets each instrument reports, and where to find them.
 #
-# A count is not evidence — one check clearing while another appears leaves
-# the total where it was — so the report diffs the sets and says which
+# A count is not evidence (one check clearing while another appears leaves
+# the total where it was) so the report diffs the sets and says which
 # identifiers left and which arrived.
 #
 # The labels carry no dots. The documentation test addresses a figure in this
@@ -142,9 +141,9 @@ def rollback_verdict(work):
 # restored, and a control run takes before → controlled, because nothing
 # Hostveil does is involved in one.
 #
-# "restored" sorts last on purpose even though a control run never reaches it:
+# "restored" sorts last even though a control run never reaches it:
 # every delta is measured against "before", so this list is about reading
-# order rather than arithmetic.
+# order.
 PHASE_ORDER = ("before", "controlled", "after", "restarted", "reviewed", "restored")
 
 SETS = [
@@ -163,7 +162,7 @@ def deltas(phases):
     `after` is the host with the files changed and nothing restarted, which
     is exactly what `hostveil fix --all` leaves behind. `restarted` is the
     same host once the services have read those files. An instrument that
-    moves only in the second column is not a fix that failed — it is a fix
+    moves only in the second column is not a fix that failed: it is a fix
     that is not in force yet, and the difference is the single most useful
     thing this harness has to say.
     """
@@ -195,7 +194,7 @@ def deltas(phases):
 def fix_phase(work):
     """What `fix --all --yes` said it did.
 
-    Read out of the CLI's own output rather than counted from checkpoints,
+    Read out of the CLI's own output,
     because a fix that failed leaves no checkpoint and would otherwise not
     appear anywhere in the report at all.
     """
@@ -237,12 +236,11 @@ def seeded_manifest():
     reason that has nothing to do with hostveil.
 
     Publishing the score without saying so would be the same mistake the
-    scanner itself is built against — an absence read as an all-clear — so the
-    manifest travels with the numbers rather than living in somebody's memory
-    of how the host was built.
+    scanner itself is built against (an absence read as an all-clear) so the
+    manifest travels with the numbers.
 
     A run on a host seeded by an older copy of seed.sh has no manifest, and
-    that is reported as absent rather than as an empty one: "nothing was
+    that is reported as absent: "nothing was
     recorded" and "nothing was missing" are the two readings this whole
     harness exists to keep apart.
     """
@@ -259,11 +257,11 @@ def main():
 
     phases = {}
     for phase in PHASE_ORDER:
-        # Only the phases that actually ran. A control run has two of them and
+        # Only the phases that ran. A control run has two of them and
         # a hostveil run has five, and reading a fixed list would put an
         # {"error": "No such file"} object under every phase the other kind of
-        # run does not have — a report that looks like five failed
-        # measurements rather than like two that were never asked for.
+        # run does not have; a report that looks like five failed
+        # measurements.
         if not os.path.exists(os.path.join(work, phase + ".hostveil.json")):
             continue
         phases[phase] = {
@@ -285,9 +283,9 @@ def main():
         "phases": phases,
         "deltas": deltas(phases),
     }
-    # The hostveil-driven keys are omitted rather than zeroed when nothing
+    # The hostveil-driven keys are omitted when nothing
     # applied a fix. "attempted: 0, failed: []" is a claim that Hostveil tried
-    # nothing and succeeded, which is not what a control run means — it means
+    # nothing and succeeded, which is not what a control run means; it means
     # Hostveil was never asked.
     if os.path.exists(os.path.join(work, "fix.log")):
         doc["fixes"] = fix_phase(work)

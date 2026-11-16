@@ -29,7 +29,7 @@ func TestABadFlagCostsNoPassword(t *testing.T) {
 
 	for _, args := range [][]string{
 		{"--no-such-flag"},         // routed to scan, which is root-benefiting
-		{"scan", "--no-such-flag"}, // and named outright
+		{"scan", "--no-such-flag"}, // and named explicitly
 		{"fix", "--no-such-flag"},
 		{"serve", "--no-such-flag"},
 	} {
@@ -74,7 +74,7 @@ func TestASoundCommandStillAsksForRoot(t *testing.T) {
 //
 // With no sudo on PATH the function returned in silence, so the operator found
 // out they needed root one domain at a time, half way through a scan, from
-// findings that read like a broken tool rather than a missing privilege. The
+// findings that read like a broken tool. The
 // two lines above it have always explained why Hostveil is *asking*.
 func TestAMissingSudoSaysSoRatherThanGoingQuiet(t *testing.T) {
 	if os.Geteuid() == 0 {
@@ -93,9 +93,8 @@ func TestAMissingSudoSaysSoRatherThanGoingQuiet(t *testing.T) {
 }
 
 // Every subcommand goes through parseAndElevate, so the ordering above is a
-// property of the program rather than of the one command a test happened to
-// run. A command that called parseFlags directly would parse its flags and
-// never elevate — which is the quieter half of the same defect.
+// property of the whole program. A command that called parseFlags directly would parse its flags and
+// never elevate, which is the quieter half of the same defect.
 func TestNoCommandParsesFlagsWithoutElevating(t *testing.T) {
 	fset := token.NewFileSet()
 	entries, err := os.ReadDir(".")

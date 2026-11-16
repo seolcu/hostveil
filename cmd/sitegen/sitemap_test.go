@@ -13,12 +13,12 @@ import (
 //
 // The sitemap is built from the URLs the render loops compute, which is what
 // makes "a page that is rendered is in the sitemap" true by construction. This
-// checks the construction actually holds: it counts the HTML files sitegen
+// checks the construction holds: it counts the HTML files sitegen
 // wrote and requires one <loc> each, no more and no fewer.
 //
-// A sitemap that quietly lost a page would be indistinguishable from a
-// complete one — which is the failure mode of every reference in this
-// repository, and the reason the generator derives rather than copies.
+// A sitemap that silently lost a page would be indistinguishable from a
+// complete one, which is the failure mode of every reference in this
+// repository, and the reason the generator derives the lists.
 func TestTheSitemapListsEveryRenderedPageExactlyOnce(t *testing.T) {
 	root := repoRootFromSitegen(t)
 	raw, err := os.ReadFile(filepath.Join(root, "site", "sitemap.xml"))
@@ -64,7 +64,7 @@ func TestTheSitemapListsEveryRenderedPageExactlyOnce(t *testing.T) {
 			t.Errorf("%q is not an absolute URL under %s; a relative loc is ignored", u.Loc, siteURL)
 		}
 		// Every page exists in both languages, so every entry carries all
-		// three alternates — the same triple head.tmpl emits.
+		// three alternates; the same triple head.tmpl emits.
 		langs := map[string]bool{}
 		for _, l := range u.Links {
 			langs[l.Hreflang] = true
@@ -81,19 +81,19 @@ func TestTheSitemapListsEveryRenderedPageExactlyOnce(t *testing.T) {
 // TestTheSitemapCarriesNoTimestamp.
 //
 // <lastmod> is the obvious thing to add and the one thing that cannot be
-// added. Its honest sources are a file mtime or a build time, and either makes
-// two runs of the same commit produce different bytes — which CI checks with
+// added. Its accurate sources are a file mtime or a build time, and either makes
+// two runs of the same commit produce different bytes, which CI checks with
 // `git diff --exit-code site/`, and which the whole generator rests on. A
 // constant date would be a lie a crawler acts on.
 //
-// Written down as a test rather than a comment because the next person to read
+// Written down as a test because the next person to read
 // the sitemap spec will reach for it.
 func TestTheSitemapCarriesNoTimestamp(t *testing.T) {
 	raw := string(readSite(t, "sitemap.xml"))
 	for _, tag := range []string{"<lastmod>", "<changefreq>", "<priority>"} {
 		if strings.Contains(raw, tag) {
 			t.Errorf("the sitemap carries %s. lastmod is either non-deterministic or false, "+
-				"and the other two are ignored by every major crawler — see sitemap().", tag)
+				"and the other two are ignored by every major crawler: see sitemap().", tag)
 		}
 	}
 }

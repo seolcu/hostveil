@@ -30,9 +30,9 @@ type Anthropic struct {
 	http    *http.Client
 }
 
-// NewAnthropic builds a Claude provider from ANTHROPIC_API_KEY — the name
+// NewAnthropic builds a Claude provider from ANTHROPIC_API_KEY (the name
 // every Anthropic tool reads, so a key already exported for another tool
-// works here with no extra setup — and HOSTVEIL_ANTHROPIC_MODEL.
+// works here with no extra setup) and HOSTVEIL_ANTHROPIC_MODEL.
 func NewAnthropic() *Anthropic {
 	return &Anthropic{
 		BaseURL: defaultAnthropicBaseURL,
@@ -78,7 +78,7 @@ type anthropicResponse struct {
 }
 
 // Available checks that a key is configured and the account can reach the
-// Models API. That endpoint is metadata only, so — unlike Explain — checking
+// Models API. That endpoint is metadata only, so (unlike Explain) checking
 // it costs no tokens, the same property the OpenAI-compatible /models check has.
 func (a *Anthropic) Available(ctx context.Context) bool {
 	if a.APIKey == "" {

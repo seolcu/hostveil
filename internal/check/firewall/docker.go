@@ -20,8 +20,8 @@ const defaultDaemonConfig = "/etc/docker/daemon.json"
 
 // publishedPortRE matches the host side of a public port mapping in
 // `docker ps` output: "0.0.0.0:6379->6379/tcp" and its IPv6 twin
-// ":::6379->6379/tcp". A mapping published to 127.0.0.1 is deliberately not
-// matched — it is reachable only from the host, so no firewall is being
+// ":::6379->6379/tcp". A mapping published to 127.0.0.1 is not
+// matched: it is reachable only from the host, so no firewall is being
 // bypassed.
 var publishedPortRE = regexp.MustCompile(`(?:0\.0\.0\.0|\[::\]|::):(\d+)->`)
 
@@ -37,7 +37,7 @@ var publishedPortRE = regexp.MustCompile(`(?:0\.0\.0\.0|\[::\]|::):(\d+)->`)
 // This is the single most common real exposure on a self-hosted Docker host,
 // and until this check existed Hostveil actively rewarded it: an active ufw
 // scored the firewall axis full marks, and the ports checker suppresses its
-// generic exposure finding precisely because a firewall is up. A host with
+// generic exposure finding because a firewall is up. A host with
 // Postgres open to the world scored better than one with no firewall and
 // nothing running.
 //
@@ -70,7 +70,7 @@ func checkDockerBypass(ctx context.Context, r platform.CommandRunner, daemonConf
 	mitigated, err := dockerUserChainFiltered(ctx, r)
 	if err != nil {
 		return nil, &check.PartialError{
-			Reason: "cannot read the DOCKER-USER firewall chain — re-run with sudo to check whether published container ports bypass ufw",
+			Reason: "cannot read the DOCKER-USER firewall chain; re-run with sudo to check whether published container ports bypass ufw",
 		}
 	}
 	if mitigated {
@@ -81,7 +81,7 @@ func checkDockerBypass(ctx context.Context, r platform.CommandRunner, daemonConf
 	return []model.Finding{
 		model.NewFinding("firewall.docker-bypass", "Container ports bypass the ufw firewall",
 			model.SeverityHigh, model.SourceFirewall, model.RemediationReview,
-			model.WithDescription("ufw is active, but Docker publishes container ports by writing its own rules ahead of ufw's. Traffic to a published port is accepted before ufw ever sees it, so `ufw deny` on these ports does nothing and they are reachable from any network this host is on — including the internet, on a VPS. The firewall looks correct in `ufw status` while these ports are open."),
+			model.WithDescription("ufw is active, but Docker publishes container ports by writing its own rules ahead of ufw's. Traffic to a published port is accepted before ufw ever sees it, so `ufw deny` on these ports does nothing and they are reachable from any network this host is on, including the internet, on a VPS. The firewall looks correct in `ufw status` while these ports are open."),
 			model.WithHowToFix("Either publish only to loopback (`-p 127.0.0.1:6379:6379`, or `ports: [\"127.0.0.1:6379:6379\"]` in Compose) and reach the service over an SSH tunnel or VPN, or install the ufw-docker rules in /etc/ufw/after.rules so the DOCKER-USER chain enforces your ufw policy. Published ports: "+list+"."),
 			model.WithEvidence("published", list),
 			model.WithEvidence("firewall", "ufw"),
@@ -113,9 +113,8 @@ type publishedPort struct {
 }
 
 // publishedPorts lists container ports mapped to a non-loopback host address.
-// A docker that cannot be listed is treated as nothing published rather than
-// as an error: DockerReachable already gated this, so a failure here is a
-// daemon that went away mid-scan, not a blind spot worth a finding.
+// A docker that cannot be listed is treated as nothing published: DockerReachable already gated this, so a failure here is a
+// daemon that went away mid-scan.
 func publishedPorts(ctx context.Context, r platform.CommandRunner) ([]publishedPort, error) {
 	out, err := r.Run(ctx, "docker", "ps", "--format", "{{.Names}}\t{{.Ports}}")
 	if err != nil {

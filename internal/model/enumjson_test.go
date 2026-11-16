@@ -20,7 +20,7 @@ type enumCase[T ~int] struct {
 	// legacyOrdinal answers "what does the integer i in an old snapshot
 	// mean now?". For every enum but Severity that is i itself. Severity's
 	// scale went from four levels to three, so its old ordinals are remapped
-	// and the identity assertion would be wrong — see legacySeverityOrdinals.
+	// and the identity assertion would be wrong: see legacySeverityOrdinals.
 	legacyOrdinal func(int) (T, bool)
 }
 
@@ -36,8 +36,8 @@ func run[T ~int](t *testing.T, c enumCase[T]) {
 				t.Fatalf("marshal %v: %v", v, err)
 			}
 
-			// The whole point: a consumer of --json reads a word, not an
-			// ordinal it has to keep its own table for.
+			// A consumer of --json reads a word and keeps no ordinal table of
+			// its own.
 			if got, want := string(data), `"`+c.name(v)+`"`; got != want {
 				t.Errorf("marshal %v = %s, want %s", v, got, want)
 			}
@@ -56,7 +56,7 @@ func run[T ~int](t *testing.T, c enumCase[T]) {
 		}
 
 		// The integer form every snapshot written before names holds.
-		// Dropping it would not fail loudly — it would make the previous scan
+		// Dropping it would not fail loudly: it would make the previous scan
 		// unreadable, which reads to a user as a host with no history rather
 		// than as a format change.
 		for n := 0; n < 8; n++ {
@@ -77,7 +77,7 @@ func run[T ~int](t *testing.T, c enumCase[T]) {
 			}
 		}
 
-		// An unrecognised value is an error, not a zero. Resolving it
+		// An unrecognised value is an error. Resolving it
 		// silently would turn a snapshot Hostveil cannot read into one it
 		// reads wrongly.
 		for _, bad := range []string{`"nonsense"`, `9999`, `true`} {
@@ -139,7 +139,7 @@ func TestEnumsMarshalAsNamesAndReadBothForms(t *testing.T) {
 // legacySnapshot is a report as this package wrote them before the enums
 // named themselves: every enum a bare integer.
 //
-// It is written out rather than generated, because a fixture built from the
+// It is written out by hand, because a fixture built from the
 // current tables would move with them and assert nothing. The numbers here
 // are the numbers that are on operators' disks.
 const legacySnapshot = `{
@@ -158,12 +158,12 @@ const legacySnapshot = `{
 }`
 
 // TestAPreviousScanStillReads is the compatibility claim the integer path
-// exists for, made against a snapshot rather than against the tables.
+// exists for, made against a snapshot.
 //
 // A scan snapshot is not a wire format that both ends redeploy together: it
 // is a file on the host, and the next run reads what the last run wrote. If
 // the integers stopped resolving, the delta would report every finding as
-// new — "everything on this host changed" — with nothing anywhere saying why.
+// new: "everything on this host changed", with nothing anywhere saying why.
 func TestAPreviousScanStillReads(t *testing.T) {
 	var r Report
 	if err := json.Unmarshal([]byte(legacySnapshot), &r); err != nil {
@@ -210,7 +210,7 @@ func TestAPreviousScanStillReads(t *testing.T) {
 	}
 
 	// And what it writes back out is the new form, so a host converts on its
-	// next scan rather than carrying integers forward forever.
+	// next scan and stops carrying integers.
 	out, err := json.Marshal(r)
 	if err != nil {
 		t.Fatal(err)
@@ -224,11 +224,10 @@ func TestAPreviousScanStillReads(t *testing.T) {
 
 // namedSnapshot is what the build *after* the integer one wrote: enums as
 // names, with the severity levels under the interim names they carried
-// between two changes on main — exposed / weak / hardening. No release ever
+// between two changes on main; exposed / weak / hardening. No release ever
 // shipped them, and anyone running from main has one of these on disk.
 //
-// It is a separate fixture from legacySnapshot rather than an edit to it,
-// because the two say different things. The integer fixture proves the
+// It is a separate fixture from legacySnapshot, because the two say different things. The integer fixture proves the
 // oldest form still resolves; this one proves that renaming the levels did
 // not silently invalidate every snapshot written since. Written out for the
 // same reason: a fixture built from the current tables would move with them.
@@ -248,7 +247,7 @@ const namedSnapshot = `{
 // TestASnapshotFromTheInterimNamesStillReads covers the second rename.
 //
 // Renaming a level is invisible to the compiler and to every test that
-// builds its input from the tables — those move together. What does not
+// builds its input from the tables: those move together. What does not
 // move is the file the last scan wrote. If "exposed" stopped resolving, the
 // delta would report every finding on the host as new, which is the same
 // failure the integer path exists to prevent, arriving one change later.
@@ -290,8 +289,7 @@ func TestASnapshotFromTheInterimNamesStillReads(t *testing.T) {
 	}
 }
 
-// TestEveryNameHostveilHasWrittenStillParses walks the names rather than a
-// snapshot, so a level renamed a third time without an entry here fails
+// TestEveryNameHostveilHasWrittenStillParses walks the names, so a level renamed a third time without an entry here fails
 // immediately instead of at whatever a future operator's disk holds.
 func TestEveryNameHostveilHasWrittenStillParses(t *testing.T) {
 	for name, want := range map[string]Severity{

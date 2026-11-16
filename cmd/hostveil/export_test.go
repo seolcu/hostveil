@@ -22,7 +22,7 @@ func TestExportMarkdownToStdoutDescribesTheFinding(t *testing.T) {
 		return cmdExport(context.Background(), []string{"--format", "markdown"})
 	})
 	// exposedRedis is compose.ds018, High and unfixed at this point in the
-	// test — exitFindings (1) is the correct code for that, the same gate
+	// test; exitFindings (1) is the correct code for that, the same gate
 	// scan uses.
 	if code != 1 {
 		t.Fatalf("exit = %d, want 1 (unfixed High finding)\n%s", code, out)

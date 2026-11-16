@@ -33,7 +33,7 @@ type Options struct {
 }
 
 // maxFileCopy bounds one copied file. A log larger than this is recorded
-// with an error rather than truncated: a partial log presented as a whole
+// with an error: a partial log presented as a whole
 // one would be worse than a missing one.
 const maxFileCopy = 512 << 20
 
@@ -277,7 +277,7 @@ func (c *collector) files(phase int, name string, patterns ...string) {
 			a.Error = err.Error()
 			data = nil
 		case len(data) > maxFileCopy:
-			a.Error = fmt.Sprintf("larger than %d bytes; not copied rather than copied in part", maxFileCopy)
+			a.Error = fmt.Sprintf("larger than %d bytes; not copied, so no partial copy exists", maxFileCopy)
 			data = nil
 		}
 		c.record(a, data)
@@ -336,7 +336,7 @@ func (c *collector) homeLinks(phase int) {
 }
 
 // shadowSummary records which accounts have a password, none, or a locked
-// one — never the hashes, which have no place in a bundle that may be
+// one: never the hashes, which have no place in a bundle that may be
 // handed to someone else.
 func (c *collector) shadowSummary(phase int) {
 	a := Artifact{Name: "shadow-summary", Path: c.next("shadow-summary", "tsv"), Phase: phase, Kind: "derived", Source: "/etc/shadow"}
@@ -498,7 +498,7 @@ func (c *collector) packageOwners(ctx context.Context, phase int, paths []string
 		seen[p] = true
 		owner := ask(p)
 		// On a merged-/usr system dpkg still records many files under the
-		// path the package shipped them at, /bin rather than /usr/bin.
+		// path the package shipped them at, such as /bin.
 		if alias := unmergedPath(p); owner == "-" && alias != "" {
 			owner = ask(alias)
 		}

@@ -16,7 +16,7 @@ import (
 //
 // It exists because the ports checker read only ufw, so on a Fedora host
 // whose firewalld refused a datastore's port it still reported the port
-// reachable from the network — and told the operator to enable ufw.
+// reachable from the network, and told the operator to enable ufw.
 //
 // It answers "blocked" only when it understood everything that could open
 // the port. A source-bound zone, another active zone, a forward or a source
@@ -49,7 +49,7 @@ type richRule struct {
 }
 
 // dockerZone is the zone Docker binds its bridges to. Its target accepts,
-// but what arrives there is from containers on this host, not off it.
+// but what arrives there is from containers on this host.
 const dockerZone = "docker"
 
 // ReadFirewalld reads the default zone. A firewalld that is not running, or
@@ -212,7 +212,7 @@ func parsePortRange(spec string) (portRange, bool) {
 //	rule family="ipv4" port port="8080-8090" protocol="tcp" accept
 //
 // A family limits a rule to one of the two, and this answers for both, so a
-// rule with one is read only when it accepts — the direction that can never
+// rule with one is read only when it accepts; the direction that can never
 // make a port look more closed than it is. Anything with a source, a
 // destination, a service, logging or a limit is not this shape.
 func parseRichRule(rule string) (richRule, bool) {
@@ -289,7 +289,7 @@ func otherActiveZones(out, def string) bool {
 // rule closing it would go into.
 type Shield struct {
 	// Name is "ufw" or "firewalld" when one of them is running and readable,
-	// and empty when neither is — the case where there is no rule to write.
+	// and empty when neither is; the case where there is no rule to write.
 	Name string
 	// Zone is firewalld's default zone, where a rule must go.
 	Zone string

@@ -1,5 +1,5 @@
 // Package web is Hostveil's thin, localhost-bound web dashboard. Handlers
-// marshal to/from core.Engine and nothing else — there is no detection,
+// marshal to/from core.Engine and nothing else: there is no detection,
 // fix, scoring, or rollback logic here. It imports only core and model.
 package web
 
@@ -40,7 +40,7 @@ const sessionCookie = "hostveil_session"
 type Server struct {
 	engine *core.Engine
 	addr   string
-	// theme is the palette the page starts in — the one Hostveil resolved
+	// theme is the palette the page starts in: the one Hostveil resolved
 	// from --theme, the environment, or the remembered choice. A theme picked
 	// in the browser is stored there and overrides it for that browser only,
 	// so two people pointed at the same dashboard can read it differently.
@@ -76,12 +76,12 @@ func New(engine *core.Engine, addr string, opts Opts) *Server {
 // it away from other accounts on the same machine. Hostveil auto-elevates
 // for `serve`, so the dashboard runs as root, and every route it exposes
 // applies fixes, rolls them back, or reads a scan of /etc/shadow and the
-// compose files. Without a token any unprivileged local user — or any
-// process, including a compromised container with host networking — could
+// compose files. Without a token any unprivileged local user (or any
+// process, including a compromised container with host networking) could
 // curl 127.0.0.1:8787/api/fix/all and have root edit files on their behalf.
 // That is a privilege-escalation path, and the token is what closes it.
 //
-// A failure of the system CSPRNG is fatal rather than degraded: falling back
+// A failure of the system CSPRNG is fatal: falling back
 // to something guessable would leave the door open while reporting that it
 // was shut.
 func newToken() string {
@@ -105,14 +105,13 @@ func newToken() string {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /", http.FileServer(http.FS(mustSub())))
-	// Generated from internal/ui/theme rather than shipped as static assets,
-	// which is what keeps the dashboard's palette and the TUI's identical:
+	// Generated from internal/ui/theme, which is what keeps the dashboard's palette and the TUI's identical:
 	// there is one registry of hexes and both read from it.
 	mux.HandleFunc("GET /themes.css", s.handleThemesCSS)
 	mux.HandleFunc("GET /theme.js", s.handleThemeJS)
-	// Same arrangement, one layer down: every enum the page has to read —
-	// domains, severities, remediation kinds, scan states, score bands —
-	// comes from internal/model rather than from copies kept in app.js.
+	// Same arrangement, one layer down: every enum the page has to read
+	// (domains, severities, remediation kinds, scan states, score bands)
+	// comes from internal/model, so app.js keeps no copies.
 	mux.HandleFunc("GET /model.js", s.handleModelJS)
 	mux.HandleFunc("GET /api/result", s.handleResult)
 	mux.HandleFunc("GET /api/preview", s.handlePreview)
@@ -141,27 +140,27 @@ const shutdownGrace = 5 * time.Second
 
 // ListenAndServe opens the listener immediately and serves the dashboard
 // until ctx is cancelled, at which point it stops accepting and drains
-// in-flight requests. The first scan runs the same way a rescan does — as a
-// tracked background scan behind s.progress — rather than blocking here.
+// in-flight requests. The first scan runs the same way a rescan does (as a
+// tracked background scan behind s.progress), so nothing blocks here.
 //
 // It used to run the initial scan synchronously before opening the
 // listener, on a host with many Docker images that is minutes during which
 // the printed URL connects to nothing at all. The dashboard already had
-// everything needed to show a scan in progress instead — POST /api/rescan,
-// s.progress, and the frontend's own polling loop — the first scan simply
+// everything needed to show a scan in progress instead (POST /api/rescan,
+// s.progress, and the frontend's own polling loop) the first scan simply
 // never used any of it, so the operator's first look at Hostveil was a
 // browser tab that appeared to hang.
 //
-// The context is the whole point of the signature. Before it, serve ignored
+// The context is why the signature changed. Before it, serve ignored
 // cancellation entirely: `cmdServe` took a context and never looked at it,
 // and this method blocked in http.Server.ListenAndServe with no Shutdown
 // wired up. Combined with signal.NotifyContext consuming the only signal it
 // would ever act on, that left a root-owned dashboard which answered neither
 // Ctrl-C nor `systemctl stop` and died only when systemd escalated to
-// SIGKILL — mid-fix, if that is what it happened to be doing.
+// SIGKILL: mid-fix, if that is what it happened to be doing.
 func (s *Server) ListenAndServe(ctx context.Context) error {
-	// Background scans derive from this context, not from the requests that
-	// start them. Set before the listener opens, so no handler can observe
+	// Background scans derive from this context. The requests that start
+	// them do not own them. Set before the listener opens, so no handler can observe
 	// it half-initialized.
 	s.baseCtx = ctx
 
@@ -170,12 +169,11 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 	}
 
 	// Same sequence handleRescan uses: mark a scan running, then let it feed
-	// s.progress in the background. begin() cannot answer false here — this
-	// is the first scan there has ever been a chance to start — so unlike
+	// s.progress in the background. begin() cannot answer false here (this
+	// is the first scan there has ever been a chance to start) so unlike
 	// handleRescan there is nothing to do with the return value.
 	s.progress.begin()
-	// runTrackedScan reads s.baseCtx, set to ctx two lines up, rather than
-	// taking a context argument — deliberately, since it also runs from
+	// runTrackedScan reads s.baseCtx, set to ctx two lines up, since it also runs from
 	// handleRescan, where the request's own context must not be the one a
 	// scan runs under (see hostWork).
 	go s.runTrackedScan()
@@ -186,7 +184,7 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 		ReadHeaderTimeout: 5 * time.Second,
 		// No WriteTimeout: a rescan legitimately takes minutes on a host with
 		// many images, and cutting the response off mid-scan would look like a
-		// crash. IdleTimeout still reaps connections nobody is using.
+		// crash. IdleTimeout still reaps idle connections.
 		IdleTimeout: 2 * time.Minute,
 	}
 
@@ -218,7 +216,7 @@ func (s *Server) guard(next http.Handler) http.Handler {
 			return
 		}
 		if !s.authorize(w, r) {
-			http.Error(w, "missing or invalid access token — open the URL Hostveil printed at startup",
+			http.Error(w, "missing or invalid access token: open the URL Hostveil printed at startup",
 				http.StatusUnauthorized)
 			return
 		}
@@ -246,7 +244,7 @@ func isSafeMethod(m string) bool {
 // authorize checks the access token, accepting it from the session cookie or
 // from the ?t= parameter in the URL Hostveil printed. A request that arrives
 // with a valid parameter is given the cookie, so the dashboard's own fetches
-// — which carry no query string — are authorized from then on.
+// (which carry no query string) are authorized from then on.
 func (s *Server) authorize(w http.ResponseWriter, r *http.Request) bool {
 	if s.token == "" {
 		return true // no token configured; only reachable in tests
@@ -257,9 +255,9 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request) bool {
 	if !tokenEqual(r.URL.Query().Get("t"), s.token) {
 		return false
 	}
-	// Secure is deliberately unset, which is what gosec's G124 sees. The
-	// dashboard is plain HTTP on loopback and cannot be anything else — it
-	// has no certificate and no name to put on one — so a Secure cookie
+	// Secure is unset, which is what gosec's G124 sees. The
+	// dashboard is plain HTTP on loopback and cannot be anything else (it
+	// has no certificate and no name to put on one) so a Secure cookie
 	// would simply never be sent and every request would arrive
 	// unauthenticated. HttpOnly and SameSite=Strict are both set, and the
 	// transport is a socket on this machine that never reaches a network.
@@ -269,7 +267,7 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request) bool {
 		Value:    s.token,
 		Path:     "/",
 		HttpOnly: true,
-		// Strict, not Lax: Lax would send the cookie on a top-level
+		// Strict: Lax would send the cookie on a top-level
 		// navigation from another site, which is exactly the CSRF shape the
 		// origin check below exists to stop.
 		SameSite: http.SameSiteStrictMode,
@@ -286,15 +284,15 @@ func tokenEqual(got, want string) bool {
 // hostAllowed permits only loopback hosts, blocking DNS-rebinding attacks
 // that would let a malicious website reach the local dashboard.
 //
-// The port has to be checked, not just discarded. net.SplitHostPort splits at
+// The port has to be checked. net.SplitHostPort splits at
 // the last colon and never asks whether what follows is a number, so
 // "127.0.0.1:8787.evil.example.com" parses as host 127.0.0.1 with the
-// attacker's domain as its port — and returned the loopback host this
+// attacker's domain as its port, and returned the loopback host this
 // allowlist is written to trust. That is the same authority the Origin check
 // already refuses; hostFromURL was moved onto net/url for exactly this reason
 // and this function was left comparing an approximation. No browser will emit
 // it, since a non-numeric port makes the URL unparseable, so nothing here was
-// reachable through the rebinding attack the allowlist defends against — but
+// reachable through the rebinding attack the allowlist defends against, but
 // a host check that credits the wrong host is not worth reasoning about twice.
 //
 // An authority with no port carries an IPv6 literal in brackets, which
@@ -317,8 +315,7 @@ func hostAllowed(host string) bool {
 }
 
 // isNumericPort reports whether p is a port number and nothing else. An empty
-// port is the "host:" form, which addresses the default port rather than a
-// name of the attacker's choosing.
+// port is the "host:" form, which addresses the default port.
 func isNumericPort(p string) bool {
 	if p == "" {
 		return true
@@ -333,7 +330,7 @@ func isNumericPort(p string) bool {
 // Sec-Fetch-Site is consulted first because it is the browser's own account
 // of where the request came from, and unlike Origin it is present on every
 // request a modern browser makes. Its absence therefore means a non-browser
-// client — curl, a script — which cannot be steered by a hostile web page
+// client (curl, a script) which cannot be steered by a hostile web page
 // and is the case the Origin/Referer fallback below is written for.
 func sameOrigin(r *http.Request) bool {
 	switch r.Header.Get("Sec-Fetch-Site") {
@@ -350,16 +347,16 @@ func sameOrigin(r *http.Request) bool {
 	}
 	// Neither header: not a browser request. It still had to present the
 	// access token to reach this point, which a cross-origin page cannot
-	// read, so this is the local-curl case rather than an open door.
+	// read, so this is the local-curl case.
 	return true
 }
 
 // hostFromURL returns the host:port of a URL, or "" if it cannot be parsed.
 //
 // Hand-rolled prefix trimming was doing this, which credits the wrong host
-// for anything the URL grammar allows and it does not — "http://evil.com\@"
+// for anything the URL grammar allows and it does not; "http://evil.com\@"
 // forms, userinfo, uppercase schemes. Comparing hosts is a security decision,
-// so it uses the parser rather than an approximation of one.
+// so it uses the real parser.
 func hostFromURL(u string) string {
 	parsed, err := url.Parse(u)
 	if err != nil {
@@ -386,7 +383,7 @@ func (s *Server) handleModelJS(w http.ResponseWriter, _ *http.Request) {
 // than one shipped in the binary.
 //
 // It exists for the Cache-Control line. What these routes serve depends on
-// flags resolved at startup — the palette on --theme — so a browser that cached one would keep the previous run's
+// flags resolved at startup (the palette on --theme) so a browser that cached one would keep the previous run's
 // appearance and there is nothing in the URL to tell it apart. The handlers
 // each set it by hand, which made it something a fifth route could
 // omit with no test and no symptom until somebody restarted with a different
@@ -404,7 +401,7 @@ func serveGenerated(w http.ResponseWriter, contentType, body string) {
 // is embedded so its JSON stays flat and the shape only gains a field.
 //
 // HasRun is what tells a never-scanned report apart from a scan that found
-// nothing — both have Findings: null. Read it whenever Findings is empty
+// nothing: both have Findings: null. Read it whenever Findings is empty
 // and rendering depends on which of the two it is.
 type resultPayload struct {
 	model.Report
@@ -415,14 +412,13 @@ type resultPayload struct {
 // handleTrend serves the score of every retained scan, plus the sparkline
 // the TUI draws from the same points.
 //
-// The glyphs come from model.Sparkline rather than being bucketed again in
-// JavaScript: two implementations of one rule is the shape that has already
-// gone wrong twice here — the severity palette before internal/ui/theme,
+// The glyphs come from model.Sparkline: two implementations of one rule is the shape that has already
+// gone wrong twice here; the severity palette before internal/ui/theme,
 // the domain table before /model.js.
 //
-// It is its own route rather than a field on /api/result because the result
+// It is its own route because the result
 // is refetched after every fix, and re-reading thirty snapshots from disk
-// each time would be work nobody asked for. The trend only moves when a
+// each time would be unrequested work. The trend only moves when a
 // scan does.
 func (s *Server) handleTrend(w http.ResponseWriter, _ *http.Request) {
 	points, err := s.engine.ScoreHistory()
@@ -442,8 +438,8 @@ func (s *Server) handleResult(w http.ResponseWriter, _ *http.Request) {
 }
 
 // handleExport renders the current report in the requested format and
-// serves it as a download. It reads whatever the last scan left — a fresh
-// look at the host is what /api/rescan is for — so this stays a safe GET,
+// serves it as a download. It reads whatever the last scan left (a fresh
+// look at the host is what /api/rescan is for) so this stays a safe GET,
 // exempt from the same-origin check the way /api/result already is.
 func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 	report, hasRun := s.engine.Current()
@@ -460,13 +456,13 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
 	w.Header().Set("Cache-Control", "no-store")
 	// G705 flags this because the request's ?format= value reaches Export,
-	// whose return value is written to the response — a taint chain the
+	// whose return value is written to the response; a taint chain the
 	// analyzer cannot tell apart from reflecting user input into the body.
 	// format only ever selects which of five fixed renderers runs
 	// (report.Parse rejects anything else with 400 above); it is never
 	// echoed into data, and Content-Type here is never text/html, so there
 	// is no HTML for a browser to interpret regardless.
-	//nolint:gosec // G705: false positive — format selects a renderer, it is not written to the body
+	//nolint:gosec // G705: false positive; format selects a renderer, it is not written to the body
 	_, _ = w.Write(data)
 }
 
@@ -474,7 +470,7 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 // should run under: the request's values, but not its cancellation.
 //
 // net/http cancels a request context as soon as the client disconnects, and a
-// browser disconnects for reasons that have nothing to do with intent —
+// browser disconnects for reasons that have nothing to do with intent;
 // closing the tab, navigating away, a laptop lid. Letting that cancel the
 // work is wrong in both directions here. A rescan cut off part-way leaves a
 // report whose domains are empty because they were killed, and a fix cut off
@@ -488,13 +484,13 @@ func hostWork(r *http.Request) context.Context {
 	return context.WithoutCancel(r.Context())
 }
 
-// handleRescan starts a scan in the background and returns immediately —
+// handleRescan starts a scan in the background and returns immediately:
 // a rescan takes minutes on a real host, and a response that blocks for
 // the duration gives the browser nothing to render but a frozen button.
 // The client polls /api/rescan/status and fetches /api/result when the
 // running flag drops.
 //
-// The scan runs under the server's base context rather than the request's:
+// The scan runs under the server's base context:
 // a closed tab must not abort a scan (the hostWork rule), but Ctrl-C on the
 // server should.
 func (s *Server) handleRescan(w http.ResponseWriter, _ *http.Request) {
@@ -509,7 +505,7 @@ func (s *Server) handleRescan(w http.ResponseWriter, _ *http.Request) {
 }
 
 // scanEventBuffer sizes the progress channel. The engine drops events on a
-// full buffer rather than stall a checker; a generous buffer plus a
+// full buffer so a checker never stalls; a generous buffer plus a
 // dedicated drain goroutine makes that a non-event.
 const scanEventBuffer = 64
 
@@ -527,14 +523,13 @@ func (s *Server) runTrackedScan() {
 
 	// The scan itself runs inside its own recover. Both handleRescan and
 	// Serve start this method with `go`, so there is no caller left to catch
-	// a panic that isn't a checker's own — check.runOne already contains
-	// those — but one in the scoring or persistence code ScanWith runs after
+	// a panic that isn't a checker's own (check.runOne already contains
+	// those) but one in the scoring or persistence code ScanWith runs after
 	// every checker has returned. Without this, that panic ends the process
-	// mid-request, for every connection the dashboard is serving, not just
-	// this one. See internal/core/contain.go for the equivalent guard on the
+	// mid-request, for every connection the dashboard is serving. See internal/core/contain.go for the equivalent guard on the
 	// fix path; a crash here is not recorded there for internal/diagnostics
 	// the way a fix's is, because layering keeps this package from importing
-	// internal/history to find out where — surviving the panic is the load-
+	// internal/history to find out where: surviving the panic is the load-
 	// bearing half, and it does not need that import to happen.
 	func() {
 		defer func() {
@@ -555,7 +550,7 @@ func (s *Server) runTrackedScan() {
 }
 
 func (s *Server) handleRescanStatus(w http.ResponseWriter, _ *http.Request) {
-	// Never cache: the whole point of the route is that the answer changes
+	// Never cache: the route exists because the answer changes
 	// second to second.
 	w.Header().Set("Cache-Control", "no-store")
 	running, domains := s.progress.snapshot()
@@ -568,7 +563,7 @@ func (s *Server) handleRescanStatus(w http.ResponseWriter, _ *http.Request) {
 // handleExplain returns the deterministic explanation plus, when a local
 // AI provider is reachable, an advisory AI one (model.Explanation's ai /
 // ai_error fields). It runs under the request's own context, unlike a fix
-// or a scan: an explanation mutates nothing, so one nobody is waiting for
+// or a scan: an explanation mutates nothing, so one no client is waiting for
 // should die with the tab that asked for it.
 func (s *Server) handleExplain(w http.ResponseWriter, r *http.Request) {
 	f, ok := s.lookup(r.URL.Query().Get("id"), r.URL.Query().Get("service"))
@@ -580,7 +575,7 @@ func (s *Server) handleExplain(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleAdvise judges every fixable finding in the current report against
-// the saved host description — the whole-scan counterpart to handleExplain.
+// the saved host description: the whole-scan counterpart to handleExplain.
 // It reads whatever the last scan left, the same way handleExport does, so
 // a fresh look at the host is still what /api/rescan is for.
 func (s *Server) handleAdvise(w http.ResponseWriter, r *http.Request) {
@@ -658,9 +653,9 @@ func (s *Server) handleFix(w http.ResponseWriter, r *http.Request) {
 }
 
 // fixOneResponse is a single finding's outcome from the batch loop's own
-// per-item step (see Engine.ApplyOne) — no verify, unlike POST /api/fix.
+// per-item step (see Engine.ApplyOne): no verify, unlike POST /api/fix.
 // Skipped mirrors what a batch response would have counted this finding as:
-// already fixed, not eligible, or a fix whose shape did not match.
+// already fixed, ineligible, or a fix whose shape did not match.
 type fixOneResponse struct {
 	model.FixOutcome
 	Skipped bool `json:"skipped,omitempty"`
@@ -693,9 +688,9 @@ func (s *Server) handleFixOne(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleFixAll(w http.ResponseWriter, r *http.Request) {
 	report, _ := s.engine.Current()
 	// The whole report, which is what the dashboard's button counts: its
-	// filter chips narrow the list, not the batch. The TUI means the other
+	// filter chips narrow the list and leave the batch alone. The TUI means the other
 	// thing by the same words, and saying so through one helper is how the
-	// two stay deliberately different rather than accidentally so.
+	// two stay intentionally different.
 	writeJSON(w, s.engine.ApplyBatch(hostWork(r), report.AutoFixable(model.Filter{})))
 }
 
@@ -729,8 +724,7 @@ func (s *Server) handleFixBatch(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHistory(w http.ResponseWriter, _ *http.Request) {
 	cps, err := s.engine.ListCheckpoints()
 	// Unreadable checkpoints leave a usable list behind, so the dashboard
-	// still renders it and carries the warning alongside rather than replacing
-	// the whole history view with a 500.
+	// still renders it and carries the warning alongside.
 	if err != nil && !core.IsIncompleteHistory(err) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -765,7 +759,7 @@ func (s *Server) handleRollback(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := rollback(req.CheckpointID)
 	if err != nil {
-		// 409 rather than 400 so the client can tell "this file changed
+		// 409 so the client can tell "this file changed
 		// since the fix, confirm before discarding" apart from a genuine
 		// failure. The engine declined; it did not fail.
 		if core.IsExternalEdit(err) {
@@ -799,7 +793,7 @@ func (s *Server) lookup(id, service string) (model.Finding, bool) {
 // Encoding into a buffer first is what makes a failure reportable. Streaming
 // straight into the ResponseWriter commits the 200 and the headers with the
 // first byte, so an error partway leaves the client holding truncated JSON
-// under a success status — which reads as a parse bug on their side rather
+// under a success status, which reads as a parse bug on their side rather
 // than a failure on ours.
 func writeJSON(w http.ResponseWriter, v any) {
 	var buf bytes.Buffer
@@ -829,9 +823,9 @@ func mustSub() fs.FS {
 // page itself generates.
 //
 // A wildcard bind is rendered as 127.0.0.1, because a wildcard is an
-// instruction to the listener and not an address anyone can browse to —
+// instruction to the listener and not an address anyone can browse to:
 // "http://0.0.0.0:8787/" pasted into a browser is at best confusing. It is
-// also the address that actually works: the Host allowlist requires a
+// also the address that works: the Host allowlist requires a
 // loopback host regardless of what the socket is bound to.
 func (s *Server) URL() string {
 	return fmt.Sprintf("http://%s/?t=%s", browseHost(s.addr), s.token)

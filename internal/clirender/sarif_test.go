@@ -95,7 +95,7 @@ func TestSARIFSeverityLevels(t *testing.T) {
 	}
 }
 
-// An empty scan must produce `"results": []`, not `"results": null` —
+// An empty scan must produce `"results": []`, not `"results": null`;
 // null is invalid SARIF and some ingesters reject the whole file.
 func TestSARIFEmptyReportHasEmptyArrays(t *testing.T) {
 	out, err := SARIF(model.Report{}, "v-test")
@@ -134,8 +134,8 @@ func TestSARIFCarriesDomainCoverage(t *testing.T) {
 // SARIF was already saying what the three-level scale says. An ingester's
 // alerts must not move because Hostveil renamed something.
 //
-// Written against the old ordinals rather than the old constants, which no
-// longer exist: the numbers are what a snapshot on disk holds, and reading
+// Written against the old ordinals, because the old constants no longer
+// exist: the numbers are what a snapshot on disk holds, and reading
 // one back is the only way left to name a level this build never had.
 func TestSARIFLevelsStillMeanWhatTheyMeant(t *testing.T) {
 	for _, tc := range []struct {
@@ -164,14 +164,14 @@ func TestSARIFLevelsStillMeanWhatTheyMeant(t *testing.T) {
 //
 // security-severity is what GitHub code scanning ranks and filters by, and
 // it is the only number in the export. Replacing the whole of
-// securitySeverity with a constant passed every test in the repository —
+// securitySeverity with a constant passed every test in the repository,
 // so a rename, a reordering, or a level added without a case would have
 // shipped a SARIF file where nothing sorts.
 //
-// It asserts the property rather than three literals: each level's score is
+// It asserts the property: each level's score is
 // well-formed, inside the scale, and strictly greater than the level below
-// it. Pinning the exact numbers would fail the day somebody deliberately
-// retunes them, which is a choice rather than a defect; ordering is not.
+// it. Pinning the exact numbers would fail the day somebody
+// retunes them, which is a choice; reordering them is a defect.
 func TestEverySeverityCarriesASecurityScore(t *testing.T) {
 	prev := 11.0
 	for _, sev := range model.AllSeverities() {
@@ -185,7 +185,7 @@ func TestEverySeverityCarriesASecurityScore(t *testing.T) {
 			t.Errorf("%s exports security-severity %v, outside code scanning's 0–10 scale", sev, got)
 		}
 		if got >= prev {
-			t.Errorf("%s exports security-severity %v, which does not rank below the level above it (%v) — "+
+			t.Errorf("%s exports security-severity %v, which does not rank below the level above it (%v); "+
 				"code scanning sorts by this number, so an order that does not descend is an export "+
 				"that cannot be triaged", sev, got, prev)
 		}

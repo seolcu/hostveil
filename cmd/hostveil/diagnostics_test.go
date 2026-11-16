@@ -10,8 +10,8 @@ import (
 
 // diagnostics replaced bugreport's --send path with nothing: it collects and
 // prints, and never reaches the network on its own. These tests are about
-// that boundary staying true, plus the two things it still has to get right
-// — writing to --output and telling the operator where to paste the result.
+// that boundary staying true, plus the two things it still has to get right:
+// writing to --output and telling the operator where to paste the result.
 
 func TestDiagnosticsWritesToOutputWithoutPrinting(t *testing.T) {
 	if os.Geteuid() == 0 {
@@ -51,7 +51,7 @@ func TestDiagnosticsWritesToOutputWithoutPrinting(t *testing.T) {
 }
 
 // With no --output, the report goes to stdout and diagnostics names where a
-// human pastes it — there is no --send left to do that step automatically.
+// human pastes it: there is no --send left to do that step automatically.
 func TestDiagnosticsWithoutOutputPrintsAndNamesWhereToPasteIt(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("running as root; HOME does not redirect history.DefaultDir")
@@ -72,8 +72,7 @@ func TestDiagnosticsWithoutOutputPrintsAndNamesWhereToPasteIt(t *testing.T) {
 	}
 }
 
-// --unredacted is the one flag that changes the content rather than the
-// destination, and it used to also gate --send; there is nothing left to
+// --unredacted is the one flag that changes the content, and it used to also gate --send; there is nothing left to
 // refuse combining it with.
 func TestDiagnosticsUnredactedKeepsIPsVerbatim(t *testing.T) {
 	if os.Geteuid() == 0 {

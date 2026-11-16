@@ -1,10 +1,10 @@
 // Package sysctl implements a kernel-hardening checker over the runtime
 // values in /proc/sys. It audits a small, defensible set of parameters
-// whose safe value is the same on essentially every self-hosted server —
+// whose safe value is the same on essentially every self-hosted server:
 // the quiet knobs that stop a local foothold from becoming root and a
 // spoofed packet from becoming a route.
 //
-// net.ipv4.ip_forward is deliberately not audited. Docker, WireGuard,
+// net.ipv4.ip_forward is not audited. Docker, WireGuard,
 // Tailscale exit nodes, libvirt, LXD, and Kubernetes all legitimately
 // enable it, none of that is detectable from here, and a rule that accuses
 // most self-hosters' routers erodes trust in the whole domain.
@@ -24,7 +24,7 @@ import (
 )
 
 // Reading is one parameter as this kernel gave it. Present is false when the
-// /proc/sys file is absent — the knob is not built into this kernel, which is
+// /proc/sys file is absent: the knob is not built into this kernel, which is
 // not the same as the knob being set to zero and is the distinction the whole
 // domain turns on.
 type Reading struct {
@@ -45,7 +45,7 @@ type Rule struct {
 	Want  string   // the sysctl.d line(s) the how-to-fix recommends
 
 	// Flagged is handed the readings for Keys, in Keys order, and nothing
-	// else. Use is/isNot/below/anyIs rather than writing one out.
+	// else. Use is/isNot/below/anyIs.
 	//
 	// It used to take the whole reading as a map, and every rule spelled its
 	// own key out a second time inside the closure to look it up. Two copies
@@ -53,7 +53,7 @@ type Rule struct {
 	// between them fails in the worst available direction: the map is built
 	// from Keys, so a closure asking for anything else gets the zero value
 	// with ok=false, answers "not flagged", and the rule silently stops
-	// existing on every host. Not a rule that reports the wrong thing — a
+	// existing on every host. Not a rule that reports the wrong thing: a
 	// rule that reports nothing, which is indistinguishable from a clean
 	// kernel.
 	//
@@ -67,10 +67,10 @@ type Rule struct {
 	// ("or 2 on VPN/multi-homed hosts") that a person needs and a fix must
 	// not act on.
 	//
-	// It names only keys this rule actually audits. Writing a value the
+	// It names only keys this rule audits. Writing a value the
 	// checker never reads would produce a fix whose effect the next scan
 	// cannot confirm, and on a host with IPv6 disabled `sysctl -w` on an
-	// absent key fails outright — taking the rest of the fix with it.
+	// absent key fails completely: taking the rest of the fix with it.
 	Set []string
 	// Remediation is Review only where a safe value depends on the host being
 	// a router, relay, or multi-homed. Unset means the persistent file edit is
@@ -94,7 +94,7 @@ type Checker struct {
 	// InContainer answers whether this scan is running inside a container.
 	// Injected so the demotion below can be tested at all: the real gate
 	// reads /.dockerenv and /proc/1, and a test cannot make this process be
-	// in a container. nil means the real one — see New.
+	// in a container. nil means the real one: see New.
 	InContainer func() (bool, string)
 }
 
@@ -160,7 +160,7 @@ func defaultRules() []Rule {
 		{
 			ID: "sysctl.ptrace-scope", Title: "Any process can debug its siblings",
 			Sev:     model.SeverityMedium,
-			Desc:    "kernel.yama.ptrace_scope is 0, so every process can attach a debugger to any other process of the same user and read its memory — including the session tokens inside a running agent, browser, or password manager. Setting it to 1 limits attaching to direct children.",
+			Desc:    "kernel.yama.ptrace_scope is 0, so every process can attach a debugger to any other process of the same user and read its memory, including the session tokens inside a running agent, browser, or password manager. Setting it to 1 limits attaching to direct children.",
 			Keys:    []string{"kernel.yama.ptrace_scope"},
 			Want:    "kernel.yama.ptrace_scope = 1",
 			Set:     []string{"kernel.yama.ptrace_scope=1"},
@@ -178,7 +178,7 @@ func defaultRules() []Rule {
 		{
 			ID: "sysctl.accept-redirects", Title: "ICMP redirects are accepted",
 			Sev:     model.SeverityMedium,
-			Desc:    "Accepting ICMP redirect messages lets a machine on the same network rewrite this host's routing decisions — a classic man-in-the-middle primitive. A server has no use for them.",
+			Desc:    "Accepting ICMP redirect messages lets a machine on the same network rewrite this host's routing decisions; a classic man-in-the-middle primitive. A server has no use for them.",
 			Keys:    []string{"net.ipv4.conf.all.accept_redirects"},
 			Want:    "net.ipv4.conf.all.accept_redirects = 0",
 			Set:     []string{"net.ipv4.conf.all.accept_redirects=0"},
@@ -227,7 +227,7 @@ func defaultRules() []Rule {
 			ID: "sysctl.rp-filter", Title: "Source-address spoofing filter is off",
 			Sev:         model.SeverityLow,
 			Remediation: model.RemediationReview,
-			Desc:        "Reverse-path filtering drops packets whose source address could not be reached back through the interface they arrived on — cheap protection against spoofed traffic. Strict (1) and loose (2) both count; loose is the right setting for VPN and multi-homed hosts.",
+			Desc:        "Reverse-path filtering drops packets whose source address could not be reached back through the interface they arrived on; cheap protection against spoofed traffic. Strict (1) and loose (2) both count; loose is the right setting for VPN and multi-homed hosts.",
 			Keys:        []string{"net.ipv4.conf.all.rp_filter"},
 			Want:        "net.ipv4.conf.all.rp_filter = 1 (or 2 on VPN/multi-homed hosts)",
 			Set:         []string{"net.ipv4.conf.all.rp_filter=1"},
@@ -258,7 +258,7 @@ func defaultRules() []Rule {
 		{ID: "sysctl.proxy-arp-all", Title: "Proxy ARP is enabled globally", Sev: model.SeverityMedium, Remediation: model.RemediationReview, Desc: "Proxy ARP makes the host answer address-resolution requests for other systems and can unexpectedly bridge network boundaries.", Keys: []string{"net.ipv4.conf.all.proxy_arp"}, Want: "net.ipv4.conf.all.proxy_arp = 0", Set: []string{"net.ipv4.conf.all.proxy_arp=0"}, Flagged: isNot(0)},
 		{ID: "sysctl.proxy-arp-default", Title: "Proxy ARP is enabled for new interfaces", Sev: model.SeverityMedium, Remediation: model.RemediationReview, Desc: "The default interface policy can make future interfaces answer ARP requests on behalf of other systems.", Keys: []string{"net.ipv4.conf.default.proxy_arp"}, Want: "net.ipv4.conf.default.proxy_arp = 0", Set: []string{"net.ipv4.conf.default.proxy_arp=0"}, Flagged: isNot(0)},
 		{ID: "sysctl.multicast-forwarding", Title: "IPv4 multicast forwarding is enabled", Sev: model.SeverityLow, Remediation: model.RemediationReview, Desc: "A server that is not a multicast router should not forward multicast traffic between interfaces.", Keys: []string{"net.ipv4.conf.all.mc_forwarding"}, Want: "net.ipv4.conf.all.mc_forwarding = 0", Set: []string{"net.ipv4.conf.all.mc_forwarding=0"}, Flagged: isNot(0)},
-		{ID: "sysctl.bootp-relay", Title: "BOOTP relay is enabled", Sev: model.SeverityLow, Remediation: model.RemediationReview, Desc: "Relaying legacy BOOTP traffic crosses network boundaries and is unnecessary unless this host deliberately serves as a relay.", Keys: []string{"net.ipv4.conf.all.bootp_relay"}, Want: "net.ipv4.conf.all.bootp_relay = 0", Set: []string{"net.ipv4.conf.all.bootp_relay=0"}, Flagged: isNot(0)},
+		{ID: "sysctl.bootp-relay", Title: "BOOTP relay is enabled", Sev: model.SeverityLow, Remediation: model.RemediationReview, Desc: "Relaying legacy BOOTP traffic crosses network boundaries and is unnecessary unless this host serves as a relay.", Keys: []string{"net.ipv4.conf.all.bootp_relay"}, Want: "net.ipv4.conf.all.bootp_relay = 0", Set: []string{"net.ipv4.conf.all.bootp_relay=0"}, Flagged: isNot(0)},
 		{ID: "sysctl.tcp-rfc1337", Title: "TCP TIME-WAIT assassination protection is disabled", Sev: model.SeverityLow, Desc: "RFC 1337 protection prevents forged reset packets from prematurely terminating TIME-WAIT state and confusing later connections.", Keys: []string{"net.ipv4.tcp_rfc1337"}, Want: "net.ipv4.tcp_rfc1337 = 1", Set: []string{"net.ipv4.tcp_rfc1337=1"}, Flagged: isNot(1)},
 	}
 }
@@ -268,11 +268,11 @@ func (*Checker) Source() model.Source { return model.SourceSysctl }
 
 // Available requires a readable /proc/sys. Its absence (non-Linux test
 // environments, heavily sandboxed containers) is a clean skip: there are no
-// kernel parameters to audit, not an error to report.
+// kernel parameters to audit.
 func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 	fi, err := os.Stat(filepath.Join(c.Root, "kernel"))
 	if err != nil || !fi.IsDir() {
-		return false, "/proc/sys is not readable — kernel parameters cannot be audited"
+		return false, "/proc/sys is not readable; kernel parameters cannot be audited"
 	}
 	return true, ""
 }
@@ -281,9 +281,9 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 // whose file does not exist is a knob this kernel does not have (Yama not
 // built, IPv4 disabled) and is silently fine; one that exists but cannot be
 // read is ground not covered, and the domain says so with a PartialError
-// rather than letting "could not look" pass for "nothing there".
+// so "could not look" never passes for "nothing there".
 func (c *Checker) Check(_ context.Context, env platform.Env) ([]model.Finding, error) {
-	// Asked once for the whole scan rather than per rule: it is a question
+	// Asked once for the whole scan: it is a question
 	// about the host, and the answer cannot change between two rules.
 	inContainer, containerWhy := c.containerGate()
 
@@ -300,7 +300,7 @@ func (c *Checker) Check(_ context.Context, env platform.Env) ([]model.Finding, e
 			case err == nil:
 				vals[i] = Reading{Value: v, Present: true}
 			case os.IsNotExist(err):
-				// absent knob — nothing to audit
+				// absent knob; nothing to audit
 			default:
 				unreadable = append(unreadable, key)
 				failed = true
@@ -320,16 +320,15 @@ func (c *Checker) Check(_ context.Context, env platform.Env) ([]model.Finding, e
 			// rollback measurements can record its absence before fixing.
 			model.WithEvidence("fix-target", "/etc/sysctl.d/60-hostveil-"+strings.TrimPrefix(r.ID, "sysctl.")+".conf"),
 			// The machine-readable form of the same recommendation, so the
-			// fix registry can build an action from the finding alone — a
+			// fix registry can build an action from the finding alone; a
 			// fix never sees the Rule it came from.
 			model.WithEvidence("set", strings.Join(r.Set, ",")),
 		}
 		if origin, ok := originOf(r.Keys, vals, byKey); ok {
-			// Name the file, and tell the operator to edit it rather than to
-			// add a drop-in. A new file under /etc/sysctl.d is only read
+			// Name the file, and tell the operator to edit it. A new file under /etc/sysctl.d is only read
 			// before this one on the hosts where it happens to sort earlier,
-			// and on the common case — Ubuntu's 99-sysctl.conf symlink to
-			// /etc/sysctl.conf — it is read before it and loses silently.
+			// and on the common case (Ubuntu's 99-sysctl.conf symlink to
+			// /etc/sysctl.conf) it is read before it and loses silently.
 			opts = append(opts,
 				model.WithEvidence("set-by", origin.String()),
 				model.WithEvidence("fix-origin", origin.Path),
@@ -371,7 +370,7 @@ func (c *Checker) Check(_ context.Context, env platform.Env) ([]model.Finding, e
 	}
 	if len(unreadable) > 0 {
 		return findings, &check.PartialError{
-			Reason:  "cannot read " + strings.Join(unreadable, ", ") + " — those kernel parameters were not audited",
+			Reason:  "cannot read " + strings.Join(unreadable, ", ") + "; those kernel parameters were not audited",
 			Covered: covered,
 			Total:   len(c.Rules),
 		}
@@ -394,22 +393,22 @@ func moduleBlocked(data []byte, module string) bool {
 //
 // The *reading* is not wrong and the finding stays: /proc/sys inside a
 // container shows the host kernel's value for every knob that is not
-// namespaced — kernel.kptr_restrict and kernel.dmesg_restrict among them — so
+// namespaced (kernel.kptr_restrict and kernel.dmesg_restrict among them) so
 // the weakness being reported is real and it is the host's.
 //
 // The *fix* is the problem. It writes /etc/sysctl.d/60-hostveil-*.conf and
 // declares it takes effect on `sysctl --system` or the next boot. Neither can
 // reach the host kernel from in here, and the drop-in disappears with the
 // container besides. So the file would appear, the fix would report success, a
-// checkpoint would be recorded, and the value would never move — which
+// checkpoint would be recorded, and the value would never move, which
 // internal/fix/sysctl.go already calls the worst available outcome, and
 // declines for a drop-in that would lose to a file under /usr or /run. This is
 // the same refusal, for a stronger version of the same reason.
 //
-// It is done here rather than in the fix registry because this is a statement
+// It is done here because this is a statement
 // about how much human judgement the finding needs, which is the checker's
 // half of that decision. Engine.classify resolves the two by taking whichever
-// is more cautious, so declaring Manual is enough on its own — the registered
+// is more cautious, so declaring Manual is enough on its own: the registered
 // Review fix is never offered, and nothing in internal/fix has to learn what a
 // container is.
 //
@@ -419,7 +418,7 @@ func moduleBlocked(data []byte, module string) bool {
 func demoteForContainer(f *model.Finding, why, want string) {
 	f.Remediation = model.RemediationManual
 	f.WhyNoFix = "This is a container. The value is the host kernel's, and no file written in here can change it."
-	f.HowToFix = why + ", so a drop-in written in here cannot change the value — it belongs to the host kernel, " +
+	f.HowToFix = why + ", so a drop-in written in here cannot change the value: it belongs to the host kernel, " +
 		"and this filesystem goes away with the container. Set `" + want + "` on the host instead, under its /etc/sysctl.d, " +
 		"then run `sysctl --system` there."
 	f.Evidence = mergeEvidence(f.Evidence, "scanned_from", "inside a container")
@@ -437,7 +436,7 @@ func mergeEvidence(m map[string]string, key, val string) map[string]string {
 
 // readKey reads one dotted sysctl key from Root and parses its first field
 // as an integer. All audited parameters are single integers; anything else
-// is treated as unreadable rather than guessed at.
+// is treated as unreadable.
 func (c *Checker) readKey(key string) (int64, error) {
 	path := filepath.Join(c.Root, strings.ReplaceAll(key, ".", "/"))
 	data, err := os.ReadFile(path) //nolint:gosec // paths are the fixed rule table under /proc/sys
@@ -456,7 +455,7 @@ func (c *Checker) readKey(key string) (int64, error) {
 }
 
 // evidenceFor renders the observed values in rule-key order, so evidence is
-// stable across scans and a repeat scan produces no delta nobody caused.
+// stable across scans and a repeat scan produces no spurious delta.
 func evidenceFor(keys []string, vals []Reading) string {
 	var parts []string
 	for i, k := range keys {

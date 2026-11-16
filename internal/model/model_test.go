@@ -28,14 +28,14 @@ func TestZeroValuesAreInert(t *testing.T) {
 
 // Ran and Complete differ on exactly one state, and everything downstream
 // depends on which one a caller reaches for. Scoring asks Ran, so a degraded
-// domain is still scored. Any claim about absence — the post-fix re-check
-// deciding a finding is gone, the clean-host guard — must ask Complete, or a
+// domain is still scored. Any claim about absence (the post-fix re-check
+// deciding a finding is gone, the clean-host guard) must ask Complete, or a
 // checker that saw half its ground gets to say nothing is there.
 func TestRanAndCompleteDifferOnlyOnDegraded(t *testing.T) {
 	for _, s := range []ScanState{ScanPending, ScanRunning, ScanDone, ScanSkipped, ScanDegraded, ScanError} {
 		if s == ScanDegraded {
 			if !s.Ran() || s.Complete() {
-				t.Errorf("%v: Ran=%v Complete=%v, want true/false — degraded is the whole distinction",
+				t.Errorf("%v: Ran=%v Complete=%v, want true/false; degraded is the whole distinction",
 					s, s.Ran(), s.Complete())
 			}
 			continue
@@ -58,7 +58,7 @@ func TestIncompleteDomains(t *testing.T) {
 		domains []DomainResult
 		want    int
 	}{
-		// No scan behind the report — not "everything failed".
+		// No scan behind the report, not "everything failed".
 		"no domains at all": {nil, 0},
 		"all done": {[]DomainResult{
 			{Source: SourceCVE, State: ScanDone},
@@ -140,13 +140,12 @@ func TestAxisCapsSumTo100(t *testing.T) {
 }
 
 // TestAllSourcesConsistent used to check that every domain in AllSources
-// was Valid, had a String, and owned an axis — all three of which are now
+// was Valid, had a String, and owned an axis: all three of which are now
 // true by construction, since AllSources and axisDefs are both projections
 // of sourceDefs and Valid is membership in it. Asserting them here would
 // only be checking that the table equals itself.
 //
-// The assertion that survives the collapse is the one about identity
-// rather than presence: the string columns are keys. name is the
+// The assertion that survives the collapse is the one about identity: the string columns are keys. name is the
 // finding-ID prefix and the first field of Finding.Key(); axisID keys the
 // axis a UI renders. Two rows sharing either would merge two domains into
 // one wherever those keys are used, and nothing about a table prevents a
@@ -172,8 +171,8 @@ func TestSourceKeyColumnsAreDistinct(t *testing.T) {
 // Label must stay empty for everything that is not a domain.
 //
 // This is the guard the display tables did not have. The name was written
-// out twice — a switch in the TUI, an object literal in the dashboard's
-// JavaScript — and when the sysctl domain landed neither copy grew a tenth
+// out twice (a switch in the TUI, an object literal in the dashboard's
+// JavaScript) and when the sysctl domain landed neither copy grew a tenth
 // entry. The dashboard built its filter chips by looking each source up in
 // that table and dropping the misses, so eight kernel-hardening findings
 // became unfilterable, and the domain's failures announced themselves as
@@ -181,8 +180,7 @@ func TestSourceKeyColumnsAreDistinct(t *testing.T) {
 //
 // That every *real* domain has a label is now checked by walking the const
 // range in TestEverySourceConstHasATableRow. What still has to be pinned
-// here is the other end: Label returns "" for a non-domain rather than
-// falling back to String(), which is what makes a forgotten row show up as
+// here is the other end: Label returns "" for a non-domain, which is what makes a forgotten row show up as
 // a failing test instead of shipping as a plausible-looking lowercase name.
 func TestOnlyRealDomainsHaveLabels(t *testing.T) {
 	for _, s := range []Source{SourceUnset, sourceCount, -1, 99} {
@@ -237,7 +235,7 @@ func TestScorePenalizesCorrectAxis(t *testing.T) {
 	// comparable across axes. Scores are: an Exposed finding must cost more
 	// of its axis than a Medium one costs of its own.
 	if ssh.Score >= compose.Score {
-		t.Errorf("high axis scored %d, medium axis %d — high must cost more", ssh.Score, compose.Score)
+		t.Errorf("high axis scored %d, medium axis %d; high must cost more", ssh.Score, compose.Score)
 	}
 	if sb.Overall >= 100 {
 		t.Errorf("score should be reduced, got %d", sb.Overall)
@@ -291,8 +289,8 @@ func TestScoreRenormalizesWhenCVESkipped(t *testing.T) {
 	}
 }
 
-// A domain that ran but covered only part of its ground is scored — partial
-// evidence beats none — but flagged, so a UI never presents an incomplete
+// A domain that ran but covered only part of its ground is scored (partial
+// evidence beats none) but flagged, so a UI never presents an incomplete
 // axis as a plain clean result.
 func TestScoreFlagsDegradedAxis(t *testing.T) {
 	states := map[Source]ScanState{SourceCompose: ScanDone, SourceCVE: ScanDegraded}
@@ -306,12 +304,11 @@ func TestScoreFlagsDegradedAxis(t *testing.T) {
 	}
 }
 
-// Error and Skipped both mean "did not run", so both drop out of scoring
-// rather than being handed a perfect 100.
+// Error and Skipped both mean "did not run", so both drop out of scoring.
 func TestScoreExcludesErroredAxis(t *testing.T) {
 	states := map[Source]ScanState{SourceCompose: ScanDone, SourceCVE: ScanError}
 	if cve := axesBySource(ScoreReport(nil, states))[SourceCVE]; cve.Applicable {
-		t.Error("an errored domain's axis must be N/A, not a perfect score")
+		t.Error("an errored domain's axis must be N/A")
 	}
 }
 
@@ -381,13 +378,13 @@ func TestScoreIsMonotonic(t *testing.T) {
 	}
 }
 
-// A finding nobody can fix still counts — claiming otherwise would be its
+// A finding with no fix still counts: claiming otherwise would be its
 // own lie. RemediationUnavailable used to be discounted (a fixed divisor on its
 // weight, on the argument that every image ships some CVE with no upstream
 // patch and charging those in full pins the axis at 0 for a well-maintained
-// host). That discount was removed as a deliberate simplification — the
+// host). That discount was removed as a deliberate simplification (the
 // divisor had no derivation the way topHalves or the harmonic repeat-damping
-// do — so an Unavailable finding must now cost exactly what an otherwise
+// do) so an Unavailable finding must now cost exactly what an otherwise
 // identical actionable finding costs, severity for severity.
 func TestScoreChargesUnavailableAtFullWeight(t *testing.T) {
 	actionable := ScoreReport([]Finding{
@@ -398,27 +395,27 @@ func TestScoreChargesUnavailableAtFullWeight(t *testing.T) {
 	}, nil).Overall
 
 	if unavailable != actionable {
-		t.Errorf("unavailable finding scored %d, actionable scored %d — they must cost the same",
+		t.Errorf("unavailable finding scored %d, actionable scored %d: they must cost the same",
 			unavailable, actionable)
 	}
 }
 
 // A small cap used to be its own bug: fileperms caps at 6, so one High
-// (penalty 8) clamped past the cap and zeroed the axis outright.
+// (penalty 8) clamped past the cap and zeroed the axis completely.
 func TestScoreSmallCapAxisIsNotZeroedByOneFinding(t *testing.T) {
 	sb := ScoreReport([]Finding{
 		NewFinding("fileperms.shadow", "world-readable", SeverityHigh, SourceFilePerms, RemediationManual),
 	}, nil)
 	for _, ax := range sb.Axes {
 		if ax.Source == SourceFilePerms && ax.Score == 0 {
-			t.Error("one finding zeroed the smallest axis; cap must be a weight, not a threshold")
+			t.Error("one finding zeroed the smallest axis; cap must act as a weight")
 		}
 	}
 }
 
 // A score with no axis behind it is not a perfect score. Every axis is
-// excluded when no domain ran, leaving nothing to renormalize over — and
-// the arithmetic fell out at 100, so a host nobody could look at was
+// excluded when no domain ran, leaving nothing to renormalize over, and
+// the arithmetic fell out at 100, so a host the scan could not look at was
 // reported as flawless. That is the same lie the per-axis N/A exists to
 // prevent, surviving in the one number the whole tool is judged on.
 func TestAScoreWithNoDomainsIsNotApplicable(t *testing.T) {

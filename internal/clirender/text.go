@@ -1,5 +1,5 @@
 // Package clirender renders a scan Report as text or JSON for the CLI.
-// Keeping rendering here (rather than in cmd/) lets the CLI, and later any
+// Keeping rendering here lets the CLI, and later any
 // other text surface, share one formatting implementation.
 package clirender
 
@@ -32,7 +32,7 @@ func Text(r model.Report, opts Options) string {
 	// arbitrary. Printing one anyway is the same lie the per-axis N/A exists
 	// to prevent, in the one place everybody reads.
 	if !r.Score.Applicable {
-		fmt.Fprintf(&b, "%sSecurity score: %sN/A — no domain could be scanned%s\n\n", c.bold, c.dim, c.reset)
+		fmt.Fprintf(&b, "%sSecurity score: %sN/A; no domain could be scanned%s\n\n", c.bold, c.dim, c.reset)
 	} else {
 		fmt.Fprintf(&b, "%sSecurity score: %s%d/100%s%s\n\n",
 			c.bold, scoreColor(c, r.Score.Overall), r.Score.Overall, c.reset,
@@ -45,7 +45,7 @@ func Text(r model.Report, opts Options) string {
 			continue
 		}
 		// The CLI spells the partial marker out where the other interfaces
-		// use "~" — a report piped to a file has room for the word. What it
+		// use "~"; a report piped to a file has room for the word. What it
 		// must not do is omit it, which is why the decision itself lives on
 		// the axis: see model.ScoreAxis.ValueText.
 		partial := ""
@@ -58,9 +58,9 @@ func Text(r model.Report, opts Options) string {
 	b.WriteString("\n")
 
 	// Domain status (skipped/degraded/errored checkers). All three markers
-	// come from the same set — they are printed as one block, and a patched
+	// come from the same set: they are printed as one block, and a patched
 	// glyph on the skipped line beside an ASCII one on the partial line
-	// reads as two different kinds of remark rather than three degrees of
+	// reads as two different kinds of remark when there are three degrees of
 	// the same one.
 	for _, d := range r.Domains {
 		switch d.State {
@@ -76,9 +76,9 @@ func Text(r model.Report, opts Options) string {
 	active := r.Select(model.Filter{})
 	if len(active) == 0 {
 		// "Clean" is a claim about the whole host, so it may only be made
-		// when the whole host was actually examined.
+		// when the whole host was examined.
 		if n := r.IncompleteDomains(); n > 0 {
-			fmt.Fprintf(&b, "\n%sNo problems found in the domains that ran — but %d did not complete (see above).%s\n",
+			fmt.Fprintf(&b, "\n%sNo problems found in the domains that ran, but %d did not complete (see above).%s\n",
 				c.yellow, n, c.reset)
 		} else {
 			fmt.Fprintf(&b, "\n%sNo problems found. Clean.%s\n", c.green, c.reset)
@@ -103,12 +103,11 @@ func Text(r model.Report, opts Options) string {
 		if f.Service != "" {
 			fmt.Fprintf(&b, " %s(%s)%s", c.dim, f.Service, c.reset)
 		}
-		// A pending row reports what is outstanding rather than its
-		// remediation kind. The fix has been applied; "Auto" there would
+		// A pending row reports what is outstanding. The fix has been applied; "Auto" there would
 		// point at a button that has already been pressed, on the one row
 		// where pressing it again achieves nothing.
 		if f.Pending {
-			fmt.Fprintf(&b, " %sapplied — not in force yet%s\n", c.yellow, c.reset)
+			fmt.Fprintf(&b, " %sapplied, waiting to take effect%s\n", c.yellow, c.reset)
 		} else {
 			fmt.Fprintf(&b, " %s%s%s\n", c.dim, f.Remediation.Label(), c.reset)
 		}
@@ -129,7 +128,7 @@ func Text(r model.Report, opts Options) string {
 // listed.
 //
 // The report used to end at the last finding. It named a remediation kind
-// per finding — "Auto", "Review", "Manual" — without ever naming the command
+// per finding: "Auto", "Review", "Manual", without ever naming the command
 // that acts on one, so a first-time user was shown a score, a list of
 // problems, and no way in. `fix --all` already closes with a next step; the
 // primary output path, the one everybody sees first, was the one without.
@@ -147,7 +146,7 @@ func nextSteps(active []model.Finding, opts Options) string {
 		// Named before the per-finding commands because it is the one action
 		// that needs no decision: every Auto fix is reversible, cannot cut
 		// off access to the host, and has exactly one correct form.
-		fmt.Fprintf(&b, "  %shostveil fix --all%s        apply the %d safe fix(es) — each is previewed and reversible\n",
+		fmt.Fprintf(&b, "  %shostveil fix --all%s        apply the %d safe fix(es); each is previewed and reversible\n",
 			c.green, c.reset, auto)
 	}
 	fmt.Fprintf(&b, "  %shostveil explain <id>%s     what a finding means and why it matters\n", c.green, c.reset)
@@ -166,7 +165,7 @@ const maxDeltaLines = 10
 
 // DeltaSummary renders a short "since last scan" summary line.
 //
-// It takes the whole Options rather than just the glyph set so it cannot
+// It takes the whole Options so it cannot
 // drift out of step with Text's: the two are printed one after the other and
 // a resolved-tick from a different table in the middle of one report would
 // be the only place Hostveil disagreed with itself about a symbol.
@@ -181,12 +180,12 @@ func DeltaSummary(d model.Delta, opts Options) string {
 }
 
 // maxChangedValue bounds how long an evidence value may be before it is
-// summarised rather than printed. An aggregate finding can carry thousands
-// of IDs in one value; the point of the line is what moved, not the payload.
+// summarised. An aggregate finding can carry thousands of IDs in one
+// value; the line reports what moved.
 const maxChangedValue = 40
 
 // changedLines names findings that persisted but moved, and says how. A bare
-// "changed" is not actionable — the useful part is "count 3627 → 3630".
+// "changed" is not actionable: the useful part is "count 3627 → 3630".
 func changedLines(b *strings.Builder, cs []model.FindingChange) {
 	shown := cs
 	if len(shown) > maxDeltaLines {
@@ -212,7 +211,7 @@ func changeDetail(c model.FindingChange) string {
 			parts = append(parts, fmt.Sprintf("%s %s → %s", k, orNone(before), orNone(after)))
 			continue
 		}
-		// Too long to show whole — it is a list (the "a, b, c" convention
+		// Too long to show whole; it is a list (the "a, b, c" convention
 		// checkers use for multi-item evidence), so report what entered and
 		// left it instead of the payload.
 		parts = append(parts, k+" "+membership(c.EvidenceListDelta(k)))
@@ -236,8 +235,8 @@ func membership(added, removed []string) string {
 		parts = append(parts, fmt.Sprintf("-%d (%s)", len(removed), nameSome(removed)))
 	}
 	if len(parts) == 0 {
-		// The value moved without its membership doing so — reordered, or
-		// reformatted. Say that rather than claiming a change we cannot show.
+		// The value moved without its membership doing so: reordered, or
+		// reformatted. Say exactly that.
 		return "changed"
 	}
 	return strings.Join(parts, ", ")
@@ -282,7 +281,7 @@ func JSON(r model.Report) (string, error) {
 }
 
 // severityCounts renders an axis's mix. It walks ScoreAxis.Counts, which is
-// ordered most-severe-first by the model, rather than naming the levels — a
+// ordered most-severe-first by the model: a
 // hand-written arm per level is what had to be edited in three renderers when
 // the scale changed.
 func severityCounts(ax model.ScoreAxis) string {
@@ -348,9 +347,9 @@ func scoreColor(c colors, score uint8) string {
 // wrap reflows text to width columns, indenting continuation lines.
 // wrap reflows text to width display columns, indenting continuation lines.
 //
-// The count is columns rather than bytes. Counting bytes wrapped Hangul at
+// The count is columns. Counting bytes wrapped Hangul at
 // roughly two-thirds of the width it was given, and the TUI's copy of this
-// function had the same flaw — which is why there is now one of it.
+// function had the same flaw, which is why there is now one of it.
 func wrap(s string, width int, indent string) string {
 	return textwidth.Wrap(s, width, indent)
 }
@@ -359,10 +358,10 @@ func wrap(s string, width int, indent string) string {
 //
 // Nothing is the common case and it has to stay that way: an arrow pointing
 // at the number it starts from is noise on every clean host, and a number
-// beside an N/A axis is a claim about a domain nobody looked at. The three
+// beside an N/A axis is a claim about a domain the scan never looked at. The three
 // UIs each own their own formatting and all three answer these two questions
-// the same way — TestEveryUIHidesAfterFixesTheSameWay pins that.
-// headroom is anything that knows whether its own headroom is worth showing —
+// the same way: TestEveryUIHidesAfterFixesTheSameWay pins that.
+// headroom is anything that knows whether its own headroom is worth showing:
 // one axis, or the overall score. The rule itself lives in internal/model;
 // this only renders what it decided.
 type headroom interface{ Headroom() (uint8, bool) }

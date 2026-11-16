@@ -5,7 +5,7 @@
 // tests and the dashboard from whatever host somebody happened to point a
 // browser at. A reader looking at the two pictures on one page has no way to
 // know they are not the same machine, and there was no reason for them not to
-// be — only that nothing described the host in a place both could read.
+// be: only that nothing described the host in a place both could read.
 //
 // It is exported for the same reason internal/check/checktest and
 // internal/fix/fixtest are: the answer is needed outside the package that
@@ -16,7 +16,7 @@ import "github.com/seolcu/hostveil/internal/model"
 
 // PublishedReport is the scan the website's screenshots show.
 //
-// It is deliberately a mixed host rather than a wrecked one. Every claim the
+// It is a mixed host. Every claim the
 // pages make beside these pictures has to be visible in them: three severity
 // levels, a domain that ran but covered only part of its ground, a domain that
 // did not run at all and reads N/A instead of a free 100, findings at every
@@ -46,8 +46,8 @@ func PublishedReport() model.Report {
 		model.NewFinding("compose.ds010", "No memory limit set", model.SeverityLow, model.SourceCompose, model.RemediationReview, model.WithService("media/jellyfin")),
 		model.NewFinding("ssh.maxauthtries", "MaxAuthTries is higher than necessary", model.SeverityLow, model.SourceSSH, model.RemediationAuto),
 	}
-	// Built from AllSources rather than listed, because a hand-written table
-	// keyed by Source is a copy waiting to go stale — and this one already
+	// Built from AllSources, because a hand-written table
+	// keyed by Source is a copy waiting to go stale, and this one already
 	// had. SourceDockerd appeared in neither the states nor the domains, so
 	// the axis read as zero-value ScanPending: N/A with no DomainResult
 	// beside it and therefore no reason. "I could not look, and I will not
@@ -55,22 +55,21 @@ func PublishedReport() model.Report {
 	// both pictures published on the website.
 	//
 	// Only the exceptions are spelled out now. A thirteenth domain lands as
-	// ScanDone and shows up in the screenshots rather than vanishing from
-	// them.
+	// ScanDone and shows up in the screenshots.
 	//
 	// The exceptions also have to describe a host that could exist. Dockerd
 	// was briefly marked unreachable here, which cannot be true of a host
-	// whose CVE domain scored image vulnerabilities — Trivy reaches those
+	// whose CVE domain scored image vulnerabilities: Trivy reaches those
 	// images through the daemon. A fixture that contradicts itself teaches a
 	// reader the wrong thing about which domain depends on what.
 	exceptions := map[model.Source]model.DomainResult{
 		model.SourceAgent: {State: model.ScanSkipped, Reason: "no self-hosted agent runtime found"},
-		model.SourcePorts: {State: model.ScanDegraded, Reason: "ss reported no process names — run as root to attribute listeners"},
+		model.SourcePorts: {State: model.ScanDegraded, Reason: "ss reported no process names; run as root to attribute listeners"},
 		// A host whose containers run under Compose on the host itself is
 		// not a hypervisor; scoring it 100 on Proxmox would publish a
 		// picture of a check that never had anything to look at.
-		model.SourceProxmox: {State: model.ScanSkipped, Reason: "not a Proxmox VE host — no /etc/pve"},
-		model.SourceKube:    {State: model.ScanSkipped, Reason: "no single-node Kubernetes found — no k3s or k0s"},
+		model.SourceProxmox: {State: model.ScanSkipped, Reason: "not a Proxmox VE host; no /etc/pve"},
+		model.SourceKube:    {State: model.ScanSkipped, Reason: "no single-node Kubernetes found; no k3s or k0s"},
 	}
 
 	states := map[model.Source]model.ScanState{}

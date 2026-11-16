@@ -15,8 +15,8 @@ import (
 
 // The worst of the three: a symlink where the config file should be, pointing
 // at a file the attacker does not own. Following it would let any user collect
-// an agent.config-perms finding *about /etc/passwd* — carrying an Auto chmod
-// fix — and have `fix --all` tighten the password database to 0600, which
+// an agent.config-perms finding *about /etc/passwd* (carrying an Auto chmod
+// fix) and have `fix --all` tighten the password database to 0600, which
 // breaks logins, sudo, and every getpwnam on the host.
 func TestSymlinkedConfigProducesNoModeFinding(t *testing.T) {
 	h := newHost(t, "mallory")
@@ -36,7 +36,7 @@ func TestSymlinkedConfigProducesNoModeFinding(t *testing.T) {
 	fs, _ := h.checker().Check(context.Background(), envNoFirewall(""))
 	for _, f := range fs {
 		if f.ID == "agent.config-perms" || f.ID == "agent.secret-exposed" {
-			t.Fatalf("a symlinked config produced %s with evidence %v — "+
+			t.Fatalf("a symlinked config produced %s with evidence %v; "+
 				"root would chmod %s on the strength of it", f.ID, f.Evidence, victim)
 		}
 	}
@@ -134,6 +134,6 @@ func TestARealConfigIsStillRead(t *testing.T) {
 		t.Fatalf("check: %v", err)
 	}
 	if _, ok := findByID(fs, "agent.config-perms"); !ok {
-		t.Error("a genuinely world-readable config must still be reported")
+		t.Error("a world-readable config must still be reported")
 	}
 }

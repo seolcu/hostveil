@@ -1,4 +1,4 @@
-// Package dockerd audits the Docker daemon itself — the process that runs
+// Package dockerd audits the Docker daemon itself: the process that runs
 // every container the compose and CVE domains have opinions about, and the
 // one part of that stack Hostveil could not see.
 //
@@ -17,12 +17,12 @@
 // is where that reasoning lives.
 //
 //   - `docker info` is the truth for effective daemon state. It reports what
-//     the daemon actually loaded, after the file and the flags were merged.
+//     the daemon loaded, after the file and the flags were merged.
 //     The three default-hardening rules (no-new-privileges, userns-remap,
 //     live-restore) read only from here. Reading daemon.json for them would
 //     report the operator's intention as though it were the machine's
-//     behaviour — the file may have been edited since the last restart, and a
-//     flag on the unit may be overriding it outright.
+//     behaviour: the file may have been edited since the last restart, and a
+//     flag on the unit may be overriding it completely.
 //
 //   - daemon.json and the service unit's ExecStart are the truth for what
 //     `docker info` does not report at all, and for where a human goes to
@@ -33,17 +33,17 @@
 //     either, and a checker that read only one would miss the other
 //     configuration style completely.
 //
-//   - `ss` is the truth for what is actually listening. It turns a socket
+//   - `ss` is the truth for what is listening. It turns a socket
 //     finding from a reading of intent into an observed fact and supplies the
 //     endpoint an operator can go and verify. It does not gate any finding:
 //     it can see the door but not the lock, so it can neither confirm nor
 //     deny the TLS half, and its absence is not lost ground.
 //
-// # What is deliberately not audited
+// # What is not audited
 //
 // The logging driver and its rotation options. It is the one candidate rule
-// that is availability rather than security — a full disk, not a way in — and
-// more decisively it cannot be answered honestly from here: `docker info`
+// that is about availability (a full disk is no way in) and
+// more decisively it cannot be answered accurately from here: `docker info`
 // reports the driver but never its log-opts, so `json-file` with a max-size
 // is indistinguishable from `json-file` without one, and a per-service
 // `logging:` block in a compose file overrides both. A rule blind to two of
@@ -92,14 +92,14 @@ func New() *Checker {
 // Source identifies the dockerd domain.
 func (*Checker) Source() model.Source { return model.SourceDockerd }
 
-// Available requires a daemon that actually answers, not merely a `docker`
-// binary on PATH. The distinction is the whole point: a client that cannot
+// Available requires a daemon that answers. A `docker` binary on PATH
+// is not enough. The distinction matters: a client that cannot
 // reach the socket reports no daemon configuration at all, and a domain that
-// accepted that would score a perfect Docker-daemon axis on precisely the
-// host whose daemon nobody could examine.
+// accepted that would score a perfect Docker-daemon axis on the
+// host whose daemon could not be examined.
 func (*Checker) Available(ctx context.Context, env platform.Env) (bool, string) {
 	if ok, reason := platform.DockerReachable(ctx, env.Runner); !ok {
-		return false, reason + " — the daemon's configuration cannot be read"
+		return false, reason + "; the daemon's configuration cannot be read"
 	}
 	return true, ""
 }
@@ -107,11 +107,11 @@ func (*Checker) Available(ctx context.Context, env platform.Env) (bool, string) 
 // Check gathers the daemon's configuration from every source that has part
 // of it, then runs the rules that source supports.
 //
-// Coverage is counted in rules, not in sources, because that is the unit a
+// Coverage is counted in rules, because that is the unit a
 // user loses when something cannot be read: losing `docker info` costs the
-// three default-hardening rules and leaves the four socket and group rules —
-// including two of the three Criticals — genuinely answered. Reporting that
-// as an outright error would exclude the axis *and discard those findings*,
+// three default-hardening rules and leaves the four socket and group rules
+// (including two of the three Criticals) answered. Reporting that
+// as a complete error would exclude the axis *and discard those findings*,
 // which is strictly worse than reporting it degraded.
 func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	f := c.gather(ctx, env)
@@ -128,7 +128,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 
 // facts is everything the checker managed to learn, plus what it could not.
 // Each "known" flag is what separates "the answer is no" from "there was no
-// answer" — the distinction this whole domain turns on.
+// answer": the distinction this whole domain turns on.
 type facts struct {
 	cfg      config
 	cfgKnown bool
@@ -180,7 +180,7 @@ func (c *Checker) gather(ctx context.Context, env platform.Env) *facts {
 }
 
 // rootless reports whether this is a rootless daemon, which changes what two
-// rules mean rather than merely how bad they are.
+// rules mean.
 func (f *facts) rootless() bool { return f.infoKnown && f.info.rootless }
 
 // coverage translates what could not be read into the rule count it cost.
@@ -202,8 +202,8 @@ func (f *facts) coverage() check.Coverage {
 	}
 
 	// The socket mode rule. A daemon reached over DOCKER_HOST with no local
-	// socket has nothing to judge — that is not applicable, not uncovered,
-	// so it leaves the denominator rather than lowering the fraction.
+	// socket has nothing to judge. That is not applicable,
+	// so it leaves the denominator.
 	if !f.sockAbsent {
 		if f.sockKnown {
 			cov.Covered(1)
@@ -235,10 +235,10 @@ func (f *facts) coverage() check.Coverage {
 // The ordering is the argument: TLS with client verification is a correctly
 // secured remote daemon and produces nothing at all. Anything less is graded
 // by what an attacker who reaches the port can do. Both remaining cases are
-// High — an endpoint anyone can reach is reachable now either way — but they
+// High (an endpoint anyone can reach is reachable now either way) but they
 // are separate findings with separate remediations, because TLS without
 // client verification means the operator has demonstrably thought about the
-// socket and the remaining work is incremental rather than a rethink.
+// socket and the remaining work is incremental.
 func (f *facts) apiFindings() []model.Finding {
 	if !f.cfgKnown {
 		return nil
@@ -285,14 +285,14 @@ func (f *facts) apiFindings() []model.Finding {
 	}
 
 	// Rootless no longer changes the level, and that is the taxonomy working
-	// rather than information being lost. Under Critical/High the split was
-	// about blast radius — host root against one user's containers — which is
-	// a guess at how bad, not a statement about how urgent. On the urgency
+	// as designed. Under Critical/High the split was
+	// about blast radius (host root against one user's containers) which is
+	// a guess at how bad. It says nothing about how urgent. On the urgency
 	// scale both answers are the same one: an unauthenticated API on a TCP
 	// port is reachable now, by anyone who can route to it, with nothing to
 	// break first. The difference it does make is still reported, in the
 	// description and the evidence, where a reader can weigh it.
-	desc := "The Docker daemon accepts API requests over TCP with no TLS client verification. The API has no authentication of its own, so anyone who can reach this port is root on this host: a single request can create a container with the host filesystem mounted inside it. This is not an escalation path that needs a vulnerability — it is the daemon working as documented, exposed to the network."
+	desc := "The Docker daemon accepts API requests over TCP with no TLS client verification. The API has no authentication of its own, so anyone who can reach this port is root on this host: a single request can create a container with the host filesystem mounted inside it. This is not an escalation path that needs a vulnerability: it is the daemon working as documented, exposed to the network."
 	if f.rootless() {
 		desc = "The rootless Docker daemon accepts API requests over TCP with no TLS client verification. The API has no authentication of its own, so anyone who can reach this port gets full control of this user's containers and any file the user can read. Rootless keeps it from being immediate root on the host, which bounds the damage without making the port any harder to reach."
 	}
@@ -308,8 +308,8 @@ func (f *facts) apiFindings() []model.Finding {
 	)}
 }
 
-// observed renders the endpoints `ss` confirms are actually listening. It is
-// evidence only — a daemon that was configured for a socket it failed to
+// observed renders the endpoints `ss` confirms are listening. It is
+// evidence only: a daemon that was configured for a socket it failed to
 // open is still misconfigured, so this never decides whether a finding
 // exists.
 func (f *facts) observed(exposed []string) string {
@@ -333,7 +333,7 @@ func (f *facts) observed(exposed []string) string {
 //
 // The trigger is the world-*write* bit and nothing else. Connecting to a unix
 // socket requires write permission on it, so a world-readable socket grants
-// nobody anything and flagging it would be noise on a host that is fine.
+// no one anything and flagging it would be noise on a host that is fine.
 func (f *facts) socketFindings() []model.Finding {
 	if !f.sockKnown || f.sock.perm&0o002 == 0 {
 		return nil
@@ -342,8 +342,8 @@ func (f *facts) socketFindings() []model.Finding {
 		"dockerd.socket-world-writable",
 		"Docker socket is writable by every account on this host",
 		model.SeverityHigh, model.SourceDockerd, model.RemediationReview,
-		model.WithDescription("Every local account can connect to the Docker socket, and the Docker API grants whoever reaches it the ability to start a container with the host filesystem mounted inside. Any unprivileged user, and any process running as one — a web application, a compromised service account — can therefore become root on this host without a password and without an exploit."),
-		model.WithHowToFix("Restore the socket to group-only access. The mode is set by systemd, not by the daemon, so a `chmod` is undone at the next restart: put `[Socket]` / `SocketMode=0660` in a drop-in under /etc/systemd/system/docker.socket.d/, then `systemctl daemon-reload && systemctl restart docker.socket`. Grant access by adding accounts to the socket's group rather than by widening the mode."),
+		model.WithDescription("Every local account can connect to the Docker socket, and the Docker API grants whoever reaches it the ability to start a container with the host filesystem mounted inside. Any unprivileged user, and any process running as one (a web application, a compromised service account) can therefore become root on this host without a password and without an exploit."),
+		model.WithHowToFix("Restore the socket to group-only access. The mode is set by systemd, so a `chmod` is undone at the next restart: put `[Socket]` / `SocketMode=0660` in a drop-in under /etc/systemd/system/docker.socket.d/, then `systemctl daemon-reload && systemctl restart docker.socket`. Grant access by adding accounts to the socket's group, and keep the mode at 0660."),
 		model.WithEvidence("path", f.sock.path),
 		model.WithEvidence("mode", fmt.Sprintf("%04o", f.sock.perm)),
 	)}
@@ -352,15 +352,14 @@ func (f *facts) socketFindings() []model.Finding {
 // groupFindings reports the accounts that hold the socket's group, which is
 // root-equivalent authority on this host.
 //
-// This finding lives in the dockerd domain rather than in account hygiene for
+// This finding lives in the dockerd domain for
 // three reasons, in ascending order of weight. The account checker gates on a
 // readable /etc/passwd and has no way to ask whether Docker is even here, so
 // it would report root-equivalence on a host where the group is a leftover of
 // a package that has been removed. Behind a reachable daemon the claim is
-// exactly true, and a host with no Docker gets the axis excluded rather than
-// scored. And the group is not necessarily named "docker" at all — it is
+// exactly true, and a host with no Docker gets the axis excluded. And the group is not necessarily named "docker" at all: it is
 // whichever group owns the socket, which daemon.json's "group" key can set to
-// anything — so answering correctly needs a daemon fact that account hygiene
+// anything, so answering correctly needs a daemon fact that account hygiene
 // has no business knowing.
 func (f *facts) groupFindings() []model.Finding {
 	if !f.membersKnown || len(f.members) == 0 || f.rootless() {
@@ -378,17 +377,17 @@ func (f *facts) groupFindings() []model.Finding {
 	// A human administrator in the docker group is the ordinary shape of a
 	// self-hosted server, and a High that fires on almost every correctly-run
 	// host teaches people to ignore the domain. It stays a finding because
-	// most operators genuinely do not know the membership is equivalent to
-	// passwordless sudo that leaves no audit record — but the severity says
+	// most operators do not know the membership is equivalent to
+	// passwordless sudo that leaves no audit record, but the severity says
 	// "know this", not "you are breached".
 	//
-	// A service account is a different claim. Nobody deliberately grants a CI
+	// A service account is a different claim. An administrator does not grant a CI
 	// runner or a monitoring agent the ability to become root, and a
-	// credential that never logs in is one nobody is watching.
+	// credential that never logs in is unmonitored.
 	sev, extra := model.SeverityMedium, ""
 	if len(service) > 0 {
 		sev = model.SeverityHigh
-		extra = fmt.Sprintf(" Among them %s %s no interactive login, so %s a credential that can become root and that nobody is watching.",
+		extra = fmt.Sprintf(" Among them %s %s no interactive login, so %s a credential that can become root and that no one monitors.",
 			plural(len(service), "is", "are"), joinNames(service),
 			plural(len(service), "it is", "they are"))
 	}
@@ -419,7 +418,7 @@ func (f *facts) defaultsFindings() []model.Finding {
 			"Containers can gain privileges through setuid binaries",
 			model.SeverityMedium, model.SourceDockerd, model.RemediationReview,
 			model.WithDescription("The daemon does not apply no-new-privileges by default, so a process inside a container can still gain privileges by executing a setuid binary. That is the step that turns a foothold in an application container into root inside that container, and root inside a container is the starting point for every escape technique that follows."),
-			model.WithHowToFix("Add `\"no-new-privileges\": true` to /etc/docker/daemon.json and restart the daemon. It becomes the default for every container; a service that genuinely needs setuid escalation can still opt out with `security_opt: [\"no-new-privileges:false\"]`."),
+			model.WithHowToFix("Add `\"no-new-privileges\": true` to /etc/docker/daemon.json and restart the daemon. It becomes the default for every container; a service that needs setuid escalation can still opt out with `security_opt: [\"no-new-privileges:false\"]`."),
 			model.WithEvidence("security options", f.info.securityOptions()),
 			model.WithMetadata("daemon_json", f.cfg.path),
 		))
@@ -430,15 +429,15 @@ func (f *facts) defaultsFindings() []model.Finding {
 			"dockerd.userns-remap",
 			"Container root is host root",
 			model.SeverityLow, model.SourceDockerd, model.RemediationReview,
-			model.WithDescription("User-namespace remapping is not enabled, so uid 0 inside a container is uid 0 on the host. Any container escape, any bind mount the operator did not think through, and any misconfigured volume therefore lands with real root privileges rather than with an unprivileged subordinate uid."),
-			model.WithHowToFix("Set `\"userns-remap\": \"default\"` in /etc/docker/daemon.json and restart the daemon. Weigh it first: remapping changes the ownership of every bind mount, and containers using `--privileged`, host networking, or host PID cannot use it — which is why this is a Low and not an instruction."),
+			model.WithDescription("User-namespace remapping is not enabled, so uid 0 inside a container is uid 0 on the host. Any container escape, any bind mount the operator did not think through, and any misconfigured volume therefore lands with real root privileges. Remapping would map it to an unprivileged subordinate uid."),
+			model.WithHowToFix("Set `\"userns-remap\": \"default\"` in /etc/docker/daemon.json and restart the daemon. Weigh it first: remapping changes the ownership of every bind mount, and containers using `--privileged`, host networking, or host PID cannot use it, which is why this is a Low and not an instruction."),
 			model.WithEvidence("security options", f.info.securityOptions()),
 			model.WithMetadata("daemon_json", f.cfg.path),
 		))
 	}
 
 	// Swarm mode does not support live restore, so on a swarm node this is
-	// not a setting the operator declined — it is one Docker refuses. Flagging
+	// not a setting the operator declined: it is one Docker refuses. Flagging
 	// it there would be a guaranteed false positive.
 	if !f.info.liveRestore && !f.info.swarmActive {
 		out = append(out, model.NewFinding(

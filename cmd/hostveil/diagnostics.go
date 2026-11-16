@@ -20,9 +20,9 @@ import (
 // cmdDiagnostics never touches the network. It used to also offer to open
 // the bundle as a GitHub issue (`bugreport --send`), which meant Hostveil
 // itself decided when and how a report left the host; the network path was
-// removed rather than fixed because a self-hosted-server tool's own audience
+// removed because a self-hosted-server tool's own audience
 // is the one most likely to distrust that decision being made for them. What
-// is left is the part nobody objected to: collecting the pieces a human
+// is left is the part with no objection: collecting the pieces a human
 // would otherwise have to gather by hand before filing an issue.
 func cmdDiagnostics(_ context.Context, args []string) int {
 	fs := flag.NewFlagSet("diagnostics", flag.ContinueOnError)
@@ -65,11 +65,11 @@ type diagnosticsOptions struct {
 
 // buildDiagnosticsReport assembles Hostveil's own identity, recent crash
 // records, the last saved scan's score and per-finding IDs/severities/domain
-// states — deliberately never the full description, remediation text, or
+// states (never the full description, remediation text, or
 // evidence a finding carries, which can quote the very config an operator is
-// asking for help with — and an optional HOSTVEIL_DEBUG trace the operator
+// asking for help with) and an optional HOSTVEIL_DEBUG trace the operator
 // already produced by hand. See --help's Environment section for that
-// workflow; this command is the packaging step for it, not a replacement.
+// workflow; this command only packages it.
 func buildDiagnosticsReport(opts diagnosticsOptions) (string, error) {
 	var b strings.Builder
 	fmt.Fprintln(&b, "# hostveil diagnostics")
@@ -93,7 +93,7 @@ func buildDiagnosticsReport(opts diagnosticsOptions) (string, error) {
 
 	if opts.trace != "" {
 		// A path the operator named on their own command line, pointed at a
-		// file they were already told to produce by hand — the same trust
+		// file they were already told to produce by hand: the same trust
 		// boundary as --output on every other subcommand.
 		data, err := os.ReadFile(opts.trace)
 		if err != nil {
@@ -118,7 +118,7 @@ func writeCrashes(b *strings.Builder) {
 		return
 	}
 	for _, c := range crashes {
-		fmt.Fprintf(b, "\n### %s — %s (%s)\n\n```\n%s\n%s\n```\n",
+		fmt.Fprintf(b, "\n### %s; %s (%s)\n\n```\n%s\n%s\n```\n",
 			c.At.Format(time.RFC3339), c.Command, c.Where, c.Panic, c.Stack)
 	}
 	fmt.Fprintln(b)
@@ -154,7 +154,7 @@ func writeScanSummary(b *strings.Builder) {
 		fmt.Fprintln(b)
 	}
 
-	fmt.Fprintln(b, "\nFindings (id, severity, service — no description or evidence):")
+	fmt.Fprintln(b, "\nFindings (id, severity, service: no description or evidence):")
 	if len(r.Findings) == 0 {
 		fmt.Fprintln(b, "- none")
 	}

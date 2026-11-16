@@ -26,7 +26,7 @@ func layoutFixture() model.Report {
 	add(11, "ports.exposed", model.SeverityLow, model.RemediationManual, model.SourcePorts)
 
 	// Firewall is degraded and carries no findings, so it scores 100 and its
-	// value text is "100~" — the widest an axis value can be, and one column
+	// value text is "100~": the widest an axis value can be, and one column
 	// more than every renderer used to budget for it. The fixture had a
 	// degraded domain already, but a degraded domain *with* findings scores
 	// below 100 and fits, which is why every width sweep in this package

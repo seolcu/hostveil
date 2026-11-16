@@ -48,8 +48,8 @@ func send(m tea.Model, msg tea.Msg) tea.Model {
 // y and a now batch that command together with a ticker (see
 // keyPreview/startBatch) so the screen can show a ticking elapsed clock
 // while the apply is in flight, so cmd() answers with a tea.BatchMsg rather
-// than the appliedMsg/batchAppliedMsg Update actually branches on. The apply
-// command is always first in that batch; the ticker is never run here — its
+// than the appliedMsg/batchAppliedMsg Update branches on. The apply
+// command is always first in that batch; the ticker is never run here: its
 // function blocks for a real wall-clock second, and these tests only want
 // to know what the apply did.
 func applyMsg(cmd tea.Cmd) tea.Msg {
@@ -59,16 +59,16 @@ func applyMsg(cmd tea.Cmd) tea.Msg {
 
 // siteFrame renders the one frame the website publishes.
 //
-// It is a function rather than inline in the dumper because the pinning test
+// It is a function because the pinning test
 // in siteframe_test.go has to render the identical thing: a screenshot
 // reviewed against one frame and regenerated from another is not pinned at
 // all.
 //
 // 150x31 and the three-pane console arrangement, because that is what the
-// page has room for and what a terminal wide enough to use Hostveil actually
-// shows. The fixture is deliberately a mixed host rather than a wrecked one —
-// a degraded domain, a skipped one, findings at all three levels, and a
-// couple marked for a batch fix — so the picture carries the claims the page
+// page has room for and what a terminal wide enough to use Hostveil
+// shows. The fixture is a mixed host
+// (a degraded domain, a skipped one, findings at all three levels, and a
+// couple marked for a batch fix) so the picture carries the claims the page
 // makes beside it instead of just looking alarming.
 func siteFrame(t *testing.T) string {
 	t.Helper()
@@ -98,8 +98,8 @@ func siteFrame(t *testing.T) string {
 //
 // A file path gets the one frame the website uses (site/assets/tui.png, at
 // its published 96x34); a directory gets every mode, one .ans per screen, for
-// eyeballing a change across the whole interface. There is deliberately one
-// hook rather than two — a second dumper drifts out of step with the first.
+// eyeballing a change across the whole interface. There is one
+// hook: a second dumper drifts out of step with the first.
 func TestSnapshotDump(t *testing.T) {
 	path := os.Getenv("HOSTVEIL_SNAPSHOT")
 	if path == "" {
@@ -116,8 +116,8 @@ func TestSnapshotDump(t *testing.T) {
 
 // The detail view's `e` key asks for an advisory AI explanation. With no
 // provider the engine answers through AIError, which must render as a note
-// in the detail pane — and a slow answer for a finding the user already
-// left must be dropped, not drawn under the wrong finding.
+// in the detail pane, and a slow answer for a finding the user already
+// left must be dropped.
 func TestDetailAIExplanation(t *testing.T) {
 	m := tea.Model(&appModel{mode: modeList, selected: map[string]bool{},
 		engine: core.New(core.Config{Registry: check.NewRegistry()})})
@@ -160,9 +160,9 @@ func TestDetailAIExplanation(t *testing.T) {
 // are more findings than fit on screen.
 func TestListScrolls(t *testing.T) {
 	// One real finding across twenty services, which is what a compose host
-	// with twenty services actually looks like — and it keeps the fixture from
+	// with twenty services looks like, and it keeps the fixture from
 	// naming twenty findings Hostveil cannot report. The rows are told apart
-	// by service, so the scroll assertions below read those rather than the id.
+	// by service, so the scroll assertions below read those.
 	var fs []model.Finding
 	for i := 0; i < 20; i++ {
 		fs = append(fs, model.NewFinding("compose.ds006",
@@ -278,7 +278,7 @@ func TestMultiSelectBatchApply(t *testing.T) {
 	}
 	// They stay on the list, marked pending. A compose file is not what the
 	// running container reads, so the port is still published until the stack
-	// is recreated and the score still charges it — and a row that vanished
+	// is recreated and the score still charges it, and a row that vanished
 	// while the number stayed put would leave the operator with a score they
 	// cannot trace to anything.
 	var pending int
@@ -419,10 +419,9 @@ func TestFixFlowThroughEngine(t *testing.T) {
 	if !strings.Contains(string(data), "127.0.0.1:6379:6379") {
 		t.Errorf("fix not applied to file:\n%s", data)
 	}
-	// The engine marked ds018 fixed and pending — the file is correct and the
-	// container still runs the old configuration — so it stays on the
-	// refreshed list rather than disappearing while the score keeps charging
-	// it.
+	// The engine marked ds018 fixed and pending (the file is correct and the
+	// container still runs the old configuration) so it stays on the
+	// refreshed list while the score keeps charging it.
 	var found bool
 	for _, f := range am.active {
 		if f.ID == "compose.ds018" {
@@ -473,8 +472,8 @@ func TestRollbackFlowThroughEngine(t *testing.T) {
 	if data, _ := os.ReadFile(path); string(data) == orig {
 		t.Fatal("fix was not applied")
 	}
-	// The message should point at the history screen, not a bare ID the user
-	// can only act on by quitting to the CLI.
+	// The message should point at the history screen. A bare ID could only be
+	// used by quitting to the CLI.
 	if !strings.Contains(m.(*appModel).status, "h to undo") {
 		t.Errorf("apply status should point at the history screen, got %q", m.(*appModel).status)
 	}
@@ -515,7 +514,7 @@ func TestRollbackFlowThroughEngine(t *testing.T) {
 	if data, _ := os.ReadFile(path); string(data) != orig {
 		t.Errorf("rollback did not restore the original bytes:\nwant:\n%s\ngot:\n%s", orig, data)
 	}
-	// The whole point: the finding is back, so the TUI stops claiming a fix
+	// The finding is back, so the TUI stops claiming a fix
 	// that has been undone.
 	var back bool
 	for _, f := range am.active {
@@ -550,7 +549,7 @@ func TestHistoryWithNoCheckpoints(t *testing.T) {
 }
 
 // TestNonReversibleCheckpointOffersNoRollback: exec fixes back up no files,
-// so the TUI must explain that rather than appearing to roll one back.
+// so the TUI must explain that there is nothing to roll back.
 func TestNonReversibleCheckpointOffersNoRollback(t *testing.T) {
 	m := &appModel{
 		mode:   modeHistory,

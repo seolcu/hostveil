@@ -36,8 +36,8 @@ func TestCVEAvailableWithTrivyAlone(t *testing.T) {
 
 // The bug this guards: the docker CLI on PATH says nothing about whether this
 // user may talk to the socket. Treating presence as reachability let the scan
-// proceed, fail on every image, and report zero vulnerabilities — which scores
-// as a perfect 100 on a host that was never actually scanned. The host's
+// proceed, fail on every image, and report zero vulnerabilities, which scores
+// as a perfect 100 on a host that was never scanned. The host's
 // packages are still scanned, so the axis is Degraded and says why.
 func TestCVEUnreachableDaemonIsAGapNotAClean(t *testing.T) {
 	r := &scriptRunner{dockerDown: true}
@@ -109,8 +109,7 @@ type scriptRunner struct {
 	psIDs string
 	// inspectJSON is the output of `docker inspect <ids...>`.
 	inspectJSON string
-	// psErr makes container enumeration fail, which is a partial result
-	// rather than an image scan failure.
+	// psErr makes container enumeration fail, which is a partial result.
 	psErr    bool
 	trivy    map[string]string // image → JSON output
 	trivyErr map[string]bool   // image → fail
@@ -126,13 +125,13 @@ type scriptRunner struct {
 	noDocker, dockerDown bool
 
 	// The checker scans images concurrently, so this fake is called from
-	// several goroutines at once. Only the recording needs guarding — the
+	// several goroutines at once. Only the recording needs guarding: the
 	// scripted maps are written before the scan starts and only read during
 	// it. The real DefaultRunner is stateless and needs none of this.
 	mu   sync.Mutex
 	argv []string // the last trivy argv, for flag assertions
 	// calls records every trivy invocation in order: "warm" for the DB
-	// download, the image name for a scan. The order is the point — the
+	// download, the image name for a scan. The order matters: the
 	// download has to finish before the first scan starts.
 	calls []string
 }
@@ -231,11 +230,11 @@ const oneVuln = `{"Results":[{"Vulnerabilities":[{"VulnerabilityID":"CVE-2021-12
 // one alone leaves the scan failing: without the DB downloaded first, all four
 // race to fetch it and all four die; without a private analysis cache, they
 // race for its lock and most die. On the demo VM that showed up as 1 of 7
-// images covered and a vulnerability axis of 44/100 where the truth was 16 —
+// images covered and a vulnerability axis of 44/100 where the truth was 16:
 // wrong in the flattering direction, because an image that could not be
 // scanned contributes no vulnerabilities.
 //
-// Order is asserted, not just presence. A DB download that happens somewhere
+// Order is asserted along with presence. A DB download that happens somewhere
 // in the middle of the fan-out prevents nothing.
 func TestConcurrentScansDoNotShareOneTrivyCache(t *testing.T) {
 	r := composeProject(t)
@@ -263,7 +262,7 @@ func TestConcurrentScansDoNotShareOneTrivyCache(t *testing.T) {
 // The fast path is not available on every Trivy: `--cache-backend` is
 // experimental and `memory` is newer than the flag. An unsupported value fails
 // the warm-up exactly like a host with no network does, and nothing here can
-// tell those apart — so both fall back to scanning one image at a time, which
+// tell those apart, so both fall back to scanning one image at a time, which
 // no version of Trivy has ever had trouble with.
 //
 // Treating the warm-up as a dependency instead would turn a working offline
@@ -310,7 +309,7 @@ func TestCVEPartialScanIsDegraded(t *testing.T) {
 }
 
 // An unparsed compose file is a set of images the scan never even knew to
-// look at, and the clean branch already counts it — but the branch that
+// look at, and the clean branch already counts it, but the branch that
 // handles a failed image scan did not, so a host that hit both reported
 // "covered 1 of 2" while a whole stack's images had gone unexamined. Two
 // independent blind spots, one of them silently discarded.
@@ -368,7 +367,7 @@ func withBrokenProject(lsJSON string) string {
 }
 
 // Every image failing is not a partial result, it is a failed one. It must be
-// an ordinary error so the axis drops out of scoring entirely — a Degraded
+// an ordinary error so the axis drops out of scoring entirely: a Degraded
 // domain is still scored, and would hand back the false 100 all over again.
 func TestCVEAllImagesFailingIsError(t *testing.T) {
 	r := composeProject(t)
@@ -399,8 +398,8 @@ func TestCVECleanScanIsNotDegraded(t *testing.T) {
 	}
 }
 
-// A host with no containers genuinely has no image vulnerabilities — that is a
-// clean Done, not a degraded or failed scan.
+// A host with no containers has no image vulnerabilities, that is a
+// clean Done.
 func TestCVENoImagesIsClean(t *testing.T) {
 	r := composeProject(t)
 	r.lsJSON = `[]`
@@ -442,7 +441,7 @@ func TestParseTrivyFixedAndUnfixed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// One finding per remediation class, not per CVE.
+	// One finding per remediation class.
 	if len(fs) != 2 {
 		t.Fatalf("expected 2 findings, got %d", len(fs))
 	}
@@ -458,12 +457,12 @@ func TestParseTrivyFixedAndUnfixed(t *testing.T) {
 	if fixed.Remediation != model.RemediationReview {
 		t.Errorf("fixable group should be Review, got %v", fixed.Remediation)
 	}
-	// High, from its own group — not the Critical sitting in the other one.
+	// High, from its own group.
 	if fixed.Severity != model.SeverityHigh {
 		t.Errorf("severity = %v, want high", fixed.Severity)
 	}
 
-	// Vulnerabilities with no upstream fix are Unavailable — set at the
+	// Vulnerabilities with no upstream fix are Unavailable: set at the
 	// source, no post-scan override band-aid.
 	unfixed := byID["cve.unpatched-image"]
 	if unfixed.Remediation != model.RemediationUnavailable {
@@ -474,7 +473,7 @@ func TestParseTrivyFixedAndUnfixed(t *testing.T) {
 	}
 }
 
-// The whole point of aggregating: no finding may be named after a single
+// Aggregating means no finding may be named after a single
 // vulnerability, because there is no remediation at that granularity.
 func TestNoPerCVEFindings(t *testing.T) {
 	out := `{"Results":[{"Vulnerabilities":[
@@ -518,7 +517,7 @@ func TestAllUnfixableStillReportsTheImage(t *testing.T) {
 	}
 }
 
-// A genuinely clean image produces nothing at all.
+// A clean image produces nothing at all.
 func TestCleanImageProducesNoFindings(t *testing.T) {
 	fs, err := parseTrivy([]byte(`{"Results":[]}`), target{image: "redis:7", service: "cache", file: "f", project: "p"})
 	if err != nil {
@@ -564,7 +563,7 @@ func TestWorstListIsDeterministic(t *testing.T) {
 	// clirender's wrap splits on whitespace, so the separator must contain a
 	// space or the list becomes one unbreakable word.
 	if strings.Contains(first[0].Evidence["cves"], ",CVE") {
-		t.Error("CVE list must be separated by comma+space, not comma alone")
+		t.Error("CVE list must be separated by comma+space")
 	}
 }
 
@@ -606,8 +605,7 @@ func rollupOf(t *testing.T, fs []model.Finding) model.Finding {
 	return found[0]
 }
 
-// The rollup's severity comes from the worst *fixable* CVE, not the worst
-// overall. An unfixable Critical must not inflate a finding whose only
+// The rollup's severity comes from the worst *fixable* CVE. An unfixable Critical must not inflate a finding whose only
 // remediation cannot touch it.
 func TestRollupSeverityIgnoresUnfixableCVEs(t *testing.T) {
 	out := `{"Results":[{"Vulnerabilities":[
@@ -620,7 +618,7 @@ func TestRollupSeverityIgnoresUnfixableCVEs(t *testing.T) {
 	}
 	r := rollupOf(t, fs)
 	if r.Severity != model.SeverityMedium {
-		t.Errorf("severity = %v, want medium (the worst fixable), not the unfixable critical", r.Severity)
+		t.Errorf("severity = %v, want medium (the worst fixable); the unfixable critical must not count", r.Severity)
 	}
 	if r.Evidence["count"] != "1" {
 		t.Errorf("count = %q, want 1", r.Evidence["count"])
@@ -633,7 +631,7 @@ func TestRollupSeverityIgnoresUnfixableCVEs(t *testing.T) {
 	}
 }
 
-// With nothing fixable there is no action to offer, so there is no rollup —
+// With nothing fixable there is no action to offer, so there is no rollup:
 // the per-CVE findings still stand on their own.
 func TestNoRollupWhenNothingIsFixable(t *testing.T) {
 	out := `{"Results":[{"Vulnerabilities":[
@@ -651,9 +649,9 @@ func TestNoRollupWhenNothingIsFixable(t *testing.T) {
 	}
 }
 
-// A digest pin cannot be improved by pulling, and the honest remediation
+// A digest pin cannot be improved by pulling, and the accurate remediation
 // (repin to a newer digest) needs data the report does not carry. The
-// finding is still emitted — the image really is outdated, and hiding a real
+// finding is still emitted: the image really is outdated, and hiding a real
 // problem because its remediation is awkward is the worse failure.
 func TestRollupForDigestPinnedImageIsManual(t *testing.T) {
 	out := `{"Results":[{"Vulnerabilities":[
@@ -700,7 +698,7 @@ func TestRollupCarriesComposeFilePath(t *testing.T) {
 	}
 }
 
-// One rollup per image, not per CVE and not per service.
+// One rollup per image.
 func TestOneRollupPerImage(t *testing.T) {
 	r := composeProject(t)
 	r.trivy["redis:7"] = oneVuln
@@ -742,14 +740,14 @@ func FuzzParseTrivy(f *testing.F) {
 //
 // summary() and evidence() each walked a severity list written out in this
 // file. When Critical and High merged into one constant, both rows stayed
-// and the same constant was read twice — so an image whose worst
+// and the same constant was read twice, so an image whose worst
 // vulnerabilities were all top-severity described itself as "2 high, 2 high"
 // and attached the same evidence key twice. Nothing failed; the count was
 // right, said twice.
 //
 // The fix is that neither place enumerates the scale any more. This test
 // exists so that a future change to the scale cannot reintroduce a copy of
-// it: it counts occurrences rather than comparing a fixed string, so it
+// it: it counts occurrences, so it
 // holds whatever the levels are called.
 func TestSummaryNamesEachSeverityOnce(t *testing.T) {
 	out := `{"Results":[{"Vulnerabilities":[

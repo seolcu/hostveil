@@ -126,10 +126,10 @@ func Analyze(dir string) (*Result, *Manifest, error) {
 	return &an.res, &b.m, nil
 }
 
-// IDPrefix namespaces every indicator. An indicator is not a finding — it
-// is a conclusion about the past, not a setting to fix — so no indicator ID
+// IDPrefix namespaces every indicator. An indicator is not a finding (it
+// is a conclusion about the past) so no indicator ID
 // may read as one: none starts with, or contains, a detection domain's name
-// followed by a dot (login.*, not ssh.*), which internal/docs enforces.
+// followed by a dot (login.* is fine), which internal/docs enforces.
 const IDPrefix = "triage."
 
 func (an *analysis) add(in Indicator) {
@@ -334,7 +334,7 @@ func (an *analysis) ssh() {
 		if fp != "" && len(keys) > 0 && !keys[fp] {
 			an.add(Indicator{ID: "login.key-not-authorized-now", Verdict: Suspicious,
 				Title:  "A login used a key that is no longer in any authorized_keys",
-				Detail: fmt.Sprintf("%s logged in from %s with key %s, which no authorized_keys file on this host now contains. Either the key was removed since — which is ordinary — or it was added, used, and removed.", user, ip, fp),
+				Detail: fmt.Sprintf("%s logged in from %s with key %s, which no authorized_keys file on this host now contains. Either the key was removed since (which is ordinary) or it was added, used, and removed.", user, ip, fp),
 				First:  l.t, Evidence: []Evidence{ev}})
 		}
 	}
@@ -371,8 +371,7 @@ func (an *analysis) ssh() {
 }
 
 // proxiedMinFailures is how many failures a host must see before one
-// internal address carrying nearly all of them reads as a proxy rather than
-// a colleague mistyping a password.
+// internal address carrying nearly all of them reads as a proxy.
 const proxiedMinFailures = 50
 
 var cgnat = &net.IPNet{IP: net.IPv4(100, 64, 0, 0), Mask: net.CIDRMask(10, 32)}
@@ -557,7 +556,7 @@ func (an *analysis) web() {
 	if scanners > 0 {
 		an.add(Indicator{ID: "web.scanning", Verdict: Attempt,
 			Title: "Automated scanning of the web server",
-			Detail: fmt.Sprintf("%d addresses produced %d client errors (4xx) between them — requests for files that are not there, the shape of a vulnerability scanner. "+
+			Detail: fmt.Sprintf("%d addresses produced %d client errors (4xx) between them; requests for files that are not there, the shape of a vulnerability scanner. "+
 				"On its own it shows only that someone looked.", scanners, probes),
 			Count: probes, Evidence: ev})
 	}
@@ -686,7 +685,7 @@ func (an *analysis) audit() {
 		an.add(Indicator{ID: "audit.webuser-exec", Verdict: Compromise,
 			Title: "The web server's account started programs",
 			Detail: fmt.Sprintf("The audit log recorded %d programs started by a web server account. Unless your web application is known to run programs, "+
-				"these are commands run through it — the first ones an attacker types after a remote-code-execution bug.", n),
+				"these are commands run through it: the first ones an attacker types after a remote-code-execution bug.", n),
 			Count: n, First: first, Last: last, Evidence: ev})
 	}
 }
@@ -709,7 +708,7 @@ func (an *analysis) persistence() {
 				if m := dangerousCommand.FindString(t); m != "" {
 					an.add(Indicator{ID: "persistence.download-and-run", Verdict: Compromise,
 						Title:    "A scheduled job or service runs a downloaded or hidden program",
-						Detail:   a.Source + " runs `" + strings.TrimSpace(m) + "`. Piping a download into a shell, decoding base64, opening /dev/tcp or running from /tmp is what an implant's start-up line looks like, not a package's.",
+						Detail:   a.Source + " runs `" + strings.TrimSpace(m) + "`. Piping a download into a shell, decoding base64, opening /dev/tcp or running from /tmp is what an implant's start-up line looks like. Packages do not start this way.",
 						Evidence: []Evidence{{Artifact: a.Path, Line: i + 1, Text: l}}})
 				}
 			}
@@ -805,7 +804,7 @@ func (an *analysis) loadPackages() {
 	}
 }
 
-// packaged reports whether the package manager installed p unchanged —
+// packaged reports whether the package manager installed p unchanged,
 // which explains an old mtime under a new ctime, and a recent change made
 // by an upgrade.
 func (an *analysis) packaged(p string) bool {
@@ -865,7 +864,7 @@ func (an *analysis) antiForensics() {
 			if len(f) >= 3 && f[2] == "/dev/null" {
 				an.add(Indicator{ID: "antiforensic.history-disabled", Verdict: Suspicious,
 					Title:    "A shell history is linked to /dev/null",
-					Detail:   f[0] + " points at /dev/null, so nothing typed in that account's shell is kept. Some people do this on purpose; intruders do it routinely.",
+					Detail:   f[0] + " points at /dev/null, so nothing typed in that account's shell is kept. Some people do this intentionally; intruders do it routinely.",
 					Evidence: []Evidence{{Artifact: a.Path, Line: i + 1, Text: l}}})
 			}
 		}
@@ -912,7 +911,7 @@ func (an *analysis) gaps() {
 			an.res.Gaps = append(an.res.Gaps, Gap{Question: q, Reason: f.Title, Finding: f.ID})
 		}
 	}
-	// Coverage the logs actually have, whatever the configuration says.
+	// Coverage the logs have, whatever the configuration says.
 	if l := an.sshLines(); len(l) == 0 {
 		an.res.Gaps = append(an.res.Gaps, Gap{Question: "Who logged in over SSH, and from where?",
 			Reason: "No SSH log entries were collected for the window: no auth log, and the journal had none."})

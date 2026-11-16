@@ -8,7 +8,7 @@ import (
 	"unicode/utf8"
 )
 
-// A failing command's stderr is what actually explains the failure ("permission
+// A failing command's stderr is what explains the failure ("permission
 // denied while trying to connect to the Docker daemon socket"). os/exec strands
 // it on the ExitError, leaving callers to report a bare "exit status 1", which
 // is what every UI would then show as the reason a domain failed.
@@ -39,7 +39,7 @@ func TestRunTruncatesStderr(t *testing.T) {
 }
 
 // Truncation is by rune, so a non-ASCII message never ends in a broken
-// sequence — these strings reach users' terminals.
+// sequence: these strings reach users' terminals.
 func TestCleanStderrTruncatesOnRuneBoundary(t *testing.T) {
 	got := cleanStderr([]byte(strings.Repeat("가", maxStderr*2)))
 	if !utf8.ValidString(got) {
@@ -75,7 +75,7 @@ func TestRunLeavesOtherErrorsAlone(t *testing.T) {
 
 // A command with no deadline of its own must still be bounded. Nothing
 // Hostveil runs is a long question, and a wedged Docker daemon answering
-// never is the everyday failure — before this the scan simply hung, with no
+// never is the everyday failure, before this the scan simply hung, with no
 // way out but killing the process.
 func TestRunBoundsACommandThatNeverReturns(t *testing.T) {
 	r := DefaultRunner{Timeout: 200 * time.Millisecond}
@@ -113,8 +113,8 @@ func TestCallerDeadlineOverridesTheDefault(t *testing.T) {
 	}
 }
 
-// A command that outlives its parent by holding the stdout pipe open — a
-// grandchild, which is how `docker compose` behaves — must not keep Wait
+// A command that outlives its parent by holding the stdout pipe open: a
+// grandchild, which is how `docker compose` behaves: must not keep Wait
 // blocked after the process is killed. WaitDelay is what bounds that.
 func TestRunDoesNotWaitOnALingeringGrandchild(t *testing.T) {
 	r := DefaultRunner{Timeout: 200 * time.Millisecond}
@@ -149,7 +149,7 @@ func TestCancelledCommandSaysSo(t *testing.T) {
 	}
 }
 
-// Every parser in internal/check that matches a word rather than a number is
+// Every parser in internal/check that matches a word is
 // reading translated text unless the command is told not to translate. The
 // runner inherited the operator's environment, and `sudo` keeps LANG and LC_*
 // by default, so `hostveil scan` on a German or Japanese host asked apt in
@@ -158,12 +158,12 @@ func TestCancelledCommandSaysSo(t *testing.T) {
 // The one that mattered: apt's `[upgradable from: %s]` is translated in
 // twenty-one locales, and countAptSecurityUpdates skips any line without that
 // exact English text. On such a host the pending-security-updates count came
-// out zero however many were waiting — a clean report on an unpatched machine.
+// out zero however many were waiting: a clean report on an unpatched machine.
 //
-// LC_ALL rather than LANG, and this is the part worth remembering: gettext
+// LC_ALL, and this is the part to remember: gettext
 // honours LANGUAGE over LANG, so setting LANG alone leaves a GNOME desktop's
 // `LANGUAGE=de:en` in charge. LANGUAGE is ignored when the locale is C, which
-// is why this one variable is enough — verified against real apt, where
+// is why this one variable is enough: verified against real apt, where
 // `LANGUAGE=de LANG=de_DE.UTF-8 LC_ALL=C` prints "Listing..." and dropping the
 // LC_ALL prints "Auflistung…".
 func TestRunPinsTheLocaleSoParsersReadEnglish(t *testing.T) {

@@ -74,7 +74,7 @@ func TestTheNoticeStaysQuietUnlessThereIsSomethingToSay(t *testing.T) {
 		{"already current", Cache{Latest: "3.17.0"}, "v3.17.0", false},
 		{"the default development stamp", Cache{Latest: "3.17.0"}, "v3-dev", false},
 		{"a distribution's own build", Cache{Latest: "3.17.0"}, "3.17.0-1ubuntu1", false},
-		{"a version string nobody recognises", Cache{Latest: "3.17.0"}, "v", false},
+		{"an unrecognised version string", Cache{Latest: "3.17.0"}, "v", false},
 		{"a version with no leading v", Cache{Latest: "3.18.0"}, "3.17.0", true},
 		{"no version stamped at all", Cache{Latest: "3.17.0"}, "", false},
 		{"a newer release", Cache{Latest: "3.18.0"}, "v3.17.0", true},

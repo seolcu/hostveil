@@ -9,10 +9,10 @@
 //
 // Run it from the repository root. The output directory is resolved against
 // the working directory, and so are CHANGELOG.md and CHANGELOG.ko.md, which
-// the changelog page is generated from — see changelog.go.
+// the changelog page is generated from: see changelog.go.
 //
 // The output is meant to stay byte-identical unless a template, fragment, or
-// manifest entry changes — CI enforces that with a git status check on site/.
+// manifest entry changes: CI enforces that with a git status check on site/.
 package main
 
 import (
@@ -123,7 +123,7 @@ var langName = map[string]string{"en": "English", "ko": "한국어"}
 
 // Group is one labelled sidebar section.
 // Item is one sidebar link. ExtraAttrs carries anything the link needs beyond
-// its href and active state — today only the flag that keeps a page out of the
+// its href and active state: today only the flag that keeps a page out of the
 // docs search index.
 type Item struct{ Href, Label, ActiveAttr, ExtraAttrs string }
 type Group struct {
@@ -188,7 +188,7 @@ func assetLinks(kind, lang string) string {
 	link := func(href string) { fmt.Fprintf(&b, "    <link rel=\"stylesheet\" href=\"%s\">\n", href) }
 	script := func(src string) { fmt.Fprintf(&b, "    <script src=\"%s\" defer></script>\n", src) }
 	// The tab icon is the same file the dashboard serves, and it is emitted
-	// here rather than in head.tmpl because it is the one <link> whose href
+	// here because it is the one <link> whose href
 	// depends on how deep the page is. It used to be an inline data URI of a
 	// figure drawn nowhere else, which is how the site ended up with a mark
 	// of its own that nothing kept in step with the product's.
@@ -261,7 +261,7 @@ func sidebar(m Manifest, lang, current string) []Group {
 			// The changelog stays out of the docs search index. The index is
 			// built in the browser by fetching every page in this sidebar and
 			// splitting it per heading, and the changelog is thirty-one
-			// releases of prose about the same subjects the docs cover — it
+			// releases of prose about the same subjects the docs cover: it
 			// would outweigh every real page in the results and blow the
 			// sessionStorage cache the index is kept in. It is an archive with
 			// a heading per release, which is what its own page is for.
@@ -302,8 +302,8 @@ func render(t *template.Template, name, out string, v View) error {
 	}
 	body := strings.TrimRight(buf.String(), "\n") + "\n"
 	// G301/G306: sitegen writes the published website into the repository.
-	// A directory nobody can enter and a file nobody can read is not a site,
-	// and this never runs on a host — it runs in CI and on a maintainer's
+	// A directory no one can enter and a file no one can read do not make a site,
+	// and this never runs on a host; it runs in CI and on a maintainer's
 	// machine, producing content that is then committed and served.
 	//nolint:gosec // G301: generated site output, meant to be readable
 	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
@@ -327,11 +327,11 @@ func fragment(kind, lang, slug string) (string, error) {
 	frag := strings.TrimRight(string(b), "\n")
 
 	// The changelog page is its introduction, the releases themselves, and
-	// its pager — and only the middle one is generated. It is converted from
+	// its pager, and only the middle one is generated. It is converted from
 	// CHANGELOG.md / CHANGELOG.ko.md so the page cannot say a different thing
 	// from the file; see cmd/sitegen/changelog.go.
 	//
-	// A marker rather than an append, so the fragment keeps deciding what
+	// A marker, so the fragment keeps deciding what
 	// comes before the entries and what comes after. Appending would have put
 	// the page's own footer above three thousand lines of release notes.
 	if kind == "docs" && slug == changelogSlug {
@@ -346,10 +346,10 @@ func fragment(kind, lang, slug string) (string, error) {
 		frag = strings.Replace(frag, changelogMarker, entries, 1)
 	}
 
-	// The checks page's "what each fix actually does" section. Same marker
-	// shape as the changelog, deliberately not generalized into one
-	// mechanism for two cases. Every language with the marker gets the
-	// section and its Fix-column links — see renderFixActions's doc comment
+	// The checks page's "what each fix does" section. Same marker
+	// shape as the changelog; two cases do not justify one
+	// shared mechanism. Every language with the marker gets the
+	// section and its Fix-column links: see renderFixActions's doc comment
 	// for what is and is not localized within it.
 	if kind == "docs" && slug == checksSlug {
 		if !strings.Contains(frag, fixActionsMarker) {

@@ -13,13 +13,13 @@ import (
 )
 
 // The fixtures the interfaces are drawn from must name findings Hostveil can
-// actually report.
+// report.
 //
 // findings_test.go closes the loop between the checkers and the docs: every ID
 // a checker constructs has to be documented, and every documented row has to
 // have an emitter. Both walk internal/check and cmd/sitegen. Neither looks at
 // internal/ui, so the sample report the screenshots are made from was free to
-// invent findings — and did.
+// invent findings, and did.
 //
 // site/assets/tui.png, which is the terminal screenshot on the website and at
 // the top of both READMEs, showed `ssh.maxauth` (the real ID is
@@ -27,8 +27,8 @@ import (
 // more were in the every-mode fixture. They had been there since the fixture
 // was written, through every release, and nothing could see them:
 // TestSiteFrameIsCurrent re-renders the frame and compares it byte for byte,
-// so it pins that the picture matches the code that drew it — not that what
-// the picture says is true. TestSiteFrameShowsWhatTheCaptionPromises reads the
+// so it pins that the picture matches the code that drew it. It does not
+// check that what the picture says is true. TestSiteFrameShowsWhatTheCaptionPromises reads the
 // caption. No test read an ID.
 //
 // That is the same defect as a stale figure on the measurements page, in the
@@ -60,7 +60,7 @@ type fixtureHit struct {
 	id   string
 }
 
-// fixtureIDPattern matches a namespaced finding ID wherever it appears — in a
+// fixtureIDPattern matches a namespaced finding ID wherever it appears, in a
 // Go string literal, or in the ANSI capture the screenshot is rendered from.
 //
 // It is built from the real source names for the reason findings_test.go's own
@@ -80,8 +80,8 @@ var fixtureIDPattern = func() *regexp.Regexp {
 //
 // `docker-compose.yml` is all over the compose fixtures, and `compose` is a
 // Source, so the pattern above matches `compose.yml`. The list is extensions
-// rather than whole names because the collision is structural — any file the
-// fixtures name could have a domain's word in front of the dot — and it is
+// because the collision is structural (any file the
+// fixtures name could have a domain's word in front of the dot) and it is
 // short because a finding ID never ends in one of these.
 func notAFindingID(id string) bool {
 	ext := id[strings.LastIndex(id, ".")+1:]
@@ -91,7 +91,7 @@ func notAFindingID(id string) bool {
 // fixtureRoots are the trees whose fixtures end up in front of a reader.
 //
 // internal/ui builds the two screenshots. scripts/ draws the social preview
-// card, which is the image every link to this repository unfurls as — the
+// card, which is the image every link to this repository unfurls as: the
 // same claim as the terminal screenshot, in the place with the widest reach
 // and the least chance of anyone checking it.
 var fixtureRoots = []string{
@@ -102,9 +102,9 @@ var fixtureRoots = []string{
 // fixtureFindingIDs collects every finding ID named anywhere under those
 // trees, including testdata.
 //
-// Whole directories, not a list of files. A list is a thing to forget to add
+// Whole directories. A list is a thing to forget to add
 // to, and the cost of over-collecting is only ever that a genuine ID has to be
-// a genuine ID — which is the rule anyway. Production UI code does not name
+// a genuine ID, which is the rule anyway. Production UI code does not name
 // findings: it renders whatever the engine hands it.
 func fixtureFindingIDs(t *testing.T) []fixtureHit {
 	t.Helper()
@@ -113,7 +113,7 @@ func fixtureFindingIDs(t *testing.T) []fixtureHit {
 		out = append(out, walkForFindingIDs(t, filepath.Join(repoRoot(t), r))...)
 	}
 	if len(out) == 0 {
-		t.Fatal("no finding IDs found in any fixture tree — the fixtures build the " +
+		t.Fatal("no finding IDs found in any fixture tree; the fixtures build the " +
 			"screenshots from findings, so finding none means this test is looking in the wrong place")
 	}
 	return out

@@ -8,10 +8,10 @@ name: Release
 # A `push: tags` trigger works here because the tag is created with a real
 # user's credentials. Events created with the default GITHUB_TOKEN do not
 # start workflow runs, which is what made this trigger unusable while
-# release-please was cutting the tag — and why its release pull request could
+# release-please was cutting the tag, and why its release pull request could
 # never satisfy the branch ruleset's required checks, so every release had to
 # go through an admin bypass. Removing release-please removes that whole
-# problem rather than working around it.
+# problem.
 #
 # workflow_dispatch is the manual re-run: if the tag push does not start a run
 # for any reason, or goreleaser fails on something transient, this rebuilds
@@ -57,10 +57,10 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   # A tag must point at a commit that is on main. This is the guard for the
-  # failure that produced v3.0.0 — a release published from a commit that was
+  # failure that produced v3.0.0: a release published from a commit that was
   # never on main, pointing every install.sh user at abandoned code. The tag
   # ruleset does not prevent this: it only forbids updating and deleting a v*
-  # tag, not creating one on the wrong commit.
+  # tag. Creating one on the wrong commit is allowed.
   verify-on-main:
     needs: resolve
     runs-on: ubuntu-latest
@@ -78,7 +78,7 @@ jobs:
           # checkout gives us the triggering ref; main and the tag object are
           # fetched explicitly so this works for a tag push and for a manual
           # dispatch alike, and never silently compares against a ref that
-          # was not actually fetched.
+          # was not fetched.
           git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
           git fetch origin "refs/tags/${TAG}:refs/tags/${TAG}" || true
 
@@ -100,7 +100,7 @@ jobs:
       attestations: write
     runs-on: ubuntu-latest
     steps:
-      # Check out the tag by name rather than whatever main points at now, so
+      # Check out the tag by name, so
       # the artifacts match the tag even if main has since moved.
       - uses: actions/checkout@v7
         with:
@@ -112,8 +112,8 @@ jobs:
           check-latest: true
       - name: Install syft
         uses: anchore/sbom-action/download-syft@v0
-      # Plain GITHUB_TOKEN is enough. The release already exists — a
-      # maintainer created it along with the tag — and goreleaser runs
+      # Plain GITHUB_TOKEN is enough. The release already exists (a
+      # maintainer created it along with the tag) and goreleaser runs
       # mode: keep-existing, so this only uploads archives, checksums, and
       # SBOMs onto it and leaves the notes alone.
       - uses: goreleaser/goreleaser-action@v7
@@ -134,7 +134,7 @@ jobs:
   # The release is published before any artifact exists, because a maintainer
   # creates it to make the tag. What can be fixed is the consequence:
   # scripts/install.sh resolves the version by following the /releases/latest
-  # redirect, and a draft release is not "Latest" — so demoting a release
+  # redirect, and a draft release is not "Latest", so demoting a release
   # whose build failed keeps installers on the last good version instead of
   # sending them to tarballs that were never uploaded.
   demote-on-failure:

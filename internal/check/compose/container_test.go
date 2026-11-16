@@ -141,7 +141,7 @@ func TestExposedDatastoreIsNotAutoForAStandaloneContainer(t *testing.T) {
 
 // A resolved environment merges the image's own ENV and anything an env_file
 // supplied, so flagging it would accuse an operator who used a secrets file
-// correctly — and tell them to do what they already did.
+// correctly, and tell them to do what they already did.
 func TestResolvedEnvironmentIsNotScannedForSecrets(t *testing.T) {
 	withSecret := `[{
 	 "Name": "/app",
@@ -158,7 +158,7 @@ func TestResolvedEnvironmentIsNotScannedForSecrets(t *testing.T) {
 }
 
 // The daemon reports namespace modes and the root-filesystem flag directly,
-// so `docker run --pid=host --ipc=host` is as visible as the compose keys —
+// so `docker run --pid=host --ipc=host` is as visible as the compose keys,
 // and a `--read-only` container must not be accused of a writable rootfs.
 func TestHostNamespacesAuditedForStandaloneContainers(t *testing.T) {
 	shared := `[{
@@ -198,7 +198,7 @@ func TestHostNamespacesAuditedForStandaloneContainers(t *testing.T) {
 
 // Losing the ability to enumerate containers is a smaller blind spot than a
 // failed scan, but it is still one: the domain covered compose only and has
-// to say so rather than report a clean result.
+// to say so.
 func TestUninspectableContainersAreDegraded(t *testing.T) {
 	_, err := New().Check(context.Background(), platform.Env{Runner: runRunner{psErr: true}})
 	var partial *check.PartialError
@@ -209,7 +209,7 @@ func TestUninspectableContainersAreDegraded(t *testing.T) {
 
 // Two blind spots at once must both be reported. The checker returned at the
 // first one, so a host where container enumeration failed *and* a compose
-// file would not parse was told only about the containers — and the unparsed
+// file would not parse was told only about the containers, and the unparsed
 // stack, which the very next branch calls "the one thing a checker must never
 // do" to report clean, went unmentioned.
 func TestEveryCoverageGapIsReported(t *testing.T) {
@@ -258,9 +258,9 @@ func TestWellConfiguredStandaloneContainerIsClean(t *testing.T) {
 	}
 }
 
-// The demotion has to fill the field the interfaces actually read. A
+// The demotion has to fill the field the interfaces read. A
 // `docker run` container's findings are Manual for a reason that is specific
-// to that container, not to the finding ID — so the registry cannot answer it
+// to that container, so the registry cannot answer it
 // and the checker has to.
 func TestAContainerDemotionSaysWhyInTheFieldTheUIReads(t *testing.T) {
 	fs := auditContainer(compose.Container{
@@ -275,7 +275,7 @@ func TestAContainerDemotionSaysWhyInTheFieldTheUIReads(t *testing.T) {
 			t.Errorf("%s: remediation = %v, want Manual", f.ID, f.Remediation)
 		}
 		if f.WhyNoFix == "" {
-			t.Errorf("%s: Manual with nothing in WhyNoFix — the panel that asks this question renders blank", f.ID)
+			t.Errorf("%s: Manual with nothing in WhyNoFix; the panel that asks this question renders blank", f.ID)
 		}
 	}
 }

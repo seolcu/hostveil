@@ -22,7 +22,7 @@ func main() {
 	// Not deferred: os.Exit does not run deferred functions, so `defer stop()`
 	// here was a line that read like cleanup and never executed one. It
 	// matters less at process exit than the notifyContext comment below
-	// implies — the kernel reclaims the signal handler either way — but a
+	// implies (the kernel reclaims the signal handler either way) but a
 	// defer that cannot run is worse than no defer: the next person moves it
 	// and assumes the pattern already worked.
 	code := run(ctx, os.Args[1:])
@@ -34,20 +34,19 @@ func main() {
 // SIGTERM, and makes a second signal end the process immediately.
 //
 // Every command threads the context down to Engine.Scan, which passes it to
-// exec.CommandContext, so an interrupt actually stops the docker and trivy
-// processes a scan has running rather than leaving them to finish against a
-// terminal nobody is watching. Nothing was cancellable before: the TUI puts
+// exec.CommandContext, so an interrupt stops the docker and trivy
+// processes a scan has running. Nothing was cancellable before: the TUI puts
 // the terminal in raw mode and reads Ctrl-C as a key, so a scan there could
 // not be interrupted at all.
 //
 // The escalation is the part signal.NotifyContext cannot do. Its goroutine
 // consumes one signal and returns, but the handler stays registered, so from
 // then on SIGINT and SIGTERM are diverted from their default disposition and
-// silently dropped. Anything that ignores the cancelled context — a fix
-// mid-apply, an HTTP server with no shutdown wired up — becomes
+// silently dropped. Anything that ignores the cancelled context (a fix
+// mid-apply, an HTTP server with no shutdown wired up) becomes
 // uninterruptible, and the operator's only remaining move is SIGKILL from
 // another shell. The second signal is the operator saying they meant it, so
-// it exits rather than being swallowed. 130 is the conventional
+// it exits. 130 is the conventional
 // 128+SIGINT status for a program killed by an interrupt.
 func notifyContext(parent context.Context) (context.Context, func()) {
 	ctx, cancel := context.WithCancel(parent)
@@ -70,17 +69,16 @@ func notifyContext(parent context.Context) (context.Context, func()) {
 
 func run(ctx context.Context, args []string) (code int) {
 	// The recover of last resort. check.runOne catches a panic in one
-	// checker, internal/core/contain.go catches one in a fix — both scoped
-	// on purpose, so the rest of a scan or a batch keeps going. This is
+	// checker, internal/core/contain.go catches one in a fix: both scoped
+	// so the rest of a scan or a batch keeps going. This is
 	// everything else: a bug in flag parsing, in the TUI's rendering, in
 	// dispatch itself. Without it, that bug printed a raw Go stack straight
 	// to a terminal that then scrolled it away, which is exactly the "bug
 	// report Hostveil wants back" internal/core/contain.go already talks
 	// about, with no way for anyone to give it one.
 	//
-	// debug.Stack() runs here, directly in the recover, not inside
-	// reportCrash — a stack captured one call further down would start from
-	// reportCrash's own frame instead of the one that actually panicked.
+	// debug.Stack() runs here, directly in the recover: a stack captured one call further down would start from
+	// reportCrash's own frame instead of the one that panicked.
 	defer func() {
 		if r := recover(); r != nil {
 			code = reportCrash(args, r, debug.Stack())
@@ -90,7 +88,7 @@ func run(ctx context.Context, args []string) (code int) {
 	// Top-level help/version flags are handled before subcommand dispatch so
 	// they behave like the bare-word `help`/`version` subcommands. Otherwise a
 	// leading dash-flag is never promoted to a command and leaks into the
-	// default `scan` flag set — `hostveil --help` would print scan's usage and
+	// default `scan` flag set: `hostveil --help` would print scan's usage and
 	// `hostveil --version` would error with "flag provided but not defined".
 	if len(args) > 0 {
 		switch args[0] {
@@ -175,7 +173,7 @@ func resolveCommand(args []string, interactive bool) (string, []string) {
 }
 
 func printUsage(w *os.File) {
-	fmt.Fprint(w, `Hostveil — guided hardening for self-hosted Linux servers
+	fmt.Fprint(w, `Hostveil: guided hardening for self-hosted Linux servers
 
 Usage:
   hostveil                       Open the interactive TUI (on a terminal)
@@ -225,7 +223,7 @@ Export flags:
   --format FMT    json, sarif or markdown (required). json and sarif are
                   byte-identical to scan --json/--sarif. markdown explains
                   each finding and its fix in plain language, for a person
-                  rather than another program.
+                  to read.
   --output FILE   Write to FILE instead of stdout
   --only LIST     Scan only these domains (comma-separated)
   --skip LIST     Scan every domain except these (comma-separated)
@@ -249,7 +247,7 @@ Explain flags:
                   default; set HOSTVEIL_AI_PROVIDER=anthropic or openai to
                   use an external API instead. See Environment below. Uses
                   the saved host description (hostveil ai-context) if one
-                  is set, to make the answer situational rather than generic.
+                  is set, to make the answer specific to this host.
                   With no finding ID, adds a verdict per fixable finding
                   (Apply/Skip/Depends) under the benefit/cost listing.
   --only LIST     With no finding ID: scan only these domains
@@ -260,8 +258,8 @@ Ai-context flags:
 
 Rollback flags:
   --force         Restore even if the file changed after the fix was applied.
-                  Rollback keeps no backup of its own, so it declines by
-                  default rather than discard those edits.
+                  Rollback keeps no backup of its own, so by default it
+                  declines to discard those edits.
 
 Diagnostics flags:
   --trace FILE    Attach a command trace produced with HOSTVEIL_DEBUG=1
@@ -288,16 +286,16 @@ TUI and dashboard flags:
                   publish it to the network; forward the port over SSH instead.
 
 The dashboard prints a URL carrying a one-off access token, and every route
-requires it — loopback separates this host from the network, not you from the
-other accounts on this machine, and serve runs as root. Open the printed URL;
+requires it: loopback separates this host from the network. Other accounts on
+this machine can still reach it, and serve runs as root. Open the printed URL;
 the token then becomes a session cookie for that browser.
 
 Exit status:
   hostveil scan is a CI or cron gate:
     0  the scan ran and found nothing High
     1  at least one unfixed High finding
-    3  a detection domain failed outright, so the scan covered less of the
-       host than it should have — a clean-looking result you cannot trust
+    3  a detection domain failed completely, so the scan covered less of the
+       host than it should have; a clean-looking result you cannot trust
   A domain skipped for a missing dependency, or degraded to partial coverage,
   does not change the status; both are reported in the output instead.
   hostveil update --check adds 10: a newer release is available. Without
@@ -310,7 +308,7 @@ Environment:
                        stderr: what ran, how long it took, and whether it
                        failed. This is what to attach to a bug report about a
                        domain being skipped or a check reporting the wrong
-                       thing. Command output is deliberately not logged — it
+                       thing. Command output is not logged: it
                        routinely contains environment variables.
   HOSTVEIL_NO_SUDO=1   Never re-exec under sudo (for scripts and CI)
   HOSTVEIL_NO_UPDATE_CHECK
@@ -322,7 +320,7 @@ Environment:
   NO_COLOR=1           Disable colored output
 
   HOSTVEIL_AI_PROVIDER=NAME    Which AI backend 'explain --ai' and the AI
-                               buttons use: ollama (default — local, nothing
+                               buttons use: ollama (default; local, nothing
                                leaves the host), anthropic (the Claude API),
                                or openai (any vendor speaking the OpenAI
                                chat-completions shape: OpenAI itself,
@@ -331,7 +329,7 @@ Environment:
                                (default http://127.0.0.1:11434)
   HOSTVEIL_OLLAMA_MODEL=NAME   provider=ollama: which model to ask
                                (default llama3.2)
-  ANTHROPIC_API_KEY=KEY        provider=anthropic: the Claude API key — the
+  ANTHROPIC_API_KEY=KEY        provider=anthropic: the Claude API key; the
                                same variable every Anthropic tool reads
   HOSTVEIL_ANTHROPIC_MODEL=NAME
                                provider=anthropic: which model to ask
@@ -339,12 +337,12 @@ Environment:
   HOSTVEIL_OPENAI_BASE_URL=URL provider=openai: the API origin
                                (default https://api.openai.com/v1)
   HOSTVEIL_OPENAI_API_KEY=KEY  provider=openai: the API key
-  HOSTVEIL_OPENAI_MODEL=NAME   provider=openai: which model to ask —
+  HOSTVEIL_OPENAI_MODEL=NAME   provider=openai: which model to ask;
                                required; there is no cross-vendor default
   All of the above are advisory-only: they affect 'explain --ai' and the AI
   buttons in the TUI and dashboard, and nothing else. No score, finding, or
   fix depends on a model being reachable, and only a finding's title,
-  description, suggested fix, and service name are ever sent to it — never
+  description, suggested fix, and service name are ever sent to it: never
   raw evidence.
 `)
 }

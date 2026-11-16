@@ -12,14 +12,14 @@ import (
 // scripts/e2e/individual.sh names the fixes it applies on a real host. A name
 // that stops matching a registered fix does not fail the script the way it
 // should: `hostveil fix` on an unknown ID errors, but a step that only
-// asserts a finding is gone would pass vacuously on an ID nobody reports. So
+// asserts a finding is gone would pass vacuously on an ID no checker reports. So
 // every finding ID the script mentions must be one the registry can fix.
 func TestTheIndividualFixE2ENamesRealFixes(t *testing.T) {
 	script := readRepoFile(t, filepath.Join("scripts", "e2e", "individual.sh"))
 	re := regexp.MustCompile(`\b(?:` + strings.Join(sourceNames(), "|") + `)\.[a-z0-9][a-z0-9-]*[a-z0-9]\b`)
 	var ids []string
 	for _, loc := range re.FindAllStringIndex(script, -1) {
-		// Part of a host name — download.proxmox.com — not a finding ID.
+		// Part of a host name (download.proxmox.com) not a finding ID.
 		if loc[0] > 0 && strings.ContainsRune("./", rune(script[loc[0]-1])) {
 			continue
 		}
@@ -30,7 +30,7 @@ func TestTheIndividualFixE2ENamesRealFixes(t *testing.T) {
 	}
 	r := fix.Default()
 	for _, id := range ids {
-		// File names share the shape: compose.yaml is a path, not a finding.
+		// File names share the shape: compose.yaml is a path.
 		if _, ext, _ := strings.Cut(id, "."); ext == "yaml" || ext == "yml" || ext == "json" || ext == "conf" || ext == "service" {
 			continue
 		}

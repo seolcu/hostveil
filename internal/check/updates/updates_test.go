@@ -119,8 +119,8 @@ vim/jammy-updates 2:8.2.3995-1ubuntu2.15 amd64 [upgradable from: 2:8.2.3995-1ubu
 		t.Fatal(err)
 	}
 	f := find(t, fs, "updates.pending-security")
-	// vim comes from -updates, not -security: a host pinned behind on
-	// feature updates is a maintenance choice, not a vulnerability.
+	// vim comes from -updates: a host pinned behind on feature updates is a
+	// maintenance choice.
 	if f.Evidence["pending"] != "2" {
 		t.Errorf("pending = %q, want 2 (only the -security rows)", f.Evidence["pending"])
 	}
@@ -130,7 +130,7 @@ vim/jammy-updates 2:8.2.3995-1ubuntu2.15 amd64 [upgradable from: 2:8.2.3995-1ubu
 }
 
 // A large backlog means automatic updates are configured but failing, which
-// is worse than merely switched off — the operator believes it is handled.
+// is worse than merely switched off: the operator believes it is handled.
 func TestLargeSecurityBacklogIsHigh(t *testing.T) {
 	var b strings.Builder
 	b.WriteString("Listing...\n")
@@ -148,7 +148,7 @@ func TestLargeSecurityBacklogIsHigh(t *testing.T) {
 	}
 }
 
-// Not being able to list updates is a blind spot, not a clean result. The
+// Not being able to list updates is a blind spot. The
 // mechanism half of the domain was still covered, so this is Degraded.
 func TestAptUnreadableUpgradeListIsPartial(t *testing.T) {
 	env := platform.Env{PackageManager: platform.PMApt, Runner: checktest.New()}
@@ -178,8 +178,7 @@ func dnfClean() map[string]string {
 	}
 }
 
-// dnfChecker reads dnf-automatic's config from a temp directory rather than
-// the machine running the tests, with conf as the host override and no
+// dnfChecker reads dnf-automatic's config from a temp directory, with conf as the host override and no
 // shipped defaults. An empty conf means no override file at all.
 func dnfChecker(t *testing.T, conf string) *Checker {
 	t.Helper()
@@ -254,7 +253,7 @@ func TestDnfUnrecognizedRebootAnswerIsPartial(t *testing.T) {
 
 	var partial *check.PartialError
 	if !errors.As(err, &partial) {
-		t.Fatalf("want a PartialError rather than a silent clean, got %v", err)
+		t.Fatalf("want a PartialError, got %v", err)
 	}
 }
 
@@ -306,12 +305,12 @@ func TestAvailableByPackageManager(t *testing.T) {
 
 // TestCheckRejectsUnsupportedPackageManager guards the invariant from the
 // other side: if Available ever stops filtering, Check must error (→ the
-// axis is excluded) rather than return nil findings (→ scored 100).
+// axis is excluded). Nil findings would score 100.
 func TestCheckRejectsUnsupportedPackageManager(t *testing.T) {
 	for _, pm := range []platform.PackageManager{platform.PMApk, platform.PMPacman, platform.PMUnknown} {
 		fs, err := New().Check(context.Background(), platform.Env{PackageManager: pm})
 		if err == nil {
-			t.Errorf("%q: Check returned nil error — a silent clean result", pm)
+			t.Errorf("%q: Check returned nil error; a silent clean result", pm)
 		}
 		if len(fs) != 0 {
 			t.Errorf("%q: Check returned findings %v alongside the error", pm, fs)
@@ -322,7 +321,7 @@ func TestCheckRejectsUnsupportedPackageManager(t *testing.T) {
 // needs-restarting ships in dnf-utils, which a stock minimal Fedora, RHEL,
 // or Rocky does not install. The reboot probe then came back unknown, the
 // function returned right there, and `dnf updateinfo list security` never
-// ran — so pending security updates went uncounted on every such host, while
+// ran, so pending security updates went uncounted on every such host, while
 // the domain reported only that a reboot could not be determined.
 func TestMissingNeedsRestartingStillCountsSecurityUpdates(t *testing.T) {
 	out := dnfClean()
@@ -336,7 +335,7 @@ FEDORA-2026-bbbb Moderate/Sec.  curl-8.6.0-1.fc41.x86_64
 
 	fs, err := dnfChecker(t, dnfApplies).Check(context.Background(), env)
 
-	// Still degraded — a reboot genuinely cannot be determined.
+	// Still degraded: a reboot cannot be determined.
 	var partial *check.PartialError
 	if !errors.As(err, &partial) {
 		t.Fatalf("want a PartialError, got %v", err)
@@ -344,11 +343,11 @@ FEDORA-2026-bbbb Moderate/Sec.  curl-8.6.0-1.fc41.x86_64
 	if !strings.Contains(partial.Reason, "dnf-utils") {
 		t.Errorf("the reason should name the missing package: %q", partial.Reason)
 	}
-	// But the second probe ran, which is the whole point.
+	// But the second probe ran, which is what this test checks.
 	find(t, fs, "updates.pending-security")
 }
 
-// Both probes failing must read as both failing, not just the first.
+// Both probes failing must read as both failing.
 func TestBothDnfProbesFailingAreBothReported(t *testing.T) {
 	out := dnfClean()
 	delete(out, "dnf -q updateinfo list --security") // the fake errors on an unknown key
@@ -377,7 +376,7 @@ func TestBothDnfProbesFailingAreBothReported(t *testing.T) {
 //
 // `systemctl is-enabled` exits non-zero for a disabled unit and for a host
 // with no systemd alike, and the checker read both as the positive claim that
-// updates are switched off — on a machine where nothing had been consulted.
+// updates are switched off, on a machine where nothing had been consulted.
 // That is the confusion the whole scanner is built to refuse, made in a
 // domain whose finding is one of the most commonly acted on.
 func TestNoSystemctlIsACoverageGapNotADisabledTimer(t *testing.T) {
@@ -406,7 +405,7 @@ func TestNoSystemctlIsACoverageGapNotADisabledTimer(t *testing.T) {
 
 // A unit systemd does not have is a real answer: dnf-automatic is not
 // installed, which is the finding. This is the one case where a non-zero exit
-// means something rather than nothing.
+// means something.
 func TestAnAbsentTimerIsStillReportedAsDisabled(t *testing.T) {
 	out := dnfClean()
 	out["systemctl show dnf-automatic.timer --property=LoadState,UnitFileState"] = "LoadState=not-found\nUnitFileState=\n"
@@ -420,7 +419,7 @@ func TestAnAbsentTimerIsStillReportedAsDisabled(t *testing.T) {
 }
 
 // An apt config that cannot be read is not a config that says "off". An
-// absent one is, though — nothing has configured unattended upgrades.
+// absent one is, though: nothing has configured unattended upgrades.
 func TestAnUnreadableAptConfigIsACoverageGap(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root reads through a mode-000 file")
@@ -519,7 +518,7 @@ func TestADisabledTimerIsReview(t *testing.T) {
 }
 
 // dnf5 has no needs-restarting binary; the question goes to the dnf
-// subcommand, and a Fedora 41+ host answers it rather than degrading.
+// subcommand, and a Fedora 41+ host answers it.
 func TestDnf5AnswersNeedsRestartingAsASubcommand(t *testing.T) {
 	out := dnfClean()
 	delete(out, "needs-restarting -r")

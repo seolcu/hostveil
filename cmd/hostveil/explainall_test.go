@@ -15,7 +15,7 @@ func TestExplainWithNoIDPrintsThePlainListingWithNoAI(t *testing.T) {
 		t.Fatalf("exit = %d, want 0\n%s", code, out)
 	}
 	// exposedRedis's finding, compose.ds018, is Auto-fixable and carries a
-	// Benefit — it should show up in the deterministic listing even with
+	// Benefit; it should show up in the deterministic listing even with
 	// no --ai.
 	if !strings.Contains(out, "Datastore") && !strings.Contains(out, "ds018") {
 		t.Errorf("the exposed-redis finding is missing from the listing:\n%s", out)

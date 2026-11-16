@@ -9,7 +9,7 @@ import (
 
 // The docs hand out commands to run *inside* the demo VM, and the path the
 // repository appears at in there is decided by one line of the Vagrantfile.
-// Nothing connects the two, and the failure is total rather than partial: a
+// Nothing connects the two, and the failure is total: a
 // command naming the wrong directory does not do less, it does nothing.
 //
 // DEVELOPMENT.md told anyone who wanted to reproduce the published
@@ -17,7 +17,7 @@ import (
 //
 //	vagrant ssh -c 'sudo /vagrant/scripts/measure/run.sh -c -p seeded out.json'
 //
-// and there is no /vagrant in that VM — the synced folder is mounted at
+// and there is no /vagrant in that VM; the synced folder is mounted at
 // /hostveil. Three commands, one for the harness, one for the control group
 // and one for the control run, all of them "No such file or directory". The
 // path is Vagrant's own default, which is exactly why it reads as right.

@@ -39,7 +39,7 @@ func TestSnapshotDoesNotAliasTheStoredFindings(t *testing.T) {
 	s.markFixed(model.NewFinding("ssh.rootlogin", "t", model.SeverityHigh,
 		model.SourceSSH, model.RemediationAuto), false)
 	if snap.Findings[0].Fixed {
-		t.Error("marking a finding fixed mutated a snapshot taken beforehand — " +
+		t.Error("marking a finding fixed mutated a snapshot taken beforehand: " +
 			"the snapshot shares the engine's backing array")
 	}
 
@@ -97,7 +97,7 @@ func TestUnmarkFixedFallsBackToTheBareID(t *testing.T) {
 }
 
 // Every exported operation under concurrent use, so the lock discipline is
-// exercised rather than assumed. Run under -race this is the guard for the
+// exercised. Run under -race this is the guard for the
 // failure the type was extracted to make structural.
 func TestReportStateIsSafeForConcurrentUse(t *testing.T) {
 	s := stateWith("ssh.rootlogin", "ssh.passwordauth", "ssh.x11")

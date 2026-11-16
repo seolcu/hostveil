@@ -10,13 +10,13 @@ import (
 )
 
 // `docker compose up` reads docker-compose.override.yml with no flag asked
-// for — it is the documented way to layer local changes — and `docker compose
+// for (it is the documented way to layer local changes) and `docker compose
 // -f a.yml -f b.yml` is the standard production pattern. docker reports every
 // one of them in ConfigFiles as a comma-separated list, and Hostveil read
 // only the first.
 //
-// That is not a partial view, it is a wrong one, and in the dangerous
-// direction. Compose *appends* port mappings rather than replacing them, as
+// That view is wrong, and wrong in the dangerous direction. Compose
+// *appends* port mappings across files, as
 // docker itself shows for exactly this pair:
 //
 //	ports:
@@ -76,8 +76,7 @@ func write(t *testing.T, path, body string) {
 // loopback and mounts ./data, and an override that publishes the port and adds
 // privileged.
 //
-// Fixtures for this path have to come from docker rather than be written by
-// hand, because `config` does not echo the input back — it normalizes. Ports
+// Fixtures for this path have to come from docker, because `config` does not echo the input back: it normalizes. Ports
 // become long-form maps, volumes become {type, source, target} with the
 // relative source resolved to an absolute path, and a `networks` block appears
 // that no input file mentioned. A hand-written fixture would agree with
@@ -139,7 +138,7 @@ func TestParsesWhatDockerActuallyEmits(t *testing.T) {
 			loopback++
 		}
 	}
-	// Both, because compose appends rather than replaces — and it is the
+	// Both, because compose appends, and it is the
 	// second one that makes this a finding.
 	if everywhere != 1 || loopback != 1 {
 		t.Errorf("ports = %+v, want one loopback and one on every interface", cache.Ports)

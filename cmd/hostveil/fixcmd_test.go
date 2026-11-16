@@ -18,12 +18,12 @@ import (
 // `fix` and `rollback` are the two commands that change the host, and
 // neither had a single test: every assertion in this package stopped at flag
 // parsing. What follows drives them through a fake Docker daemon and a real
-// compose file in a temp directory, so the whole path — scan, resolve the
-// finding, preview, prompt, apply, checkpoint, roll back — runs for real
+// compose file in a temp directory, so the whole path (scan, resolve the
+// finding, preview, prompt, apply, checkpoint, roll back) runs for real
 // without touching the machine running the tests.
 
 // exposedRedis is the fixture: a datastore published on 0.0.0.0, which is
-// compose.ds018 — High, and Auto-fixable by binding it to loopback.
+// compose.ds018; High, and Auto-fixable by binding it to loopback.
 const exposedRedis = "services:\n  cache:\n    image: redis\n    ports:\n      - \"6379:6379\"\n"
 
 // fixtureHost points newEngine at a temp compose file and a temp state
@@ -50,7 +50,7 @@ func fixtureHost(t *testing.T) string {
 	origEngine, origEngineWithAI := newEngine, newEngineWithAI
 	newEngine = build
 	// explain goes through this seam instead, so it needs the same
-	// fixture — otherwise a test builds a fake engine and then reaches past
+	// fixture; otherwise a test builds a fake engine and then reaches past
 	// it into the real host the moment --ai (or its absence) is checked.
 	newEngineWithAI = func(bool) *core.Engine { return build() }
 	t.Cleanup(func() { newEngine, newEngineWithAI = origEngine, origEngineWithAI })
@@ -128,7 +128,7 @@ func TestFixOnlyAnExplicitYesApplies(t *testing.T) {
 // Two prompts in a row used to lose the second answer: each call built its
 // own bufio.Scanner over os.Stdin, and the first read ahead into a buffer
 // that went out of scope with it. The confirmation then read EOF, which is
-// "no" — so a Review fix could never be applied interactively at all.
+// "no", so a Review fix could never be applied interactively at all.
 func TestTwoPromptsInARowBothGetTheirAnswer(t *testing.T) {
 	withStdin(t, "1\ny\n")
 	if got := prompt("first: "); got != "1" {
@@ -181,8 +181,8 @@ func TestFixAllAppliesOnlyTheSafeOnes(t *testing.T) {
 //
 // The tick and the status are the two things an unattended caller reads, and
 // both said the run had gone fine. `scan` has documented the opposite
-// contract since it was written — a non-zero status means the run did not do
-// what it was asked — and `fix --all` is the command most likely to be in a
+// contract since it was written (a non-zero status means the run did not do
+// what it was asked) and `fix --all` is the command most likely to be in a
 // cron line.
 func TestFixAllReportsFailureWhenNothingCouldBeApplied(t *testing.T) {
 	if os.Geteuid() == 0 {
@@ -191,7 +191,7 @@ func TestFixAllReportsFailureWhenNothingCouldBeApplied(t *testing.T) {
 	path := fixtureHost(t)
 
 	// The fix writes through a temp file beside the target, so a directory
-	// nobody may write to is what stops it — and it stops it at the write,
+	// no account may write to is what stops it, and it stops it at the write,
 	// after the backup, which is the failure shape that matters.
 	dir := filepath.Dir(path)
 	if err := os.Chmod(dir, 0o555); err != nil {
@@ -241,8 +241,8 @@ func TestHistoryThenRollbackRestoresTheFile(t *testing.T) {
 }
 
 // An operator's later edit is not something to discard silently. Rollback
-// keeps no backup of its own, so it declines — and the CLI has to report
-// that as a decision, not as a crash.
+// keeps no backup of its own, so it declines, and the CLI has to report
+// that as a decision.
 func TestRollbackDeclinesOverAnExternalEdit(t *testing.T) {
 	path := fixtureHost(t)
 	if code, _ := runCmd(t, func() int {
@@ -267,7 +267,7 @@ func TestRollbackDeclinesOverAnExternalEdit(t *testing.T) {
 	}
 }
 
-// --force is the escape hatch, and it must actually work — a decline the
+// --force is the escape hatch, and it must work: a decline the
 // user cannot override is just a failure.
 func TestRollbackForceOverridesTheDecline(t *testing.T) {
 	path := fixtureHost(t)

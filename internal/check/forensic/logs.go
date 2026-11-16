@@ -15,10 +15,10 @@ import (
 
 var timedatectlArgv = []string{"timedatectl", "show", "--property=NTPSynchronized,NTP"}
 
-// checkTimeSync reports a clock nobody keeps right. Every timeline an
+// checkTimeSync reports an unsynchronised clock. Every timeline an
 // investigation builds lines up this host's log times against each other and
-// against the outside world — a provider's abuse report, another server's
-// log — and a drifting clock makes "the login came before the upload" a
+// against the outside world (a provider's abuse report, another server's
+// log) and a drifting clock makes "the login came before the upload" a
 // guess.
 func (c *Checker) checkTimeSync(ctx context.Context, env platform.Env) ([]model.Finding, bool) {
 	if env.ServiceManager != platform.SMSystemd || !platform.Has(env.Runner, "timedatectl") {
@@ -37,8 +37,8 @@ func (c *Checker) checkTimeSync(ctx context.Context, env platform.Env) ([]model.
 		"The system clock is not synchronised",
 		model.SeverityLow, model.SourceForensic, model.RemediationManual,
 		model.WithDescription("The clock has not been synchronised with a time server (NTP="+ntp+"), so the times in "+
-			"every log on this host may be off by an unknown amount. Putting events in order — and matching them "+
-			"against anyone else's logs — depends on those times."),
+			"every log on this host may be off by an unknown amount. Putting events in order, and matching them "+
+			"against anyone else's logs: depends on those times."),
 		model.WithHowToFix("Run `timedatectl set-ntp true`, or configure chrony or systemd-timesyncd with a time "+
 			"server you trust, and confirm with `timedatectl` that \"System clock synchronized\" reads yes."),
 		model.WithEvidence("NTPSynchronized", synced),
@@ -47,7 +47,7 @@ func (c *Checker) checkTimeSync(ctx context.Context, env platform.Env) ([]model.
 }
 
 // LogrotateFiles are the rotation configs that decide how long the logs an
-// investigation reads first — authentication and web access — are kept.
+// investigation reads first (authentication and web access) are kept.
 var LogrotateFiles = []string{
 	"/etc/logrotate.d/rsyslog",
 	"/etc/logrotate.d/apache2",
@@ -277,8 +277,8 @@ func (c *Checker) checkWebLogs() ([]model.Finding, bool) {
 		}
 		if len(missing) > 0 {
 			findings = append(findings, webLogFinding("apache", missing,
-				"add `%I` (bytes received, from mod_logio) and `%D` (time taken) to the LogFormat your CustomLog uses — "+
-					"for example a copy of `combined` named `forensic` with ` %I %D` appended — and switch the CustomLog to it"))
+				"add `%I` (bytes received, from mod_logio) and `%D` (time taken) to the LogFormat your CustomLog uses; "+
+					"for example a copy of `combined` named `forensic` with ` %I %D` appended, and switch the CustomLog to it"))
 		}
 	}
 	if conf, ok := c.readGlobs(nginxConfGlobs); ok {
@@ -348,7 +348,7 @@ func (c *Checker) checkRemoteLog(ctx context.Context, env platform.Env) ([]model
 		model.WithDescription("Neither rsyslog nor systemd-journal-upload sends logs anywhere else. Anyone who gains "+
 			"root here can edit or delete every record of how they did it, and an intruder who knows what they are "+
 			"doing will."),
-		model.WithHowToFix("Forward at least the authentication log to another machine you control — an rsyslog "+
+		model.WithHowToFix("Forward at least the authentication log to another machine you control: an rsyslog "+
 			"`*.* @@logs.example:514` line, or systemd-journal-upload to a systemd-journal-remote host."),
 	)}, true
 }

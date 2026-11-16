@@ -9,27 +9,26 @@ import (
 )
 
 // The score and the headroom are two numbers about one host, and three
-// interfaces draw them. Each owns its own formatting — a terminal cell, a
-// lipgloss style, a DOM node — so there is nothing a compiler can hold them
+// interfaces draw them. Each owns its own formatting (a terminal cell, a
+// lipgloss style, a DOM node) so there is nothing a compiler can hold them
 // to. What has to agree is not the formatting but the two refusals:
 //
 //   - nothing where the figure equals the score, because an arrow pointing at
 //     the number it starts from says the fixes are worth nothing, and on a
 //     well-kept host that is most rows;
-//   - nothing where the axis is N/A, because a number beside a domain nobody
-//     looked at is a claim about a domain nobody looked at.
+//   - nothing where the axis is N/A, because a number beside a domain the scan
+//     never looked at is a claim about a domain it never looked at.
 //
 // This is the same shape of check as the Degraded flag's: a rule that lives in
-// prose until one renderer forgets it. It reads the sources rather than
-// rendering, because two of the three cannot be rendered here — the dashboard
+// prose until one renderer forgets it. It reads the sources, because two of the three cannot be rendered here: the dashboard
 // is JavaScript and SARIF is a machine format with its own answer.
 // The Go renderers all call model.ScoreAxis.Headroom and
 // model.ScoreAxis.ValueText now, so the compiler holds them together and
 // there is nothing here to check. The dashboard is the one copy that cannot
-// call either — it is JavaScript reading /api/result — so it is the one this
+// call either (it is JavaScript reading /api/result) so it is the one this
 // reads.
 //
-// That is the point of the shrinking. This file used to grep four sources for
+// That is why it shrank. This file used to grep four sources for
 // the same guard, which is a test that fails when somebody rewrites a
 // condition into an equivalent one and passes when they get the logic wrong
 // in the same words. One irreducible copy is worth grepping for; four are a
@@ -55,7 +54,7 @@ func TestTheDashboardKeepsTheRulesItCannotCallIntoGoFor(t *testing.T) {
 	}
 }
 
-// SARIF is the exception, and it is worth pinning as one so nobody
+// SARIF is the exception, and it is worth pinning as one so no one
 // "fixes" it into agreeing with the three UIs. A property bag is read by a
 // machine that can compare two numbers itself, and a key that appears only
 // sometimes is harder to consume than one that is occasionally equal to its

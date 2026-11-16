@@ -15,7 +15,7 @@ import (
 // applies index 0 without asking.
 //
 // That was recorded in three prose comments and enforced by nothing. One
-// builder disagreed with it — ds010 led with the *smallest* memory limit while
+// builder disagreed with it: ds010 led with the *smallest* memory limit while
 // the warning beside every alternative said "Start generous… and tighten
 // later", so a reviewed batch capped every unlimited container at 512m.
 //
@@ -44,7 +44,7 @@ var recommendedFirst = map[string]struct{ label, why string }{
 	},
 	"dockerd.no-new-privileges": {
 		label: "restart Docker now",
-		why:   "the alternative writes the file and changes nothing until a restart nobody has scheduled, so the finding stands",
+		why:   "the alternative writes the file and changes nothing until an unscheduled restart, so the finding stands",
 	},
 	"dockerd.userns-remap": {
 		label: "restart Docker now",
@@ -56,7 +56,7 @@ var recommendedFirst = map[string]struct{ label, why string }{
 	},
 	"proxy.traefik-api-insecure": {
 		label: "recreate",
-		why:   "the alternative edits the file and leaves the dashboard open until a recreate nobody has scheduled",
+		why:   "the alternative edits the file and leaves the dashboard open until an unscheduled recreate",
 	},
 	"compose.ds009": {
 		label: "1000:1000",
@@ -64,14 +64,13 @@ var recommendedFirst = map[string]struct{ label, why string }{
 	},
 	"proxy.no-scan-jail": {
 		label: "fail2ban's own default",
-		why:   "a batch applying this with nobody watching should not also be the one picking the longer, harder-to-notice-and-undo ban",
+		why:   "an unattended batch applying this should not also be the one picking the longer, harder-to-notice-and-undo ban",
 	},
 }
 
-// The sysctl fixes all share one shape, so they share one entry rather than
-// eight copies of it.
+// The sysctl fixes all share one shape, so they share one entry.
 const sysctlRecommendedWhy = "the drop-in is file-backed, so it leaves a checkpoint and survives a reboot; `sysctl -w` does neither. " +
-	"register.go argues that neither dominates for a person, and it is right — but a batch is not a person, and only one of the two can be undone."
+	"register.go argues that neither dominates for a person, and it is right, but a batch is not a person, and only one of the two can be undone."
 
 func TestTheFirstAlternativeIsTheRecommendedOne(t *testing.T) {
 	r := fix.Default()

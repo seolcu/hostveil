@@ -1,5 +1,5 @@
 // Package textwidth fits text to a terminal measured in the unit a
-// terminal actually uses: display columns.
+// terminal uses: display columns.
 //
 // It exists because three notions of "how wide is this" were in use at
 // once, and only one of them was right. The TUI's padRight measured
@@ -11,9 +11,9 @@
 // Measured against a line of Hangul, where one character is three bytes,
 // one rune, and two columns:
 //
-//	wrap(s, 40)     produced lines 24 columns wide — 40% of the terminal
+//	wrap(s, 40)     produced lines 24 columns wide (40% of the terminal
 //	                thrown away, because bytes overcount
-//	truncate(s, 20) produced 34 columns — a 70% overflow of the budget it
+//	truncate(s, 20) produced 34 columns) a 70% overflow of the budget it
 //	                was handed, because runes undercount
 //
 // The second is the damaging one: truncate exists to make a cell fit the
@@ -22,7 +22,7 @@
 //
 // Non-ASCII reaches these on ordinary hosts. Compose service names and file
 // paths come from the operator, and `explain --ai` renders whatever the
-// local model wrote — which for a non-English operator is not English.
+// local model wrote, which for a non-English operator is not English.
 package textwidth
 
 import (
@@ -34,12 +34,12 @@ import (
 )
 
 // narrow measures with East Asian Ambiguous characters counted as one
-// column, and it is deliberately not runewidth's package default.
+// column, and it is not runewidth's package default.
 //
 // That default is chosen from the environment: runewidth reads LANG and
 // LC_ALL at init and sets EastAsianWidth when the locale is an East Asian
 // one. Under ko_KR.UTF-8 it then reports two columns for "…", "→", "±" and
-// "·" — all four of which Hostveil draws, in the ellipsis truncate appends,
+// "·": all four of which Hostveil draws, in the ellipsis truncate appends,
 // the domain-status bullets, and the score arrows. The same binary would
 // lay its screens out differently for an operator in Seoul and an operator
 // in Berlin, from the same terminal width and the same findings.
@@ -51,8 +51,8 @@ import (
 // another, and the row would be over-full or ragged depending on the glyph.
 // TestTextwidthAgreesWithLipgloss in internal/ui/tui pins that.
 //
-// Which is why RUNEWIDTH_EASTASIAN is honoured here rather than ignored.
-// Neutralizing the *locale* is the point above — the same binary must not
+// Which is why RUNEWIDTH_EASTASIAN is honoured here.
+// Neutralizing the *locale* is the goal above; the same binary must not
 // lay out differently in Seoul and Berlin. That variable is a different
 // thing: it is the operator saying their terminal renders ambiguous
 // characters wide, and lipgloss honours it, in a package init that mutates
@@ -75,7 +75,7 @@ var narrow = func() *runewidth.Condition {
 // process environment, which is global and read at init anyway.
 const eastAsianEnv = "RUNEWIDTH_EASTASIAN"
 
-// eastAsianWidth is x/ansi's rule, kept identical on purpose: a value that
+// eastAsianWidth is x/ansi's rule, kept identical: a value that
 // does not parse as a bool leaves the setting alone, and only a true value
 // turns it on.
 func eastAsianWidth(v string) bool {
@@ -95,7 +95,7 @@ func Of(s string) int { return narrow.StringWidth(s) }
 //
 // The ellipsis costs a column of its own, so it is only used when there is
 // room for it to be worth one; below that the text is simply cut. A max of
-// zero or less yields the empty string rather than a bare ellipsis, since
+// zero or less yields the empty string, since
 // a caller with no room has nothing to say.
 func Truncate(s string, max int) string {
 	if max <= 0 {
@@ -119,16 +119,16 @@ const MinWrap = 8
 // after the first with indent.
 //
 // Words are never split: a single word wider than the budget takes a line
-// of its own and overruns it, which is the lesser of the two failures — a
+// of its own and overruns it, which is the lesser of the two failures; a
 // path or an identifier broken across lines cannot be copied.
 //
 // The indent is not counted against the width. Callers pass a width they
 // have already reduced by the indent they want, which is how both callers
 // used it before this moved here.
 //
-// The floor is MinWrap and is applied here rather than passed in. It used to
+// The floor is MinWrap and is applied here. It used to
 // be a parameter, and both callers passed the same 8 from a constant of their
-// own with near-identical comments justifying it — an extraction that moved
+// own with near-identical comments justifying it: an extraction that moved
 // the function and left the number behind twice. A parameter no caller varies
 // is not flexibility, it is two more places for the answer to change in only
 // one of them.

@@ -15,7 +15,7 @@ func (e *Engine) ApplyBatch(ctx context.Context, findings []model.Finding) model
 }
 
 // ApplyBatchWithReviewed is the same loop with the Review fixes included,
-// each applied through its *first* alternative — which every builder in the
+// each applied through its *first* alternative, which every builder in the
 // registry writes as the primary remediation, the one the finding's how-to-fix
 // describes.
 //
@@ -27,7 +27,7 @@ func (e *Engine) ApplyBatch(ctx context.Context, findings []model.Finding) model
 // accepting them no longer means running the tool once per finding.
 //
 // The batch still refuses anything the registry does not answer, so this can
-// never apply a fix nobody wrote.
+// never apply a fix that was not written.
 func (e *Engine) ApplyBatchWithReviewed(ctx context.Context, findings []model.Finding) model.BatchOutcome {
 	return e.applyBatch(ctx, findings, true)
 }
@@ -38,11 +38,10 @@ func (e *Engine) applyBatch(ctx context.Context, findings []model.Finding, revie
 
 	out := model.BatchOutcome{Failed: map[string]string{}}
 	for _, f := range findings {
-		// Between fixes, not during one. A fix is backup→write→checkpoint and
+		// Between fixes. A fix is backup→write→checkpoint and
 		// must finish what it started; the safe place to stop is the gap
 		// before the next one. Everything after the interruption lands in
-		// Skipped, and Interrupted says those were never reached rather than
-		// judged ineligible — otherwise a batch cut short reads exactly like
+		// Skipped, and Interrupted says those were never reached: otherwise a batch cut short reads exactly like
 		// one that ran to completion.
 		if ctx.Err() != nil {
 			out.Interrupted = true
@@ -59,25 +58,24 @@ func (e *Engine) applyBatch(ctx context.Context, findings []model.Finding, revie
 			continue
 		}
 		out.Applied = append(out.Applied, f.ID)
-		// A subset of Applied, not a fourth bucket: the fix was applied, and
+		// A subset of Applied: the fix was applied, and
 		// what is left is the restart. The batch does not re-check, so this
-		// comes from the action's own TakesEffectOn — which is the whole
-		// reason that declaration lives on the fix rather than being derived
-		// from a re-check nobody runs here.
+		// comes from the action's own TakesEffectOn, which is the whole
+		// reason that declaration lives on the fix: no re-check runs here.
 		if res.Pending {
 			out.Pending = append(out.Pending, f.ID)
 		}
 	}
 	out.NewScore = e.state.rescore()
 	// Rendered here, after the score, so every interface reports the same
-	// outcome rather than four descriptions of it.
+	// outcome in the same words.
 	out.Message = out.Summary()
 	return out
 }
 
 // applyOneLocked is one iteration of applyBatch's loop, factored out so
 // ApplyOne can offer the same eligibility rule and no-verify semantics to a
-// caller that wants to apply findings one at a time — the web dashboard's
+// caller that wants to apply findings one at a time: the web dashboard's
 // per-item progress modal, specifically, which needs real per-fix results
 // without paying for ApplyFix's verify step on every item (see ApplyFix's
 // doc comment: a checker re-run per fix is what the batch path exists to
@@ -86,7 +84,7 @@ func (e *Engine) applyBatch(ctx context.Context, findings []model.Finding, revie
 // eligible is false for a finding the batch would report as Skipped
 // (already fixed, not Auto/reviewed-Review, unregistered, or a
 // shape-mismatched fix); err is non-nil only for a finding the batch would
-// report as Failed — a defect in Hostveil, not a property of the finding.
+// report as Failed: a defect in Hostveil.
 func (e *Engine) applyOneLocked(ctx context.Context, f model.Finding, reviewed bool) (res model.FixOutcome, eligible bool, err error) {
 	eligible = f.Remediation == model.RemediationAuto ||
 		(reviewed && f.Remediation == model.RemediationReview)
@@ -99,17 +97,17 @@ func (e *Engine) applyOneLocked(ctx context.Context, f model.Finding, reviewed b
 	}
 	fx, ok, err := e.buildFix(f)
 	// A fix that exists and could not be built is a defect in Hostveil,
-	// not a property of the finding — a malformed registration, or
+	// not a property of the finding; a malformed registration, or
 	// evidence the checker did not write. Reporting it as Skipped made it
 	// indistinguishable from "there is no fix for this", which is the one
-	// reading that guarantees nobody ever looks.
+	// reading that guarantees the operator never looks.
 	if err != nil {
 		return model.FixOutcome{}, true, err
 	}
 	if !ok || len(fx.Actions) == 0 {
 		return model.FixOutcome{}, false, nil
 	}
-	// Asked of the fix rather than the finding: the finding's copy is set by
+	// Asked of the fix: the finding's copy is set by
 	// classify, and a caller handing in a finding it built itself would skip
 	// the check the batch exists to make.
 	if fx.IndividualOnly {
@@ -127,13 +125,13 @@ func (e *Engine) applyOneLocked(ctx context.Context, f model.Finding, reviewed b
 }
 
 // ApplyOne applies a single finding under the same eligibility rule and
-// no-verify semantics as ApplyBatch's loop — the batch's own iteration,
+// no-verify semantics as ApplyBatch's loop: the batch's own iteration,
 // exposed as one call. It exists for a caller that wants real per-item
 // progress over a set of findings (the web dashboard's "Fix all safe" /
 // "Fix selected" progress modal) without looping over ApplyFix, whose
-// verify step is deliberately reserved for the single-finding path a person
+// verify step is reserved for the single-finding path a person
 // is watching (see ApplyFix's doc comment) and would otherwise re-run a
-// checker — for compose, every container on the host; for cve, Trivy —
+// checker (for compose, every container on the host; for cve, Trivy)
 // once per finding in what is supposed to be a batch.
 //
 // eligible reports whether this finding was one ApplyBatch would have acted

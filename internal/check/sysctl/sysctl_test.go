@@ -37,9 +37,9 @@ func writeKeys(t *testing.T, keys map[string]string) string {
 // It also pins the container gate to "this is a host". Left at the default it
 // reads /.dockerenv and /proc/1 on whatever is running the test, so every
 // assertion below about a Review remediation would invert the day these tests
-// ran inside a container — which is a normal thing for a CI job to do, and
-// would read as the sysctl domain having broken rather than as the test
-// having asked the wrong question.
+// ran inside a container, which is a normal thing for a CI job to do, and
+// would read as the sysctl domain having broken when the test asked the
+// wrong question.
 func checkerFor(root string) *Checker {
 	c := New()
 	c.Root = root
@@ -66,7 +66,7 @@ func withConf(t *testing.T, c *Checker, dropIns map[string]string, legacy string
 	}
 	c.ConfDirs = []string{dir}
 	if legacy != "" {
-		// Deliberately not inside dir: the real one lives beside sysctl.d,
+		// Not inside dir: the real one lives beside sysctl.d,
 		// not in it, and its name would otherwise be sorted in as a drop-in.
 		c.ConfFile = filepath.Join(t.TempDir(), "sysctl.conf")
 		if err := os.WriteFile(c.ConfFile, []byte(legacy), 0o644); err != nil {
@@ -148,7 +148,7 @@ func TestHardenedHostIsClean(t *testing.T) {
 	fs, err := checkerFor(writeKeys(t, map[string]string{
 		"kernel.kptr_restrict":               "1",
 		"kernel.dmesg_restrict":              "1",
-		"kernel.sysrq":                       "176", // restricted bitmask, not fully enabled
+		"kernel.sysrq":                       "176", // restricted bitmask
 		"kernel.yama.ptrace_scope":           "1",
 		"net.ipv4.tcp_syncookies":            "1",
 		"net.ipv4.conf.all.accept_redirects": "0",
@@ -179,7 +179,7 @@ func TestAbsentKeysAreSilentlyFine(t *testing.T) {
 }
 
 // A key that exists but cannot be read is ground not covered, and the
-// domain must say so — "could not look" never passes for "nothing there".
+// domain must say so: "could not look" never passes for "nothing there".
 func TestUnreadableKeyIsPartial(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("permission bits do not bind root")
@@ -207,7 +207,7 @@ func TestUnreadableKeyIsPartial(t *testing.T) {
 
 // The reachable failure this whole file exists for. Ubuntu ships
 // /etc/sysctl.d/99-sysctl.conf as a symlink to /etc/sysctl.conf, so a value
-// set there is read *after* every drop-in — including the 60-hostveil-*.conf
+// set there is read *after* every drop-in, including the 60-hostveil-*.conf
 // the fix writes. Without an origin the finding tells the operator to add a
 // drop-in that will be overridden at the next boot, and nothing anywhere says
 // why the value came back.
@@ -223,7 +223,7 @@ func TestLegacyConfFileIsNamedAsTheOrigin(t *testing.T) {
 	f := idsOf(fs)["sysctl.dmesg-restrict"]
 
 	if got := f.Evidence["set-by"]; got != c.ConfFile+":2" {
-		t.Errorf("set-by = %q, want %q — the legacy file is read after every drop-in", got, c.ConfFile+":2")
+		t.Errorf("set-by = %q, want %q; the legacy file is read after every drop-in", got, c.ConfFile+":2")
 	}
 	if strings.Contains(f.HowToFix, "Add `") {
 		t.Errorf("how-to-fix still recommends a drop-in that would be overridden:\n%s", f.HowToFix)
@@ -252,7 +252,7 @@ func TestTheLastDropInWins(t *testing.T) {
 }
 
 // A file that sets a value other than the one running is not why the
-// parameter is weak — something set it at runtime. Naming it would send the
+// parameter is weak: something set it at runtime. Naming it would send the
 // operator to edit a line that already says the right thing.
 func TestAFileSettingADifferentValueIsNotTheOrigin(t *testing.T) {
 	c := withConf(t, checkerFor(writeKeys(t, weakHost)), map[string]string{
@@ -299,7 +299,7 @@ func TestParseAssignment(t *testing.T) {
 		{"kernel.dmesg_restrict=0", "kernel.dmesg_restrict", 0, true},
 		{"  kernel.dmesg_restrict  =  1  ", "kernel.dmesg_restrict", 1, true},
 		// systemd's "apply, but do not complain if it fails" marker is part
-		// of the syntax, not of the key.
+		// of the syntax.
 		{"-kernel.dmesg_restrict = 1", "kernel.dmesg_restrict", 1, true},
 		// sysctl.d permits slashes for the same parameter as dots, and a rule
 		// keyed on dots would otherwise miss it.
@@ -322,8 +322,7 @@ func TestParseAssignment(t *testing.T) {
 	}
 }
 
-// An earlier directory masks a same-named file in a later one rather than
-// overriding it: that is how a distribution drop-in is disabled from /etc.
+// An earlier directory masks a same-named file in a later one: that is how a distribution drop-in is disabled from /etc.
 func TestEarlierDirectoryMasksTheSameFileName(t *testing.T) {
 	etc, lib := t.TempDir(), t.TempDir()
 	for dir, body := range map[string]string{
@@ -351,7 +350,7 @@ func TestAvailability(t *testing.T) {
 	}
 }
 
-// A non-integer value is unreadable ground, not a guess.
+// A non-integer value is unreadable ground.
 func TestGarbageValueIsPartialNotGuessed(t *testing.T) {
 	root := writeKeys(t, map[string]string{"kernel.kptr_restrict": "banana"})
 	fs, err := checkerFor(root).Check(context.Background(), platform.Env{})
@@ -369,7 +368,7 @@ func TestGarbageValueIsPartialNotGuessed(t *testing.T) {
 // /proc/sys shows the host kernel's value for every knob that is not
 // namespaced, so the weakness is real and worth reporting. But the registered
 // fix writes /etc/sysctl.d in here, and no amount of `sysctl --system` in a
-// container reaches the host kernel — so the file would appear, the fix would
+// container reaches the host kernel, so the file would appear, the fix would
 // report success, a checkpoint would be recorded, and the value would never
 // move. internal/fix/sysctl.go calls that the worst available outcome and
 // declines it for a drop-in that would lose to /usr or /run; this is the same
@@ -405,7 +404,7 @@ func TestInAContainerTheFindingStaysAndTheFixDoesNot(t *testing.T) {
 	for _, want := range []string{"container", "host"} {
 		if !strings.Contains(strings.ToLower(got.HowToFix), want) {
 			t.Errorf("how-to-fix does not mention %q, so it does not say where the value "+
-				"actually has to be set:\n  %s", want, got.HowToFix)
+				"has to be set:\n  %s", want, got.HowToFix)
 		}
 	}
 	if got.Evidence["scanned_from"] == "" {
@@ -413,8 +412,8 @@ func TestInAContainerTheFindingStaysAndTheFixDoesNot(t *testing.T) {
 	}
 }
 
-// And on a host nothing changes, which is the whole point of the gate being a
-// gate rather than a rewrite.
+// And on a host nothing changes, which is why the gate is a
+// gate.
 func TestOnAHostTheFixIsStillOffered(t *testing.T) {
 	root := writeKeys(t, map[string]string{"kernel.yama.ptrace_scope": "0"})
 	fs, err := checkerFor(root).Check(context.Background(), platform.Env{})

@@ -8,7 +8,7 @@ import (
 )
 
 // prefFile is the name of the one-line preference file inside Hostveil's
-// state directory. It is a remembered choice, not configuration: nothing in
+// state directory. It is a remembered choice: nothing in
 // it changes what Hostveil detects, scores, or does to a host.
 const prefFile = "theme"
 
@@ -20,7 +20,7 @@ func Load(dir string) string {
 		return ""
 	}
 	// G304: dir is the state directory cmd/hostveil resolved, and prefFile
-	// is a constant. The variable is the directory, not the name, and the
+	// is a constant. The variable is the directory, and the
 	// worst a wrong one does is fail to find a one-line preference file.
 	//nolint:gosec // G304: a fixed file name under the state directory
 	b, err := os.ReadFile(filepath.Join(dir, prefFile))
@@ -49,7 +49,7 @@ func Save(dir, id string) error {
 // Resolve picks the theme to start in: an explicit flag wins, then the
 // environment, then the saved preference, then the default.
 //
-// Only the flag can fail — a user who typed --theme deserves to be told they
+// Only the flag can fail; a user who typed --theme deserves to be told they
 // typed it wrong. An unrecognised environment variable or saved preference
 // falls back silently, because neither was typed just now and neither is
 // worth refusing to start over.

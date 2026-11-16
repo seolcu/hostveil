@@ -33,22 +33,19 @@ func contrast(fg, bg string) float64 {
 // A theme may not make a finding harder to read than the default one does.
 //
 // Severity is the only thing color carries here, and it is drawn as small
-// text — a 10px uppercase label in the dashboard, a four-column abbreviation
-// in the TUI — so WCAG's 4.5:1 for normal text is the applicable bar, not the
-// 3:1 large-text one. The floors below were set by Instrument, the palette
+// text (a 10px uppercase label in the dashboard, a four-column abbreviation
+// in the TUI) so WCAG's 4.5:1 for normal text is the applicable bar. The floors below were set by Instrument, the palette
 // Hostveil shipped before any of this existed, which cleared every one of
-// them without being asked to — so they were never a bar a theme had to be
+// them without being asked to, so they were never a bar a theme had to be
 // designed up to, only one it had to not fall below.
 //
-// Instrument is gone and the floors stay, which is the point of having
-// written them down: they are what the default has to clear, not what the
-// default happens to score. One Dark does not clear them as published —
-// its comment grey, its red and its Low grey all land short — and the entry
-// in theme.go lifts exactly those three rather than lowering the bar to
-// meet them.
+// Instrument is gone and the floors stay, which is the reason for having
+// written them down: they are what the default has to clear. One Dark does not clear them as published
+// (its comment grey, its red and its Low grey all land short) and the entry
+// in theme.go lifts exactly those three and keeps the bar where it is.
 //
-// Low is the one exception, at 3.5:1. It is deliberately the quietest color
-// in the system — a Low finding that shouted would drown out a High one.
+// Low is the one exception, at 3.5:1. It is the quietest color
+// in the system: a Low finding that shouted would drown out a High one.
 // Anything below 3.5 stops being quiet and starts being unreadable; the
 // first drafts of Nord and Tokyo Night sat at 2.4 and 2.8, and One Dark's
 // own #767d8c sits at 3.39.
@@ -57,12 +54,11 @@ func TestEveryThemeMeetsTheContrastFloor(t *testing.T) {
 		"bone": 4.5, "slate": 4.5,
 		"crit": 4.5, "high": 4.5, "med": 4.5, "safe": 4.5,
 		// Manual and Unavail share Low's exception and for the same reason:
-		// both are deliberately the quietest colors for their meaning, not a
-		// severity, and a host can legitimately carry many Manual findings at
+		// both are the quietest colors for their meaning, and a host can legitimately carry many Manual findings at
 		// once without that reading as an emergency.
 		"low": 3.5, "manual": 3.5, "unavail": 3.5,
 		// The accent is set on panel headers and on the key letters in the
-		// footer — small text a reader is meant to pick out of a dim row, so
+		// footer; small text a reader is meant to pick out of a dim row, so
 		// it takes the normal-text floor and not Low's exception.
 		"accent": 4.5,
 	}
@@ -91,7 +87,7 @@ func TestEveryThemeMeetsTheContrastFloor(t *testing.T) {
 func TestChromeIsDistinguishable(t *testing.T) {
 	for _, th := range All() {
 		p := th.Palette
-		// Line2 is not only a hairline — it is the ground the TUI's cursor row
+		// Line2 is also the ground the TUI's cursor row
 		// and the dashboard's selected row are drawn on, with Bone on top. The
 		// row under the cursor is the one the user is about to act on, so it
 		// is the last place that can afford to be hard to read.
@@ -116,17 +112,17 @@ func TestChromeIsDistinguishable(t *testing.T) {
 
 // CSS declares color-scheme: dark unconditionally, which is only true while
 // every palette is one. It is not decoration: it decides how the browser
-// draws the widgets Hostveil does not style — checkboxes, the theme picker's
-// dropdown, scrollbars — and a light palette shipped under it would render
+// draws the widgets Hostveil does not style (checkboxes, the theme picker's
+// dropdown, scrollbars) and a light palette shipped under it would render
 // those against the wrong ground.
 //
-// The threshold is generous on purpose. Nord's ink (#22262e) is the lightest
+// The threshold is generous. Nord's ink (#22262e) is the lightest
 // page in the registry at 0.02, and anything a browser would sensibly call a
 // light scheme sits an order of magnitude above that.
 func TestEveryPaletteIsDark(t *testing.T) {
 	for _, th := range All() {
 		if got := relativeLuminance(th.Palette.Ink); got > 0.18 {
-			t.Errorf("%s: ink (%s) has luminance %.3f — too light for the "+
+			t.Errorf("%s: ink (%s) has luminance %.3f; too light for the "+
 				"color-scheme: dark that theme.CSS emits; make color-scheme "+
 				"follow the palette before adding a light theme",
 				th.ID, th.Palette.Ink, got)

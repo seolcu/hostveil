@@ -1,7 +1,7 @@
 // The community-health files are read by GitHub and by people, never by the
-// compiler, so they go stale silently — with the extra hazard
+// compiler, so they go stale silently, with the extra hazard
 // that GitHub degrades a malformed file instead of rejecting it. An issue
-// form with a YAML error falls back to a blank editor, which quietly reopens
+// form with a YAML error falls back to a blank editor, which silently reopens
 // the exact hole `blank_issues_enabled: false` exists to close: security
 // reports arriving as public issues. Check what is mechanical, never the prose.
 package docs
@@ -16,7 +16,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// TestIssueFormsAreWellFormed pins what GitHub actually requires of an issue
+// TestIssueFormsAreWellFormed pins what GitHub requires of an issue
 // form: parseable YAML, a name and description, and a non-empty body whose
 // every element declares a type. Anything less renders as a broken template
 // chooser with no error surfaced to anyone.
@@ -51,7 +51,7 @@ func TestIssueFormsAreWellFormed(t *testing.T) {
 				t.Errorf("%s does not parse: %v", name, err)
 				continue
 			}
-			// The explicit false is the point of the file: blank issues are
+			// The explicit false is why the file exists: blank issues are
 			// how a vulnerability report ends up public.
 			if cfg.BlankIssuesEnabled == nil || *cfg.BlankIssuesEnabled {
 				t.Errorf("%s must set blank_issues_enabled: false", name)
@@ -92,11 +92,11 @@ func TestIssueFormsAreWellFormed(t *testing.T) {
 		}
 	}
 	if forms == 0 {
-		t.Fatal("no issue forms found — if they moved on purpose, move this test's directory too")
+		t.Fatal("no issue forms found, if they moved, move this test's directory too")
 	}
 }
 
-// TestCitationFileMatchesTheRepo keeps CITATION.cff honest about the things
+// TestCitationFileMatchesTheRepo keeps CITATION.cff accurate about the things
 // the repo already states elsewhere: the module path names the repository,
 // and LICENSE names the license. A citation pointing at a renamed repo or
 // claiming the wrong license is worse than none.
@@ -163,7 +163,7 @@ func TestReadmeLocalReferencesExist(t *testing.T) {
 		// The same nothing-extracted guard as the AGENTS.md tests: each README
 		// links at least its license, module file, and two screenshots today.
 		if len(refs) < 3 {
-			t.Fatalf("only %d local references extracted from %s (%v) — extraction is broken, not the doc", len(refs), path, refs)
+			t.Fatalf("only %d local references extracted from %s (%v); extraction is broken", len(refs), path, refs)
 		}
 		for _, ref := range refs {
 			if _, err := os.Stat(filepath.Join(root, ref)); err != nil {
@@ -176,7 +176,7 @@ func TestReadmeLocalReferencesExist(t *testing.T) {
 // TestCitationKeywordsAreTopicShaped.
 //
 // CITATION.cff's keywords are also the repository's GitHub topics. That is not
-// a coincidence being documented after the fact — the topic list lives on
+// a coincidence being documented after the fact: the topic list lives on
 // GitHub, where nothing in this repository can hold it, and a list with no
 // owner anywhere is the shape everything else in internal/docs exists to
 // prevent. This file is the owner.
@@ -187,10 +187,10 @@ func TestReadmeLocalReferencesExist(t *testing.T) {
 // the topics are applied, so the repository would carry fewer topics than the
 // list says and nothing would report it.
 //
-// What cannot be checked here is whether the topics on GitHub actually match.
+// What cannot be checked here is whether the topics on GitHub match.
 // Applying them needs a token with repo scope, and a workflow holding one
 // permanently to automate a change made about once a year is a worse trade
-// than doing it by hand. The gap is stated rather than papered over.
+// than doing it by hand. The gap is stated here.
 func TestCitationKeywordsAreTopicShaped(t *testing.T) {
 	var keywords []string
 	inList := false
@@ -205,7 +205,7 @@ func TestCitationKeywordsAreTopicShaped(t *testing.T) {
 		}
 	}
 	if len(keywords) < 5 {
-		t.Fatalf("parsed %d keywords out of CITATION.cff; the extraction is broken, not the file", len(keywords))
+		t.Fatalf("parsed %d keywords out of CITATION.cff; the extraction is broken", len(keywords))
 	}
 
 	ok := regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,48}[a-z0-9]$`)
@@ -213,7 +213,7 @@ func TestCitationKeywordsAreTopicShaped(t *testing.T) {
 	for _, k := range keywords {
 		if !ok.MatchString(k) {
 			t.Errorf("keyword %q is not a shape GitHub accepts as a topic (lowercase letters, "+
-				"digits and hyphens, 50 characters, no leading or trailing hyphen) — it would be "+
+				"digits and hyphens, 50 characters, no leading or trailing hyphen); it would be "+
 				"dropped without a word when the topics are applied", k)
 		}
 		if seen[k] {

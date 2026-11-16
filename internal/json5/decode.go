@@ -27,9 +27,8 @@ func Decode(b []byte) (map[string]any, error) {
 // Strip removes line comments, block comments, and trailing commas, leaving
 // something encoding/json will accept.
 //
-// It tracks string literals so a "//" inside a value — a URL, most often — is
-// never mistaken for a comment. Comments are replaced by nothing rather than
-// by spaces except for the newline that ends a line comment, which is kept so
+// It tracks string literals so a "//" inside a value (a URL, most often) is
+// never mistaken for a comment. Comments are replaced by nothing, except for the newline that ends a line comment, which is kept so
 // that a trailing comma before it is still recognised.
 func Strip(b []byte) []byte {
 	out := make([]byte, 0, len(b))

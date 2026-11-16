@@ -10,7 +10,7 @@ import (
 // TestFixActionsCoversEveryRegisteredID guards the one thing generation
 // cannot check about itself: that it ran to completion and said something
 // about every fix it was supposed to. Whether what it says matches the
-// registry is not this test's job — it cannot drift, because it is read
+// registry is not this test's job: it cannot drift, because it is read
 // from the registry at the moment this test runs the same as at the moment
 // sitegen does. Checked in both languages: the Korean section is generated
 // from the same registry through the same function, just with a different
@@ -34,22 +34,21 @@ func TestFixActionsCoversEveryRegisteredID(t *testing.T) {
 
 // TestFixActionsNeverPublishesTestScaffolding is the regression guard the
 // doc comment on fixtest.Finding promises: a fixture path that looks like a
-// test wrote it (under /tmp) reads as broken on a real docs page, not as
-// illustrative. This is what would have caught it before a human had to.
+// test wrote it (under /tmp) reads as broken on a real docs page. This is what would have caught it before a human had to.
 func TestFixActionsNeverPublishesTestScaffolding(t *testing.T) {
 	out, err := renderFixActions("en")
 	if err != nil {
 		t.Fatalf("renderFixActions: %v", err)
 	}
 	if strings.Contains(out, "/tmp/") {
-		t.Error("the generated fix-actions section contains a /tmp/ path — " +
+		t.Error("the generated fix-actions section contains a /tmp/ path; " +
 			"fixtest.Finding is supplying an evidence value that reads as test scaffolding; " +
 			"see the doc comment on fixtest.Finding")
 	}
 }
 
 // TestFixActionsRendersNoLiteralBackticks catches a Label or Warning string
-// whose backtick-quoted command or path reached the page unconverted —
+// whose backtick-quoted command or path reached the page unconverted:
 // inline() exists to turn those into <code> spans, and a literal backtick
 // in the output means some text bypassed it.
 func TestFixActionsRendersNoLiteralBackticks(t *testing.T) {
@@ -66,7 +65,7 @@ func TestFixActionsRendersNoLiteralBackticks(t *testing.T) {
 // linkFixColumnRows needs to get right on the real checks.html source for
 // each language: every Auto/Review row for a
 // registered ID becomes a link, and every link it produces points at an id
-// renderFixActions actually emitted — a stray anchor pointing at nothing
+// renderFixActions emitted; a stray anchor pointing at nothing
 // would be a worse reading experience than the plain text it replaced. This
 // is the test that would have caught the Korean page shipping the section
 // but linking to it with the English word.

@@ -19,7 +19,7 @@ import (
 // inline comments, drop blank lines between services). Each mutation records
 // the text edit it makes; Bytes() applies those edits to the original bytes
 // and only trusts the result when it is byte-for-byte equivalent to the
-// encoder's output after a round-trip — otherwise it falls back to the
+// encoder's output after a round-trip: otherwise it falls back to the
 // full re-encode, so correctness never depends on the text surgery.
 type Doc struct {
 	root       *yaml.Node // document node
@@ -68,15 +68,15 @@ func (d *Doc) Bytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// The minimal path below is already checked against full — parsed,
-	// re-encoded, and compared byte for byte — before it is trusted. full
+	// The minimal path below is already checked against full (parsed,
+	// re-encoded, and compared byte for byte) before it is trusted. full
 	// itself never was: FuzzEdit found a source (a flow mapping keyed by
 	// another mapping) that yaml.v3 parses but cannot faithfully write back,
 	// so a fix landing on the no-edits-recorded or minimalOff path returned
 	// bytes no parser could read, with the caller none the wiser until the
 	// service that reads the file next fails to start. A fix is only ever
 	// built against a service and key the checker already read, so this
-	// should never actually fire outside the fuzz corpus — but a write this
+	// should never fire outside the fuzz corpus, but a write this
 	// package cannot prove readable is exactly the case Auto fixes exist to
 	// never produce.
 	if err := verifyReloadable(full); err != nil {
@@ -109,7 +109,7 @@ func (d *Doc) Bytes() ([]byte, error) {
 }
 
 // verifyReloadable reports whether b parses as YAML, without caring what it
-// parses into — Bytes' callers already know the shape they expect and will
+// parses into: Bytes' callers already know the shape they expect and will
 // fail their own way if it's wrong. This only guards against handing back
 // something no parser can read at all.
 func verifyReloadable(b []byte) error {
@@ -184,7 +184,7 @@ func (d *Doc) renderMinimal() ([]byte, bool) {
 // valueEnd returns the index just past the scalar value that starts at
 // 0-based `start`, i.e. before any trailing spaces or "# comment". Quotes are
 // respected so a value never ends inside them. Returns ok=false on an
-// unterminated quote, so the caller falls back rather than risk a bad edit.
+// unterminated quote, so the caller falls back.
 func valueEnd(line string, start int) (int, bool) {
 	inSingle, inDouble := false, false
 	for i := start; i < len(line); i++ {
@@ -329,7 +329,7 @@ func (d *Doc) BindPortLoopback(service, hostPort string) error {
 		case yaml.MappingNode:
 			if hp := mapGet(entry, "published"); hp != nil && strings.Trim(hp.Value, `"`) == hostPort {
 				// Long-form entries add a host_ip key; leave that to the full
-				// re-encode rather than guess the insertion point.
+				// re-encode.
 				d.minimalOff = true
 				mapSet(entry, "host_ip", scalar("127.0.0.1"))
 				return nil
@@ -340,9 +340,9 @@ func (d *Doc) BindPortLoopback(service, hostPort string) error {
 }
 
 // RemoveKey deletes service.<key> and everything under it. It is the shape
-// of every removal-type fix — privileged, network_mode, pid, ipc,
-// userns_mode — where the remediation is taking out a line the author put
-// there. A key that is not present is an error rather than a no-op, because
+// of every removal-type fix (privileged, network_mode, pid, ipc,
+// userns_mode) where the remediation is taking out a line the author put
+// there. A key that is not present is an error, because
 // the fix was built from a finding that said it was.
 func (d *Doc) RemoveKey(service, key string) error {
 	svc := d.service(service)
@@ -594,13 +594,13 @@ func seqItemPrefix(src []byte, seq *yaml.Node) (string, bool) {
 	}
 	i := strings.Index(lines[first.Line-1], "- ")
 	if i < 0 {
-		return "", false // flow sequence or unusual layout — fall back
+		return "", false // flow sequence or unusual layout; fall back
 	}
 	return lines[first.Line-1][:i+2], true
 }
 
 // blockEndLine returns the largest source line among a node and its
-// descendants — i.e. the last line the node's content occupies.
+// descendants, i.e. the last line the node's content occupies.
 func blockEndLine(n *yaml.Node) int {
 	if n == nil {
 		return 0

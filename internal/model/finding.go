@@ -26,12 +26,11 @@ type Finding struct {
 	// It exists because "Hostveil wrote the file" and "the risk is gone" are
 	// different claims, and the score was crediting the first. Applying a
 	// compose fix marked the finding Fixed and moved the number while the
-	// container still ran the old configuration — the same mismatch
+	// container still ran the old configuration: the same mismatch
 	// Action.TakesEffectOn and VerifyPending were added to *describe*, arriving
-	// in the one place that is supposed to be measuring the host rather than
-	// Hostveil's own activity.
+	// in the one place that is supposed to be measuring the host.
 	//
-	// Ask Active, not this field, for whether a risk is still standing; Fixed
+	// Ask Active for whether a risk is still standing; Fixed
 	// keeps its own meaning of "Hostveil applied a fix here" and is what the
 	// apply paths test so a pending fix is never applied twice.
 	//
@@ -43,36 +42,36 @@ type Finding struct {
 	// finding for you. It is set by the engine, never by a checker, and only
 	// on findings that reach a UI with no fix to offer.
 	//
-	// "Manual" is a decision — someone weighed the remediation and refused it
-	// — but in an interface it is indistinguishable from a finding nobody has
+	// "Manual" is a decision (someone weighed the remediation and refused it)
+	// but in an interface it is indistinguishable from a finding no one has
 	// looked at. The reasons have been written down since the beginning, in
 	// the doc comment on fix.Default(), where a user never sees them; this is
 	// that register reaching the finding it is about.
 	WhyNoFix string `json:"why_no_fix,omitempty"`
 
 	// FixBenefit and FixSideEffect are the one-sentence trade-off of this
-	// finding's recommended fix — fix.Action.Benefit and fix.Action.Warning
+	// finding's recommended fix: fix.Action.Benefit and fix.Action.Warning
 	// off Actions[0] of whatever fix.Registry would build for this finding,
 	// the same action `fix --all --review` applies without asking (see
 	// "Actions[0] is the recommendation" on fix.Fix). They are set by the
 	// engine, in Engine.classify, never by a checker, and only where a fix
-	// exists to describe — both are empty on exactly the findings where
+	// exists to describe: both are empty on exactly the findings where
 	// WhyNoFix is not.
 	//
 	// They exist so the trade-off is visible before a user opens the full
 	// preview screen. A fix that pulls a fresh container image is the case
 	// that motivated them: fast patches are attractive on a self-hosted box
 	// and risky on one that is stable today, and until now that reasoning
-	// lived only inside the preview's per-action Warning — never in a list
-	// or detail view, and never for a finding nobody had opened the preview
+	// lived only inside the preview's per-action Warning; never in a list
+	// or detail view, and never for a finding whose preview had not been opened
 	// screen for yet.
 	FixBenefit    string `json:"fix_benefit,omitempty"`
 	FixSideEffect string `json:"fix_side_effect,omitempty"`
 
 	// IndividualOnly is fix.Fix.IndividualOnly carried to the finding, set by
 	// Engine.classify: the fix exists and is offered, but no batch applies it,
-	// including `fix --all --review`. A UI uses it to say so rather than let a
-	// reviewed batch look as though it skipped something by mistake.
+	// including `fix --all --review`. A UI uses it to say so, so a reviewed
+	// batch never looks as though it skipped something by mistake.
 	IndividualOnly bool `json:"individual_only,omitempty"`
 }
 
@@ -163,7 +162,7 @@ func (f Finding) IsFixable() bool {
 // remediation exists, this one asks whether the batch is going to act.
 //
 // The !Fixed half is what stops a pending row being offered. Its fix has been
-// applied and what is outstanding is a restart, so the batch skips it — and a
+// applied and what is outstanding is a restart, so the batch skips it, and a
 // UI that let the operator mark it anyway would put it in a batch that
 // reported it back under "skipped", the same word that means "there is no fix
 // for this one".
@@ -171,17 +170,17 @@ func (f Finding) IsAutoFixable() bool {
 	return !f.Fixed && f.Remediation == RemediationAuto
 }
 
-// Active reports whether this risk is still standing on the host — either
+// Active reports whether this risk is still standing on the host: either
 // nothing has been applied, or something has and it is not in force yet.
 //
 // It is the question the score, the SARIF results, the exit status, the delta
-// and every visible list are asking, and it is deliberately one named
-// predicate rather than "!f.Fixed || f.Pending" written out at each of them.
+// and every visible list are asking, and it is one named
+// predicate, so "!f.Fixed || f.Pending" is not written out at each of them.
 // A rule that lives in prose until one renderer forgets it is the drift
 // internal/docs/afterfixes_test.go exists to catch, and there is no reason to
 // hand it a fresh instance.
 //
-// The other question — has Hostveil already applied a fix here — is Fixed on
+// The other question (has Hostveil already applied a fix here) is Fixed on
 // its own, and the two diverge exactly on a pending fix: it stays charged and
 // visible, and it is not applied again.
 func (f Finding) Active() bool { return !f.Fixed || f.Pending }

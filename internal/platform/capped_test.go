@@ -26,7 +26,7 @@ func TestARunawayCommandDoesNotGetToFillMemory(t *testing.T) {
 	}
 }
 
-// capped is where the bound lives, so it is tested directly — a command large
+// capped is where the bound lives, so it is tested directly: a command large
 // enough to cross 128 MiB is not something to run in a unit test.
 func TestCappedStopsAtItsLimitAndSaysSo(t *testing.T) {
 	for _, tc := range []struct {
@@ -52,7 +52,7 @@ func TestCappedStopsAtItsLimitAndSaysSo(t *testing.T) {
 				// reaches the operator as a broken tool.
 				got, err := c.Write(bytes.Repeat([]byte("x"), n))
 				if got != n || err != nil {
-					t.Fatalf("Write(%d bytes) = %d, %v — want the full length and no error", n, got, err)
+					t.Fatalf("Write(%d bytes) = %d, %v; want the full length and no error", n, got, err)
 				}
 			}
 			if len(c.buf) != tc.wantLen {
@@ -65,9 +65,9 @@ func TestCappedStopsAtItsLimitAndSaysSo(t *testing.T) {
 	}
 }
 
-// Overflow returns nothing rather than a prefix. Handing back the first
+// Overflow returns nothing. Handing back the first
 // 128 MiB of a JSON document gives a checker something that parses to a
-// smaller, wrong answer — a partial look reported as a finished one, which is
+// smaller, wrong answer: a partial look reported as a finished one, which is
 // the failure this project spends most of its tests on.
 func TestOverflowIsAnErrorAndNotAPrefix(t *testing.T) {
 	if _, err := exec.LookPath("head"); err != nil {
@@ -88,7 +88,7 @@ func TestOverflowIsAnErrorAndNotAPrefix(t *testing.T) {
 
 // stderr still reaches the operator now that exec no longer owns the buffer.
 // ExitError.Stderr is only filled when Output() collects it, and setting
-// cmd.Stderr took that away — the message is what turns "exit status 1" into
+// cmd.Stderr took that away: the message is what turns "exit status 1" into
 // something actionable.
 func TestStderrStillReachesTheErrorMessage(t *testing.T) {
 	if _, err := exec.LookPath("sh"); err != nil {

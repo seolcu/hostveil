@@ -95,7 +95,7 @@ func (c Cache) Notice(current string) string {
 // belongs to a packager, and its version is not one this project ever
 // published to compare against.
 //
-// The shape is checked rather than just the dash, because anything unequal to
+// The shape is checked, because anything unequal to
 // the latest release reads as out of date, and a version string this program
 // cannot recognise should not be the basis for telling somebody to run an
 // update.
@@ -125,10 +125,10 @@ func looksLikeRelease(v string) bool {
 func CheckInBackground(ctx context.Context, c Client, dir string, now time.Time) {
 	if LoadCache(dir).Due(now) {
 		go func() {
-			// This is a best-effort background nicety — scan, tui and serve
-			// all fire it and move on without waiting — and every other way
+			// This is a best-effort background nicety (scan, tui and serve
+			// all fire it and move on without waiting) and every other way
 			// it can fail (network down, GitHub unreachable, a bad redirect)
-			// already just returns quietly. A panic must degrade the same
+			// already just returns silently. A panic must degrade the same
 			// way: nothing here is worth ending the command that triggered
 			// it, on a goroutine whose caller has no way to know it existed.
 			defer func() { _ = recover() }()

@@ -25,9 +25,9 @@ var skeletonHomes = map[string]bool{
 	"":             true,
 }
 
-// homes parses /etc/passwd for the accounts a person might actually log in as
+// homes parses /etc/passwd for the accounts a person might log in as
 // and run an agent under: root, plus the regular-user UID range. The nobody
-// UID (65534) and the service accounts below 1000 are excluded — an agent
+// UID (65534) and the service accounts below 1000 are excluded: an agent
 // runtime under those is not a configuration Hostveil should be guessing at.
 //
 // Results are deduplicated by home directory, because two accounts sharing a
@@ -78,7 +78,7 @@ func (i install) subject() string { return i.rt.Name + "@" + i.user.Name }
 func (i install) path(rel string) string { return filepath.Join(i.user.Home, rel) }
 
 // installs stats each runtime's markers under each home. It only ever stats
-// paths named in the registry — no home directory is ever walked, so the
+// paths named in the registry: no home directory is ever walked, so the
 // checker learns that a runtime exists without reading anything it was not
 // explicitly pointed at.
 //
@@ -96,7 +96,7 @@ func installs(hs []userHome, rts []Runtime) (found []install, unreadable []strin
 		// The home stats fine and its markers still may not. Statting a
 		// directory needs only search permission on its *parent*, so a home
 		// mode 0700 owned by someone else passes the check above and denies
-		// everything underneath it — which is the ordinary shape of a
+		// everything underneath it, which is the ordinary shape of a
 		// multi-user host scanned without root.
 		blind := false
 		for _, rt := range rts {
@@ -117,12 +117,12 @@ func installs(hs []userHome, rts []Runtime) (found []install, unreadable []strin
 // hasMarker reports whether rt is installed under home.
 //
 // A non-nil error means the question could not be answered, which is not the
-// same as answering no — and treating it as no is what let an unreadable home
+// same as answering no, and treating it as no is what let an unreadable home
 // report as an account with nothing installed. Only os.IsNotExist is a real
 // negative; anything else is a blind spot the caller has to account for.
 //
 // A runtime found through one marker is installed regardless of what the
-// others say, so a positive wins outright. Otherwise any unanswerable marker
+// others say, so a positive wins completely. Otherwise any unanswerable marker
 // makes the whole answer unanswerable.
 func hasMarker(home string, rt Runtime) (bool, error) {
 	var blind error

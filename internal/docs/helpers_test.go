@@ -10,7 +10,7 @@ import (
 )
 
 // repoRoot walks up from the test's directory to the module root, so the
-// tests read the real files rather than embedded copies that could drift.
+// tests read the real files.
 func repoRoot(t *testing.T) string {
 	t.Helper()
 	dir, err := os.Getwd()

@@ -11,15 +11,14 @@ import (
 )
 
 // showArgv is the command the checker runs, spelled once. A fixture that
-// scripted a stale copy would not fail — it would fall through to the fake's
+// scripted a stale copy would not fail: it would fall through to the fake's
 // error, which reads as systemd refusing to answer.
 var showArgv = []string{"systemctl", "show", "*.service", "--property=" + strings.Join(showProperties, ",")}
 
 // unitRecord renders one record the way `systemctl show` really prints it:
-// Key=Value one per line, in an order of systemd's choosing rather than the
-// order they were asked for.
+// Key=Value one per line, in an order of systemd's choosing.
 func unitRecord(props map[string]string) string {
-	// Deliberately not the request order — the parser must key by name.
+	// Not the request order; the parser must key by name.
 	order := []string{"FragmentPath", "DropInPaths", "User", "PrivateTmp", "ProtectHome", "Id", "ProtectSystem", "LoadState", "NoNewPrivileges"}
 	var b strings.Builder
 	for _, k := range order {
@@ -86,11 +85,11 @@ func find(fs []model.Finding, id, service string) (model.Finding, bool) {
 func TestUnhardenedOperatorUnitIsFlagged(t *testing.T) {
 	fs := scan(t, operatorUnit("gitea.service", nil))
 
-	// Three of the four are Manual and one is not, and the split is the
-	// point rather than an inconsistency. protect-system, protect-home and
-	// private-tmp each break something the unit does not show — a service
+	// Three of the four are Manual and one is not, and the split is
+	// intended. protect-system, protect-home and
+	// private-tmp each break something the unit does not show (a service
 	// that hands another files through /tmp, one whose data lives in a home
-	// directory, one that writes under /usr — so Hostveil cannot tell a safe
+	// directory, one that writes under /usr) so Hostveil cannot tell a safe
 	// unit from an unsafe one. NoNewPrivileges has no such blind spot, and
 	// the drop-in that turns it on is a file this checker already computes
 	// the path and contents of, so internal/fix writes it.
@@ -115,13 +114,13 @@ func TestUnhardenedOperatorUnitIsFlagged(t *testing.T) {
 		if !strings.Contains(f.HowToFix, "systemctl restart gitea.service") {
 			t.Errorf("%s: how-to-fix must say the change needs a restart:\n%s", want, f.HowToFix)
 		}
-		// The decision is recorded in fix.Default's register either way —
+		// The decision is recorded in fix.Default's register either way;
 		// see TestEveryFindingIsEitherFixableOrDeclinedOnPurpose.
 		if f.Remediation != kind {
 			t.Errorf("%s: remediation = %v, want %v", want, f.Remediation, kind)
 		}
 		// The fix layer cannot import this package, so the path it writes
-		// travels with the finding rather than being recomputed there.
+		// travels with the finding.
 		if got := f.Metadata["dropin"]; got != "/etc/systemd/system/gitea.service.d/50-hostveil.conf" {
 			t.Errorf("%s: metadata[dropin] = %q", want, got)
 		}
@@ -196,7 +195,7 @@ func TestUnknownPropertyIsNotAFinding(t *testing.T) {
 }
 
 // Which severity applies depends on the account, and the two rules point in
-// opposite directions on purpose: a root service can already do anything, so
+// opposite directions: a root service can already do anything, so
 // the setuid path NoNewPrivileges closes buys little there, while the
 // filesystem protections are worth most exactly there.
 func TestSeverityFollowsTheAccount(t *testing.T) {
@@ -226,7 +225,7 @@ func TestSeverityFollowsTheAccount(t *testing.T) {
 }
 
 // Several units in one batched call, separated by blank lines, is the whole
-// reason the checker makes one call rather than one per unit.
+// reason the checker makes one call.
 func TestSeveralUnitsInOneCall(t *testing.T) {
 	show := operatorUnit("a.service", map[string]string{"NoNewPrivileges": "yes", "ProtectSystem": "full", "ProtectHome": "yes", "PrivateTmp": "yes"}) +
 		"\n" + operatorUnit("b.service", map[string]string{"ProtectSystem": "full", "ProtectHome": "yes", "PrivateTmp": "yes"}) +
@@ -280,8 +279,7 @@ func TestAvailability(t *testing.T) {
 	}
 }
 
-// A failure to enumerate is an error, not an empty result: the axis is then
-// excluded rather than scored a perfect 100 on evidence nobody obtained.
+// A failure to enumerate is an error: the axis is then excluded.
 func TestEnumerationFailureIsAnError(t *testing.T) {
 	_, err := New().Check(context.Background(), platform.Env{
 		ServiceManager: platform.SMSystemd, Runner: checktest.New(),
@@ -297,7 +295,7 @@ func TestEnumerationFailureIsAnError(t *testing.T) {
 // "strict" and "read-only" are protection *on* and must not be flagged.
 //
 // The value set comes from a real host: 77 units answered no/yes/full/strict
-// for ProtectSystem and nothing else — which is also why neither rule has a
+// for ProtectSystem and nothing else, which is also why neither rule has a
 // second arm for "off", a spelling systemd never emits.
 func TestEnumeratedProtectionsAreNotBooleans(t *testing.T) {
 	for _, tc := range []struct {
@@ -324,7 +322,7 @@ func TestEnumeratedProtectionsAreNotBooleans(t *testing.T) {
 }
 
 // realShowOutput is `systemctl show '*.service' --property=...` copied
-// verbatim off a running Fedora 44 host, including its own property order —
+// verbatim off a running Fedora 44 host, including its own property order,
 // which is not the order the checker asks for. That is the whole reason
 // parseUnits keys records by name: a parser reading positionally would put
 // PrivateTmp's value into NoNewPrivileges' field and be wrong about every
@@ -365,7 +363,7 @@ func TestParsesRealSystemctlOutput(t *testing.T) {
 	if us[0].root() {
 		t.Errorf("a unit with User=chrony is not root: %+v", us[0])
 	}
-	// Both are packaged units, so a stock host reports nothing — the correct
+	// Both are packaged units, so a stock host reports nothing; the correct
 	// answer for a machine whose operator installed no services of their own,
 	// not a checker that failed to look.
 	c := New()
@@ -378,7 +376,7 @@ func TestParsesRealSystemctlOutput(t *testing.T) {
 
 // A unit whose loaded drop-ins outrank anything Hostveil would write.
 //
-// The finding is still real — systemd reports the protection off — and what
+// The finding is still real (systemd reports the protection off) and what
 // changes is the remediation: there is no file to create, so the metadata the
 // fix reads is empty and the instruction names the drop-in that decides
 // instead. Writing a losing file would report success, take a checkpoint, and
@@ -392,7 +390,7 @@ func TestAUnitWhoseDropInsOutrankUsOffersNoFileToWrite(t *testing.T) {
 		t.Fatalf("the finding disappeared; it is still true, only unfixable by a new file: %v", ids(fs))
 	}
 	if f.Metadata["dropin"] != "" {
-		t.Errorf("dropin = %q, want empty — every name Hostveil would write sorts before "+
+		t.Errorf("dropin = %q, want empty; every name Hostveil would write sorts before "+
 			"zz-operator.conf, so systemd would apply that one last", f.Metadata["dropin"])
 	}
 	if !strings.Contains(f.HowToFix, "zz-operator.conf") {

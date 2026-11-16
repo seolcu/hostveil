@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Scoring — Hostveil docs</title>
+    <title>Scoring; Hostveil docs</title>
     <meta name="description" content="How Hostveil turns findings into one 0-100 score: each domain is an axis eroded multiplicatively by severity, the axis weights sum to 100, a domain that could not run is renormalized out instead of scored perfect, and a finding with no upstream fix still counts.">
     <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
-    <meta property="og:title" content="Scoring — Hostveil docs">
+    <meta property="og:title" content="Scoring; Hostveil docs">
     <meta property="og:description" content="The 0-100 score, exactly: multiplicative erosion per axis, what each domain is worth, renormalization when a domain does not run, and what the number cannot tell you.">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://hostveil.seolcu.com/docs/scoring">
@@ -29,15 +29,15 @@
     <script>
       // Send a Korean-speaking reader to the Korean page, once.
       //
-      // GitHub Pages serves files, not content negotiation, so the only place
-      // this decision can be made is here — and the risk of making it here is
-      // trapping someone: a reader who deliberately clicked "English" must not
+      // GitHub Pages serves files with no content negotiation, so the only place
+      // this decision can be made is here, and the risk of making it here is
+      // trapping someone: a reader who clicked "English" must not
       // be bounced back on the next click. So the switcher records that choice
       // and this defers to it forever after.
       //
       // Only from the English page, only when the browser's own preference
-      // list actually leads with Korean, and never when a crawler is reading
-      // (they do not run this) — the hreflang links above are what they read.
+      // list leads with Korean, and never when a crawler is reading
+      // (they do not run this): the hreflang links above are what they read.
       (function () {
         try {
           if (document.documentElement.lang !== "en") return;
@@ -171,11 +171,11 @@ penalty = round(cap × (1 - remaining))</code></pre></div>
                 </tbody>
               </table>
             </div>
-            <p>The anchor is the first row: <strong>one High finding costs exactly half of whatever the axis has left.</strong> The other two levels are defined against that and have no independent meaning. The 4× gap between High and Medium is deliberate; it is the point of the taxonomy. The names are the familiar three, but there are only three: the scale this replaced had a fourth level above High, and its top two were 8 and 5, a gap too small to feel. Merging them is what buys the gap.</p>
+            <p>The anchor is the first row: <strong>one High finding costs exactly half of whatever the axis has left.</strong> The other two levels are defined against that and have no independent meaning. The 4× gap between High and Medium is intentional and defines the taxonomy. The names are the familiar three, but there are only three: the scale this replaced had a fourth level above High, and its top two were 8 and 5, a gap too small to feel. Merging them is what buys the gap.</p>
             <p>Four consequences worth having in mind when you read an axis.</p>
             <p><strong>The same mistake made twice is worse than once, and less than twice as bad.</strong> A compose file where four services are all missing <code>user:</code> is one line missing, written four times. So the second instance of a finding ID costs half its weight, the third a third, the fourth a quarter. Without that, an axis was buried for running more services, however well configured: a self-hoster deploys twenty containers from one template, and one missing line pinned the axis at zero. It is not free after the first either. The tenth instance says the mistake is systematic, which is worse than the first, just not ten times worse.</p>
             <p><strong>The same finding costs more on a healthy axis than on a damaged one.</strong> A High finding on an untouched axis costs 50 points. The identical finding on an axis already down to <code>remaining = 0.25</code> costs 12.5. That is the model working: the second time your SSH daemon hands out unauthenticated root, it is not twice as bad.</p>
-            <p><strong>An axis never actually reaches zero.</strong> The largest weight is 1/2, so every factor is at least 1/2 and the product stays above zero forever. Eight High findings run an axis down 100 → 50 → 25 → 13 → 6 → 3 → 2 → 1 → 0; the displayed 0 at the eighth is <code>round(0.390625)</code>; the axis itself is never exhausted. A ninth finding still shrinks <code>remaining</code>, and removing findings from an axis pinned at 0 lifts it back off in a way that does not look linear.</p>
+            <p><strong>An axis never reaches zero.</strong> The largest weight is 1/2, so every factor is at least 1/2 and the product stays above zero forever. Eight High findings run an axis down 100 → 50 → 25 → 13 → 6 → 3 → 2 → 1 → 0; the displayed 0 at the eighth is <code>round(0.390625)</code>; the axis itself is never exhausted. A ninth finding still shrinks <code>remaining</code>, and removing findings from an axis pinned at 0 lifts it back off in a way that does not look linear.</p>
             <p><strong>Order does not matter.</strong> Multiplication commutes, so the order findings arrive in cannot change the product. The damping for repeats would put that at risk on its own: one ID can carry two severities, and whichever instance was seen first would pay full price. So within an ID the heaviest instance is sorted to the front and pays it. The factors are then the same sequence whatever order the findings came in, which also makes the arithmetic bit-identical: the severity weights are dyadic fractions (1/2, 1/8, 1/16) and exact in binary, while the divisors for repeats (1/3, 1/6, …) are not, and a fixed order is what stops that difference from being visible.</p>
             <p><strong>An axis can never read 100 once anything lands on it.</strong> The smallest weight in the model is 1/64, so even a lone unpatchable Low finding puts an untouched axis at <code>round(98.4375)</code> = 98.</p>
 
@@ -206,7 +206,7 @@ penalty = round(cap × (1 - remaining))</code></pre></div>
             <p>A Fixed finding does not claim its identity on the way past, so it can never suppress an identical unfixed one regardless of what order they arrive in. And the per-severity counts an axis reports are incremented in the same guarded step as the erosion, which means every finding in those counts moved the axis. If it says <em>2 high, 1 medium, 2 low</em>, those five each took a share. The guarantee runs one way only: a severity this build does not recognise erodes the axis and matches no count slot, so an axis can move with every count at zero.</p>
             <div class="callout">
               <span class="callout-label">No finding is ever free</span>
-              <p>A severity this build does not recognise (a level added to the enum that this code path was never taught about) is priced as <span class="sev medium">MEDIUM</span>. (It cannot arrive from a file: reading a scan snapshot rejects an unknown severity outright.) The failure mode of a scoring model is a finding that costs nothing without anyone noticing, and defaulting to the middle of the scale is the cheap way to never have one.</p>
+              <p>A severity this build does not recognise (a level added to the enum that this code path was never taught about) is priced as <span class="sev medium">MEDIUM</span>. (It cannot arrive from a file: reading a scan snapshot rejects an unknown severity completely.) The failure mode of a scoring model is a finding that costs nothing without anyone noticing, and defaulting to the middle of the scale is the cheap way to never have one.</p>
             </div>
 
             <h2 id="why-multiplicative">Why multiplicative</h2>
@@ -216,10 +216,10 @@ penalty = round(cap × (1 - remaining))</code></pre></div>
             <p>Multiplicative erosion has no clamp to hit. Each finding takes a share of what remains, so the axis asymptotes toward zero and never arrives. The fiftieth finding still costs something, and removing any one finding moves the number back. The cost of a finding falls as the axis degrades, which is the right shape: the marginal danger of the tenth exposed service really is lower than the first. But it never reaches zero, so the model never stops listening.</p>
 
             <h2 id="worked">A worked example</h2>
-            <p>A real scan of a host made messy on purpose: 83 findings, <code>scan</code> exiting 1. Twelve domains were attempted and ten ran: Trivy was not installed and systemd did not answer. One of the ten, the Docker daemon, covered only part of its ground, so the 83 findings come from ten domains of which nine were complete.</p>
+            <p>A real scan of a host made messy intentionally: 83 findings, <code>scan</code> exiting 1. Twelve domains were attempted and ten ran: Trivy was not installed and systemd did not answer. One of the ten, the Docker daemon, covered only part of its ground, so the 83 findings come from ten domains of which nine were complete.</p>
             <div class="callout">
               <span class="callout-label">This capture is from before the Reverse proxy axis</span>
-              <p>Twelve domains, and the caps of the release it was taken on, so the numbers in this section no longer match the table above, and are left as they were. The reason is a gap in how this page is maintained, and the model is not at fault: <strong>the exact contributions here were derived by hand, the scan they came from is not kept anywhere, and <code>ScoreAxis</code> reports only a rounded score and an integer penalty, so nothing in the repository can reproduce or check them.</strong> Restating them at new caps would mean re-deriving figures no one can verify, which is the opposite of what this section is for. What it teaches is unaffected: a cap enters only at the last step, scaling a <code>remaining</code> that is computed without it, and every figure below is still exact for the scan it came from.</p>
+              <p>Twelve domains, and the caps of the release it was taken on, so the numbers in this section no longer match the table above, and are left as they were. The reason is a gap in how this page is maintained, and the model is not at fault: <strong>the exact contributions here were derived by hand, the scan they came from is not kept anywhere, and <code>ScoreAxis</code> reports only a rounded score and an integer penalty, so nothing in the repository can reproduce or check them.</strong> Restating them at new caps would mean re-deriving figures that cannot be verified, which is the opposite of what this section is for. What it teaches is unaffected: a cap enters only at the last step, scaling a <code>remaining</code> that is computed without it, and every figure below is still exact for the scan it came from.</p>
             </div>
 
             <h3>One axis, step by step</h3>
@@ -315,7 +315,7 @@ overall   = 100 - round(57.246554 × 100 / 84)
               </table>
             </div>
             <p>Additive overall: <code>100 - round(75 × 100 / 84)</code> = <strong>11</strong>, against the real <strong>32</strong>. Seven of the ten applicable axes read exactly 0, including Kernel hardening, which has one Medium finding and four Low findings and scores 68 on its own. A host where seven axes are all &ldquo;0&rdquo; has no next step to offer you.</p>
-            <p>The container axis is the cleanest statement of the point. It carries 52 findings: 8 High, 16 Medium, 28 Low. Additively, the sum passes the cap after two of them and the other 50 are free. Multiplicatively, <code>remaining</code> is 7.5698 × 10⁻⁵, which <em>displays</em> as 0 but is not 0: every one of the 52 findings moved it, and removing any single one moves it back.</p>
+            <p>The container axis shows this most clearly. It carries 52 findings: 8 High, 16 Medium, 28 Low. Additively, the sum passes the cap after two of them and the other 50 are free. Multiplicatively, <code>remaining</code> is 7.5698 × 10⁻⁵, which <em>displays</em> as 0 but is not 0: every one of the 52 findings moved it, and removing any single one moves it back.</p>
 
             <h2 id="caps">What a cap means</h2>
             <p>Each axis carries a cap, and the sixteen caps sum to exactly 100. The sum is a readability decision: renormalization would work with any total, but a total of 100 is what makes an axis&rsquo;s penalty readable as points off the headline, and makes the overall exactly <code>100 &minus; round(total)</code> on a host where every domain ran.</p>
@@ -391,7 +391,7 @@ overall   = 100 - round(57.246554 × 100 / 84)
                   <tr><td>SSH hardening</td><td>1</td><td>Same reason as before: large enough that a point costs it nothing expressively.</td></tr>
                   <tr><td>Vulnerabilities</td><td>1</td><td>Already generous, and the two are the same shape of claim about the same software: one about the version of what is listening, one about how it was configured. The configuration is the half the operator chose.</td></tr>
                   <tr><td>Exposed services</td><td>1</td><td>The same custody argument the Docker daemon axis made. The port table can say 443 is open, which on a self-hosted machine is the intended state and therefore not a finding; this axis is the first thing that can judge what is answering on it.</td></tr>
-                  <tr><td>Host firewall</td><td>1</td><td>A firewall&rsquo;s job ends at deciding what may reach the port. Everything this axis reports is on the far side of a port the operator opened on purpose.</td></tr>
+                  <tr><td>Host firewall</td><td>1</td><td>A firewall&rsquo;s job ends at deciding what may reach the port. Everything this axis reports is on the far side of a port the operator opened intentionally.</td></tr>
                   <tr><td>AI agent runtimes</td><td>1</td><td>Its generous cap was argued from being N/A on most hosts, and that argument now has a third claimant: a host with no nginx and no Traefik is excluded from this axis exactly as it is from that one.</td></tr>
                 </tbody>
               </table>
@@ -403,9 +403,9 @@ overall   = 100 - round(57.246554 × 100 / 84)
                 <tbody>
                   <tr><td>Container exposure</td><td>1</td><td>From the top a fourth time. It is still large enough that a point does not change what it can express, and on the hosts this axis applies to, Compose rarely runs on the hypervisor itself. The guests run the containers.</td></tr>
                   <tr><td>SSH hardening</td><td>1</td><td>Large enough that a point costs it nothing expressively, and on a Proxmox VE node the web interface on 8006 is a second remote-administration channel with SSH&rsquo;s blast radius. The Docker daemon axis made the same argument about its socket.</td></tr>
-                  <tr><td>Vulnerabilities</td><td>1</td><td>Already generous, and the two are claims about patch level from two sides: an image no one rebuilt, and a hypervisor whose own packages stopped arriving. The second is the one no image scan can see.</td></tr>
+                  <tr><td>Vulnerabilities</td><td>1</td><td>Already generous, and the two are claims about patch level from two sides: an image that was not rebuilt, and a hypervisor whose own packages stopped arriving. The second is the one no image scan can see.</td></tr>
                   <tr><td>Exposed services</td><td>1</td><td>The custody argument again. The port table can say 8006 is open, which on a hypervisor is the intended state and so not a finding; this axis is what can judge who may log in on it.</td></tr>
-                  <tr><td>Host firewall</td><td>1</td><td>The datacenter firewall stays that axis&rsquo;s finding. What this one reports is on the far side of a port the operator opened on purpose, which is the reverse proxy&rsquo;s argument about a different port.</td></tr>
+                  <tr><td>Host firewall</td><td>1</td><td>The datacenter firewall stays that axis&rsquo;s finding. What this one reports is on the far side of a port the operator opened intentionally, which is the reverse proxy&rsquo;s argument about a different port.</td></tr>
                   <tr><td>AI agent runtimes</td><td>1</td><td>The N/A-on-most-hosts argument has a fourth claimant, and giving together with Exposed services is what keeps the tie between them.</td></tr>
                 </tbody>
               </table>
@@ -415,7 +415,7 @@ overall   = 100 - round(57.246554 × 100 / 84)
               <table>
                 <thead><tr><th>Giver</th><th>Gave</th><th>Why</th></tr></thead>
                 <tbody>
-                  <tr><td>Container exposure</td><td>2</td><td>From the top a fifth time, and twice, with the most direct reason yet: on the hosts this axis applies to, the containers are run by Kubernetes, so the container axis is usually N/A there and this one takes its place. It is the only giver whose ground this domain actually takes over, which is why it gave the second point.</td></tr>
+                  <tr><td>Container exposure</td><td>2</td><td>From the top a fifth time, and twice, with the most direct reason yet: on the hosts this axis applies to, the containers are run by Kubernetes, so the container axis is usually N/A there and this one takes its place. It is the only giver whose ground this domain takes over, which is why it gave the second point.</td></tr>
                   <tr><td>SSH hardening</td><td>1</td><td>Still the other axis large enough to give without losing resolution, and the API server on 6443 is a remote-administration channel of the same kind as the daemon socket and the Proxmox web interface.</td></tr>
                   <tr><td>Vulnerabilities</td><td>1</td><td>Already generous, and the images a cluster runs are pulled by Kubernetes, from no Compose file the CVE domain can enumerate, so on these hosts it has less of its ground to cover.</td></tr>
                   <tr><td>Host firewall</td><td>1</td><td>Kubernetes programs its own packet filtering for every Service it exposes, so on these hosts the host firewall decides less of what is reachable than anywhere else.</td></tr>
@@ -438,7 +438,7 @@ overall   = 100 - round(57.246554 × 100 / 84)
             <p>Two of those givers gave the same point in every transfer until this one, and the band they sit in is where it shows: Exposed services and AI agent runtimes have come down together from 10 to 6 and are still tied, which was the constraint each transfer was fitted to. The tie is argued above and is not something a new axis is allowed to break in passing, and neither is the 7-band of Account hygiene, Auto-updates and Docker daemon, which is why none of those three gave.</p>
 
             <h2 id="renormalization">Renormalization: what happens when a domain does not run</h2>
-            <p>&ldquo;I could not look&rdquo; and &ldquo;there was nothing there&rdquo; produce the same empty list of findings and mean opposite things. The whole point of renormalization is to keep them apart in the arithmetic as well as in the prose.</p>
+            <p>&ldquo;I could not look&rdquo; and &ldquo;there was nothing there&rdquo; produce the same empty list of findings and mean opposite things. Renormalization exists to keep them apart in the arithmetic as well as in the prose.</p>
             <p>A domain contributes to the overall if and only if it <strong>ran</strong>, and exactly two states count as having run: <strong>Done</strong> and <strong>Partial</strong>. Pending, Skipped and Failed do not, and neither does a domain with no recorded state at all, because a missing entry does not show that a checker finished.</p>
             <div class="docs-table-wrap">
               <table>
@@ -464,7 +464,7 @@ overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
             </div>
 
             <h2 id="unavailable">Weight of findings with no fix</h2>
-            <p>A finding marked <strong>Unavailable</strong> (a vulnerability nobody has published a patch for) takes exactly the share its severity says, with no adjustment:</p>
+            <p>A finding marked <strong>Unavailable</strong> (a vulnerability with no published patch) takes exactly the share its severity says, with no adjustment:</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Severity</th><th>Takes</th></tr></thead>
@@ -493,7 +493,7 @@ overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
 
             <p><strong>An axis at 0 is not a floor.</strong> It is a display value; <code>remaining</code> is still positive and still moving. Fixing findings on a 0 axis does work, and the number will start climbing once enough of them are gone. That is why the axis breakdown lists counts as well as a score.</p>
             <p><strong>A fix that is not in force yet does not move the number.</strong> Where the file Hostveil writes is not the thing your host is running from (a Compose file the container has not been recreated from, a systemd drop-in the unit has not re-read, a sysctl drop-in that applies at the next boot), the fix is recorded as applied and the finding stays charged in the score. Those fixes say so, in the sentence under them and in <code>fix --all</code>&rsquo;s summary, and they name the command that puts them in force. Run it and the next scan collects the improvement.</p>
-            <p><strong>The number can still move before a daemon does.</strong> The rule above keys on the fix knowing that something has to re-read its file, and one case is left out on purpose: an <code>sshd_config</code> edit. The SSH checker reads that same file, so a re-check really does confirm the change, while <code>sshd</code> keeps serving from the configuration it loaded at startup, which may still permit what you just switched off. Restart it, which is what the fix tells you to do, and the two agree again.</p>
+            <p><strong>The number can still move before a daemon does.</strong> The rule above keys on the fix knowing that something has to re-read its file, and one case is left out: an <code>sshd_config</code> edit. The SSH checker reads that same file, so a re-check really does confirm the change, while <code>sshd</code> keeps serving from the configuration it loaded at startup, which may still permit what you just switched off. Restart it, which is what the fix tells you to do, and the two agree again.</p>
             <p><strong>Two hosts&rsquo; scores are not comparable</strong>, as above. Neither are two scans of the same host across a change in what is installed: install Trivy and the Vulnerabilities axis joins the average, which will move the overall without anything about your configuration having changed.</p>
             <p><strong>It says nothing about what your services do.</strong> No score derived from configuration can. An application with an authentication bypass on a perfectly hardened host scores 100, and the score is right about the host and useless about your situation.</p>
             <p><strong>It says nothing about what Hostveil does not check.</strong> Backups, secrets in your git history, the certificate your reverse proxy serves, whether anyone is reading the logs. The score is silent about all of it, and silence is not a pass.</p>

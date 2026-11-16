@@ -33,7 +33,7 @@ func decodeConfig(b []byte, format ConfigFormat) (map[string]any, error) {
 }
 
 // yamlSecretKeys is loadEnvFile's secret test for a secrets file written as
-// YAML — Goose's keyring fallback, `OPENAI_API_KEY: sk-…` one per line. The
+// YAML: Goose's keyring fallback, `OPENAI_API_KEY: sk-…` one per line. The
 // env parser cuts on '=', so it would read that file as holding nothing, and
 // a world-readable file of API keys would pass as an empty one. Top-level
 // scalar values only: that is the file's whole shape, and a nested value is
@@ -61,7 +61,7 @@ func yamlSecretKeys(path string) []string {
 // remediation decides how much human judgment a danger finding needs, and
 // records the values that would settle it.
 //
-// The checker answers "how much judgment", never "does a fix exist" — that is
+// The checker answers "how much judgment", never "does a fix exist", that is
 // the registry's half, and Engine.classify resolves the two by caution. What
 // this decides is read straight off the rules that tripped:
 //
@@ -69,11 +69,11 @@ func yamlSecretKeys(path string) []string {
 //     here knows what turns OpenClaw's sandbox on, and writing a guessed enum
 //     into somebody's config is worse than leaving the finding to them;
 //   - a key with two safe values makes it Review, because deny and ask are a
-//     choice about how the operator wants to work, not a sequence;
+//     choice about how the operator wants to work;
 //   - otherwise Auto: one mechanical value, in a file edit, that cannot cut
 //     anyone off from the host.
 //
-// The values travel as evidence rather than being re-derived by the fix,
+// The values travel as evidence,
 // because internal/fix cannot import this package and a second copy of this
 // table is a second answer to what "safe" means. Each is a JSON literal, so
 // `false` and `"deny"` stay distinguishable through the string.
@@ -182,9 +182,9 @@ func lookupString(m map[string]any, dotted string) string {
 // envFile is what a runtime's KEY=value file tells us. Values holds only the
 // keys the caller declared safe to read; Present records every key by name.
 //
-// The split is the whole point. A credential must be able to influence a
-// finding — "your API key file is world-readable" needs to know a key is in
-// there — without the value ever reaching a Finding, because evidence is
+// The split is what matters. A credential must be able to influence a
+// finding: "your API key file is world-readable" needs to know a key is in
+// there, without the value ever reaching a Finding, because evidence is
 // rendered by every UI and persisted to disk. Presence is enough to make the
 // claim; the value would only ever be a liability.
 type envFile struct {

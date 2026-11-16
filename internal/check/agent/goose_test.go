@@ -45,7 +45,7 @@ func TestGooseModeAutoIsExecUnrestricted(t *testing.T) {
 }
 
 // The case the rule exists for. Goose's default is auto, so the host where
-// nobody chose a mode is running the one that approves everything — and a
+// no one chose a mode is running the one that approves everything, and a
 // rule that fired only on an explicit value would call it clean.
 func TestGooseModeUnsetIsTheDefaultAuto(t *testing.T) {
 	for name, write := range map[string]func(h *host){
@@ -61,7 +61,7 @@ func TestGooseModeUnsetIsTheDefaultAuto(t *testing.T) {
 				t.Fatal("an unset GOOSE_MODE is auto and must be reported")
 			}
 			if !strings.Contains(f.Evidence["unset"], "GOOSE_MODE") {
-				t.Errorf("the finding must say the value is a default, not a setting: %v", f.Evidence)
+				t.Errorf("the finding must say the value is a default: %v", f.Evidence)
 			}
 		})
 	}
@@ -97,7 +97,7 @@ func TestGooseUnreadableConfigDegradesWithoutAFinding(t *testing.T) {
 	}
 }
 
-// Goose writes its keyring fallback as YAML, not KEY=value; reading it with
+// Goose writes its keyring fallback as YAML; reading it with
 // the env parser would see no keys and pass a world-readable file of API
 // keys as empty.
 func TestGooseSecretsYAMLIsReadAsYAML(t *testing.T) {
@@ -129,7 +129,7 @@ func TestGooseSecretsYAMLIsReadAsYAML(t *testing.T) {
 	}
 }
 
-// goose web's bind is a flag, so the listener is the whole answer — and it
+// goose web's bind is a flag, so the listener is the whole answer, and it
 // is attributed by process name, on whatever port it chose.
 func TestGooseWebListenerIsAttributedByProcess(t *testing.T) {
 	h := newHost(t, "alice")

@@ -41,7 +41,7 @@ func TestCollidingCheckpointsDoNotClobberBackups(t *testing.T) {
 	}
 
 	// Two fixes for the same finding ID against the same file, applied back
-	// to back — the exact shape of a batch fix over several services.
+	// to back: the exact shape of a batch fix over several services.
 	first, err := store.Save(Checkpoint{ID: NewID("compose.ds018"), FindingID: "compose.ds018"},
 		map[string][]byte{path: orig})
 	if err != nil {
@@ -59,7 +59,7 @@ func TestCollidingCheckpointsDoNotClobberBackups(t *testing.T) {
 	}
 
 	if first.ID == second.ID {
-		t.Fatalf("both checkpoints got ID %s — the second clobbered the first", first.ID)
+		t.Fatalf("both checkpoints got ID %s: the second clobbered the first", first.ID)
 	}
 
 	// Rolling the first checkpoint back must restore the true original, not
@@ -107,7 +107,7 @@ func TestListOrderIsDeterministicWithinAMillisecond(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Same finding ID and the same instant — exactly what `fix --all` over
+	// Same finding ID and the same instant: exactly what `fix --all` over
 	// several services produces.
 	stamp := time.Now().UTC()
 	for i := 0; i < 8; i++ {
@@ -147,9 +147,9 @@ func TestListIsNewestFirst(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Save does not stamp CreatedAt — the engine does, in core.applyEdit —
+	// Save does not stamp CreatedAt (the engine does, in core.applyEdit)
 	// so the test has to. Without it all three carried the zero time, the
-	// assertion below was vacuously true, and the ordering was actually
+	// assertion below was vacuously true, and the ordering was
 	// being decided by the ID tiebreak. Flipping After to Before in List
 	// left the whole suite green.
 	base := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
@@ -174,13 +174,13 @@ func TestListIsNewestFirst(t *testing.T) {
 	}
 	for i, wantID := range want {
 		if cps[i].FindingID != wantID {
-			t.Errorf("position %d = %q, want %q — List must be newest first (got order %v)",
+			t.Errorf("position %d = %q, want %q; List must be newest first (got order %v)",
 				i, cps[i].FindingID, wantID, findingIDs(cps))
 		}
 	}
 	for i := 1; i < len(cps); i++ {
 		if cps[i-1].CreatedAt.Before(cps[i].CreatedAt) {
-			t.Errorf("checkpoint %d is older than %d — List must be newest first", i-1, i)
+			t.Errorf("checkpoint %d is older than %d; List must be newest first", i-1, i)
 		}
 	}
 }
@@ -196,7 +196,7 @@ func findingIDs(cps []Checkpoint) []string {
 // NewScanID lacked the random suffix that NewID's own doc comment argues is
 // mandatory, twelve lines above it. The timestamp resolves to a millisecond,
 // so two scans starting within one produced the same filename and the second
-// silently replaced the first — and the delta is computed from the newest
+// silently replaced the first, and the delta is computed from the newest
 // snapshot, so a lost one makes the next scan compare against the wrong
 // baseline.
 func TestScanIDsAreUniqueWithinAMillisecond(t *testing.T) {
@@ -255,7 +255,7 @@ func TestScanSnapshotsArePrunedToMaxScans(t *testing.T) {
 	if len(names) != maxScans {
 		t.Errorf("retained %d snapshots, want the %d cap", len(names), maxScans)
 	}
-	// The newest must be the survivors, not an arbitrary subset.
+	// The newest must be the survivors.
 	if _, ok, err := store.LastReport(); err != nil || !ok {
 		t.Errorf("LastReport after pruning: ok=%v err=%v", ok, err)
 	}
@@ -263,7 +263,7 @@ func TestScanSnapshotsArePrunedToMaxScans(t *testing.T) {
 
 // Rollback used to overwrite whatever was on disk with no checks at all: no
 // hash, no mtime, not even an existence test. Apply a fix to sshd_config,
-// hand-edit it for an hour, roll back — and the hour was gone, permanently,
+// hand-edit it for an hour, roll back, and the hour was gone, permanently,
 // because rollback writes no checkpoint of its own.
 func TestRollbackRefusesToDiscardExternalEdits(t *testing.T) {
 	dir := t.TempDir()
@@ -323,8 +323,8 @@ func TestRollbackRefusesToDiscardExternalEdits(t *testing.T) {
 	}
 }
 
-// Two fixes to the same file in sequence — what `fix --all` does with two
-// findings in one compose file — must not look like tampering. By the time
+// Two fixes to the same file in sequence: what `fix --all` does with two
+// findings in one compose file: must not look like tampering. By the time
 // the first checkpoint is rolled back the file holds what the SECOND fix
 // wrote, which Hostveil is responsible for.
 func TestSequentialFixesToOneFileAreNotTampering(t *testing.T) {
@@ -363,7 +363,7 @@ func TestSequentialFixesToOneFileAreNotTampering(t *testing.T) {
 
 // A checkpoint written before AppliedSHA256 existed records no hash. That is
 // "cannot tell", and refusing every such rollback would break recovery for
-// anyone upgrading — so it proceeds, as it always did.
+// anyone upgrading, so it proceeds, as it always did.
 func TestOldCheckpointsWithoutHashesStillRollBack(t *testing.T) {
 	dir := t.TempDir()
 	store := NewStore(dir)
@@ -385,14 +385,14 @@ func TestOldCheckpointsWithoutHashesStillRollBack(t *testing.T) {
 }
 
 // Checkpoints are backups, so they are capped far more loosely than scan
-// snapshots — but they are capped. Nothing removed them before, and each
+// snapshots, but they are capped. Nothing removed them before, and each
 // holds a full copy of every file its fix touched, so a long-lived host grew
 // its state directory without bound and paid for it on every history view.
 //
-// The IDs are old on purpose. Recent checkpoints are held back from the cap
+// The IDs are old. Recent checkpoints are held back from the cap
 // (see minRetention), so dating these a year ago is what puts them in the
-// cap's reach at all — and it is what the cap is for: backups from past
-// sessions, not the ones this session just wrote.
+// cap's reach at all, and it is what the cap is for: backups from past
+// sessions. This session's own backups stay.
 func TestCheckpointsArePrunedOldestFirst(t *testing.T) {
 	s := NewStore(t.TempDir())
 
@@ -445,10 +445,10 @@ func agedID(t time.Time) string {
 // after it is applied.
 //
 // pruneCheckpoints runs on every save, so a `fix --all` that writes more than
-// maxCheckpoints in one run used to prune its own earliest checkpoints — the
+// maxCheckpoints in one run used to prune its own earliest checkpoints; the
 // fixes it applied first became unrollbackable the instant they were applied.
 // The cap's comment says that must never happen and then relies on 200 being a
-// big enough number, which is a hope rather than a mechanism: no-new-privileges
+// big enough number, which is a hope with no mechanism behind it: no-new-privileges
 // and a missing restart policy are both Auto and both fire on nearly every
 // stock compose service, so a host with a hundred services reaches the cap in
 // a single batch.
@@ -520,7 +520,7 @@ func TestTheCapStillTrimsOlderCheckpoints(t *testing.T) {
 }
 
 // If NewID's shape ever drifts from what pruning parses, every checkpoint
-// becomes undatable — and undatable means prunable, so the hold above would
+// becomes undatable, and undatable means prunable, so the hold above would
 // silently stop protecting anything while every other test still passed.
 func TestNewIDCarriesADateThePrunerCanRead(t *testing.T) {
 	at, ok := idTime(NewID("ssh.rootlogin"))

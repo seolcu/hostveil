@@ -129,7 +129,7 @@ func Report(res *Result, m *Manifest) string {
 	case c[Suspicious] > 0:
 		fmt.Fprintf(&b, "**No sign of compromise, %d thing(s) to confirm.** Each suspicious item below is something a normal host also does; check that each matches something you did.\n\n", c[Suspicious])
 	default:
-		b.WriteString("**No sign of compromise in what this host recorded.** That is a statement about the evidence, not a guarantee — see the gaps below for what it could not see.\n\n")
+		b.WriteString("**No sign of compromise in what this host recorded.** That is a statement about the evidence and carries no guarantee; see the gaps below for what it could not see.\n\n")
 	}
 	fmt.Fprintf(&b, "| Verdict | Count |\n|---|---|\n| compromise | %d |\n| suspicious | %d |\n| attempt | %d |\n\n", c[Compromise], c[Suspicious], c[Attempt])
 
@@ -152,7 +152,7 @@ func Report(res *Result, m *Manifest) string {
 					loc = fmt.Sprintf("%s:%d", e.Artifact, e.Line)
 				}
 				if loc != "" {
-					fmt.Fprintf(&b, "- `%s` — `%s`\n", loc, oneLine(e.Text))
+					fmt.Fprintf(&b, "- `%s`: `%s`\n", loc, oneLine(e.Text))
 				} else {
 					fmt.Fprintf(&b, "- %s\n", oneLine(e.Text))
 				}

@@ -11,8 +11,7 @@ import (
 
 // Forbidden are the packages a UI may not import.
 //
-// It is a variable rather than a literal in each caller because it was a
-// literal in each caller: the same four strings were written out in
+// It is a variable because it used to be a literal in each caller: the same four strings were written out in
 // internal/ui/tui and internal/ui/web, and adding a fifth to one of them
 // would have left the other half of the boundary open with nothing to say
 // so. The boundary is what stopped v2's fix logic from being duplicated
@@ -28,7 +27,7 @@ var Forbidden = []string{
 	"internal/compose",
 	// internal/report renders a model.Report into an exported file. Both
 	// UIs reach it through Engine.Export/Engine.ExportFormats, the same as
-	// every other package below — a UI importing it directly would still
+	// every other package below: a UI importing it directly would still
 	// technically be "thin" by the letter of Engine.Export existing, but
 	// would duplicate the format table this boundary exists to keep in one
 	// place.
@@ -38,8 +37,8 @@ var Forbidden = []string{
 // AssertThinUI fails if any production file in the calling package's
 // directory imports something a UI may not.
 //
-// It reads "." rather than taking a path, so each UI package calls it from
-// its own directory and cannot accidentally check the other one — which
+// It reads ".", so each UI package calls it from
+// its own directory and cannot accidentally check the other one, which
 // would pass while testing nothing.
 //
 // Test files are exempt: they may wire fixtures, and this file being in a
@@ -57,7 +56,7 @@ func AssertThinUI(t *testing.T) {
 			p := strings.Trim(imp.Path.Value, `"`)
 			for _, bad := range Forbidden {
 				if strings.Contains(p, bad) {
-					t.Errorf("%s imports forbidden package %q — a UI must go through core", path, p)
+					t.Errorf("%s imports forbidden package %q; a UI must go through core", path, p)
 				}
 			}
 		}
@@ -65,8 +64,7 @@ func AssertThinUI(t *testing.T) {
 }
 
 // productionGoFiles lists the non-test .go files in the working directory.
-// Reading the directory directly rather than via the deprecated
-// parser.ParseDir: this check only cares about import lines, so package
+// Reading the directory directly: this check only cares about import lines, so package
 // grouping and build tags are irrelevant.
 func productionGoFiles(t *testing.T) []string {
 	t.Helper()
@@ -83,7 +81,7 @@ func productionGoFiles(t *testing.T) []string {
 		out = append(out, filepath.Join(".", name))
 	}
 	if len(out) == 0 {
-		t.Fatal("no production Go files found — the layering check would pass vacuously")
+		t.Fatal("no production Go files found; the layering check would pass vacuously")
 	}
 	return out
 }

@@ -38,7 +38,7 @@ func scanningModel(w, h int) *appModel {
 //
 // "How far in?" needs a denominator. A checker announces itself when it starts
 // and again when it finishes, so a reader can count what has happened and
-// never what is left — the count came from the engine's plan.
+// never what is left: the count came from the engine's plan.
 //
 // "Is it hung, and on what?" needs the domain still working to be named. On a
 // real host the answer is almost always the CVE scan, which shells out to
@@ -65,7 +65,7 @@ func TestTheScanScreenAnswersHowFarInAndOnWhat(t *testing.T) {
 // Drawing only the domains that have reported would make the list grow as the
 // scan proceeds, which is a worse answer to "is this hung" than no list: the
 // screen would keep changing while the one slow domain sat there, and the
-// domains still queued — the ones the operator is waiting for — would be the
+// domains still queued (the ones the operator is waiting for) would be the
 // ones not shown.
 func TestEveryPlannedDomainHasARowBeforeItStarts(t *testing.T) {
 	m := scanningModel(96, 34)
@@ -77,16 +77,16 @@ func TestEveryPlannedDomainHasARowBeforeItStarts(t *testing.T) {
 	}
 }
 
-// No estimate of the time remaining, deliberately.
+// No estimate of the time remaining.
 //
 // Eleven of the twelve domains together finish inside a second; the twelfth
 // shells out to Trivy, whose duration depends on the images on the host, their
 // size, and whether the vulnerability database has to be downloaded first.
 // Nearly the whole of the unknown sits in the one domain nothing can predict,
-// so a figure would be confidently wrong for most of the wait — the same
-// reason a skipped domain is scored N/A rather than 100.
+// so a figure would be confidently wrong for most of the wait: the same
+// reason a skipped domain is scored N/A.
 //
-// Pinned because it is a decision, and a decision nobody wrote down is one the
+// Pinned because it is a decision, and an unwritten decision is one the
 // next person re-litigates by adding the feature.
 func TestTheScanScreenDoesNotEstimateWhatItCannotKnow(t *testing.T) {
 	got := strings.ToLower(plain(scanningModel(96, 34).View().Content))
@@ -101,7 +101,7 @@ func TestTheScanScreenDoesNotEstimateWhatItCannotKnow(t *testing.T) {
 // by the ticker and never read from the clock while rendering.
 //
 // A clock read inside View would make two renders of one state differ, which
-// is the property TestScanProgressIsStablyOrdered holds for the status line —
+// is the property TestScanProgressIsStablyOrdered holds for the status line,
 // and the reason that test exists is that a screen redrawing differently for
 // no reason is indistinguishable from one redrawing because something changed.
 func TestTheScanScreenReadsTheClockThroughTheModel(t *testing.T) {
@@ -109,7 +109,7 @@ func TestTheScanScreenReadsTheClockThroughTheModel(t *testing.T) {
 	first := m.View().Content
 	time.Sleep(2 * time.Millisecond)
 	if second := m.View().Content; first != second {
-		t.Error("two renders of one model differ, so something in the scanning screen is reading the clock rather than the model")
+		t.Error("two renders of one model differ, so something in the scanning screen is reading the clock")
 	}
 
 	// And the ticker is what moves it.
@@ -133,7 +133,7 @@ func TestTheScanClockStopsWhenTheScanDoes(t *testing.T) {
 }
 
 // With no engine to ask there is no plan, and the screen falls back to what it
-// drew before rather than to nothing. Every model built as a bare struct
+// drew before. Every model built as a bare struct
 // literal in this package is in that state.
 func TestTheScanScreenStillRendersWithNoPlan(t *testing.T) {
 	m := &appModel{mode: modeScanning, width: 96, height: 34, selected: map[string]bool{},

@@ -33,7 +33,7 @@ func (*Checker) Source() model.Source { return model.SourceSSH }
 
 // Available requires sshd_config to exist and be readable. A missing file
 // means no SSH server to audit; a permission error means the tool was run
-// without the privileges needed to read it — both are clean skips with an
+// without the privileges needed to read it: both are clean skips with an
 // actionable reason, never a scan error.
 func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 	f, err := os.Open(c.ConfigPath) // fixed system path
@@ -42,7 +42,7 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 		case os.IsNotExist(err):
 			return false, "OpenSSH server not configured (no sshd_config)"
 		case os.IsPermission(err):
-			return false, "cannot read sshd_config without root — re-run with sudo to scan SSH"
+			return false, "cannot read sshd_config without root; re-run with sudo to scan SSH"
 		default:
 			return false, "cannot read sshd_config: " + err.Error()
 		}
@@ -52,10 +52,9 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 }
 
 // Check parses sshd_config and applies the hardening rules. Include files
-// that exist but cannot be read make the audit partial, not wrong: the
+// that exist but cannot be read make the audit partial: the
 // findings we did derive are real, but a directive in the unread file could
-// override any of them, so the domain is reported Degraded rather than
-// clean.
+// override any of them, so the domain is reported Degraded.
 func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, error) {
 	cfg, gaps, err := parseConfigFile(c.ConfigPath)
 	if err != nil {
@@ -63,7 +62,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 	}
 	findings := auditConfig(cfg, c.ConfigPath)
 
-	// A ledger rather than a return-on-first-gap, because this domain now has
+	// A ledger, because this domain now has
 	// two ways to fall short and a config can hit both at once: an include
 	// that could not be read, and a Match block the parse stopped at. Deciding
 	// at the point a gap is found is how a checker keeps one and discards the
@@ -72,14 +71,14 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 	cov.Covered(cfg.filesRead)
 	if len(gaps.unread) > 0 {
 		cov.Missed(len(gaps.unread), "could not read included sshd config: "+
-			strings.Join(gaps.unread, ", ")+" — settings there may override what was scanned")
+			strings.Join(gaps.unread, ", ")+"; settings there may override what was scanned")
 	}
 	if gaps.matchIn != "" {
 		// Zero units: a Match block has no denominator. The directives inside
-		// it are precisely the ones that were not counted, so there is no
+		// it are the ones that were not counted, so there is no
 		// number to add without inventing one.
 		cov.Missed(0, "stopped at a Match block in "+gaps.matchIn+
-			" — directives inside conditional blocks were not evaluated, and one there may "+
+			": directives inside conditional blocks were not evaluated, and one there may "+
 			"re-enable what was scanned as disabled")
 	}
 	return findings, cov.Err()
@@ -94,8 +93,7 @@ type coverageGaps struct {
 
 // sshdConfig is the effective configuration: the first value seen for each
 // keyword, plus the file that value came from. The origin matters as much
-// as the value — a fix has to edit the file that actually wins, not the
-// top-level sshd_config, or it writes a directive that stays overridden.
+// as the value: a fix has to edit the file that wins, or it writes a directive that stays overridden.
 type sshdConfig struct {
 	values    map[string]string
 	origin    map[string]string
@@ -107,9 +105,9 @@ const maxIncludeDepth = 16
 
 // parseConfigFile parses sshd_config, following Include directives, into
 // effective directive values. sshd uses the first value obtained for each
-// keyword and expands an Include in place, so a file included at the top —
-// which is how Debian and Ubuntu ship it, and how cloud images inject
-// their own defaults — wins over the lines below it. Reading only the
+// keyword and expands an Include in place, so a file included at the top
+// (which is how Debian and Ubuntu ship it, and how cloud images inject
+// their own defaults) wins over the lines below it. Reading only the
 // top-level file therefore both misses directives and reports ones that
 // are overridden.
 //
@@ -150,7 +148,7 @@ type includeParser struct {
 	// a global directive does. What is wrong is stopping silently. Check
 	// already reports an include it could not READ as partial coverage,
 	// reasoning that "a directive in the unread file could override any of
-	// them" — and that is exactly the situation here, from the same parser,
+	// them", and that is exactly the situation here, from the same parser,
 	// about directives this one chose not to read.
 	//
 	// `Match Address 0.0.0.0/0` followed by `PasswordAuthentication yes` puts
@@ -162,7 +160,7 @@ type includeParser struct {
 
 // parse reads one config file's directives into the effective config.
 //
-// A scanner error — in practice bufio.ErrTooLong, a line over 64 KiB — stops
+// A scanner error (in practice bufio.ErrTooLong, a line over 64 KiB) stops
 // the read partway with no error returned anywhere, so every directive after
 // that point read as unset and the compiled-in default silently won the
 // audit. PermitRootLogin is the one that matters: unset audits as the
@@ -176,8 +174,8 @@ func (p *includeParser) parse(data []byte, path string, depth int) {
 	defer func() {
 		if sc.Err() != nil {
 			// The caller counted this file as read before handing it over;
-			// take that back, so Covered/Total describes what was actually
-			// covered rather than crediting a file we only half-parsed.
+			// take that back, so Covered/Total describes what was
+			// covered and never credits a file we only half-parsed.
 			p.cfg.filesRead--
 			p.unread = append(p.unread, path)
 		}
@@ -228,7 +226,7 @@ func (p *includeParser) include(val string, depth int) {
 		}
 		matches, err := filepath.Glob(pattern)
 		if err != nil {
-			continue // malformed pattern; sshd would reject the config outright
+			continue // malformed pattern; sshd would reject the config completely
 		}
 		sort.Strings(matches)
 		for _, m := range matches {
@@ -277,7 +275,7 @@ func effective(cfg sshdConfig, key, def string) string {
 }
 
 // configFor names the file a fix must edit to change key. When the
-// directive is set, that is the file it is set in — editing anywhere else
+// directive is set, that is the file it is set in: editing anywhere else
 // leaves the winning value in place. When it is absent and the finding
 // rests on sshd's compiled-in default, the top-level file is the right
 // place to add it.
@@ -294,7 +292,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 	if effective(cfg, "PermitRootLogin", "prohibit-password") == "yes" {
 		out = append(out, model.NewFinding("ssh.rootlogin", "SSH permits root login with a password",
 			model.SeverityHigh, model.SourceSSH, model.RemediationReview,
-			model.WithDescription("Allowing root to log in over SSH with a password makes the most powerful account a direct brute-force target. A single guessed password is a full host compromise."),
+			model.WithDescription("Allowing root to log in over SSH with a password makes the account with full control a direct brute-force target. A single guessed password is a full host compromise."),
 			model.WithHowToFix("Set `PermitRootLogin prohibit-password` (key-only) or `no`, and log in as a normal user with sudo instead."),
 			configFor(cfg, path, "PermitRootLogin")))
 	}
@@ -332,7 +330,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 	}
 
 	// sshd's own default is 120 seconds, so this fires on an untouched
-	// config — deliberately, like ssh.passwordauth. The fix is Auto because
+	// config, like ssh.passwordauth. The fix is Auto because
 	// shortening the window cannot lock anyone out: it only bounds how long
 	// an unauthenticated connection may sit there. 0 means no limit at all.
 	grace := effective(cfg, "LoginGraceTime", "120")
@@ -347,8 +345,8 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 	if v := effective(cfg, "GatewayPorts", "no"); v == "yes" || v == "clientspecified" {
 		out = append(out, model.NewFinding("ssh.gatewayports", "SSH exposes remote-forwarded ports to the network",
 			model.SeverityMedium, model.SourceSSH, model.RemediationReview,
-			model.WithDescription("With GatewayPorts enabled, a port forwarded with `ssh -R` listens on all interfaces instead of loopback, so anyone who can reach this host can use the tunnel — effectively publishing whatever the tunnel reaches."),
-			model.WithHowToFix("Set `GatewayPorts no` so remote-forwarded ports bind to loopback only. If a tunnel genuinely must be public, front it with a reverse proxy that authenticates."),
+			model.WithDescription("With GatewayPorts enabled, a port forwarded with `ssh -R` listens on all interfaces instead of loopback, so anyone who can reach this host can use the tunnel; effectively publishing whatever the tunnel reaches."),
+			model.WithHowToFix("Set `GatewayPorts no` so remote-forwarded ports bind to loopback only. If a tunnel must be public, front it with a reverse proxy that authenticates."),
 			model.WithEvidence("value", v), configFor(cfg, path, "GatewayPorts")))
 	}
 
@@ -378,8 +376,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 
 	// Keep these aligned with sshd's effective defaults and with the controls
 	// Lynis evaluates from `sshd -T`. Defaults are supplied explicitly here so
-	// the checker reports behavior, not whether somebody happened to spell the
-	// directive out in a file.
+	// the checker reports behavior even where nobody spelled the directive out.
 	type hardeningRule struct {
 		id, key, want, def, title, desc string
 		severity                        model.Severity
@@ -414,7 +411,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 	// The contradiction case only: PasswordAuthentication no is meant to end
 	// password guessing, but keyboard-interactive runs the same PAM password
 	// prompt through a different door. KbdInteractiveAuthentication defaults
-	// to yes, and ChallengeResponseAuthentication is its pre-8.7 alias — an
+	// to yes, and ChallengeResponseAuthentication is its pre-8.7 alias: an
 	// operator who disabled either one has already closed the door.
 	kbdKey := "KbdInteractiveAuthentication"
 	kbd := effective(cfg, kbdKey, "")
@@ -429,7 +426,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 	if kbd == "yes" && effective(cfg, "PasswordAuthentication", "yes") == "no" {
 		out = append(out, model.NewFinding("ssh.kbdinteractive", "SSH still accepts interactive password prompts",
 			model.SeverityMedium, model.SourceSSH, model.RemediationReview,
-			model.WithDescription("PasswordAuthentication is off, but keyboard-interactive authentication is still on — and on most systems it asks PAM for the very same password. The brute-force protection you configured is not actually in force."),
+			model.WithDescription("PasswordAuthentication is off, but keyboard-interactive authentication is still on, and on most systems it asks PAM for the very same password. The brute-force protection you configured is not in force."),
 			model.WithHowToFix("Set `KbdInteractiveAuthentication no`. Careful: PAM-based one-time codes (2FA prompts) also use this mechanism, so keep it if your logins go through one."),
 			model.WithEvidence("directive", kbdKey), configFor(cfg, path, kbdKey)))
 	}
@@ -439,8 +436,8 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 
 // parseSSHDuration parses sshd's time format: a bare number is seconds, and
 // qualified values chain quantity[unit] pairs ("90", "2m", "1h30m"). It
-// returns false for anything else, and a false parse produces no finding —
-// sshd -t is the authority on validity, not this checker.
+// returns false for anything else, and a false parse produces no finding:
+// sshd -t is the authority on validity.
 func parseSSHDuration(s string) (seconds int, ok bool) {
 	s = strings.TrimSpace(strings.ToLower(s))
 	if s == "" {

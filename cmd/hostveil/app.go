@@ -49,9 +49,9 @@ func buildEngineWithAI(useAI bool) *core.Engine {
 
 // buildRegistry lists every checker, in scan order.
 //
-// This order is load-bearing: Registry.Run writes its results by registry
+// This order matters: Registry.Run writes its results by registry
 // index, so this is what orders Report.Domains and therefore the CLI's
-// per-domain status block. It is the third copy of the domain order — the
+// per-domain status block. It is the third copy of the domain order: the
 // other two, AllSources and the scoring axes, were merged into one table
 // in internal/model and can no longer disagree with each other.
 // TestCheckerRegistrationMatchesSourceOrder holds this one to that table.
@@ -79,8 +79,8 @@ func buildRegistry() *check.Registry {
 // debugRunner returns the command runner the engine should use: the plain
 // one, or a tracing wrapper when HOSTVEIL_DEBUG is set.
 //
-// An environment variable rather than a flag, because it has to work for
-// every command without threading a flag through six of them — and because
+// An environment variable, because it has to work for
+// every command without threading a flag through six of them, and because
 // the thing you tell someone in a bug report is one line they can paste:
 //
 //	HOSTVEIL_DEBUG=1 hostveil scan

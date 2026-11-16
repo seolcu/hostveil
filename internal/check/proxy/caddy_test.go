@@ -77,7 +77,7 @@ func TestCaddyAdminOnEveryInterfaceIsFound(t *testing.T) {
 }
 
 // admin is a global option. The same word inside a site block is a matcher
-// name, a path, a respond body — anything but the setting — and a heredoc body
+// name, a path, a respond body (anything but the setting) and a heredoc body
 // is content the proxy serves.
 func TestCaddyAdminOutsideTheGlobalBlockIsNotTheSetting(t *testing.T) {
 	c := caddyChecker(t, map[string]string{
@@ -223,7 +223,7 @@ func TestCaddyJSONConfigIsAGapNotClean(t *testing.T) {
 	_, err := c.Check(context.Background(), noDocker())
 	var pe *check.PartialError
 	if !errors.As(err, &pe) {
-		t.Fatalf("a JSON configuration is unread, not clean: got %v", err)
+		t.Fatalf("a JSON configuration is unread and must not pass as clean: got %v", err)
 	}
 }
 
@@ -348,7 +348,7 @@ func TestCaddyContainerConfigItCannotReadIsAGap(t *testing.T) {
 
 // A heredoc's closing marker may carry the directive's remaining arguments.
 // Missing that swallowed the rest of the file, so everything after the first
-// respond body went unread — the false clean this package is least allowed.
+// respond body went unread: the false clean this package is least allowed.
 func TestCaddyDirectivesAfterAHeredocAreRead(t *testing.T) {
 	got := caddyLines("example.com {\n\trespond <<HTML\n\t\t<p>hi</p>\n\t\tHTML 200\n\tfile_server browse\n}\n")
 	if !caddyBrowse(got) {

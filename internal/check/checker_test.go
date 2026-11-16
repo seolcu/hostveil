@@ -51,7 +51,7 @@ func runStub(t *testing.T, c Checker) Result {
 }
 
 // The point of PartialError: the domain ran and found something real, but
-// covered only part of its ground. Both halves matter — the Degraded state so
+// covered only part of its ground. Both halves matter: the Degraded state so
 // the score can be flagged, and the findings so partial evidence isn't thrown
 // away.
 func TestPartialErrorBecomesDegradedAndKeepsFindings(t *testing.T) {
@@ -85,7 +85,7 @@ func TestPartialErrorReasonIncludesCoverage(t *testing.T) {
 	}
 	// And a full count is not a fraction worth printing. The compose domain
 	// counted its projects, missed something it could not count, and told the
-	// operator "audited compose projects only (covered 1 of 1)" — a claim of
+	// operator "audited compose projects only (covered 1 of 1)": a claim of
 	// partial coverage and a claim of complete coverage in one sentence.
 	full := &PartialError{Reason: "audited compose projects only", Covered: 1, Total: 1}
 	if got := full.Error(); got != "audited compose projects only" {
@@ -93,7 +93,7 @@ func TestPartialErrorReasonIncludesCoverage(t *testing.T) {
 	}
 }
 
-// A PartialError reached through a wrapping chain must still be recognized —
+// A PartialError reached through a wrapping chain must still be recognized:
 // checkers naturally wrap errors on the way out.
 func TestWrappedPartialErrorStillDegrades(t *testing.T) {
 	err := fmt.Errorf("scan images: %w", &PartialError{Reason: "partial", Covered: 1, Total: 2})
@@ -120,8 +120,8 @@ func TestOrdinaryErrorStaysError(t *testing.T) {
 	}
 }
 
-// Degraded counts as having run, so its axis is scored rather than excluded.
-// This is the contract ScoreReport relies on to flag rather than drop it.
+// Degraded counts as having run, so its axis is scored.
+// This is the contract ScoreReport relies on to flag it.
 func TestDegradedCountsAsRan(t *testing.T) {
 	if !model.ScanDegraded.Ran() {
 		t.Error("ScanDegraded must count as having run")
@@ -154,7 +154,7 @@ func TestPanicIsContainedAsError(t *testing.T) {
 		t.Error("a panic in one checker must not affect the others")
 	}
 	// Stack is what lets core.ScanWith hand this off to
-	// internal/diagnostics — see engine.go — without it a checker panic
+	// internal/diagnostics (see engine.go) without it a checker panic
 	// degraded gracefully but left nothing for `hostveil diagnostics` to find
 	// afterward.
 	if !strings.Contains(results[0].Stack, "runOne") {

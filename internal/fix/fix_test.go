@@ -13,16 +13,16 @@ import (
 // representative builds a finding with the metadata/evidence each fix
 // builder needs, so the registry can be exercised without a live scan.
 //
-// It lives in fixtest rather than here because cmd/sitegen needs the same
+// It lives in fixtest because cmd/sitegen needs the same
 // thing: pinning the docs' Fix column against what a user is offered means
 // building the fix, and building it means having a finding to build from.
 func representative(id string) model.Finding { return fixtest.Finding(id) }
 
 // TestEveryRegisteredFixIsValid builds each registered fix from a
-// representative finding and asserts it passes Validate — Auto has exactly
+// representative finding and asserts it passes Validate: Auto has exactly
 // one action, Review has independent alternatives, every edit has a
 // Transform, every exec has commands.
-// It enumerates the registry itself rather than a hand-kept list, so a new
+// It enumerates the registry itself, so a new
 // registration cannot slip in unvalidated.
 func TestEveryRegisteredFixIsValid(t *testing.T) {
 	r := Default()
@@ -31,9 +31,9 @@ func TestEveryRegisteredFixIsValid(t *testing.T) {
 		// would silently skip this test's coverage. Nothing registers one
 		// today, and the CVE decision depends on that staying true: a
 		// "cve.*" pattern would sweep up every per-CVE finding the registry
-		// deliberately declines. Make introducing one a visible act.
+		// declines. Make introducing one a visible act.
 		if strings.ContainsAny(id, "*?") {
-			t.Errorf("glob pattern %q has no representative finding; register an exact ID, or extend this test deliberately", id)
+			t.Errorf("glob pattern %q has no representative finding; register an exact ID, or extend this test", id)
 			continue
 		}
 		f := representative(id)
@@ -76,10 +76,10 @@ func TestUnregisteredFindingHasNoFix(t *testing.T) {
 }
 
 // TestKnownUnregisteredFindings pins the findings that are fixable in
-// principle but deliberately have no builder, each for a reason recorded
+// principle but have no builder, each for a reason recorded
 // in Default's doc comment. Registering one of these means deleting an
-// assertion here, which is the point: the decision should be argued with,
-// not quietly reversed.
+// assertion here, so that the decision should be argued with,
+// not silently reversed.
 func TestKnownUnregisteredFindings(t *testing.T) {
 	// The list is declineReasons, the one users read through WhyNoFix. A
 	// copy of it here was a third place to edit for every fix registered,
@@ -94,7 +94,7 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 }
 
 // Every entry in checkerDeclaresReview must name a registered fix; one that
-// does not is a stale entry quietly claiming a checker's caution for nothing.
+// does not is a stale entry silently claiming a checker's caution for nothing.
 func TestCheckerDeclaresReviewNamesRegisteredFixes(t *testing.T) {
 	r := Default()
 	for id := range checkerDeclaresReview {
@@ -113,7 +113,7 @@ func TestCheckerDeclaresReviewNamesRegisteredFixes(t *testing.T) {
 }
 
 // TestCVERollupIsFixableButPerCVEIsNot asserts both halves of the CVE
-// decision at once, which is the point of having it in one test: a "cve.*"
+// decision at once, which is why it is one test: a "cve.*"
 // glob would satisfy the first assertion and break the second. Per-CVE
 // findings stay unfixable because a package version is not an image tag;
 // the per-image rollup is fixable because re-pulling a mutable tag needs no
@@ -151,8 +151,7 @@ func TestReviewIntentSurvivesAnAutoShapedFix(t *testing.T) {
 	}
 }
 
-// The two alternatives must be independent choices, not two halves of one
-// procedure: action 1 is the zero-downtime option for anyone who cannot
+// The two alternatives must be independent choices: action 1 is the zero-downtime option for anyone who cannot
 // take an unplanned restart, at the cost of not remediating yet.
 func TestRepullFixHasTwoIndependentAlternatives(t *testing.T) {
 	fx, ok, err := Default().Build(representative("cve.outdated-image"))
@@ -160,7 +159,7 @@ func TestRepullFixHasTwoIndependentAlternatives(t *testing.T) {
 		t.Fatalf("build: ok=%v err=%v", ok, err)
 	}
 	if fx.Kind != model.RemediationReview {
-		t.Errorf("kind = %v, want Review — exec fixes are never Auto", fx.Kind)
+		t.Errorf("kind = %v, want Review; exec fixes are never Auto", fx.Kind)
 	}
 	if len(fx.Actions) != 2 {
 		t.Fatalf("expected 2 alternatives, got %d", len(fx.Actions))
@@ -202,7 +201,7 @@ func TestRepullFixTargetsTheComposeFile(t *testing.T) {
 			if cmd[idx+1] != f.Metadata["file"] {
 				t.Errorf("action %d command %d targets %q, want %q", i, j, cmd[idx+1], f.Metadata["file"])
 			}
-			// The unqualified name, as written in the compose file — never
+			// The unqualified name, as written in the compose file; never
 			// the project-qualified f.Service.
 			if cmd[len(cmd)-1] != f.Metadata["service"] {
 				t.Errorf("action %d command %d does not end with the bare service: %v", i, j, cmd)
@@ -273,8 +272,7 @@ func TestMemLimitFixOffersSeveralValues(t *testing.T) {
 		if !strings.Contains(string(out), "mem_limit") {
 			t.Errorf("action %d did not set mem_limit: %s", i, out)
 		}
-		// Each alternative must be a distinct choice, not the same edit
-		// relabelled — the loop variable capture bug this guards is easy to
+		// Each alternative must be a distinct edit; the loop variable capture bug this guards is easy to
 		// reintroduce.
 		if seen[string(out)] {
 			t.Errorf("action %d produced an output identical to an earlier alternative", i)
@@ -310,8 +308,8 @@ func TestExecFixTransformsPure(t *testing.T) {
 }
 
 // The property that makes this fix safe to apply unattended: it only ever
-// removes permission bits. Assigning the rule's MaxMode outright would GRANT
-// access — /etc/shadow at 0604 violates a 0640 rule, and setting it to 0640
+// removes permission bits. Assigning the rule's MaxMode directly would GRANT
+// access: /etc/shadow at 0604 violates a 0640 rule, and setting it to 0640
 // hands the shadow group a read bit the file never had.
 func TestTightenOnlyRemovesBits(t *testing.T) {
 	cases := []struct {
@@ -320,13 +318,13 @@ func TestTightenOnlyRemovesBits(t *testing.T) {
 	}{
 		{0o666, 0o644, 0o644, "world-writable stripped to the rule"},
 		{0o644, 0o640, 0o640, "other-read stripped"},
-		{0o604, 0o640, 0o600, "must NOT become 0640 — that would grant group read"},
+		{0o604, 0o640, 0o600, "must NOT become 0640, that would grant group read"},
 		{0o600, 0o640, 0o600, "already stricter than the rule is left alone"},
 		{0o400, 0o644, 0o400, "stricter in every bit, untouched"},
 	}
 	for _, c := range cases {
 		if got := tighten(c.current, c.mask); got != c.want {
-			t.Errorf("tighten(%#o, %#o) = %#o, want %#o — %s", c.current, c.mask, got, c.want, c.why)
+			t.Errorf("tighten(%#o, %#o) = %#o, want %#o; %s", c.current, c.mask, got, c.want, c.why)
 		}
 		// Whatever the inputs, no bit may appear that was not already set.
 		if got := tighten(c.current, c.mask); got&^c.current != 0 {
@@ -387,7 +385,7 @@ func TestFilePermsFixIsAutoAndModeShaped(t *testing.T) {
 		t.Fatalf("action kind = %v, want ActionMode", a.Kind)
 	}
 	// A glob rule covers several files, and an Auto fix gets exactly one
-	// action — so the one action has to carry them all.
+	// action, so the one action has to carry them all.
 	if len(a.Paths) != 2 {
 		t.Errorf("paths = %v, want both host keys", a.Paths)
 	}
@@ -416,7 +414,7 @@ func TestFilePermsFixRefusesIncompleteEvidence(t *testing.T) {
 // A path may contain ", ". The human-readable "files" evidence and the
 // machine-readable "paths" evidence used to share that separator, so a
 // directory like "logs, old" split into two paths that do not exist. It
-// failed safe — planModes aborts the whole fix when a path is missing — but
+// failed safe (planModes aborts the whole fix when a path is missing) but
 // it failed, on a fix that should have worked, for a reason invisible in the
 // output.
 func TestFilePermsFixHandlesPathsContainingTheHumanSeparator(t *testing.T) {
@@ -443,11 +441,11 @@ func TestFilePermsFixHandlesPathsContainingTheHumanSeparator(t *testing.T) {
 }
 
 // buildRepullImage's Benefit must not promise more than a re-pulled floating
-// tag can actually deliver: re-resolving the tag *may* pick up a fix for the
+// tag can deliver: re-resolving the tag *may* pick up a fix for the
 // CVE that triggered the finding, but Hostveil has no way to confirm it did,
 // since the same tag can move for unrelated reasons too. This mirrors
-// internal/check/cve's own HowToFix, which carries the identical caveat —
-// and it is the property the whole feature exists to state honestly, per the
+// internal/check/cve's own HowToFix, which carries the identical caveat,
+// and it is the property the whole feature exists to state accurately, per the
 // user's original example: fast patches are attractive on a self-hosted box
 // and risky on a stable one, and a Benefit that oversold "this fixes it"
 // would hide the second half of that trade-off.

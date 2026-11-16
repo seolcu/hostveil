@@ -40,7 +40,7 @@ func TestAllowOriginsWritesHostveilsOwnDropIn(t *testing.T) {
 }
 
 // A second finding adds to the file, and applying the same one again changes
-// nothing — the drop-in is Hostveil's, but a later fix must not drop what an
+// nothing: the drop-in is Hostveil's, but a later fix must not drop what an
 // earlier one allowed.
 func TestAllowOriginsMergesAndIsIdempotent(t *testing.T) {
 	first, err := addOriginPatterns(nil, []string{"origin=Tailscale,codename=noble,label=Tailscale"})

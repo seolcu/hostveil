@@ -6,7 +6,7 @@
 // to a browser, and the server converts it into a SameSite=Strict session
 // cookie on the very first request. Past that point the copy in the query
 // string is residue: every fetch below authenticates with the cookie and not
-// one of them carries ?t=. Residue is not free — it sits in the address bar,
+// one of them carries ?t=. Residue is not free: it sits in the address bar,
 // in the history entry, in a bookmark made without thinking, and in every
 // screenshot of the dashboard anyone pastes into an issue. `Referrer-Policy:
 // no-referrer` already stops it leaving over the network; this is the rest.
@@ -34,7 +34,7 @@
 // started substituting long scoring labels into a narrow column. Read
 // everything through the accessors below, never the tables directly, so a
 // value the engine knows and the page does not still renders as something
-// rather than as undefined.
+// readable.
 const M = window.HOSTVEIL_MODEL || {};
 const SRC = M.domains || {};
 const SEV = M.severities || {};
@@ -44,7 +44,7 @@ const BANDS = M.bands || [];
 
 function srcLabel(s) { return (SRC[s] && SRC[s].label) || String(s); }
 
-// Enum values arrive as names now, not ordinals, so anything that needs the
+// Enum values arrive as names now, so anything that needs the
 // model's ordering asks for it. rank is the row's position in the table the
 // engine declared; sorting by the name itself would put "low" before
 // "medium" and domains in alphabetical order, which is not an ordering
@@ -56,17 +56,16 @@ let report = null;
 // trend is fetched separately from the report: the report is refetched
 // after every fix, and the trend only moves when a scan does.
 let trend = null;
-let selected = null; // {id, service} — the inspected finding (single-select)
+let selected = null; // {id, service}; the inspected finding (single-select)
 
 // Filter + multi-select + sort state.
 const filters = { sev: new Set(), domain: new Set(), fixable: false };
 const marked = new Set(); // keys of findings picked for a batch fix
-let sortBy = "severity"; // "severity" | "domain" | "remediation" — see #sort
+let sortBy = "severity"; // "severity" | "domain" | "remediation"; see #sort
 
 // Comparators for the findings list. Each reads the same rank() the model's
 // own tables carry, so "Domain" and "Remediation" sort in the order the
-// engine declared them in, not alphabetically or by whichever order the
-// scan happened to enumerate them.
+// engine declared them in.
 const sortComparators = {
   severity: (a, b) => rank(SEV, a.severity) - rank(SEV, b.severity),
   domain: (a, b) => rank(SRC, a.source) - rank(SRC, b.source),
@@ -79,9 +78,8 @@ async function api(path, opts) {
   const res = await fetch(path, opts);
   if (!res.ok) {
     // The status matters on one route: a declined rollback answers 409,
-    // and a decline is a question for the operator rather than a failure
-    // to report. Carrying it on the error is what lets the caller tell
-    // them apart — without it the dashboard turned every decline into
+    // and a decline is a question for the operator. Carrying it on the error is what lets the caller tell
+    // them apart, without it the dashboard turned every decline into
     // "Rollback failed" and offered nothing further, while the server had
     // supported force all along.
     const err = new Error((await res.text()) || res.statusText);
@@ -131,7 +129,7 @@ function isPending(f) { return !!f.pending; }
 function scanComplete(state) { return !!(SCAN[state] && SCAN[state].complete); }
 
 // Score/axis health band. BANDS is ordered best-first with an inclusive
-// floor each, so the first row the score clears is its band — the same walk
+// floor each, so the first row the score clears is its band: the same walk
 // model.BandFor does. The thresholds were written out four times before
 // this, and the CLI's copy had one fewer arm than the rest.
 function bandFor(v) { return BANDS.find((b) => v >= b.min) || { cls: "b-na", verdict: "unscored" }; }
@@ -139,7 +137,7 @@ function bandFor(v) { return BANDS.find((b) => v >= b.min) || { cls: "b-na", ver
 // zero or one of them so a caller can spread it into a child list.
 //
 // Two refusals, and every interface makes the same two: nothing beside an N/A
-// axis, because a number there is a claim about a domain nobody looked at;
+// axis, because a number there is a claim about a domain the scan never looked at;
 // and nothing when the figure equals the score, because an arrow pointing at
 // where it already is says the fixes are worth nothing. On a well-kept host
 // that is most rows, and the column has to stay quiet on them or it becomes
@@ -154,7 +152,7 @@ function afterFixesNote(applicable, score, after, render) {
 // internal/docs/afterfixes_test.go holds the two together by reading this
 // file.
 //
-// The "~" is the load-bearing part: a degraded axis is scored from an
+// The "~" is the important part: a degraded axis is scored from an
 // incomplete picture, and an unmarked score on one says a domain vouches for
 // ground it never looked at.
 function axisValueText(ax) {
@@ -194,7 +192,7 @@ function renderFilterbar(all) {
 
   // Severity chips (only those present), each with a live count. Ordered
   // by the model's table, so the chips run most-severe-first for the same
-  // reason the findings do, rather than because a literal here says so.
+  // reason the findings do.
   const sevCounts = {};
   all.forEach((f) => { if (SEV[f.severity]) sevCounts[f.severity] = (sevCounts[f.severity] || 0) + 1; });
   for (const [key, sev] of Object.entries(SEV)) {
@@ -206,7 +204,7 @@ function renderFilterbar(all) {
     }, "c-" + sev.abbr));
   }
 
-  // Domain chips (every source present in the report — filtering this list
+  // Domain chips (every source present in the report: filtering this list
   // by the label table is what hid the sysctl domain when the table was a
   // hand-written copy).
   const domains = [...new Set(all.map((f) => f.source))].sort(byRank(SRC));
@@ -266,10 +264,9 @@ function applyBatch() {
 }
 
 // applyMany drives a per-item progress modal over `findings`, calling
-// /api/fix/one once per finding in sequence rather than the batch routes'
-// one-shot /api/fix/all or /api/fix/batch. That endpoint is Engine.ApplyOne
-// — the batch loop's own eligibility rule and no-verify semantics exposed
-// per item, not a loop over the single-fix endpoint, which would re-run
+// /api/fix/one once per finding in sequence. That endpoint is Engine.ApplyOne:
+// the batch loop's own eligibility rule and no-verify semantics exposed
+// per item. A loop over the single-fix endpoint would re-run
 // each finding's domain checker (expensive for compose and cve) once per
 // item instead of zero times. See internal/core.ApplyOne's doc comment.
 async function applyMany(findings, verb) {
@@ -305,10 +302,10 @@ async function applyMany(findings, verb) {
 
 // Show which checkers did not fully cover their domain. Without this the
 // dashboard renders a score built from a partial scan exactly like one built
-// from a complete scan — the CVE axis reading a confident 100 because Trivy
+// from a complete scan: the CVE axis reading a confident 100 because Trivy
 // could not reach a single image is the case that motivated it.
 // renderDelta summarises what moved since the previous scan. The CLI prints
-// the same counts and then names the findings; here it stays one line — the
+// the same counts and then names the findings; here it stays one line: the
 // list below already shows what is outstanding, and the question this
 // answers is only "did the last round of fixes help?". Hidden when there is
 // no previous scan to compare against.
@@ -333,7 +330,7 @@ function renderDelta() {
 
 // renderTrend draws the score of every retained scan beside the delta.
 //
-// The glyphs come from the server, rendered by model.Sparkline — the same
+// The glyphs come from the server, rendered by model.Sparkline: the same
 // function the TUI draws from. Bucketing scores into blocks again here
 // would be a second implementation of one rule, which is the shape that
 // already cost this file its domain table.
@@ -389,7 +386,7 @@ function renderDomainNotice() {
 // ── domain rail ──────────────────────────────────────────────────────
 // Every axis as a row: score, bar, severity mix, and for a domain that did
 // not run, the reason instead of a number. It doubles as the domain filter,
-// which is the point — the rail is where a skipped domain is both visible
+// as intended: the rail is where a skipped domain is both visible
 // and clickable.
 function renderRail(all) {
   const rail = document.getElementById("rail");
@@ -412,7 +409,7 @@ function renderRail(all) {
     );
 
     if (!ax.applicable) {
-      row.append(el("span", { class: "c" }, `${state} — ${dom.reason || "did not run"}`));
+      row.append(el("span", { class: "c" }, `${state}; ${dom.reason || "did not run"}`));
     } else {
       const mix = el("span", { class: "c" });
       const counts = {};
@@ -446,19 +443,19 @@ function render() {
   // Exposure gauge (the signature): SECURITY meter + score.
   //
   // When no domain ran there is nothing to average, so the number would be
-  // arbitrary — and an empty meter next to a digit reads as "terrible host"
-  // rather than "nothing was examined", which are opposite messages.
+  // arbitrary, and an empty meter next to a digit reads as "terrible host"
+  // when the truth is "nothing was examined".
   document.getElementById("gauge").replaceChildren(
     el("span", { class: "gauge-label" }, "Security"),
     ...(score.applicable === false
-      ? [el("span", { class: "gauge-na" }, "N/A — nothing could be scanned")]
+      ? [el("span", { class: "gauge-na" }, "N/A; nothing could be scanned")]
       : [meter(score.overall, band(score.overall)),
          el("span", { class: "gauge-score", html: `${score.overall}<small>/100</small>` }),
          ...afterFixesNote(score.applicable, score.overall, score.after_fixes,
                            (n) => el("span", { class: "gauge-after" }, `${n} after fixes`))])
   );
 
-  // Per-axis bars. The short domain label, not the axis label: the column
+  // Per-axis bars. The short domain label: the column
   // is 72px with an ellipsis, and "Container exposure" does not fit where
   // "Container" does. This was a hand-written table of short labels keyed
   // by axis ID, nine rows for eleven domains, so the two domains added
@@ -497,14 +494,14 @@ function render() {
     marked.clear();
     renderBatchbar();
     // "Clean" is a claim about the whole host, so it may only be made when
-    // the whole host was actually examined. Finding nothing and being
-    // unable to look score the same and mean opposite things — and this
+    // the whole host was examined. Finding nothing and being
+    // unable to look score the same and mean opposite things, and this
     // page said "Clean." either way, so a host whose every checker had
     // failed was reported spotless right above the notice saying so.
     const missing = incompleteDomains().length;
     list.replaceChildren(missing > 0
       ? el("li", { class: "clean muted" },
-        `No problems found in the domains that ran — but ${missing} did not complete.`)
+        `No problems found in the domains that ran, but ${missing} did not complete.`)
       : el("li", { class: "clean" }, "No problems found. Clean."));
     document.getElementById("detail").replaceChildren(el("p", { class: "empty" }, "Nothing to fix."));
     return;
@@ -523,7 +520,7 @@ function render() {
       el("div", { class: "title" },
         el("div", { class: "name" }, f.title),
         el("div", { class: "rem rem-" + f.remediation }, f.id + "  ·  " +
-          (isPending(f) ? "Applied — not in force yet" : remLabel(f.remediation)))
+          (isPending(f) ? "Applied, waiting to take effect" : remLabel(f.remediation)))
       ),
       f.service ? el("span", { class: "svc" }, f.service) : ""
     );
@@ -563,7 +560,7 @@ function renderOverview(all, visible, rows) {
   box.append(el("p", { class: "over-lead" },
     `${all.length} unresolved finding${all.length === 1 ? "" : "s"} across the domains that ran.`));
 
-  // Severity chips, only for severities actually present. Ordered by the
+  // Severity chips, only for severities present. Ordered by the
   // model's table, which is most-severe-first.
   const chips = el("div", { class: "over-sev" });
   for (const [i, sev] of Object.entries(SEV)) {
@@ -584,7 +581,7 @@ function renderOverview(all, visible, rows) {
   }
 
   // Jump list: the most severe handful, so the worst problems are one click
-  // away rather than a scroll-and-hunt.
+  // away.
   const top = visible.slice(0, 6);
   if (top.length) {
     box.append(el("div", { class: "over-head" }, "Most severe"));
@@ -620,12 +617,12 @@ function selectFinding(f, li) {
     f.description ? el("p", {}, f.description) : "",
     f.how_to_fix ? el("div", { class: "howto" }, "How to fix") : "",
     f.how_to_fix ? el("p", {}, f.how_to_fix) : "",
-    // Under the instructions, not above them: this answers the question a
+    // Under the instructions: this answers the question a
     // reader asks second, and it is absent entirely on anything fixable.
     f.why_no_fix ? el("div", { class: "howto" }, "Why there is no fix button") : "",
     f.why_no_fix ? el("p", { class: "whynofix" }, f.why_no_fix) : ""
   );
-  // Shown immediately rather than behind a "Preview fix" click: there is
+  // Shown immediately: there is
   // nothing to decide before seeing it, and gating it behind a button meant
   // a second click re-appended a second copy underneath the first, since
   // nothing ever removed the one already there.
@@ -636,7 +633,7 @@ function selectFinding(f, li) {
     d.append(box);
     loadPreview(f, box);
   }
-  // A row, not two bare buttons appended straight to #detail: without a
+  // A row: without a
   // wrapper neither had any margin of its own, so whichever came right
   // before (a paragraph, or the fixbox) butted straight up against
   // "Explain with AI" with no breathing room at all.
@@ -646,7 +643,7 @@ function selectFinding(f, li) {
 
 // explainAI asks the server for the advisory AI explanation. It degrades in
 // place: with no Ollama reachable the server answers with ai_error, which
-// renders as a note rather than an error state — AI is optional everywhere.
+// renders as a note; AI is optional everywhere.
 async function explainAI(f, btn) {
   const d = document.getElementById("detail");
   const old = d.querySelector(".aibox");
@@ -669,7 +666,7 @@ async function explainAI(f, btn) {
 
 // loadPreview fetches a finding's fix preview into a box selectFinding has
 // already appended to #detail, replacing its "Loading…" placeholder either
-// way — with the diff, or with why it could not be fetched.
+// way, with the diff, or with why it could not be fetched.
 async function loadPreview(f, box) {
   try {
     const p = await api(`/api/preview?id=${encodeURIComponent(f.id)}&service=${encodeURIComponent(f.service || "")}`);
@@ -679,7 +676,7 @@ async function loadPreview(f, box) {
   }
 }
 
-// drawPreviewInto renders a fetched preview into a box already in the DOM —
+// drawPreviewInto renders a fetched preview into a box already in the DOM:
 // the alternative-picker/Apply pair a Review finding needs, redrawn in
 // place each time a different alternative is chosen.
 function drawPreviewInto(box, f, p) {
@@ -714,7 +711,7 @@ function altPicker(p, chosen, onpick) {
 }
 
 // An unrecognised action type must never render as an empty box beside a
-// live Apply button — that reads as "this fix changes nothing".
+// live Apply button, that reads as "this fix changes nothing".
 function actionBody(a) {
   // An edit that restarts something afterwards shows both halves: the diff
   // is what changes, the commands are what puts it in force.
@@ -751,8 +748,7 @@ async function applyFix(f, action) {
     // The restart hint is not decoration. An edit fix writes the file and
     // nothing reloads the service, so until the operator restarts it the
     // score has improved for a change that is not yet in effect. The CLI has
-    // always said so. verify_message is rendered by the engine, not composed
-    // here: the difference between "re-checked and gone" and "applied but
+    // always said so. verify_message is rendered by the engine: the difference between "re-checked and gone" and "applied but
     // not yet in force" is subtle enough that three interfaces phrasing it
     // themselves would make three different claims.
     showOutcomeModal("Fix applied", o);
@@ -810,7 +806,7 @@ async function showAdvise() {
 
   const textarea = Object.assign(document.createElement("textarea"), {
     className: "ctxinput", value: ctx,
-    placeholder: "Describe this host in one line — its purpose, and whether it favors staying current or staying stable.",
+    placeholder: "Describe this host in one line; its purpose, and whether it favors staying current or staying stable.",
   });
   const saveBtn = el("button", {}, "Save");
   d.append(el("div", { class: "fixbox ctxbox" },
@@ -864,7 +860,7 @@ function checkpointBox(cp) {
     // what ran instead of a button that would lead nowhere.
     if (cp.commands) body.append(cmdList(cp.commands));
     body.append(el("p", { class: "empty" },
-      "This fix ran a command rather than editing a file, so there is nothing to restore automatically. Undo it by hand if you need to."));
+      "This fix ran a command and edited no file, so there is nothing to restore automatically. Undo it by hand if you need to."));
   }
 
   return el("div", { class: "fixbox" },
@@ -892,10 +888,10 @@ async function rollback(cp, force = false) {
     await refresh();
     await showHistory();
   } catch (e) {
-    // 409 is the engine declining, not failing: the file changed after
+    // 409 is the engine declining: the file changed after
     // Hostveil wrote it, so restoring the backup would discard whatever
     // was done in between. Rollback keeps no checkpoint of its own, so
-    // say that plainly and make the override a second, informed answer.
+    // say that and make the override a second, informed answer.
     if (e.status === 409) {
       const ok = await confirmModal("Overwrite it anyway?",
         `${e.message} This restores Hostveil's backup over the current file, discarding those changes. ` +
@@ -909,8 +905,8 @@ async function rollback(cp, force = false) {
 
 async function refresh() { report = await api("/api/result"); render(); }
 
-// refreshTrend is called on load and after a rescan, never after a fix — a
-// fix changes the live score, not the series of saved scans.
+// refreshTrend is called on load and after a rescan, never after a fix: a
+// fix changes the live score and leaves the saved scans alone.
 async function refreshTrend() {
   try {
     trend = await api("/api/trend");
@@ -950,14 +946,14 @@ document.getElementById("modal").addEventListener("cancel", (e) => {
   if (e.target.hasAttribute("data-busy")) e.preventDefault();
 });
 document.getElementById("modal").addEventListener("click", (e) => {
-  // A click that lands on the <dialog> itself rather than on modal-body's
-  // content is a click on the ::backdrop — <dialog> has no other way to
+  // A click that lands on the <dialog> itself, outside modal-body's
+  // content, is a click on the ::backdrop. A <dialog> has no other way to
   // tell the two apart.
   if (e.target === e.currentTarget && !e.currentTarget.hasAttribute("data-busy")) closeModal();
 });
 
-// showOutcomeModal renders one fix's or one rollback's result — score,
-// restart hint, verify message, checkpoint id — as a modal with a Done
+// showOutcomeModal renders one fix's or one rollback's result (score,
+// restart hint, verify message, checkpoint id) as a modal with a Done
 // button, instead of compressing it into a one-line toast that disappears
 // in six seconds. o is either a model.FixOutcome or the shape rollback()
 // below builds to match it.
@@ -973,11 +969,11 @@ function showOutcomeModal(title, o) {
 }
 
 // confirmModal replaces window.confirm() with the same modal every other
-// dialog in this file uses — a native confirm() looks like the browser
-// interrupting the page, not the dashboard asking a question, and it can't
+// dialog in this file uses: a native confirm() looks like the browser
+// interrupting the page, and it can't
 // carry more than one line of plain text. Resolves true on the confirm
 // button, false on Cancel *or* on any other way the dialog closes (Escape,
-// a click on the backdrop) — a dismissal is a "no" here the same way it is
+// a click on the backdrop): a dismissal is a "no" here the same way it is
 // for a native confirm().
 function confirmModal(title, message, confirmLabel = "Confirm") {
   return new Promise((resolve) => {
@@ -1013,7 +1009,7 @@ function initThemePicker() {
   }));
   sel.onchange = () => {
     document.documentElement.setAttribute("data-theme", sel.value);
-    // Per browser, not per host: the server's theme stays whatever Hostveil
+    // Per browser: the server's theme stays whatever Hostveil
     // was started with, so two people reading the same dashboard can each
     // have their own.
     try { localStorage.setItem("hostveil.theme", sel.value); } catch (e) { /* private mode */ }
@@ -1021,10 +1017,9 @@ function initThemePicker() {
 }
 
 // ── sort control ───────────────────────────────────────────────────────
-// Lives in the findings pane's own header, not the top statusbar — it is a
-// list-scoped choice, not a global one. Same read-then-write pattern as the
+// Lives in the findings pane's own header: it is a list-scoped choice. Same read-then-write pattern as the
 // theme picker, minus the localStorage: a sort choice is about what
-// you are looking at right now, not a standing preference across sessions.
+// you are looking at right now, so it is not remembered across sessions.
 function initSortPicker() {
   const sel = document.getElementById("sort");
   if (!sel) return;
@@ -1042,7 +1037,7 @@ document.getElementById("history").onclick = showHistory;
 document.getElementById("advise").onclick = showAdvise;
 
 // Export opens a modal to choose the format, then downloads /api/export as
-// a file rather than navigating to it: the route can answer 409 (no scan
+// a file: the route can answer 409 (no scan
 // yet) or 400 (bad format), and a plain <a href> navigation on an error
 // response would replace this whole page with a blank error document
 // instead of leaving flash() to say what happened.
@@ -1050,8 +1045,8 @@ document.getElementById("advise").onclick = showAdvise;
 // The format list used to be a second <select> beside this button, styled
 // like nothing else in the bar (app.css had rules for #theme and
 // none for it) and taking a second control to say one thing. exportFormats
-// comes from /model.js — core.ExportFormats(), the same table the CLI's
-// --format flag and the TUI's picker resolve against — so a sixth format
+// comes from /model.js (core.ExportFormats(), the same table the CLI's
+// --format flag and the TUI's picker resolve against) so a sixth format
 // only ever needs the one new row there.
 const exportBtn = document.getElementById("export");
 exportBtn.onclick = () => {
@@ -1086,7 +1081,7 @@ exportBtn.onclick = () => {
 // reports a failure instead of leaving one unhandled.
 //
 // Both of these routes take minutes on a real host and the engine serialises
-// them behind one mutex, so a second click does not run anything sooner — it
+// them behind one mutex, so a second click does not run anything sooner: it
 // queues another multi-minute request behind the first and holds a
 // connection open for it. And a rejected promise with no catch left the user
 // on "Rescanning…" forever with the reason only in the browser console.
@@ -1105,10 +1100,10 @@ async function whileBusy(el, label, fn) {
   }
 }
 
-// A rescan is started, not awaited: the server answers 202 immediately and
+// A rescan is started and not awaited: the server answers 202 immediately and
 // the scan runs in the background, so the page polls the status route and
 // narrates which domains are still working instead of freezing a button
-// for minutes. A 409 means a scan is already running — poll that one.
+// for minutes. A 409 means a scan is already running: poll that one.
 const rescanBtn = document.getElementById("rescan");
 rescanBtn.onclick = () => whileBusy(rescanBtn, "Rescanning…", async () => {
   marked.clear();
@@ -1119,15 +1114,14 @@ rescanBtn.onclick = () => whileBusy(rescanBtn, "Rescanning…", async () => {
 });
 
 // scanStartedAt is set once per poll loop (pollRescan) and read by
-// renderScanProgress for the elapsed clock. Module-level rather than a
-// parameter because whileBusy/watchScan/pollRescan's call chain has no
+// renderScanProgress for the elapsed clock. Module-level because whileBusy/watchScan/pollRescan's call chain has no
 // natural place to thread it through, and there is only ever one scan
 // running at a time (the engine serialises scan/apply/rollback behind one
 // mutex, so a second poll loop can never overlap this one).
 let scanStartedAt = null;
 
 // formatElapsed mirrors the TUI's clock: seconds under a minute, minutes and
-// seconds after. No ETA anywhere near this — most domains finish in well
+// seconds after. No ETA anywhere near this: most domains finish in well
 // under a second and the CVE domain's Trivy run can take minutes, so a
 // remaining-time estimate would be confidently wrong for most of the wait.
 // See internal/ui/tui/scanning_test.go's
@@ -1141,9 +1135,8 @@ function formatElapsed(ms) {
 }
 
 // scanStateWord is the label a domain's row shows, in the TUI's own
-// wording (internal/ui/tui/view.go's scanDomainRow) — not SCAN[state].name,
-// which is the stable wire name ("degraded"), not the word a reader wants
-// ("partial").
+// wording (internal/ui/tui/view.go's scanDomainRow). SCAN[state].name is
+// the stable wire name ("degraded"), and a reader wants "partial".
 function scanStateWord(state) {
   switch (state) {
     case "running": return "scanning…";
@@ -1156,8 +1149,8 @@ function scanStateWord(state) {
 }
 
 // scanStateClass picks up colors this file already assigns the same states
-// elsewhere — .dom-err is --crit, .axis.partial is --med — rather than
-// inventing a fourth place these four colors get decided.
+// elsewhere (.dom-err is --crit, .axis.partial is --med), so there is no
+// fourth place these four colors get decided.
 function scanStateClass(state) {
   switch (state) {
     case "done": return "scan-done";
@@ -1176,11 +1169,11 @@ function scanStateClass(state) {
 // of a bare, silent <ul>. Before this, the entire page showed one line of
 // toast text and nothing else moved until the scan finished.
 //
-// domains is /api/rescan/status's own array — every domain that has
+// domains is /api/rescan/status's own array: every domain that has
 // reported at least once, in no particular order, some of them possibly
 // absent (not yet started). The full roster comes from SRC (the model's own
 // domain table, already loaded for the filter chips), so an absent domain
-// reads as "waiting" rather than not appearing at all — the same thing
+// reads as "waiting": the same thing
 // internal/ui/tui/tui.go's scanDomains() does with its fetched plan.
 function renderScanProgress(verb, domains) {
   const bySource = {};
@@ -1194,7 +1187,7 @@ function renderScanProgress(verb, domains) {
 
   const elapsed = scanStartedAt ? formatElapsed(Date.now() - scanStartedAt) : "0s";
   const pct = total ? (done / total) * 100 : 0;
-  // At least one segment lit as soon as real progress exists — an empty bar
+  // At least one segment lit as soon as real progress exists; an empty bar
   // reads as "stuck", not "just started", the same reason the TUI's own
   // meter (meterAtLeastOne) guarantees the same floor.
   const bar = meter(done > 0 ? Math.max(pct, 100 / total) : pct, "b-safe");
@@ -1223,7 +1216,7 @@ function renderScanProgress(verb, domains) {
 // pollRescan resolves when the running scan finishes, rendering the
 // per-domain progress roughly once a second (and once immediately, before
 // the first poll response, so there is never a blank frame). verb is what
-// the progress view calls the scan in progress — "Rescanning" from the
+// the progress view calls the scan in progress: "Rescanning" from the
 // button above, "Scanning" from boot() below, where there may be no prior
 // result to justify the "re-".
 async function pollRescan(verb) {
@@ -1237,7 +1230,7 @@ async function pollRescan(verb) {
   }
 }
 
-// watchScan waits out a running scan and then reloads everything it moved —
+// watchScan waits out a running scan and then reloads everything it moved:
 // the result and the trend line, the one place besides load that refetches
 // either. It is the sequence the rescan button and boot()'s first load both
 // need, pulled out so the two could not drift the way one inline copy of it
@@ -1262,13 +1255,12 @@ fixallBtn.onclick = async () => {
 
 // boot loads the page for the first time. Hostveil's own first scan is now
 // asynchronous (ListenAndServe opens the listener before it finishes), so
-// the very first page load can land while it is still running — the same
+// the very first page load can land while it is still running: the same
 // state a rescan puts the page in, and answered the same way: disable the
 // buttons that would race it, narrate it, then load the result it produced.
 //
-// The status check and the result both fire at once rather than one after
-// the other. The ordinary case — a page opened long after the only scan
-// there has ever been — needs both regardless, so making the second wait on
+// The status check and the result both fire at once. The ordinary case (a page opened long after the only scan
+// there has ever been) needs both regardless, so making the second wait on
 // the first would only have added a network round trip to every load for a
 // question the running flag alone can't answer. Fetched early and running
 // is false, rep is already the answer; running and it is a stale read of

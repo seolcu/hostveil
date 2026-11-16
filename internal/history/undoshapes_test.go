@@ -14,7 +14,7 @@ import (
 // "write these bytes back". Two shapes cannot be said that way. SaveModes is
 // for a fix that changed a file's permissions and not its contents, so there
 // is nothing to write. SaveCreations is for a fix that wrote a file which did
-// not exist — a sysctl drop-in, an apt auto-upgrades file — where undoing it
+// not exist (a sysctl drop-in, an apt auto-upgrades file) where undoing it
 // means **deleting** the file.
 //
 // That second one is the most dangerous operation in this package. Everywhere
@@ -89,7 +89,7 @@ func TestRollingBackACreationDeletesTheFile(t *testing.T) {
 }
 
 // An operator who deleted the drop-in by hand and then rolled back should get
-// success, not a failure describing the thing they already did.
+// success.
 func TestRollingBackACreationThatIsAlreadyGoneSucceeds(t *testing.T) {
 	s, _ := creationStore(t)
 	target := filepath.Join(t.TempDir(), "gone.conf")
@@ -109,7 +109,7 @@ func TestRollingBackACreationThatIsAlreadyGoneSucceeds(t *testing.T) {
 }
 
 // The one that matters. rollback()'s comment says a created file the operator
-// has since edited "declines here rather than being deleted out from under
+// has since edited "declines here and is never deleted out from under
 // them", and that rests on apply.go recording AppliedSHA256 *before* calling
 // SaveCreations and on SaveCreations preserving it. Both are true and neither
 // was checked, on the single code path in this repository whose undo is a
@@ -148,7 +148,7 @@ func TestRollingBackACreationDeclinesWhenTheOperatorHasEditedIt(t *testing.T) {
 		t.Error("the operator's edit did not survive the refusal")
 	}
 
-	// --force is the escape hatch, and it must actually delete.
+	// --force is the escape hatch, and it must delete.
 	if _, err := s.RollbackForce(cp.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +186,7 @@ func TestSaveModesRestoresThePriorModeAndTouchesNoBytes(t *testing.T) {
 	}
 
 	// The fix tightens it; rollback must put it back, and must not rewrite
-	// the contents on the way — a mode fix never had a copy of them.
+	// the contents on the way: a mode fix never had a copy of them.
 	if err := os.Chmod(target, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +260,7 @@ func TestUndoShapesSurviveTheMetadataRoundTrip(t *testing.T) {
 // A rollback that cannot finish must still say what it did.
 //
 // The pre-flight checks exist because "some files restored and others not is a
-// state neither the host nor the report describes" — their own words. They
+// state neither the host nor the report describes": their own words. They
 // cannot make it impossible, though: a disk fills, a path vanishes between the
 // check and the write. When that happens the loop used to return on the first
 // error, leaving the earlier paths already written and the caller holding
@@ -314,7 +314,7 @@ func TestAPartialRestoreNamesBothHalves(t *testing.T) {
 	if len(partial.Failed) != 1 || partial.Failed[0] != b {
 		t.Errorf("failed = %v, want just %s", partial.Failed, b)
 	}
-	// And the half that could be restored actually was — stopping at the
+	// And the half that could be restored was: stopping at the
 	// first error would have left this one untouched if it sorted second.
 	if got, _ := os.ReadFile(a); string(got) != "before\n" {
 		t.Errorf("the restorable file was not restored: %q", got)
@@ -322,7 +322,7 @@ func TestAPartialRestoreNamesBothHalves(t *testing.T) {
 }
 
 // A mode-only entry whose file the operator deleted is not a failed rollback.
-// The Created branch tolerates exactly this, deliberately; the chmod did not.
+// The Created branch tolerates exactly this; the chmod did not.
 func TestRestoringTheModeOfADeletedFileIsNotAFailure(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStore(dir)

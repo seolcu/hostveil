@@ -9,16 +9,16 @@ type span struct{ start, end int }
 
 // locate walks the document and records where each addressable value sits.
 //
-// It is a locator, not a parser: the decoded values come from Decode, and
+// It is a locator: the decoded values come from Decode, and
 // this pass exists only to answer "which bytes are the value at
 // gateway.controlUi.allowInsecureAuth" so an edit can replace exactly those
 // and leave every comment, blank line and trailing comma alone.
 //
 // Paths are dotted and built the same way internal/check/agent's lookup walks
 // them, so a path that produced a finding is a path this can address. A key
-// containing a literal '.' makes its own path ambiguous — two different keys
-// can spell the same dotted path — and every such path is reported so Set
-// refuses it rather than editing whichever one it happened to record last.
+// containing a literal '.' makes its own path ambiguous (two different keys
+// can spell the same dotted path) and every such path is reported so Set
+// refuses it.
 func locate(src []byte) (map[string]span, map[string]bool, error) {
 	s := &scanner{src: src, spans: map[string]span{}, amb: map[string]bool{}}
 	s.ws()
@@ -181,7 +181,7 @@ func (s *scanner) key() (string, error) {
 		}
 		// Strip the quotes. Escapes are left as written: these keys are
 		// identifiers, and a key needing an escape is one this cannot
-		// address anyway — it would not match the dotted path a finding
+		// address anyway; it would not match the dotted path a finding
 		// carries either.
 		return string(s.src[start+1 : s.i-1]), nil
 	}
@@ -225,7 +225,7 @@ func (s *scanner) str() error {
 	return fmt.Errorf("unterminated string starting at byte %d", s.i)
 }
 
-// bare consumes a number, true, false or null — anything running up to the
+// bare consumes a number, true, false or null: anything running up to the
 // next structural byte, whitespace or comment.
 func (s *scanner) bare() error {
 	start := s.i

@@ -17,7 +17,7 @@ import (
 
 // Column geometry. The dashboard collapses to one column below 820px; a
 // terminal has to make the same call in characters, and the numbers below
-// are what the regions actually need rather than a scaled-down guess.
+// are what the regions need.
 //
 // minListWidth is the one that decides: a findings row is a severity label,
 // a 13-column id and a title, and under about forty columns the title is
@@ -36,23 +36,23 @@ const (
 // is indented under what it answers.
 //
 // The rail is twelve domains of two rows each with nothing between any two,
-// and an indent alone did not make the pairs read as pairs — the second row
+// and an indent alone did not make the pairs read as pairs: the second row
 // looked like another domain whose name happened to be a list of counts, or a
 // word like "clean". The branch says which row belongs to which name.
 //
 // Both second rows use it, the severity mix and the reason a domain did not
 // run. They had different indents, two columns and four, so the rail carried
-// two depths of hierarchy at once — which is no hierarchy.
+// two depths of hierarchy at once, which is no hierarchy.
 //
-// A literal, not a glyph row. internal/glyph writes down why it has no arrow
+// A literal. internal/glyph writes down why it has no arrow
 // (a row nothing asks for goes stale unnoticed) and the rail's own "→" follows
-// that rule; every grid character in this package — │ ┬ ┴ ├ ┤ ┼ ─ ▌ █ ░ — is a
+// that rule; every grid character in this package (│ ┬ ┴ ├ ┤ ┼ ─ ▌ █ ░) is a
 // literal too. The table is for marks that mean something; this is structure.
 const railBranch = "  └ "
 
-// railBranchW is the branch in columns, not runes. "└" is East Asian
+// railBranchW is the branch measured in columns. "└" is East Asian
 // Ambiguous, so under RUNEWIDTH_EASTASIAN it is two columns and the prefix is
-// five — and the three budgets keyed to it have to move together or
+// five, and the three budgets keyed to it have to move together or
 // mixIsCompact decides the spelling against a width the render does not have.
 var railBranchW = lipgloss.Width(railBranch)
 
@@ -73,7 +73,7 @@ func (m *appModel) bodyColumns() (rail, list, pane int) {
 	}
 	// No findings, nothing to show beside them. The pane would be forty
 	// columns of "Nothing to show." taken from the one message that matters
-	// on an empty list — and that message is the long one, the one that says
+	// on an empty list, and that message is the long one, the one that says
 	// how many domains could not be looked at. The rail stays: on a host
 	// where nothing could be scanned it is the only thing that says why.
 	if len(m.active) > 0 && m.width >= minPaneTotalWidth {
@@ -123,9 +123,9 @@ func (m *appModel) joinColumns(n int, widths []int, cols [][]string) []string {
 // The detail pane closes with a rule above its actions and the verdict band
 // closes with one under its sentence, and both of those meet the separator
 // beside them. Drawn as a plain │ the result is a line that visibly stops one
-// column short of the one it is supposed to meet — the terminal equivalent of
+// column short of the one it is supposed to meet: the terminal equivalent of
 // a border that does not quite reach the corner, and the thing that made this
-// interface look drawn rather than composed.
+// interface look drawn by hand.
 func junction(left, right string) string {
 	l := endsWithRule(left)
 	r := beginsWithRule(right)
@@ -151,7 +151,7 @@ func beginsWithRule(cell string) bool {
 }
 
 // visibleRunes drops the escape sequences from a styled row, so a caller can
-// ask what is actually drawn in a given column.
+// ask what is drawn in a given column.
 func visibleRunes(s string) []rune {
 	out := make([]rune, 0, len(s))
 	for i := 0; i < len(s); {
@@ -179,7 +179,7 @@ func visibleRunes(s string) []rune {
 // it, and for a domain that did not run, the reason instead of a number.
 //
 // It replaces the axes strip where it appears, and it is the only place in
-// those arrangements where a skipped domain is both visible and explained —
+// those arrangements where a skipped domain is both visible and explained,
 // which is the bet: the strip says a number is missing, the rail says
 // whether the host has no Docker, or the daemon refused, or the scan ran as
 // a user who cannot read the socket.
@@ -208,7 +208,7 @@ func (m *appModel) railRows(w, budget int) []string {
 
 	// Dense spends a second row per domain on the severity mix. A domain that
 	// did not run gets its second row either way, because that row is the
-	// reason — and "N/A" with nothing next to it is the unexplained gap the
+	// reason, and "N/A" with nothing next to it is the unexplained gap the
 	// rail was added to close. It never fit otherwise: twelve domains need 25
 	// rows to go dense and a 30-row terminal leaves the body about 20, so on
 	// every real host the reason was the thing that dropped out, in the one
@@ -220,15 +220,14 @@ func (m *appModel) railRows(w, budget int) []string {
 	//
 	// Dense packs twelve domains into twenty-four rows with nothing between
 	// any two, and the first thing said about it was that the column is hard
-	// to read — which it is: the eye has to work out for itself that a name
+	// to read, which it is: the eye has to work out for itself that a name
 	// and the counts under it are one thing while the next name is another.
 	// The indent under each name says so, and a blank line says it louder for
 	// the price of a row.
 	//
-	// Only when the rows are actually there. This is the third tier of the
+	// Only when the rows are there. This is the third tier of the
 	// same budget the two above it come out of, so a terminal that cannot
-	// afford it keeps every domain and loses the gaps rather than the other
-	// way round: head + 2 rows each + one gap between each pair.
+	// afford it keeps every domain and loses the gaps: head + 2 rows each + one gap between each pair.
 	airy := dense && 3*len(axes) <= budget
 
 	// Built per domain and flattened afterwards, so a rail that does not fit
@@ -259,7 +258,7 @@ func (m *appModel) railRows(w, budget int) []string {
 		// The field is one wider than the widest value, which is what keeps a
 		// space between the meter and the number. At exactly the value's width
 		// a degraded axis scoring 100 filled the field and the digits butted
-		// straight against the bar — visible on any host with a partial domain
+		// straight against the bar: visible on any host with a partial domain
 		// that found nothing, and on no other host at all.
 		valW := 1 + model.ValueTextWidth
 		meterW := 6
@@ -277,9 +276,9 @@ func (m *appModel) railRows(w, budget int) []string {
 			row += s.dim.Render(nm)
 		}
 		if meterW > 0 {
-			// An axis that did not run gets an empty bar, not a bar of its
+			// An axis that did not run gets an empty bar. A bar of its
 			// score: a skipped domain carries whatever Score a zero value
-			// leaves behind, and drawn it came out full — a solid meter beside
+			// leaves behind, and drawn it came out full; a solid meter beside
 			// the letters N/A, which is the "I could not look" / "nothing
 			// there" confusion the whole scanner is built to refuse.
 			pct, c := uint8(0), s.cLine
@@ -288,7 +287,7 @@ func (m *appModel) railRows(w, budget int) []string {
 			}
 			row += " " + s.meterAtLeastOne(pct, meterW, c, ax.Applicable)
 		}
-		// The number takes its band's color rather than plain bone. A meter
+		// The number takes its band's color. A meter
 		// six cells wide cannot separate 0 from 8, and those are the domains
 		// worth looking at first; the digits can, and they are already there.
 		if ax.Applicable {
@@ -300,16 +299,15 @@ func (m *appModel) railRows(w, budget int) []string {
 		switch {
 		case !ax.Applicable:
 			block = append(block, s.dim.Render(truncate(railBranch+strings.ToLower(state[ax.Source].String())+
-				" — "+reasonOr(reason[ax.Source], "did not run"), w)))
+				": "+reasonOr(reason[ax.Source], "did not run"), w)))
 		case dense:
-			// The per-axis headroom rides on the mix row rather than the
-			// score row: the rail is about twenty columns wide and the score
+			// The per-axis headroom rides on the mix row: the rail is about twenty columns wide and the score
 			// row has none to spare, while the mix row is usually eight
 			// characters of "3H·1M·6L" in twenty. Compact, because this
 			// column is a glance and the exact arithmetic is a keypress away.
 			mix := m.severityMix(byDomain[ax.Source], w-railBranchW, compactMix)
 			if after, show := ax.Headroom(); show {
-				// A literal arrow, not a glyph row: internal/glyph records why
+				// A literal arrow: internal/glyph records why
 				// it has none, and "›" is already the rail's own marker for
 				// the domain the list is filtered to. One symbol meaning two
 				// things in one column is worse than a character the plain
@@ -324,7 +322,7 @@ func (m *appModel) railRows(w, budget int) []string {
 	}
 
 	// The dashboard's rail head reads "Domains · 15 findings", and the count
-	// is the findings rather than the domains — which is worth keeping,
+	// is the findings, which is worth keeping,
 	// because the rail is a list of domains and a header counting them again
 	// would say nothing the rows below it do not.
 	head := fmt.Sprintf("DOMAINS · %d findings", len(all))
@@ -351,10 +349,10 @@ func (m *appModel) railRows(w, budget int) []string {
 
 // severityMix is a domain's findings as one line of counts, in the model's
 // most-severe-first order, each in its own color. A domain with none says so
-// rather than rendering an empty row that reads as a rendering fault.
+// so the row never looks like a rendering fault.
 //
 // Two spellings of the same line. The dashboard writes "3 high · 1 med · 2
-// low" and that is what goes here wherever it fits — at the rail's 24 columns
+// low" and that is what goes here wherever it fits, at the rail's 24 columns
 // the worst case is exactly the 22 it has, which is not a coincidence, it is
 // what the rail was widened to hold. Below that it falls back to "3H·1M·2L",
 // because a mix cut off after "3 high · 1 m" has lost the count it was
@@ -365,7 +363,7 @@ func (m *appModel) severityMix(fs []model.Finding, w int, compact bool) string {
 		return s.dim.Render(truncate("clean", w))
 	}
 
-	// Dropped between terms, never through one — the same call the chip row
+	// Dropped between terms, never through one: the same call the chip row
 	// makes, and for the same reason: a truncated label is obviously
 	// truncated, while a truncated *count* is a different number. Clipping the
 	// joined row left "9 high · 16 med · 28", which reports 28 of a severity
@@ -398,7 +396,7 @@ func (m *appModel) severityMix(fs []model.Finding, w int, compact bool) string {
 // unanswerable: mixIsCompact measured a string that had already been cut to
 // the width it was being compared against, so it was never wider, the rail
 // never fell back, and a mix that did not fit was drawn cut off after
-// "9 high · 16 med · 28" — a count truncated into a different number, which is
+// "9 high · 16 med · 28"; a count truncated into a different number, which is
 // the one thing this line exists to report.
 func (m *appModel) severityMixRow(fs []model.Finding, compact bool) string {
 	s := m.sty()
@@ -434,15 +432,14 @@ func (m *appModel) severityMixParts(fs []model.Finding, compact bool) []string {
 	return parts
 }
 
-// mixIsCompact decides the spelling once for the whole rail, rather than each
-// domain choosing for itself.
+// mixIsCompact decides the spelling once for the whole rail.
 //
 // Deciding per domain is what shipped, and it made the rail's *first* row the
 // odd one out on every host that has one: the busiest domain has the widest
 // counts, so it was the one that overflowed and fell back, and the top of the
 // column read "9H·16M·28L" over eleven rows of "2 high · 1 med · 3 low". The
 // eye reads a column by its shape, and one row in a different shape reads as a
-// different kind of thing rather than as the same thing abbreviated.
+// different kind of thing.
 func (m *appModel) mixIsCompact(byDomain map[model.Source][]model.Finding, w int) bool {
 	for _, fs := range byDomain {
 		if len(fs) == 0 {

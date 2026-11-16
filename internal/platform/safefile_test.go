@@ -34,14 +34,14 @@ func TestReadFileNoFollowRefusesASymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := ReadFileNoFollow(link, 1<<20); err == nil {
-		t.Fatal("a symlink must be refused, not followed")
+		t.Fatal("a symlink must be refused")
 	}
 }
 
 // The FIFO case is the one that used to hang: open(2) on a FIFO with no
 // writer blocks until one appears, which for an attacker's FIFO is never.
 // The read runs in a goroutine so a regression shows up as a test failure
-// with a message rather than a suite that never finishes.
+// with a message.
 func TestReadFileNoFollowDoesNotBlockOnAFIFO(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "fifo")
 	if err := syscall.Mkfifo(p, 0o600); err != nil {
@@ -55,7 +55,7 @@ func TestReadFileNoFollowDoesNotBlockOnAFIFO(t *testing.T) {
 	select {
 	case err := <-done:
 		if err == nil {
-			t.Fatal("a FIFO must be an error, not content")
+			t.Fatal("a FIFO must be an error")
 		}
 		if !strings.Contains(err.Error(), "not a regular file") {
 			t.Errorf("error should name the file type: %v", err)
@@ -71,7 +71,7 @@ func TestReadFileNoFollowCapsTheSize(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := ReadFileNoFollow(p, 99); err == nil {
-		t.Fatal("a file over the limit must be an error, not a truncated read")
+		t.Fatal("a file over the limit must be an error")
 	}
 	if b, err := ReadFileNoFollow(p, 100); err != nil || len(b) != 100 {
 		t.Fatalf("a file exactly at the limit must read whole: %d bytes, %v", len(b), err)
@@ -103,11 +103,11 @@ func TestChmodNoFollowRefusesASymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := ChmodNoFollow(link, 0o600); err == nil {
-		t.Fatal("a symlink must be refused, not chmod'ed through")
+		t.Fatal("a symlink must be refused")
 	}
 	fi, _ := os.Stat(victim)
 	if fi.Mode().Perm() != 0o644 {
-		t.Errorf("the symlink's target changed mode to %#o — the chmod followed the link", fi.Mode().Perm())
+		t.Errorf("the symlink's target changed mode to %#o; the chmod followed the link", fi.Mode().Perm())
 	}
 }
 
@@ -158,7 +158,7 @@ func TestWriteFileAtomicBeneathDetectsAnExternalEdit(t *testing.T) {
 	}
 }
 
-// WriteFileAtomic must be able to create a file that does not exist yet —
+// WriteFileAtomic must be able to create a file that does not exist yet,
 // that is the checkpoint store writing a fresh backup blob. Preserving the
 // owner of a file with no prior owner is not an error.
 func TestWriteFileAtomicCreatesANewFile(t *testing.T) {
@@ -175,8 +175,7 @@ func TestWriteFileAtomicCreatesANewFile(t *testing.T) {
 	}
 }
 
-// Replacing an existing file keeps its mode rather than the temporary's
-// 0600, or a fix would silently tighten every file it touched.
+// Replacing an existing file keeps its mode, or a fix would silently tighten every file it touched.
 func TestWriteFileAtomicKeepsTheTargetMode(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "conf")
 	if err := os.WriteFile(p, []byte("old"), 0o644); err != nil {

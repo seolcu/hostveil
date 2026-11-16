@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Measured results — Hostveil docs</title>
+    <title>Measured results; Hostveil docs</title>
     <meta name="description" content="The September 2026 rerun: Hostveil, Lynis, CIS Docker checks and a Docker-bridge TCP scan across fixes, restarts and rollback, plus a separate control experiment and its unresolved discrepancies.">
     <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
-    <meta property="og:title" content="Measured results — Hostveil docs">
+    <meta property="og:title" content="Measured results; Hostveil docs">
     <meta property="og:description" content="September 2026 measurements on freshly seeded VMs: Auto and Review fixes, independent hardening, rollback residue and measurement limits.">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://hostveil.seolcu.com/docs/measurements">
@@ -29,15 +29,15 @@
     <script>
       // Send a Korean-speaking reader to the Korean page, once.
       //
-      // GitHub Pages serves files, not content negotiation, so the only place
-      // this decision can be made is here — and the risk of making it here is
-      // trapping someone: a reader who deliberately clicked "English" must not
+      // GitHub Pages serves files with no content negotiation, so the only place
+      // this decision can be made is here, and the risk of making it here is
+      // trapping someone: a reader who clicked "English" must not
       // be bounced back on the next click. So the switcher records that choice
       // and this defers to it forever after.
       //
       // Only from the English page, only when the browser's own preference
-      // list actually leads with Korean, and never when a crawler is reading
-      // (they do not run this) — the hreflang links above are what they read.
+      // list leads with Korean, and never when a crawler is reading
+      // (they do not run this): the hreflang links above are what they read.
       (function () {
         try {
           if (document.documentElement.lang !== "en") return;
@@ -317,7 +317,7 @@
 
             <h2 id="reproduce">Reproduce it</h2>
 
-            <p>Use a disposable VM from <code>scripts/measure/Vagrantfile</code>. The scripts weaken that host on purpose and then modify it. See the linked run record for the exact environment. Run the fixes experiment and the control on separate freshly seeded VMs.</p>
+            <p>Use a disposable VM from <code>scripts/measure/Vagrantfile</code>. The scripts weaken that host intentionally and then modify it. See the linked run record for the exact environment. Run the fixes experiment and the control on separate freshly seeded VMs.</p>
 
             <div class="code-block"><pre><code># Inside the first disposable VM, using the recorded source commit:
 sudo scripts/measure/seed.sh

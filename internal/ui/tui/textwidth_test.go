@@ -17,8 +17,8 @@ import (
 // one budget while padRight pads to another and the row is over-full or
 // ragged depending on which glyphs it happens to contain.
 //
-// They can part company by accident, because runewidth — which textwidth
-// uses — chooses its default width table from LANG and LC_ALL at init.
+// They can part company by accident, because runewidth (which textwidth
+// uses) chooses its default width table from LANG and LC_ALL at init.
 // Under ko_KR.UTF-8 that default calls "…", "→", "±" and "·" two columns
 // wide while lipgloss calls them one. textwidth pins an explicit condition
 // to avoid it; this is what would notice if that pin were removed.
@@ -39,7 +39,7 @@ func TestTextwidthAgreesWithLipgloss(t *testing.T) {
 		"✓ 2 resolved   + 1 new   ~ 3 changed",
 	} {
 		if got, want := textwidth.Of(s), lipgloss.Width(s); got != want {
-			t.Errorf("textwidth.Of(%q) = %d but lipgloss.Width = %d — "+
+			t.Errorf("textwidth.Of(%q) = %d but lipgloss.Width = %d; "+
 				"truncate and padRight would disagree about the same row", s, got, want)
 		}
 	}
@@ -56,7 +56,7 @@ func TestTruncateFitsWhatPadRightPadsTo(t *testing.T) {
 		for w := 0; w <= 30; w++ {
 			cut := truncate(s, w)
 			if got := lipgloss.Width(cut); got > w {
-				t.Errorf("truncate(%q, %d) is %d columns by lipgloss — the row overflows", s, w, got)
+				t.Errorf("truncate(%q, %d) is %d columns by lipgloss; the row overflows", s, w, got)
 			}
 			if padded := padRight(cut, w); lipgloss.Width(padded) != w && cut != "" {
 				t.Errorf("padRight(truncate(%q, %d)) is %d columns, want exactly %d",
@@ -84,7 +84,7 @@ func TestWrapLinesFitTheTerminal(t *testing.T) {
 
 // eastAsianChild names the re-exec. A test binary inherits the environment
 // it was started with, and charmbracelet/x/ansi reads RUNEWIDTH_EASTASIAN in
-// a package init — so the only way to exercise the set case is to start
+// a package init, so the only way to exercise the set case is to start
 // again with it set.
 const eastAsianChild = "HOSTVEIL_TEST_EASTASIAN_CHILD"
 
@@ -96,7 +96,7 @@ const eastAsianChild = "HOSTVEIL_TEST_EASTASIAN_CHILD"
 // lipgloss honours it; textwidth did not, so the ellipsis truncate appends
 // and the arrows and bullets the status lines draw measured one column to
 // Hostveil and two to lipgloss. truncate cut to one budget while padRight
-// padded to another — the exact failure textwidth's doc comment says the
+// padded to another: the exact failure textwidth's doc comment says the
 // package exists to prevent, arriving through the door it left open.
 func TestTextwidthAgreesWithLipglossUnderEastAsianWidth(t *testing.T) {
 	if os.Getenv(eastAsianChild) != "" {
@@ -117,6 +117,6 @@ func TestTextwidthAgreesWithLipglossUnderEastAsianWidth(t *testing.T) {
 		t.Errorf("under RUNEWIDTH_EASTASIAN=true the two measurements disagree:\n%s", out)
 	}
 	if !strings.Contains(string(out), "agreement") {
-		t.Errorf("the re-exec did not run the agreement check — it would pass vacuously:\n%s", out)
+		t.Errorf("the re-exec did not run the agreement check; it would pass vacuously:\n%s", out)
 	}
 }

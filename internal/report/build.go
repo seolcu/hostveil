@@ -49,7 +49,7 @@ func scoreSection(score model.ScoreBreakdown) Section {
 	}
 	sec.Paragraphs = []string{
 		"Hostveil scores each domain from 0 to 100 by how much of its own credit " +
-			"survives the findings on it, then averages the domains that actually ran, " +
+			"survives the findings on it, then averages the domains that ran, " +
 			"weighted by how much each matters to the whole host. A domain that could " +
 			"not be scanned counts toward nothing, never toward a perfect score - see " +
 			"\"Domains scanned\" below before reading this report as a verdict on the " +
@@ -59,7 +59,7 @@ func scoreSection(score model.ScoreBreakdown) Section {
 		sec.Paragraphs = append(sec.Paragraphs,
 			"\"After fixes\" is the score once every fix Hostveil currently offers - "+
 				"both the ones it can apply unattended and the ones it can only preview "+
-				"- has been applied. It is shown only where it would actually move the "+
+				"- has been applied. It is shown only where it would move the "+
 				"number.")
 	}
 	return sec
@@ -111,7 +111,7 @@ func severityLegendSection() Section {
 		Heading: "Severity - what the levels mean",
 		Level:   1,
 		Paragraphs: []string{
-			"Hostveil ranks findings by how urgent they are, not by how bad they sound.",
+			"Hostveil ranks findings by how urgent they are.",
 		},
 	}
 	for _, sev := range model.AllSeverities() {
@@ -122,7 +122,7 @@ func severityLegendSection() Section {
 
 // findingsSections groups active findings by severity, matching the order
 // model.SortFindings already uses everywhere else in Hostveil (severity,
-// then source, then ID) rather than inventing a second order for the report.
+// then source, then ID).
 func findingsSections(findings []model.Finding) []Section {
 	var active []model.Finding
 	for _, f := range findings {

@@ -34,7 +34,7 @@ func checkFindings(t *testing.T, r *checktest.Runner) ([]model.Finding, error) {
 }
 
 // A firewall that runs and permits is the same posture as no firewall,
-// and it used to score the axis a perfect 100 — the third-heaviest axis in
+// and it used to score the axis a perfect 100: the third-heaviest axis in
 // the model. nftables and iptables were always held to the default-policy
 // standard (hasHostFirewall and hasDropPolicy both require a drop or
 // reject on the input hook); ufw and firewalld were not.
@@ -108,7 +108,7 @@ func TestDefaultAllowIsFlagged(t *testing.T) {
 // than accuse a host whose policy it never read.
 func TestUnreadablePolicyDegradesRatherThanAccuses(t *testing.T) {
 	// Active by `ufw status`, but the verbose query is not stubbed, so it
-	// errors — exactly what happens without root.
+	// errors: exactly what happens without root.
 	r := checktest.New().Only("ufw").Outputs(map[string]string{"ufw status": "Status: active\n"})
 	fs, err := checkFindings(t, r)
 	for _, f := range fs {

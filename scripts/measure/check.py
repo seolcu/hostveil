@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail on the two claims in a measurement that are promises, not observations.
+"""Fail on the two claims in a measurement that are promises.
 
 Everything else the harness records is an observation: Lynis publishes a new
 release, a distribution changes a default, an image gets a new base, and the
@@ -13,7 +13,7 @@ So exactly two things fail here.
   an operator's server a reasonable thing to ask for, and it either holds or
   the feature is not what it says it is.
 
-  hostveil's own score moved at all. Not by how much — that is a judgement
+  hostveil's own score moved at all. Not by how much, that is a judgement
   about weighting and it is allowed to change. A run where nothing moved
   means the fixes did not apply, or the scan is no longer reading what the
   fixes wrote, and either way the harness measured nothing.
@@ -26,7 +26,7 @@ A control run has neither promise to make about rollback, because hostveil
 changed nothing to roll back. It keeps exactly one, and it is the sharper of
 the two: the score has to move when the host is hardened by somebody else's
 standard. A score that only responds to hostveil's own fixes is measuring
-hostveil, not the host, and that is the failure the control group exists to
+hostveil alone, and that is the failure the control group exists to
 detect.
 
 Usage: check.py <measurement.json>
@@ -51,8 +51,8 @@ def main():
     phases = doc.get("phases") or {}
     before = (phases.get("before") or {}).get("hostveil") or {}
 
-    # A Review fix Hostveil itself marks "not reversible" — installing a
-    # package, running a distribution upgrade — has no checkpoint by design,
+    # A Review fix Hostveil itself marks "not reversible" (installing a
+    # package, running a distribution upgrade) has no checkpoint by design,
     # and the packages it pulls in can rewrite files no finding ever named
     # (a compiler binary reinstalled as rkhunter's dependency, /etc/shadow
     # rewritten by a new service account) as an ordinary side effect of doing
@@ -65,7 +65,7 @@ def main():
     # Which phase the score is read from is the whole difference between the
     # two runs. "after" is the host with Hostveil's own fixes on disk;
     # "controlled" is the host somebody else hardened. Keyed off the phase
-    # that exists rather than off the profile string, so a run mislabelled
+    # that exists, so a run mislabelled
     # with -p cannot be checked against the wrong claim.
     control = "controlled" in phases
     later = "controlled" if control else "after"

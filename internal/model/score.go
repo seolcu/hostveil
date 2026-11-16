@@ -15,61 +15,59 @@ type ScoreBreakdown struct {
 	// Applicable is false when no domain ran at all, in which case Overall
 	// carries no information and must not be shown as a number.
 	//
-	// The per-axis Applicable flag exists so a skipped domain is reported N/A
-	// rather than 100; without this the same lie survived in the aggregate.
+	// The per-axis Applicable flag exists so a skipped domain is reported N/A; without this the same lie survived in the aggregate.
 	// With every axis excluded there is nothing to renormalize over, and the
-	// arithmetic falls out at a perfect 100 — a host nobody could look at,
+	// arithmetic falls out at a perfect 100; a host the scan could not look at,
 	// scored as flawless. It takes an unusual host (no package manager, no
 	// readable sshd_config, no firewall tooling, no Docker) but "unusual" is
 	// not "impossible", and this is the one number the whole tool is judged
 	// on.
 	Applicable bool `json:"applicable"`
 
-	// AfterFixes is Overall recomputed with every fix Hostveil offers — Auto
-	// and Review both — treated as applied.
+	// AfterFixes is Overall recomputed with every fix Hostveil offers (Auto
+	// and Review both) treated as applied.
 	//
 	// It answers a question the score alone cannot, and that an operator
 	// reasonably reads the score as already answering. A host whose container
 	// axis sits at 2 after `fix --all` looks like a tool that did nothing,
-	// when what actually happened is that the findings still standing are
+	// when what happened is that the findings still standing are
 	// Manual by design: a Docker socket mounted into Portainer, a second UID 0
 	// account, host networking. The number was right and it was being read as
-	// a verdict on the effort rather than on the host.
+	// a verdict on the effort.
 	//
 	// The alternative was to charge Manual findings less, and it is the wrong
 	// trade in the exact place it looks tempting. Manual means Hostveil will
-	// not do it unattended, not that it cannot be done: the operator can
+	// not do it unattended. It can still be done: the operator can
 	// delete the account or drop the socket mount this afternoon. Discounting
 	// a risk the operator is fully able to remove is the flattery this
-	// scoring model was rebuilt to refuse — and it is no longer a special
+	// scoring model was rebuilt to refuse, and it is no longer a special
 	// case, since RemediationUnavailable findings (no upstream patch exists)
 	// are charged in full too, for the same reason.
 	//
 	// So the risk is charged in full and the headroom is published beside it.
-	// Named for what it is rather than "achievable": the difference between
+	// Named for what it is: the difference between
 	// this and 100 is what Hostveil will not fix for you, which is not the
 	// same as what cannot be fixed.
 	//
 	// Equal to Overall when nothing is fixable, which is the case every UI
-	// must render as nothing at all rather than as an arrow to the same
-	// number.
+	// must render as nothing at all.
 	AfterFixes uint8 `json:"after_fixes"`
 }
 
 // ScoreAxis is one scoring dimension. Applicable is false when the axis's
 // domain did not run (e.g. the optional CVE checker was skipped); such an
 // axis is reported as N/A and excluded from the overall renormalization
-// rather than counted as a misleading perfect 100.
+// so it never counts as a misleading perfect 100.
 //
 // Degraded marks an axis whose domain ran but covered only part of its
-// ground (ScanDegraded). Such an axis *is* scored — partial evidence still
-// beats none — but its score is drawn from an incomplete picture, so every
+// ground (ScanDegraded). Such an axis *is* scored (partial evidence still
+// beats none) but its score is drawn from an incomplete picture, so every
 // UI must render the flag. An unlabelled 100 on a partial axis is the same
 // lie Applicable exists to prevent, just in smaller print.
 // Counts is the axis's findings by severity, most severe first, one entry
 // per level whether or not any landed there.
 //
-// It used to be four named int fields and a four-arm switch — the last
+// It used to be four named int fields and a four-arm switch: the last
 // structural four in this package, and the reason a change of scale touched
 // the score struct, its JSON, three renderers and their tests. It is a
 // projection of AllSeverities now, so a level added or removed reaches every
@@ -105,7 +103,7 @@ func (b ScoreBreakdown) Headroom() (uint8, bool) {
 // domain did not run, the score with a "~" when it ran but covered only part
 // of its ground, and the bare number otherwise.
 //
-// It is here rather than in each renderer because it was in each renderer —
+// It is here because it used to be in each renderer;
 // the same three-arm decision in the CLI, twice in the terminal's
 // arrangements, once more in its axes strip, and again in the dashboard's
 // JavaScript. Nothing compared them.
@@ -113,7 +111,7 @@ func (b ScoreBreakdown) Headroom() (uint8, bool) {
 // The "~" is the part that matters. A degraded axis is scored from an
 // incomplete picture, and an unmarked score on one is the same lie
 // Applicable exists to prevent, just in smaller print: it says a domain
-// vouches for ground it never looked at. One renderer quietly dropping the
+// vouches for ground it never looked at. One renderer silently dropping the
 // marker would have looked like a cleaner number.
 //
 // Colour stays with the renderers. A terminal has a palette, a stylesheet has
@@ -134,23 +132,23 @@ func (a ScoreAxis) ValueText() string {
 // part it covered.
 //
 // It is here because a terminal budgets columns, and every renderer that lays
-// the axis values out in a column had picked the number by hand — all of them
+// the axis values out in a column had picked the number by hand; all of them
 // picking three, because three is what a score looks like and the widest case
 // needs a host that is both partially scanned and clean on the part that was
 // scanned. The consequence was not a cosmetic one: the strip composed a row
 // one column past the terminal, the frame clipped it, and what the clip cut
-// off was the "~" — so a degraded axis read as a clean 100, which is the exact
+// off was the "~", so a degraded axis read as a clean 100, which is the exact
 // lie the marker exists to prevent.
 const ValueTextWidth = 4
 
 // Headroom is what this axis becomes once every fix Hostveil offers on it is
 // applied, and whether that is worth showing at all.
 //
-// The second return is the whole point: every interface hides the figure
-// under the same two conditions — nothing when it equals the score, because
+// The second return matters: every interface hides the figure
+// under the same two conditions; nothing when it equals the score, because
 // an arrow pointing where it started says the fixes are worth nothing, and
 // nothing beside an N/A axis, because a number there is a claim about a
-// domain nobody looked at. Those two conditions were written out in each
+// domain the scan never looked at. Those two conditions were written out in each
 // renderer and held together only by a test that greps for them.
 func (a ScoreAxis) Headroom() (uint8, bool) {
 	if !a.Applicable || a.AfterFixes <= a.Score {
@@ -253,7 +251,7 @@ func axisDefsFromSources() []axisDef {
 // axisDefs is the scoring axes, one per detection domain, in the order
 // sourceDefs declares them.
 //
-// It used to be a hand-written table of its own — a fifth record per
+// It used to be a hand-written table of its own: a fifth record per
 // domain, in a second file, keyed by the same constant as the four in
 // source.go. Nothing tied the two together, so adding a domain meant
 // remembering both, and the axis order and the scan order agreed only
@@ -261,21 +259,21 @@ func axisDefsFromSources() []axisDef {
 //
 // The numbers now live in sourceDefs' cap column; what follows is the
 // argument behind them, which stays here because a cap is a claim about
-// weight rather than a fact about a domain's identity.
+// weight.
 //
-// A cap is the axis's share of the overall score and nothing else — it is
+// A cap is the axis's share of the overall score and nothing else: it is
 // purely how much this domain matters, never a threshold. The caps sum to
 // 100 so the overall is a weighted average of the axes that ran.
 //
-// "agent" ties with "ports" deliberately: both describe a network service
+// "agent" ties with "ports": both describe a network service
 // that should not be reachable. The agent domain's worst case is strictly
-// worse — an unauthenticated gateway is remote code execution as a real
-// user — but it applies to far fewer hosts, and it is N/A-excluded entirely
+// worse (an unauthenticated gateway is remote code execution as a real
+// user) but it applies to far fewer hosts, and it is N/A-excluded entirely
 // on any host with no agent runtime installed. So the generous cap costs a
 // typical host nothing and carries real weight where it applies.
 //
-// "sysctl" ties with "fileperms" deliberately too: both are quiet local-
-// hardening backstops — neither is the hole an attacker comes in through,
+// "sysctl" ties with "fileperms" too: both are quiet local-
+// hardening backstops; neither is the hole an attacker comes in through,
 // each is what stops a foothold from becoming root.
 //
 // "dockerd" ties with "accounts" and "updates", and the tie is the argument:
@@ -292,22 +290,22 @@ func axisDefsFromSources() []axisDef {
 // a slower problem. "firewall" gave one because firewall.docker-bypass
 // already says the daemon walks through the host firewall. "ports" gave one
 // because this axis takes custody of the most dangerous port a Docker host
-// can publish — one the port table could never have judged, since the number
+// can publish: one the port table could never have judged, since the number
 // alone does not say whether TLS verification is in force. "agent" gave one
 // because its generous cap was argued from being N/A on most hosts, and that
 // argument now has a second claimant.
 //
 // "systemd" sits just under "accounts", "updates" and "dockerd", and the gap
 // is the argument. It covers the same ground for a unit-started service that
-// "container" covers for a compose one — can it gain privileges, can it write
-// outside its own data, can it read every home directory — so on a host that
+// "container" covers for a compose one (can it gain privileges, can it write
+// outside its own data, can it read every home directory) so on a host that
 // runs its services natively it is doing the work "container" does elsewhere.
 // It is one step below that band because none of its findings is by itself an
-// entry: each one widens what a compromise reaches rather than granting it.
+// entry: each one widens what a compromise reaches.
 // Six axes funded it, each giving one. "container" and "ssh" gave from the
 // top because they are the only two large enough that a point does not change
 // what they can express. "cve", "ports", "firewall" and "agent" gave because
-// each already had a share argued as generous — and because a service running
+// each already had a share argued as generous, and because a service running
 // unsandboxed is the step *after* every one of them: the exposed port, the
 // unpatched image, and the bypassed firewall all end at a process, and this
 // axis is about what that process can then touch.
@@ -318,7 +316,7 @@ var axisDefs = axisDefsFromSources()
 // follows from it, since a finding's weight is its severity penalty over
 // this constant (High 8/16 = 0.5, Medium 0.125, Low 0.0625).
 //
-// Named for the position rather than for the level, because the levels have
+// Named for the position, because the levels have
 // been renamed twice and this constant is about the top of the scale
 // whatever the top is called.
 const topHalves = 16
@@ -327,17 +325,17 @@ const topHalves = 16
 //
 // nth is which instance of this finding's ID it is on this axis, counting
 // from 1, and it divides the weight: the same mistake made four times costs
-// 1 + 1/2 + 1/3 + 1/4 of one, not four of one.
+// 1 + 1/2 + 1/3 + 1/4 of one.
 //
 // The instances are not independent risks. A compose file where four services
 // all lack `user:` is one mistake written four times, and a self-hoster runs
 // many services from one template, so the old arithmetic buried an axis for
-// having more services rather than worse ones: four Mediums of a single ID
+// having more services: four Mediums of a single ID
 // took 41% of what was left, and on a twenty-service host the axis was pinned
 // at zero by one line missing from a file.
 //
 // It is not free after the first, either. The tenth instance says the mistake
-// is systematic, which is worse than the first — just not ten times worse,
+// is systematic, which is worse than the first: just not ten times worse,
 // and the harmonic series is the shape of "worse, with diminishing returns"
 // that needs no threshold to argue about.
 func weight(f Finding, nth int) float64 {
@@ -363,7 +361,7 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 	// And again, over the same findings with everything Hostveil offers a
 	// button for marked fixed. See ScoreBreakdown.AfterFixes.
 	//
-	// Two calls rather than a second scoring rule: the loop below already
+	// Two calls: the loop below already
 	// skips a Fixed finding, so "what this would be after the fixes" is the
 	// same arithmetic on a different input, and there is no way for the two
 	// numbers to drift apart into two answers about one host.
@@ -378,14 +376,14 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 // withOfferedFixesApplied returns findings with every one Hostveil can
 // remediate marked Fixed.
 //
-// Review counts, not only Auto. The operator who wants to know what fixing
-// everything gets them is going to accept the Review fixes too — that is the
-// path scripts/measure/run.sh calls `reviewed`, and it exists precisely
+// Review counts as well as Auto. The operator who wants to know what fixing
+// everything gets them is going to accept the Review fixes too, that is the
+// path scripts/measure/run.sh calls `reviewed`, and it exists
 // because measuring only the unattended half measures half the tool.
 //
-// Remediation is read here rather than the registry being consulted, and that
+// Remediation is read here, and that
 // is only correct because Engine.classify runs before scoring
-// (internal/core/engine.go) — so the value on the finding is already resolved
+// (internal/core/engine.go), so the value on the finding is already resolved
 // between the checker and the registry, which is to say it is exactly what
 // decides whether a UI draws a button.
 func withOfferedFixesApplied(findings []Finding) []Finding {
@@ -396,7 +394,7 @@ func withOfferedFixesApplied(findings []Finding) []Finding {
 			out[i].Fixed = true
 			// And in force. This pass answers "where does the number land once
 			// the fixes have done their work", so a fix already applied and
-			// waiting on a restart has to count as done here — otherwise the
+			// waiting on a restart has to count as done here: otherwise the
 			// headroom disappears on exactly the domains it is most needed for,
 			// which are the ones whose fixes are never immediate.
 			out[i].Pending = false
@@ -424,11 +422,11 @@ func scoreOnce(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 	}
 
 	// remaining[i] is the share of axis i still standing. Findings erode it
-	// multiplicatively rather than adding up: each one takes a share of what
+	// multiplicatively: each one takes a share of what
 	// is left, so the tenth High still hurts but cannot hurt more than there
 	// is left to lose.
 	//
-	// Summing severities instead — the model this replaces — meant two
+	// Summing severities instead (the model this replaces) meant two
 	// top-severity findings exhausted most axes and every finding after that
 	// was free.
 	// A host with 27 container findings scored identically to one with 3,
@@ -485,8 +483,8 @@ func scoreOnce(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 		fs := groups[g]
 		// Heaviest first, so the divisor lands on the cheaper instances and
 		// the answer does not depend on the order the findings arrived in.
-		// One ID can carry two severities — a CVE roll-up is the worst level
-		// in that image, which differs per image — and without this the same
+		// One ID can carry two severities (a CVE roll-up is the worst level
+		// in that image, which differs per image) and without this the same
 		// two findings scored differently depending on which was seen first.
 		sort.SliceStable(fs, func(i, j int) bool { return weight(fs[i], 1) > weight(fs[j], 1) })
 		for n, f := range fs {
@@ -498,8 +496,7 @@ func scoreOnce(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 	ranCapSum := 0
 	for i := range axes {
 		lost := 1 - remaining[i]
-		// Score comes from the fraction directly, not from the rounded
-		// penalty. Deriving it from penalty/cap would give a cap-6 axis
+		// Score comes from the fraction directly. Deriving it from penalty/cap would give a cap-6 axis
 		// only seven distinct scores.
 		axes[i].Score = uint8(math.Round(100 * remaining[i])) // remaining is 0-1
 		axes[i].Penalty = int(math.Round(float64(axes[i].MaxPenalty) * lost))
@@ -517,11 +514,10 @@ func scoreOnce(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 }
 
 // renormalize scales the summed penalty against the caps of the axes that
-// actually ran, yielding a 0-100 score even when some axes are N/A.
+// ran, yielding a 0-100 score even when some axes are N/A.
 func renormalize(penalty float64, ranCapSum int) uint8 {
 	if ranCapSum <= 0 {
-		// Callers must check ScoreBreakdown.Applicable rather than reading
-		// this; the value is arbitrary because there is nothing to average.
+		// Callers must check ScoreBreakdown.Applicable; the value is arbitrary because there is nothing to average.
 		return 0
 	}
 	scaled := math.Round(penalty * 100 / float64(ranCapSum))

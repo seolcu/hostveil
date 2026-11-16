@@ -13,16 +13,16 @@ import (
 
 // The nightly workflow fuzzes each target for five minutes, from a matrix it
 // lists by hand. Nothing connects that list to the targets that exist, so a
-// Fuzz function added tomorrow is never fuzzed — and the failure is silent in
+// Fuzz function added tomorrow is never fuzzed, and the failure is silent in
 // the worst way: nightly stays green, the matrix still names four targets, and
-// the new parser is the one nobody is throwing bytes at.
+// the new parser is the one no fuzz target exercises.
 //
 // This is the same shape as the shellcheck step that named two of thirteen
 // scripts, and as the E2E selection that matched no domain: a claim living
 // outside Go, where the compiler cannot hold it to anything. So the set is
-// derived from the source and compared, in both directions — a target listed
-// but absent would fail the nightly run loudly, but it would fail it at 5 AM
-// rather than here.
+// derived from the source and compared, in both directions: a target listed
+// but absent would fail the nightly run loudly, at 5 AM. This catches it
+// earlier.
 var (
 	fuzzMatrixTarget  = regexp.MustCompile(`(?m)^\s*-?\s*target:\s*(\w+)\s*$`)
 	fuzzMatrixPackage = regexp.MustCompile(`(?m)^\s*-?\s*package:\s*(\S+)\s*$`)
@@ -32,8 +32,8 @@ var (
 // name against the package path it lives in.
 //
 // Extracted so more than one thing can be held to the real list. It was inline
-// in the test below, which is why AGENTS.md was free to name three of the five
-// — the workflow was pinned and the prose beside it was not.
+// in the test below, which is why AGENTS.md was free to name three of the five:
+// the workflow was pinned and the prose beside it was not.
 func fuzzTargets(t *testing.T) map[string]string {
 	t.Helper()
 	root := repoRoot(t)
@@ -76,7 +76,7 @@ func fuzzTargets(t *testing.T) map[string]string {
 		t.Fatalf("walking the repository: %v", err)
 	}
 	if len(found) == 0 {
-		t.Fatal("found no Fuzz targets in the repository, which cannot be right — " +
+		t.Fatal("found no Fuzz targets in the repository, which cannot be right; " +
 			"the walk or the signature check above stopped working, and every test " +
 			"built on this list would now pass on anything")
 	}
@@ -126,7 +126,7 @@ func TestEveryFuzzTargetIsFuzzedNightly(t *testing.T) {
 // isFuzzTarget reports whether fn has the one signature `go test -fuzz` will
 // accept: a single *testing.F parameter and no results. Without this a helper
 // named FuzzSomethingHelper would be demanded of the workflow, and the error
-// would be about a workflow rather than about the helper's name.
+// would be about a workflow and miss the helper's name.
 func isFuzzTarget(fn *ast.FuncDecl) bool {
 	if fn.Type.Results != nil || fn.Type.Params == nil || len(fn.Type.Params.List) != 1 {
 		return false

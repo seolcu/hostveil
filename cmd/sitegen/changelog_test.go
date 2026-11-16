@@ -9,7 +9,7 @@ import (
 )
 
 // repoRootFromSitegen walks up to the module root, because these tests read
-// CHANGELOG.md the way sitegen does — from the working directory — and `go
+// CHANGELOG.md the way sitegen does (from the working directory) and `go
 // test` runs each package in its own directory.
 func repoRootFromSitegen(t *testing.T) string {
 	t.Helper()
@@ -43,8 +43,8 @@ func inRepoRoot(t *testing.T) {
 // page worth more than writing it.
 //
 // A hand-written page can omit a release and look complete. This one is
-// converted from the file, so the only way it can omit one is a converter bug
-// — which is what this catches, by requiring every version heading in the
+// converted from the file, so the only way it can omit one is a converter bug,
+// which is what this catches, by requiring every version heading in the
 // source to arrive as a linkable heading in the output.
 func TestEveryReleaseReachesTheChangelogPage(t *testing.T) {
 	inRepoRoot(t)
@@ -78,8 +78,8 @@ func TestEveryReleaseReachesTheChangelogPage(t *testing.T) {
 
 // TestTheChangelogPageEscapesWhatItQuotes.
 //
-// The changelog quotes paths and CSS selectors that contain angle brackets —
-// `/etc/systemd/system/<unit>.d/`, `.chip.c-<abbr>` — and a converter that
+// The changelog quotes paths and CSS selectors that contain angle brackets:
+// `/etc/systemd/system/<unit>.d/`, `.chip.c-<abbr>`, and a converter that
 // passed those through would put a tag on the page where the file has text.
 // They are inside code spans, which is exactly where a naive converter is most
 // likely to stop escaping.
@@ -144,7 +144,7 @@ func TestUnsupportedMarkdownFailsTheBuild(t *testing.T) {
 		})
 	}
 
-	// And the shapes the file actually uses must keep passing, or the guard
+	// And the shapes the file uses must keep passing, or the guard
 	// has stopped being a guard and started being a wall.
 	ok := "## [3.20.1](https://x/compare) (2026-08-15)\n\nAn intro line.\n\n### Bug Fixes\n\n" +
 		"* **core:** it moved ([#735](https://x/735)). With `code`, **bold** and *emphasis*.\n" +
@@ -158,7 +158,7 @@ func TestUnsupportedMarkdownFailsTheBuild(t *testing.T) {
 // content fragment carries the page's introduction and a marker, and the
 // releases are injected there. A fragment that lost the marker would render a
 // changelog page with no changelog on it, and every other test here would still
-// pass because they exercise the converter rather than the page.
+// pass because they exercise only the converter.
 func TestTheChangelogPageIsGeneratedNotWritten(t *testing.T) {
 	inRepoRoot(t)
 

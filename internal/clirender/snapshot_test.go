@@ -12,11 +12,10 @@ import (
 // TestSnapshotDump writes the CLI's rendering of the published fixture into
 // HOSTVEIL_SNAPSHOT, and is a no-op in normal test runs.
 //
-// It is the third leg of a hook the other two surfaces already had — the TUI's
-// TestSnapshotDump and the dashboard's TestScreenshotServe — and it exists for
+// It is the third leg of a hook the other two surfaces already had (the TUI's
+// TestSnapshotDump and the dashboard's TestScreenshotServe) and it exists for
 // the reason those do: a picture of the interface should come from a host that
-// is written down rather than from whichever machine somebody happened to have
-// to hand. The CLI was the surface without one, so the only way to capture it
+// is written down. The CLI was the surface without one, so the only way to capture it
 // was to run a real scan, which means the capture carries a real host's
 // findings and cannot be reproduced by the next person to change the output.
 //
@@ -32,7 +31,7 @@ func TestSnapshotDump(t *testing.T) {
 	rep := uitest.PublishedReport()
 
 	// Colour on and off, plain and Nerd glyphs, terse and verbose: the four
-	// shapes the CLI actually prints. --json is deliberately not here — it has
+	// shapes the CLI prints. --json is not here: it has
 	// its own tests and a screenshot of it says nothing a `jq` output would not.
 	for _, c := range []struct {
 		name string

@@ -4,7 +4,7 @@ import "strings"
 
 // ShowProperty reads one Key=Value line out of `systemctl show` output.
 // Records are keyed by name because systemd prints the properties in an order
-// of its own, not the order they were asked for.
+// of its own.
 func ShowProperty(out, key string) string {
 	for _, line := range strings.Split(out, "\n") {
 		if k, v, ok := strings.Cut(line, "="); ok && k == key {
@@ -19,9 +19,9 @@ func ShowProperty(out, key string) string {
 //
 //	ExecStart={ path=/usr/bin/dockerd ; argv[]=/usr/bin/dockerd -H fd:// ; ... }
 //
-// A unit may have several ExecStart entries — a drop-in that clears the
+// A unit may have several ExecStart entries: a drop-in that clears the
 // packaged one with a bare `ExecStart=` and adds its own is the standard way
-// to change a daemon's flags — so every argv list is returned.
+// to change a daemon's flags, so every argv list is returned.
 func ExecStartArgv(out string) []string {
 	var argvs []string
 	rest := out

@@ -7,8 +7,8 @@ import (
 )
 
 // registerProxy wires the proxy-domain fixes into the registry. The first
-// one: every other proxy.* finding is deliberately declined (register.go)
-// because its remediation is either genuinely ambiguous (Traefik's
+// one: every other proxy.* finding is declined (register.go)
+// because its remediation is either ambiguous (Traefik's
 // dashboard) or a fact about a config whose syntax and structure varies too
 // much per vhost to edit safely (deprecated TLS protocols, directory
 // listing). Enabling a single, named, upstream-shipped fail2ban jail has
@@ -18,17 +18,16 @@ func registerProxy(r *Registry) {
 }
 
 // scanJailPath is a hostveil-owned drop-in, never shared with anything the
-// operator or the fail2ban package itself might write — which is what lets
-// each action's Transform return a fixed body rather than merge into
-// whatever is already there.
+// operator or the fail2ban package itself might write, which is what lets
+// each action's Transform return a fixed body.
 const scanJailPath = "/etc/fail2ban/jail.d/hostveil-nginx-scan.conf"
 
 func buildEnableScanJail(f model.Finding) (Fix, error) {
 	benefit := "Once fail2ban reloads, an IP that repeatedly requests nonexistent or known-vulnerable paths " +
-		"gets banned automatically — no more finding it and banning it yourself."
-	warning := "Takes effect on the next `fail2ban-client reload`, not immediately. A shared or NAT'd IP " +
+		"gets banned automatically; no more finding it and banning it yourself."
+	warning := "Takes effect on the next `fail2ban-client reload`. A shared or NAT'd IP " +
 		"address could ban more than the one visitor responsible for it. This only ever affects HTTP(S) " +
-		"traffic — never SSH, and never the operator's own access to the host."
+		"traffic: never SSH, and never the operator's own access to the host."
 	logLines := scanJailLogLines(f)
 
 	return Fix{
@@ -36,7 +35,7 @@ func buildEnableScanJail(f model.Finding) (Fix, error) {
 		Kind:  model.RemediationReview,
 		Actions: []Action{
 			// Index 0 is what `fix --all --review` applies unattended
-			// (Fix's own doc comment) — fail2ban's own upstream default
+			// (Fix's own doc comment); fail2ban's own upstream default
 			// bantime, the safer of the two for something applied without
 			// a human looking at it first.
 			scanJailAction("Enable it (fail2ban's own default: 10 minute ban)", benefit, warning, logLines, ""),
@@ -64,25 +63,25 @@ func scanJailAction(label, benefit, warning, logLines, extra string) Action {
 // scanJailLogLines always states an explicit backend and logpath, never
 // conditionally.
 //
-// Verified against a real fail2ban process, not assumed from its docs:
+// Verified against a real fail2ban process:
 // fail2ban's "auto" backend prefers the systemd journal over a jail's own
 // logpath whenever the filter defines a journalmatch, which nginx-botsearch
-// does — and nginx does not write request-level entries to the journal, so
+// does, and nginx does not write request-level entries to the journal, so
 // a bare `enabled = true` with nothing else silently watches nothing at
 // all. "Currently failed: 0" against real repeated-404 traffic, even with
 // logpath itself restated to the exact value fail2ban's own default already
-// resolves to — only adding an explicit `backend = auto` switched it onto
+// resolves to; only adding an explicit `backend = auto` switched it onto
 // the log files, at which point a scripted probe past maxretry produced a
-// real ban within seconds. logpath names both files, not just one: the
+// real ban within seconds. logpath names both files: the
 // filter matches an access-log-style 404 line as well as an error-log-style
-// failed-open line, and which one a given host actually populates depends
-// on whether the request reaches a static-file lookup at all — a bare vhost
+// failed-open line, and which one a given host populates depends
+// on whether the request reaches a static-file lookup at all; a bare vhost
 // returning its own 404 never does, so only the access log carries it.
 //
 // The path itself still prefers the checker's own evidence over a literal
 // default, and falls back to fail2ban's %(nginx_access_log)s/
-// %(nginx_error_log)s macros rather than a hardcoded path when there is no
-// evidence — those macros are what stay portable across a distribution
+// %(nginx_error_log)s macros when there is no
+// evidence; those macros are what stay portable across a distribution
 // Hostveil has not specifically checked, the same reasoning
 // internal/check/sysctl's origin-following applies to not re-deriving what
 // a config already gets right.
@@ -97,7 +96,7 @@ func scanJailLogLines(f model.Finding) string {
 // firstLogPath takes the first of a comma-joined evidence value, or a
 // fallback when the checker recorded none. Evidence beyond the first path
 // is informational for a reader of the finding; fail2ban's own logpath
-// override here is a courtesy default, not an attempt to enumerate every
+// override here is a courtesy default. It does not try to enumerate every
 // log target an unusual config might have.
 func firstLogPath(evidence, fallback string) string {
 	if evidence == "" {

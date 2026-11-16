@@ -18,8 +18,7 @@ var mutatingCalls = map[string][]string{
 //
 // It is the reason a scan is safe to run on somebody else's production server
 // without asking, the reason `Engine.Scan` can share one command cache across
-// twelve of them, and the reason a panic in one degrades a domain rather than
-// leaving a host half-edited. All of that rests on a property no test held.
+// twelve of them, and the reason a panic in one only degrades a domain. All of that rests on a property no test held.
 //
 // internal/history/atomicity_test.go does exactly this job for the recovery
 // layer, reading its own package's sources and failing on a write that
@@ -29,8 +28,8 @@ func TestNoCheckerMutatesTheHost(t *testing.T) {
 	checked := 0
 
 	walkGoFiles(t, filepath.Join(root, "internal", "check"), func(path string, file *ast.File) {
-		// checktest builds hosts for tests to scan; it is scaffolding, not a
-		// checker, and it writes fixtures on purpose.
+		// checktest builds hosts for tests to scan; it is scaffolding, and it
+		// writes fixtures.
 		if strings.Contains(path, filepath.Join("check", "checktest")) {
 			return
 		}
@@ -51,7 +50,7 @@ func TestNoCheckerMutatesTheHost(t *testing.T) {
 			}
 			for _, name := range mutatingCalls[pkg.Name] {
 				if sel.Sel.Name == name {
-					t.Errorf("%s calls %s.%s — checkers are read-only, and everything from the "+
+					t.Errorf("%s calls %s.%s; checkers are read-only, and everything from the "+
 						"shared scan cache to running a scan on somebody's production host rests on it",
 						rel, pkg.Name, name)
 				}

@@ -5,7 +5,7 @@
 // The output is the last thing an operator reads before authorizing a write
 // to a file like /etc/ssh/sshd_config, which makes two properties matter
 // more than they would in a general-purpose diff. It must show every byte
-// the apply would change — a change the preview cannot render is consent
+// the apply would change: a change the preview cannot render is consent
 // obtained on a false basis. And it must show little else: a one-line edit
 // to a several-hundred-line compose file that echoes the whole file buries
 // the very line being authorized.
@@ -95,8 +95,7 @@ type hunkRange struct{ start, end int }
 
 // hunks groups changed ops into hunks, each padded by contextLines of
 // surrounding equal lines. Ranges that would touch or overlap are merged,
-// so two edits three lines apart render as one hunk rather than two that
-// repeat the same context.
+// so two edits three lines apart render as one hunk.
 func hunks(ops []op) []hunkRange {
 	var out []hunkRange
 	for i := 0; i < len(ops); {
@@ -186,7 +185,7 @@ func rangeSpec(start, count int) string {
 // The trim is what makes previewing a fix affordable. The LCS table is
 // O(len(a)·len(b)) in both time and memory, and a fix is by construction a
 // small localized edit: previewing a one-line change to a 10,000-line
-// compose file built a 100-million-cell table — 784 MiB of allocation to
+// compose file built a 100-million-cell table; 784 MiB of allocation to
 // produce 408 bytes of diff, enough to OOM the 1 GB VPS this tool is aimed
 // at. Every line outside the changed region is common to both sides, so
 // trimming leaves the core a handful of lines regardless of file size.
@@ -234,16 +233,16 @@ func lcsDiff(a, b []string) []op {
 
 // maxCoreCells caps the LCS table lcsCore is willing to build.
 //
-// The trim above makes the core tiny for the edits Hostveil actually
+// The trim above makes the core tiny for the edits Hostveil
 // performs, but it can only trim what matches: when internal/compose falls
 // back to re-encoding a whole YAML file, the reflow leaves no common head or
 // tail at all and the core sees both files entire. Ten million cells is
-// roughly 80 MiB — well past any real diff, and well short of the 784 MiB
+// roughly 80 MiB: well past any real diff, and well short of the 784 MiB
 // that OOMs the 1 GB VPS this tool is aimed at.
 //
-// Past the cap the diff degrades to whole-file replace rather than failing:
+// Past the cap the diff degrades to whole-file replace:
 // a fix must not be blocked because its preview is expensive to render, and
-// "every line changed" is an honest description of a reflowed file.
+// "every line changed" is an accurate description of a reflowed file.
 const maxCoreCells = 10_000_000
 
 // replaceAll is the degenerate diff: delete every line of a, add every line

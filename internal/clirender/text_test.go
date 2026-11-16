@@ -13,7 +13,7 @@ func plain(r model.Report) string { return Text(r, Options{}) }
 
 // The CLI's score color had three arms where the TUI and the dashboard had
 // four, so a host scoring 10 and one scoring 40 printed identically here
-// while reading a band apart everywhere else — and 10 is the half of that
+// while reading a band apart everywhere else, and 10 is the half of that
 // range where the host is on fire.
 func TestScoreColorDistinguishesEveryBand(t *testing.T) {
 	scored := func(v uint8) string {
@@ -36,7 +36,7 @@ func TestScoreColorDistinguishesEveryBand(t *testing.T) {
 			t.Fatalf("score %d rendered no color escape: %q", v, line)
 		}
 		if prev, dup := seen[esc]; dup {
-			t.Errorf("scores %d and %d share the color %q — %v and %v are different bands",
+			t.Errorf("scores %d and %d share the color %q; %v and %v are different bands",
 				prev, v, esc, model.BandFor(prev), model.BandFor(v))
 		}
 		seen[esc] = v
@@ -47,7 +47,7 @@ func TestScoreColorDistinguishesEveryBand(t *testing.T) {
 }
 
 // A domain that ran but covered only part of its ground must appear. Before
-// ScanDegraded had any renderer, such a domain printed nothing at all — the
+// ScanDegraded had any renderer, such a domain printed nothing at all: the
 // report looked exactly like a complete one.
 func TestTextRendersDegradedDomain(t *testing.T) {
 	out := plain(model.Report{
@@ -102,8 +102,8 @@ func TestTextRendersSkippedAndErroredDomains(t *testing.T) {
 // about what the scan could not see, so all three markers have to come from
 // the set the operator picked. They did not: --glyphs nerd drew the skipped
 // line's minus-circle from the patched font and left the two lines beside it
-// on the ASCII "~" and "!", which reads as two kinds of remark rather than
-// three degrees of one.
+// on the ASCII "~" and "!", which reads as two kinds of remark when there
+// are three degrees of one.
 func TestCoverageMarkersAllComeFromTheChosenSet(t *testing.T) {
 	report := model.Report{
 		Domains: []model.DomainResult{
@@ -145,7 +145,7 @@ func lineContaining(s, sub string) string {
 }
 
 // "Clean" is a claim about the whole host. With domains missing, the most the
-// report can honestly say is that what it looked at was clean.
+// report can accurately say is that what it looked at was clean.
 func TestTextDoesNotClaimCleanWhenDomainsDidNotRun(t *testing.T) {
 	out := plain(model.Report{
 		Domains: []model.DomainResult{
@@ -200,7 +200,7 @@ func TestDeltaSummaryBoundsItsListing(t *testing.T) {
 }
 
 // A bare "changed" is not actionable. The useful part is what moved, and
-// for an aggregate finding that is the counts — never the payload behind
+// for an aggregate finding that is the counts: never the payload behind
 // them, which can be thousands of IDs long.
 func TestDeltaSummaryNamesWhatMoved(t *testing.T) {
 	longList := strings.Repeat("CVE-2024-0001, ", 300)
@@ -222,7 +222,7 @@ func TestDeltaSummaryNamesWhatMoved(t *testing.T) {
 	if !strings.Contains(out, "severity medium → high") {
 		t.Errorf("summary does not report the severity move:\n%s", out)
 	}
-	// An oversized list reports its membership change, not its payload.
+	// An oversized list reports its membership change.
 	if !strings.Contains(out, "cves +1 (CVE-2024-9999)") {
 		t.Errorf("summary does not name the added item:\n%s", out)
 	}
@@ -234,7 +234,7 @@ func TestDeltaSummaryNamesWhatMoved(t *testing.T) {
 	}
 }
 
-// Naming every new item defeats the point when hundreds arrive at once.
+// Naming every new item is useless when hundreds arrive at once.
 func TestDeltaSummaryBoundsNamedListMembers(t *testing.T) {
 	var before, after []string
 	for i := range 400 {

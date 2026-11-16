@@ -14,7 +14,7 @@ import (
 
 // journaldCatConfigArgv prints journald's configuration with every drop-in,
 // in the order systemd applies them, each file under a "# <path>" header.
-// It is asked of systemd rather than reconstructed here, so the precedence
+// It is asked of systemd, so the precedence
 // rules are systemd's own.
 var journaldCatConfigArgv = []string{"systemd-analyze", "cat-config", "systemd/journald.conf"}
 
@@ -115,7 +115,7 @@ func (c *Checker) checkJournald(ctx context.Context, env platform.Env) ([]model.
 			model.WithMetadata("journald_dropin", dropIn),
 			model.WithDescription("journald keeps its log in memory only ("+why+"), so every login, service start and error "+
 				"recorded before the last reboot is gone. A reboot is also the first thing many people do when a server "+
-				"misbehaves — which erases the record of why it misbehaved."),
+				"misbehaves, which erases the record of why it misbehaved."),
 			model.WithHowToFix("Create "+journaldDropInOrDefault(dropIn)+" containing:\n\n    [Journal]\n    Storage=persistent\n\n"+
 				"then run `systemctl restart systemd-journald`. journald creates /var/log/journal itself."),
 			model.WithEvidence("Storage", storage),
@@ -159,7 +159,7 @@ func humanDays(d time.Duration) string {
 
 // parseTimespan reads a systemd time span ("2week", "30d", "1month 2d",
 // or bare seconds). ok is false for anything it does not understand, which
-// callers treat as "no finding" rather than guessing.
+// callers treat as "no finding".
 func parseTimespan(s string) (time.Duration, bool) {
 	s = strings.TrimSpace(s)
 	if s == "" {

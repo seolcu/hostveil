@@ -18,7 +18,7 @@ func sysctlFinding(setBy string) model.Finding {
 		model.SeverityLow, model.SourceSysctl, model.RemediationReview, opts...)
 }
 
-// persist returns the alternative that survives a reboot — the first action,
+// persist returns the alternative that survives a reboot: the first action,
 // by construction.
 func persist(t *testing.T, setBy string) Action {
 	t.Helper()
@@ -41,7 +41,7 @@ func TestPersistEditsTheFileThatOutranksTheDropIn(t *testing.T) {
 	a := persist(t, "/etc/sysctl.conf:65")
 
 	if a.Path != "/etc/sysctl.conf" {
-		t.Fatalf("path = %q, want /etc/sysctl.conf — a drop-in there would be overridden", a.Path)
+		t.Fatalf("path = %q, want /etc/sysctl.conf: a drop-in there would be overridden", a.Path)
 	}
 	if a.CreateIfMissing {
 		t.Error("the origin file exists by definition; creating it would mean the origin was wrong")
@@ -116,7 +116,7 @@ func TestSetSysctlAssignments(t *testing.T) {
 			want:  "  -kernel/dmesg_restrict   = 1\n",
 		},
 		{
-			name: "rewrites every assignment, not only the winning one",
+			name: "rewrites every assignment, the winning one included",
 			// The last wins today; leaving the first contradicting it turns
 			// the file into something whose effect has to be derived.
 			in:    "kernel.dmesg_restrict = 0\nvm.swappiness = 10\nkernel.dmesg_restrict = 0\n",

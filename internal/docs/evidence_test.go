@@ -19,14 +19,14 @@ var evidenceRead = regexp.MustCompile(`Evidence\["([a-zA-Z0-9_-]+)"\]`)
 // holding together.
 //
 // Finding IDs have five tests, environment variables three, the model's enums
-// two, the layout registries two, the severity CSS two. Evidence — the keys a
-// checker writes and a fix parses to build a remediation out of — had none, in
+// two, the layout registries two, the severity CSS two. Evidence (the keys a
+// checker writes and a fix parses to build a remediation out of) had none, in
 // either direction.
 //
 // The direction that matters is a fix reading a key no checker writes. It does
 // not fail loudly: the builder returns an error, Engine.classify demotes the
 // finding to Manual, and the user is left with a finding whose fix button
-// vanished and no explanation anywhere. Two keys are deliberately conditional
+// vanished and no explanation anywhere. Two keys are conditional
 // and are listed below with the reason.
 func TestEveryEvidenceKeyAFixReadsIsWrittenByAChecker(t *testing.T) {
 	root := repoRoot(t)
@@ -40,7 +40,7 @@ func TestEveryEvidenceKeyAFixReadsIsWrittenByAChecker(t *testing.T) {
 
 	for key := range read {
 		if !written[key] {
-			t.Errorf("internal/fix reads Evidence[%q] and no checker writes it — "+
+			t.Errorf("internal/fix reads Evidence[%q] and no checker writes it; "+
 				"the builder errors, classify demotes the finding to Manual, and the "+
 				"user sees a fix button disappear with nothing to say why", key)
 		}
@@ -49,12 +49,11 @@ func TestEveryEvidenceKeyAFixReadsIsWrittenByAChecker(t *testing.T) {
 
 // conditionalKeys are written only in some circumstances, and each fix that
 // reads one says what it does when it is absent. They are named here so the
-// list of what is deliberately optional is written down somewhere rather than
-// being rediscovered from a nil map.
+// list of what is optional is written down somewhere.
 var conditionalKeys = map[string]string{
-	"ssh_port": "firewall.inactive carries it only where `ss` could be read; without it the fix errors rather than enabling a firewall on an unknown port",
+	"ssh_port": "firewall.inactive carries it only where `ss` could be read; without it the fix errors and enables no firewall on an unknown port",
 	"set-by":   "sysctl carries it only where an origin file was found; its absence means the kernel default, which the fix handles",
-	"set-alt":  "the agent config fixes carry it only where a key has two safe values; its absence is what makes the fix Auto rather than Review",
+	"set-alt":  "the agent config fixes carry it only where a key has two safe values; its absence is what makes the fix Auto",
 }
 
 // And the reverse, weakly: a key nothing reads is not a defect, because
@@ -83,7 +82,7 @@ func evidenceKeysRead(t *testing.T, dir string) map[string]bool {
 
 // evidenceKeysWritten collects the first argument of every WithEvidence call
 // under the checkers, through the AST so a key built by a helper is visible as
-// the constant it is rather than as a line of text.
+// the constant it is.
 func evidenceKeysWritten(t *testing.T, dir string) map[string]bool {
 	t.Helper()
 	out := map[string]bool{}
@@ -108,7 +107,7 @@ func evidenceKeysWritten(t *testing.T, dir string) map[string]bool {
 	// Not every write goes through WithEvidence: a checker that decides a key
 	// after building the finding assigns into the map directly
 	// (`f.Evidence["installed"] = "true"`). Those are picked up textually,
-	// which cannot tell a write from a read — but on the checker side there
+	// which cannot tell a write from a read, but on the checker side there
 	// is nothing to read, so every match is a write.
 	walkGo(t, dir, func(_ string, src string) {
 		for _, m := range evidenceRead.FindAllStringSubmatch(src, -1) {

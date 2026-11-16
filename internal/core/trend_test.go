@@ -14,7 +14,7 @@ import (
 // was written, and nothing ever read more than the newest one: LastReport
 // takes the last element, and every interface shows "since last scan" and
 // nothing longer. That answers "did that round of fixes help?" and cannot
-// answer "is this host getting better?" — with the data for it already on
+// answer "is this host getting better?", with the data for it already on
 // disk the whole time.
 
 // saveScan writes a snapshot with a chosen score. The id carries the time,
@@ -37,7 +37,7 @@ func TestScoreHistoryReturnsEveryScanOldestFirst(t *testing.T) {
 	store := history.NewStore(dir)
 	e := New(Config{Store: store})
 
-	// Deliberately saved out of order: the ids are timestamp-prefixed and
+	// Saved out of order: the ids are timestamp-prefixed and
 	// the listing sorts by them, so a store that returned directory order
 	// would produce a chart running backwards.
 	saveScan(t, store, "20260101-120000.000-c", 71, true)
@@ -53,7 +53,7 @@ func TestScoreHistoryReturnsEveryScanOldestFirst(t *testing.T) {
 	}
 	for i, want := range []uint8{42, 58, 71} {
 		if points[i].Overall != want {
-			t.Errorf("point %d = %d, want %d — the series is not oldest-first", i, points[i].Overall, want)
+			t.Errorf("point %d = %d, want %d; the series is not oldest-first", i, points[i].Overall, want)
 		}
 	}
 	if !points[0].At.Before(points[2].At) {
@@ -61,10 +61,10 @@ func TestScoreHistoryReturnsEveryScanOldestFirst(t *testing.T) {
 	}
 }
 
-// A scan where every domain was skipped or failed has no score at all —
+// A scan where every domain was skipped or failed has no score at all:
 // ScoreBreakdown.Applicable is false and all three UIs render N/A. A trend
 // that flattened that to 0 would draw a cliff where the truth is that
-// nobody could look, which is the same lie the aggregate score already
+// the scan could not look, which is the same lie the aggregate score already
 // refuses to tell.
 func TestScoreHistoryCarriesTheNotApplicableFlag(t *testing.T) {
 	store := history.NewStore(t.TempDir())
@@ -84,11 +84,11 @@ func TestScoreHistoryCarriesTheNotApplicableFlag(t *testing.T) {
 		t.Error("a scored scan came back as not applicable")
 	}
 	if points[1].Applicable {
-		t.Error("an unscorable scan came back as applicable — it would be charted as a drop to 0")
+		t.Error("an unscorable scan came back as applicable; it would be charted as a drop to 0")
 	}
 }
 
-// One damaged snapshot costs that snapshot, not the series. This is a
+// One damaged snapshot costs that snapshot and leaves the series intact. This is a
 // history view, and the same reasoning Store.List follows when it returns
 // what it could read: a file that will not parse is one missing point, not
 // a reason to refuse the other twenty-nine.
@@ -121,7 +121,7 @@ func TestScoreHistorySkipsUnreadableSnapshots(t *testing.T) {
 	}
 }
 
-// Nothing saved is not an error — it is a host that has not been scanned.
+// Nothing saved is not an error: it is a host that has not been scanned.
 func TestScoreHistoryOnAFreshStateDirectory(t *testing.T) {
 	e := New(Config{Store: history.NewStore(t.TempDir())})
 	points, err := e.ScoreHistory()
@@ -134,7 +134,7 @@ func TestScoreHistoryOnAFreshStateDirectory(t *testing.T) {
 }
 
 // The retention cap already applied to snapshots applies to the trend, by
-// construction rather than by a second limit: the series is exactly what
+// construction: the series is exactly what
 // the store kept.
 func TestScoreHistoryIsBoundedByRetention(t *testing.T) {
 	store := history.NewStore(t.TempDir())

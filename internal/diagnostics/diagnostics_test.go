@@ -33,7 +33,7 @@ func TestCrashesOnAnEmptyDirectory(t *testing.T) {
 
 // pruneCheckpoints in internal/history has a count cap and an age-based
 // floor because a checkpoint is a backup. A crash record is diagnostic
-// exhaust, not a backup, so this only has to prove the count cap holds —
+// exhaust, so this only has to prove the count cap holds:
 // there is no promise about how recently one arrived.
 func TestRecordCrashPrunesBeyondTheCap(t *testing.T) {
 	dir := t.TempDir()

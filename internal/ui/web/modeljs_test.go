@@ -16,7 +16,7 @@ import (
 // to ten. The consequences were both silent: the chip list was built by
 // looking each source up and discarding the misses, so the whole sysctl
 // domain became unfilterable, and a failed sysctl domain rendered as
-// "! 10 failed" — the integer, because there was nothing to name it with.
+// "! 10 failed"; the integer, because there was nothing to name it with.
 //
 // Serving the table from model.AllSources is the fix; this is what keeps it
 // fixed. It asserts the generated file names every domain, by number and by
@@ -25,10 +25,10 @@ import (
 func TestGeneratedDomainsCoverEverySource(t *testing.T) {
 	js := modelJS()
 	for i, src := range model.AllSources() {
-		// The whole entry, not its pieces. A domain present but nameless is
+		// The whole entry. A domain present but nameless is
 		// the failure mode that shipped: app.js falls back to String(s) and
-		// draws the integer, which reads as a rendering glitch rather than
-		// as a missing table entry.
+		// draws the integer, which reads as a rendering glitch and hides
+		// the missing table entry.
 		want := fmt.Sprintf("    %q: {id: %q, label: %q, rank: %d},", src.String(), src.String(), src.Label(), i)
 		if src.Label() == "" {
 			t.Errorf("%q (%d) reaches the dashboard with no label", src.String(), int(src))
@@ -131,9 +131,9 @@ func assertDistinctStrings[T comparable](t *testing.T, what string, vals []T, na
 	}
 }
 
-// The table is only useful if the page can actually fetch it. It is a
+// The table is only useful if the page can fetch it. It is a
 // blocking script in <head>, so a 404 here is a dashboard that renders its
-// domain chips as integers — the original bug, reintroduced through the
+// domain chips as integers: the original bug, reintroduced through the
 // routing table instead of the data.
 func TestModelScriptIsServedAndReferenced(t *testing.T) {
 	s, _ := testServer(t)
@@ -170,8 +170,8 @@ func TestModelScriptIsServedAndReferenced(t *testing.T) {
 // Every table this replaced, spelled as it was spelled when it drifted.
 //
 // The domain table was generated and its copy in app.js deleted, and one
-// guard was added for that one literal. A *second* label table — the axis
-// short names — was sitting twenty lines away the whole time, and grew
+// guard was added for that one literal. A *second* label table (the axis
+// short names) was sitting twenty lines away the whole time, and grew
 // stale by two domains without tripping anything. So the guard covers each
 // deleted table by its own shape: it is cheap, and the failure it catches
 // is one that compiles, renders, and looks fine.
@@ -185,10 +185,10 @@ func TestAppJSHasNoMirroredTables(t *testing.T) {
 	for _, tc := range []struct{ shape, what string }{
 		{`1: "Container"`, "a domain table"},
 		{`container: "Container"`, "an axis-label table"},
-		// Built from the model rather than written out, because a literal
+		// Built from the model, because a literal
 		// here is a guard keyed to one generation of the scale: these three
 		// rows named the four-level names, so the table they had to catch
-		// after the merge — the current three, in order — went straight
+		// after the merge (the current three, in order) went straight
 		// past them. A guard against a stale copy must not itself be one.
 		{severityArrayLiteral(model.Severity.String), "a severity name table"},
 		{severityArrayLiteral(model.Severity.Abbr), "a severity abbreviation table"},
@@ -197,7 +197,7 @@ func TestAppJSHasNoMirroredTables(t *testing.T) {
 		{`SCAN_DONE = `, "the scan-state ordinals"},
 		{`REM_AUTO = `, "the remediation ordinals"},
 		// The enums cross the wire as names now, so subtracting two of them
-		// is not a sort — it is NaN, and Array.sort leaves the order it found.
+		// is not a sort: it is NaN, and Array.sort leaves the order it found.
 		// Silent, and it would put Low findings above High ones.
 		{`a.severity - b.severity`, "an arithmetic severity sort"},
 		{`a.source - b.source`, "an arithmetic domain sort"},
@@ -209,7 +209,7 @@ func TestAppJSHasNoMirroredTables(t *testing.T) {
 }
 
 // severityArrayLiteral renders the severities as the JavaScript array
-// literal a hand-written copy of the table would most likely be — the levels
+// literal a hand-written copy of the table would most likely be: the levels
 // in the model's own order, which is the order anyone re-adding the table
 // would type them in.
 func severityArrayLiteral(of func(model.Severity) string) string {

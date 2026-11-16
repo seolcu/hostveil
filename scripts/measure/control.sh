@@ -10,7 +10,7 @@
 #
 # Every change below is traceable to the CIS Benchmarks or to Lynis's own
 # suggestions, and none of them was read off Hostveil's fix registry. The
-# overlap that results is part of the finding, not a flaw in the method: two
+# overlap that results is part of the finding: two
 # independent standards agreeing about PermitRootLogin is what agreement
 # between standards looks like.
 #
@@ -24,8 +24,7 @@ set -euo pipefail
 
 say() { printf '==> %s\n' "$*" >&2; }
 
-# CIS Debian 5.2 (SSH server configuration). A drop-in rather than an edit to
-# sshd_config, which is how Debian's own package expects operators to layer
+# CIS Debian 5.2 (SSH server configuration). A drop-in, which is how Debian's own package expects operators to layer
 # their settings.
 say "sshd: CIS 5.2 baseline"
 mkdir -p /etc/ssh/sshd_config.d
@@ -40,14 +39,14 @@ ClientAliveCountMax 0
 LoginGraceTime 60
 EOF
 
-# The seeded host carries a deliberately weak drop-in. Leaving it in place
-# would mean testing precedence rather than hardening — a later file wins, and
+# The seeded host carries a weak drop-in. Leaving it in place
+# would mean testing precedence: a later file wins, and
 # 00- sorts before 99-, so this one already loses to nothing. Remove it so the
-# control host is actually hardened.
+# control host is hardened.
 rm -f /etc/ssh/sshd_config.d/00-hostveil-demo.conf
 
 # CIS Debian 3.3 (network parameters) and 1.5 (kernel hardening). One
-# drop-in, named so it wins against everything the distribution ships — on
+# drop-in, named so it wins against everything the distribution ships, on
 # Ubuntu, /etc/sysctl.d/99-sysctl.conf is a symlink to /etc/sysctl.conf and
 # sorts last, so a lower number would silently lose.
 say "sysctl: CIS 3.3/1.5 baseline"
@@ -88,12 +87,12 @@ say "accounts: CIS 5.4.2"
 # script was ever run, and the second is what hid the first.
 #
 # userdel identifies "is this account in use" by *uid*, and a UID-0 twin
-# shares root's — so it finds pid 1 running as that uid and refuses with
+# shares root's, so it finds pid 1 running as that uid and refuses with
 # "user breakglass is currently used by process 1". That is true of every host
 # there has ever been, which makes it a step that could never once have
 # succeeded. `2>/dev/null || true` meant the script said "removing UID 0
 # account breakglass", removed nothing, and exited 0; the control group was
-# quietly missing its account-hygiene half, and Hostveil went on reporting
+# silently missing its account-hygiene half, and Hostveil went on reporting
 # accounts.uid0 about a host this script claimed to have hardened.
 #
 # A control group that silently skips a step is worse than one that fails,
@@ -127,4 +126,4 @@ json.dump(cfg, open(path, "w"), indent=2)
 PY
 fi
 
-say "control host hardened — measure it with: scripts/measure/run.sh -p control"
+say "control host hardened: measure it with: scripts/measure/run.sh -p control"

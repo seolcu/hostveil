@@ -1,11 +1,11 @@
 // Package accounts implements a native host account-hygiene checker. Its
 // question is who can become root and what stands in their way, and it asks it
 // three times: a second account carrying root's UID, a login account with no
-// password at all, and — through sudo itself rather than by reading sudoers —
+// password at all, and (through sudo itself)
 // an account that can run anything as root without being asked for one.
 //
-// The first two come out of /etc/passwd and /etc/shadow. The third does not,
-// on purpose: see sudoListArgv.
+// The first two come out of /etc/passwd and /etc/shadow. The third does not:
+// see sudoListArgv.
 package accounts
 
 import (
@@ -47,10 +47,10 @@ func (*Checker) Source() model.Source { return model.SourceAccounts }
 // Available requires a Linux host with a readable /etc/passwd. /etc/shadow
 // may still be unreadable without root; Check handles that by running the
 // passwd-only checks and reporting the domain Degraded, so the unchecked half
-// is visible rather than scored as clean.
+// is visible and never scored as clean.
 //
 // The OS gate is not belt-and-braces around the file check, because the file
-// is there on macOS. It is a stub — the account database is Open Directory —
+// is there on macOS. It is a stub (the account database is Open Directory)
 // so the UID-0 scan passes against something that does not describe the host,
 // and the missing /etc/shadow produces the Degraded reason "re-run with sudo",
 // which cannot help: the file is not unreadable, it does not exist. Advice
@@ -77,9 +77,9 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	// Three questions, and each can go unanswered on its own: the UID-0 scan
 	// needs only /etc/passwd, the empty-password scan needs /etc/shadow, and
 	// the sudo scan needs sudo installed and Hostveil running as root. A
-	// ledger rather than an early return, because a non-root scan misses two
+	// ledger, because a non-root scan misses two
 	// of the three and reporting only the first would under-state what went
-	// unexamined — see check.Coverage.
+	// unexamined: see check.Coverage.
 	var cov check.Coverage
 	cov.Covered(1) // /etc/passwd was read, or there would be no findings at all
 
@@ -96,8 +96,8 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		// Asked through platform because the Docker daemon domain asks the
 		// same question of docker-group members, and the two answers used to
 		// differ: this one matched whole paths against a fixed list, so a
-		// nologin at any other path — Arch's /usr/bin/nologin, NixOS's under
-		// /run/current-system — read as an ordinary login shell.
+		// nologin at any other path (Arch's /usr/bin/nologin, NixOS's under
+		// /run/current-system) read as an ordinary login shell.
 		loginShell[name] = !platform.IsNonLoginShell(shell)
 		if loginShell[name] {
 			logins = append(logins, name)
@@ -113,10 +113,10 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		}
 	}
 
-	// Read here rather than where the empty-password scan reads it, because
+	// Read here, because
 	// the UID-0 question needs it too: an account locked and expired can no
-	// longer authenticate by any route — not a password, not a key, since
-	// sshd and PAM both refuse an expired account — so it is a UID-0 entry,
+	// longer authenticate by any route (password or key, since
+	// sshd and PAM both refuse an expired account) so it is a UID-0 entry,
 	// not a second root anyone can use. That is the state the uid0 fix leaves
 	// behind, and a finding that survived it would say the fix did nothing.
 	// Unreadable shadow changes nothing here: every UID-0 account is reported,
@@ -133,7 +133,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			"accounts.uid0", "Non-root account with root's UID (0)",
 			model.SeverityHigh, model.SourceAccounts, model.RemediationReview,
 			model.WithDescription("An account other than 'root' has UID 0, which gives it full root privileges under a different name. This is a common backdoor and almost never legitimate."),
-			model.WithHowToFix("Verify why "+strings.Join(rogueRoot, ", ")+" has UID 0. If it is not intentional, lock and expire it (`usermod --lock --expiredate 1 "+rogueRoot[0]+"`) so it can no longer log in, then remove it (`userdel`) or give it a normal, unique UID once nothing depends on it. Grant admin rights via sudo, not UID 0."),
+			model.WithHowToFix("Verify why "+strings.Join(rogueRoot, ", ")+" has UID 0. If it is not intentional, lock and expire it (`usermod --lock --expiredate 1 "+rogueRoot[0]+"`) so it can no longer log in, then remove it (`userdel`) or give it a normal, unique UID once nothing depends on it. Grant admin rights via sudo."),
 			model.WithEvidence("accounts", strings.Join(rogueRoot, ", ")),
 		))
 	}
@@ -148,7 +148,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	if len(duplicateUIDs) > 0 {
 		sort.Strings(duplicateUIDs)
 		findings = append(findings, model.NewFinding("accounts.duplicate-uid", "Multiple accounts share the same UID", model.SeverityMedium, model.SourceAccounts, model.RemediationManual,
-			model.WithDescription("Linux authorizes a process by numeric UID, not account name. Accounts sharing one UID are indistinguishable to file ownership and audit logs."),
+			model.WithDescription("Linux authorizes a process by numeric UID. The account name plays no part. Accounts sharing one UID are indistinguishable to file ownership and audit logs."),
 			model.WithHowToFix("Assign every affected account a unique UID with `usermod -u`, then carefully migrate files owned by the old UID."),
 			model.WithEvidence("uids", strings.Join(duplicateUIDs, model.EvidenceSeparator))))
 	}
@@ -198,7 +198,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	}
 
 	// The empty-password check needs /etc/shadow, which is root-only. Losing
-	// it costs half the domain, so the result is Degraded — never clean.
+	// it costs half the domain, so the result is Degraded: never clean.
 	//
 	// Returning nil here is the mistake this package exists to catch, made by
 	// the checker itself: "could not read /etc/shadow" and "no account has an
@@ -208,7 +208,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	// score on an unscanned host.
 	if shadowErr != nil {
 		cov.Missed(1, "cannot read "+c.ShadowPath+
-			" — did not check for accounts with an empty password; re-run with sudo")
+			": did not check for accounts with an empty password; re-run with sudo")
 	} else {
 		cov.Covered(1)
 		var passwordless, weakHashes []string
@@ -245,11 +245,11 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	}
 
 	// Who can become root, and what stands in their way. An empty password is
-	// the classic version of that question and sudo is the one people actually
+	// the classic version of that question and sudo is the one people
 	// hit: a NOPASSWD rule turns "holds this account's SSH key" into "is root",
 	// with nothing in between.
 	//
-	// A host with no sudo at all is covered rather than missed. That is the
+	// A host with no sudo at all is covered. That is the
 	// direction dockerd's config merge got wrong: an absent file is a complete
 	// answer about that file, and no sudo binary means no sudo rule can be
 	// granting anyone anything. Calling it a gap would mark every sudo-less
@@ -259,7 +259,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	case errors.Is(err, errNoSudo):
 		cov.Covered(1)
 	case errors.Is(err, errNotRoot):
-		cov.Missed(1, "sudo will not report another account's privileges unless Hostveil is root — "+
+		cov.Missed(1, "sudo will not report another account's privileges unless Hostveil is root; "+
 			"did not check whether any account can become root without a password; re-run with sudo")
 	default:
 		cov.Covered(1)
@@ -267,8 +267,8 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			findings = append(findings, model.NewFinding(
 				"accounts.sudo-nopasswd", "An account can become root without a password",
 				model.SeverityMedium, model.SourceAccounts, model.RemediationManual,
-				model.WithDescription("A sudo rule lets this account run any command as root without being asked for a password. That removes the last step between holding the account and holding the host: anyone who gets its SSH key, or a shell through a service it runs, is root immediately rather than needing its password as well. "+
-					"Cloud and VM images ship this on purpose so the first login works, and it is usually still there years later."),
+				model.WithDescription("A sudo rule lets this account run any command as root without being asked for a password. That removes the last step between holding the account and holding the host: anyone who gets its SSH key, or a shell through a service it runs, is root immediately, with no password needed. "+
+					"Cloud and VM images ship this intentionally so the first login works, and it is usually still there years later."),
 				model.WithHowToFix("Run `sudo visudo` (or `sudo visudo -f /etc/sudoers.d/<file>` for a drop-in) and change the rule for "+strings.Join(sudoers, ", ")+" from `NOPASSWD: ALL` to `ALL`, so sudo asks for the account's password. "+
 					"Set that password first with `passwd "+sudoers[0]+"` and confirm it works in a second session: images that ship NOPASSWD often ship no password either, and an account with neither cannot use sudo at all once the rule is gone. "+
 					"Keep a root shell open until you have checked."),
@@ -324,7 +324,7 @@ func hasCoreLimit(data []byte) bool {
 // disabledAccounts reports, for a shadow file, whether an account can no
 // longer authenticate at all: its password is locked (a leading '!') and its
 // expiry date (field 8, days since the epoch) has passed. Either alone is not
-// enough — a locked password still admits an SSH key, and an expired account
+// enough: a locked password still admits an SSH key, and an expired account
 // with a password is one `chage` away from working.
 func disabledAccounts(shadow []byte, now time.Time) func(string) bool {
 	today := now.Unix() / 86400

@@ -45,7 +45,7 @@ func TestScanSelectionErrors(t *testing.T) {
 		names = append(names, s.String())
 	}
 	if _, msg := scanSelection("", strings.Join(names, ",")); msg == "" {
-		t.Error("skipping every domain should be a usage error, not an empty scan")
+		t.Error("skipping every domain should be a usage error")
 	}
 }
 

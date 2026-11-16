@@ -255,7 +255,7 @@ func TestTheRetryClearsSystemdsFailedState(t *testing.T) {
 }
 
 // resetAwareRunner fails the first restart, then refuses every restart until
-// reset-failed has run — systemd's start limit, in miniature.
+// reset-failed has run: systemd's start limit, in miniature.
 type resetAwareRunner struct {
 	ran      []string
 	failed   bool
@@ -324,7 +324,7 @@ func TestAnIrreversibleEditIsNotUndoneWhenAStepFails(t *testing.T) {
 		t.Fatal("a failed step must fail the fix")
 	}
 	if got, _ := os.ReadFile(path); string(got) != "secrets-encryption: true\n" {
-		t.Errorf("file = %q; it must be kept, not restored", got)
+		t.Errorf("file = %q; it must be kept as written", got)
 	}
 	// restartRunner fails every command, so the very first step stopped it:
 	// nothing is done and all three are left.

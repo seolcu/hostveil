@@ -15,9 +15,9 @@ type fakeExplainer struct {
 	text      string
 	err       error
 	called    bool
-	// gotSiteContext captures whatever Explain/Advise was actually called
+	// gotSiteContext captures whatever Explain/Advise was called
 	// with, so a test can assert Engine.Explain/Advise pass the saved
-	// context through rather than dropping it.
+	// context through.
 	gotSiteContext string
 }
 
@@ -94,7 +94,7 @@ func TestExplainAIError(t *testing.T) {
 }
 
 // AIContext/SetAIContext round-trip through the engine's own state
-// directory — Engine owns this directly (internal/core is not
+// directory: Engine owns this directly (internal/core is not
 // layering-restricted), unlike theme/layout's UI-injected Save callback.
 func TestAIContextRoundTrip(t *testing.T) {
 	e := New(Config{Store: history.NewStore(t.TempDir())})
@@ -115,8 +115,7 @@ func TestAIContextRoundTrip(t *testing.T) {
 	}
 }
 
-// Explain must pass the saved context through to the provider, not just
-// keep it sitting in the state directory unused.
+// Explain must pass the saved context through to the provider.
 func TestExplainPassesTheSavedSiteContext(t *testing.T) {
 	fake := &fakeExplainer{available: true, text: "ok"}
 	e := New(Config{AI: fake, Store: history.NewStore(t.TempDir())})

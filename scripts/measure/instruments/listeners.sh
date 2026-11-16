@@ -2,10 +2,10 @@
 # What the kernel says is listening, and on which address.
 #
 # The external scan asks what answers from off the host; this asks what is
-# bound, which is the question the compose port-binding fixes are actually
+# bound, which is the question the compose port-binding fixes are
 # about. The two disagree in an informative way: a port bound to 0.0.0.0
 # whose backend is not serving refuses a connection, so an external scan
-# reads it as closed while the binding is still wide open — and the moment
+# reads it as closed while the binding is still wide open, and the moment
 # something starts serving behind it, it is exposed.
 #
 # The kernel's own answer, and so independent of Hostveil in the only sense

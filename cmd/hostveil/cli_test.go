@@ -69,7 +69,7 @@ func TestExitCodeReflectsDomainState(t *testing.T) {
 	}{
 		{"a failed domain is not a clean host", nil, []model.DomainResult{domain(model.ScanError)}, 3},
 		{"a skipped domain is ordinary", nil, []model.DomainResult{domain(model.ScanSkipped)}, 0},
-		{"a degraded domain is reported, not gated", nil, []model.DomainResult{domain(model.ScanDegraded)}, 0},
+		{"a degraded domain is reported and does not gate", nil, []model.DomainResult{domain(model.ScanDegraded)}, 0},
 		{"everything ran and found nothing", nil, []model.DomainResult{domain(model.ScanDone)}, 0},
 		{
 			// Findings win: the gate exists to answer "is this host exposed",
@@ -95,7 +95,7 @@ func TestExitCodeReflectsDomainState(t *testing.T) {
 	}
 }
 
-// -h is a request, not a mistake. Go's flag package reports it as
+// -h is a request. Go's flag package reports it as
 // flag.ErrHelp after printing usage, and treating that as a parse failure
 // made `hostveil scan --help` exit 2. The top-level form was fixed in #520
 // and the same bug survived one level down in every subcommand.
@@ -150,7 +150,7 @@ func TestNeedsRootExcludesPrintOnlyCommands(t *testing.T) {
 }
 
 // The dispatch bug: a leading flag set explicit=false, which on a terminal
-// picked the TUI — and cmdTUI ignores its arguments entirely. So `hostveil
+// picked the TUI, and cmdTUI ignores its arguments entirely. So `hostveil
 // --json` opened the TUI and printed no JSON, and `hostveil --bogus` opened
 // the TUI and reported no error, while both behaved correctly when piped.
 func TestResolveCommand(t *testing.T) {
@@ -166,8 +166,8 @@ func TestResolveCommand(t *testing.T) {
 		{"nothing when piped prints a scan", nil, false, "scan", nil},
 
 		// The regressions. Both must reach scan with the flag intact, on a
-		// terminal as well as piped, so the flag is either honored or refused
-		// rather than silently dropped.
+		// terminal as well as piped, so the flag is either honored or refused,
+		// and never silently dropped.
 		{"--json on a terminal reaches scan", []string{"--json"}, true, "scan", []string{"--json"}},
 		{"--json piped reaches scan", []string{"--json"}, false, "scan", []string{"--json"}},
 		{"unknown flag reaches scan to be rejected", []string{"--bogus"}, true, "scan", []string{"--bogus"}},
@@ -190,7 +190,7 @@ func TestResolveCommand(t *testing.T) {
 	}
 }
 
-// TTY-ness must never change whether a flag is honored — only what happens
+// TTY-ness must never change whether a flag is honored: only what happens
 // when there are no arguments at all.
 func TestFlagHandlingDoesNotDependOnTTY(t *testing.T) {
 	for _, args := range [][]string{{"--json"}, {"--bogus"}, {"-v", "--no-color"}, {"scan"}} {
@@ -202,10 +202,10 @@ func TestFlagHandlingDoesNotDependOnTTY(t *testing.T) {
 	}
 }
 
-// A mistyped --theme is a usage error, not a silent fall back to the default:
+// A mistyped --theme is a usage error:
 // the user asked for something specific and did not get it. It is caught
 // before the TUI's terminal check, so it reports the same way when piped.
-// The subcommands are called directly rather than through run(): run() would
+// The subcommands are called directly: run() would
 // re-exec under sudo, and a *valid* theme would leave cmdServe listening
 // forever. Both must refuse before either of those can happen.
 func TestUnknownThemeIsAUsageError(t *testing.T) {
@@ -244,13 +244,13 @@ func TestResolveThemeReadsTheEnvironment(t *testing.T) {
 // change makes to everyone running `hostveil scan` in CI.
 //
 // The gate is documented in two languages as "exit 1 when any unfixed finding
-// is Critical or High". Those two levels became one — now called High — and the
+// is Critical or High". Those two levels became one (now called High) and the
 // promise is that the *set* did not move: everything that gated before gates
 // now, and nothing that did not has started to. A pipeline that has been
 // green stays green for the same reasons.
 //
-// It is written against the old scale's ordinals rather than its constants,
-// which no longer exist. That is deliberate: the numbers are what a snapshot
+// It is written against the old scale's ordinals, because its constants
+// no longer exist and the numbers are what a snapshot
 // on disk holds, and reading one back is the only way left to name a level
 // this build has never heard of.
 func TestTheGateStillMeansWhatItMeant(t *testing.T) {
@@ -275,7 +275,7 @@ func TestTheGateStillMeansWhatItMeant(t *testing.T) {
 			want = 1
 		}
 		if got := exitCode(model.Report{Findings: []model.Finding{finding(sev, false)}}); got != want {
-			t.Errorf("a finding that was %s exits %d, and used to exit %d — the CI gate moved",
+			t.Errorf("a finding that was %s exits %d, and used to exit %d; the CI gate moved",
 				tc.name, got, want)
 		}
 	}

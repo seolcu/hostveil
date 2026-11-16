@@ -16,7 +16,7 @@ func TestAfterFixesIsTheScoreWithEveryOfferedFixApplied(t *testing.T) {
 	}
 
 	// The SSH axis has one Review finding and nothing else, so fixing it
-	// clears the axis outright.
+	// clears the axis completely.
 	for _, ax := range b.Axes {
 		switch ax.Source {
 		case SourceSSH:
@@ -26,7 +26,7 @@ func TestAfterFixesIsTheScoreWithEveryOfferedFixApplied(t *testing.T) {
 		case SourceCompose:
 			// One Auto and one Manual: better, but not clean.
 			if ax.AfterFixes <= ax.Score {
-				t.Errorf("compose axis after fixes = %d, not better than %d", ax.AfterFixes, ax.Score)
+				t.Errorf("compose axis after fixes = %d, want more than %d", ax.AfterFixes, ax.Score)
 			}
 			if ax.AfterFixes == 100 {
 				t.Error("compose axis reports 100 after fixes while a Manual finding stands")
@@ -35,8 +35,8 @@ func TestAfterFixesIsTheScoreWithEveryOfferedFixApplied(t *testing.T) {
 	}
 }
 
-// A fix that is applied and waiting on a restart is charged in Overall — that
-// is the whole point of Pending — and it must still count as done in
+// A fix that is applied and waiting on a restart is charged in Overall (that
+// is what Pending is for) and it must still count as done in
 // AfterFixes, which asks where the number lands once the fixes have done their
 // work.
 //
@@ -44,9 +44,9 @@ func TestAfterFixesIsTheScoreWithEveryOfferedFixApplied(t *testing.T) {
 // domains whose fixes are never immediate are the same domains this figure
 // matters most for: run `fix --all` on a container host and every compose fix
 // goes pending at once, so a headroom that dropped them would collapse onto
-// the score precisely when the operator has just done everything Hostveil
+// the score when the operator has just done everything Hostveil
 // asked and wants to know what it bought. Every UI hides the figure when it
-// equals the score, so the symptom is not a wrong number — it is the number
+// equals the score, so the symptom is not a wrong number: it is the number
 // disappearing.
 func TestTheHeadroomStillCountsAFixThatIsWaitingOnARestart(t *testing.T) {
 	pending := NewFinding("compose.ds018", "exposed", SeverityHigh, SourceCompose, RemediationAuto, WithService("a"))
@@ -64,7 +64,7 @@ func TestTheHeadroomStillCountsAFixThatIsWaitingOnARestart(t *testing.T) {
 	}
 	// And credited in the headroom: the operator has done their part.
 	if b.AfterFixes != clean.Overall {
-		t.Errorf("AfterFixes = %d, want %d — the headroom dropped a fix that is already applied",
+		t.Errorf("AfterFixes = %d, want %d; the headroom dropped a fix that is already applied",
 			b.AfterFixes, clean.Overall)
 	}
 	if b.AfterFixes <= b.Overall {

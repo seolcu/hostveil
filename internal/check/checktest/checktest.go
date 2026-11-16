@@ -3,18 +3,17 @@
 // Every checker reaches the OS through a platform.CommandRunner, so every
 // checker's tests need a fake one. Nineteen were written by hand, and between
 // them they had two shapes: a set of binaries that exist, and a map from a
-// command with its arguments to what that command prints. What actually
-// differed was which default each took — some listed the binaries present,
-// some listed the ones missing — and how each spelled the argv it scripted.
+// command with its arguments to what that command prints. What
+// differed was which default each took (some listed the binaries present,
+// some listed the ones missing) and how each spelled the argv it scripted.
 //
 // The spelling is the part that bites. A scripted argv that no longer matches
 // what the caller runs does not fail the test. It falls through to the fake's
 // unscripted-command error, and every checker reads a command that errored as
-// a tool that did not answer — the same value a genuinely broken host
+// a tool that did not answer: the same value a broken host
 // produces. So a test written to cover the working case goes on passing while
 // silently covering the opposite one. Script through Docker or Listeners
-// below, or through platform's exported argv, rather than by writing the
-// command out again.
+// below, or through platform's exported argv.
 //
 // A Runner is safe to share between goroutines once built: the CVE checker
 // scans images in parallel and platform.ScanCache calls it concurrently, and
@@ -39,7 +38,7 @@ import (
 // the tool exists but the test has not said what it prints.
 type Runner struct {
 	// only, when non-nil, is the complete set of binaries that exist. It and
-	// absent are kept apart rather than folded into one map because the two
+	// absent are kept apart because the two
 	// defaults answer different questions: Only says "this host has just
 	// these", Without says "this host has everything but these", and a test
 	// that means one and gets the other still runs.
@@ -78,7 +77,7 @@ func (r *Runner) Without(names ...string) *Runner {
 
 // Script makes argv print out. The argv is the command as the caller runs it,
 // not a string to be split, so a scripted command that stops matching is a
-// compile-time or an obvious runtime mismatch rather than a silent one.
+// compile-time or an obvious runtime mismatch.
 func (r *Runner) Script(out string, argv ...string) *Runner {
 	r.outputs[key(argv[0], argv[1:])] = out
 	return r
@@ -92,8 +91,8 @@ func (r *Runner) Fail(err error, argv ...string) *Runner {
 }
 
 // Unscript removes a scripted command so that running it errors. That is the
-// state a tool which is installed but refuses to answer leaves a checker in —
-// `ufw status` without root, an iptables chain a non-root scan cannot read —
+// state a tool which is installed but refuses to answer leaves a checker in:
+// `ufw status` without root, an iptables chain a non-root scan cannot read,
 // and it is the one a checker must not confuse with an answer of "nothing".
 func (r *Runner) Unscript(argv ...string) *Runner {
 	delete(r.outputs, key(argv[0], argv[1:]))
@@ -130,7 +129,7 @@ func (r *Runner) Listeners(out string) *Runner {
 }
 
 // Env wraps the runner in a scan environment, which is what a checker's
-// Check and Available actually take.
+// Check and Available take.
 func (r *Runner) Env() platform.Env { return platform.Env{Runner: r} }
 
 // LookPath resolves a binary, honouring Only and Without.
@@ -146,8 +145,7 @@ func (r *Runner) LookPath(name string) (string, error) {
 
 // Run answers from the script. An unscripted command is an error naming
 // itself, so a test that mis-spells an argv reads the mismatch in the failure
-// rather than having to infer it from a checker reporting an unreachable
-// tool.
+// directly.
 func (r *Runner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
 	k := key(name, args)
 	if err, ok := r.errs[k]; ok {
@@ -164,7 +162,7 @@ func key(name string, args []string) string {
 }
 
 // Also adds binaries to a host built with Only, for a test that layers one
-// more tool onto a shared fixture rather than restating the whole set.
+// more tool onto a shared fixture.
 func (r *Runner) Also(names ...string) *Runner {
 	if r.only == nil {
 		r.only = map[string]bool{}
@@ -185,9 +183,9 @@ func (r *Runner) ListenersFail(err error) *Runner {
 
 // IsDockerProbe reports whether a call is platform.DockerReachable's probe.
 //
-// For the fakes that cannot be a plain command-to-output map — the ones
+// For the fakes that cannot be a plain command-to-output map: the ones
 // scripting `docker inspect <ids...>` or recording a Trivy argv whose last
-// element is the image — so that they too stop spelling the probe out.
+// element is the image, so that they too stop spelling the probe out.
 func IsDockerProbe(name string, args []string) bool {
 	return key(name, args) == key(platform.DockerProbeArgv()[0], platform.DockerProbeArgv()[1:])
 }

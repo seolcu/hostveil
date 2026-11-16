@@ -14,7 +14,7 @@ import (
 )
 
 // noFirewall builds a runner for a host with no firewall tooling at all, so
-// firewall.Probe returns a confident Inactive rather than StatusUnknown. It
+// firewall.Probe returns a confident Inactive. It
 // reads the tool list from the firewall package so adding a probe there can
 // never silently change what these tests assert.
 func noFirewall(ss string) *checktest.Runner {
@@ -183,7 +183,7 @@ func TestZoneScopedLoopbackIgnored(t *testing.T) {
 }
 
 func TestHeaderRowSkipped(t *testing.T) {
-	// `ss` without -H prints a header row; it must be ignored, not parsed.
+	// `ss` without -H prints a header row; it must be ignored.
 	ss := `State  Recv-Q Send-Q Local Address:Port Peer Address:Port Process
 LISTEN 0      511    0.0.0.0:6379       0.0.0.0:*         users:(("redis-server",pid=1,fd=6))`
 	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: checktest.New().Listeners(ss)})
@@ -215,11 +215,11 @@ func TestMalformedLinesSkipped(t *testing.T) {
 // those ports. When that cannot be determined (its probes need root), neither
 // answer is safe: flagging invents noise on a firewalled host, staying silent
 // hides real exposure. The domain must say it could not tell instead of
-// quietly picking one.
+// silently picking one.
 func TestGenericExposureWhenFirewallStateUnreadable(t *testing.T) {
 	ss := `LISTEN 0 128 0.0.0.0:8080 0.0.0.0:*
 LISTEN 0 128 0.0.0.0:22 0.0.0.0:*`
-	// ufw is installed but will not answer — the fake has no scripted output.
+	// ufw is installed but will not answer; the fake has no scripted output.
 	r := checktest.New().Without("firewall-cmd", "nft").Listeners(ss)
 
 	fs, err := hermetic().Check(context.Background(), platform.Env{Runner: r})

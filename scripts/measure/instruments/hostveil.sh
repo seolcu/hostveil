@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Hostveil's own score, per axis, and its coverage. The self-measurement —
-# reported alongside the independent ones precisely so a reader can see
+# Hostveil's own score, per axis, and its coverage. The self-measurement:
+# reported alongside the independent ones so a reader can see
 # whether they move together.
 set -euo pipefail
 
-# `scan` exits 1 when it finds anything exposed — the documented CI contract,
+# `scan` exits 1 when it finds anything exposed: the documented CI contract,
 # and the ordinary case here. Capture first so the status is the parser's.
 scan=$(hostveil scan --json 2>/dev/null || true)
 

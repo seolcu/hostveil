@@ -9,7 +9,7 @@ import (
 )
 
 // registryOf registers one fix under id. Both helpers below build Auto-shaped
-// fixes — exactly one action, which is all the shape rule means — so
+// fixes (exactly one action, which is all the shape rule means) so
 // buildFix's fix.Validate pass succeeds and the resolution under test is
 // reached. A fix that fails Validate is treated as one that failed to build
 // and never gets there, which is how a test can look like it pins a
@@ -45,7 +45,7 @@ func execAction() fix.Action {
 // the resolution rule was missing.
 //
 // "Stricter wins" is stated in classify's own comment, in AGENTS.md, and in
-// two checkers that rely on it by name — and it did not hold at the unfixable
+// two checkers that rely on it by name, and it did not hold at the unfixable
 // end. A checker declaring Manual was handed straight back to the registry,
 // so any fix builder matching the ID overruled the one layer that had looked
 // at the host and concluded there was nothing safe to automate.
@@ -65,7 +65,7 @@ func TestACheckerDeclaringManualIsNotOverruledByTheRegistry(t *testing.T) {
 	e.classify(findings)
 
 	if got := findings[0].Remediation; got != model.RemediationManual {
-		t.Fatalf("checker declared Manual, registry shaped Auto, classify said %v — "+
+		t.Fatalf("checker declared Manual, registry shaped Auto, classify said %v; "+
 			"the registry decides whether a fix exists, never how much judgment it needs", got)
 	}
 	if findings[0].IsFixable() {
@@ -93,7 +93,7 @@ func TestUnavailableSurvivesARegisteredFix(t *testing.T) {
 }
 
 // A checker with no opinion is the least cautious thing on the scale and
-// defers to the registry — the case the old special-cased branch existed to
+// defers to the registry: the case the old special-cased branch existed to
 // serve, which a plain max serves for free because Unset is the zero value.
 func TestAnUnsetCheckerDefersToTheRegistry(t *testing.T) {
 	e := New(Config{Fixes: registryOf("ssh.rootlogin", editAction()), Store: history.NewStore(t.TempDir())})
@@ -106,7 +106,7 @@ func TestAnUnsetCheckerDefersToTheRegistry(t *testing.T) {
 	e.classify(findings)
 
 	if got := findings[0].Remediation; got != model.RemediationAuto {
-		t.Fatalf("a checker that declared nothing got %v, not the registry's Auto", got)
+		t.Fatalf("a checker that declared nothing got %v, want the registry's Auto", got)
 	}
 }
 
@@ -115,7 +115,7 @@ func TestAnUnsetCheckerDefersToTheRegistry(t *testing.T) {
 //
 // It applied the checker-versus-registry half of the resolution and not the
 // exec floor, so an exec fix a finding correctly carried as Review previewed
-// as "Auto" — on exactly the fixes where "safe to apply unattended" is
+// as "Auto", on exactly the fixes where "safe to apply unattended" is
 // the claim being ruled out. A user reading the preview was told the opposite
 // of what the list said, with no way to tell which was right.
 func TestPreviewReportsTheSameKindTheFindingCarries(t *testing.T) {
@@ -139,14 +139,14 @@ func TestPreviewReportsTheSameKindTheFindingCarries(t *testing.T) {
 }
 
 // A finding whose ID has a registered fix can still be unfixable in
-// particular — a container started with `docker run` has no compose file for
-// the fix to edit — and the checker that demotes it says so.
+// particular: a container started with `docker run` has no compose file for
+// the fix to edit, and the checker that demotes it says so.
 //
 // classify used to overwrite that with fix.WhyNoFix(id), which answers from
 // the declined list and has nothing for a registered ID. So on any host
 // running containers outside Compose, up to seven findings reached the
 // terminal's "WHY THERE IS NO FIX BUTTON" panel and the dashboard's with
-// nothing in them — the one state internal/fix/decline.go exists to prevent,
+// nothing in them: the one state internal/fix/decline.go exists to prevent,
 // reached by a route no test covered.
 func TestAFindingKeepsTheReasonItsCheckerGave(t *testing.T) {
 	e := New(Config{Fixes: registryOf("compose.ds018", editAction()), Store: history.NewStore(t.TempDir())})
@@ -178,8 +178,8 @@ func TestAFindingWithNoReasonStillGetsTheRegistrys(t *testing.T) {
 	}
 }
 
-// classify copies Actions[0]'s Benefit/Warning onto the finding — the same
-// recommendation `fix --all --review` applies without asking — so the
+// classify copies Actions[0]'s Benefit/Warning onto the finding: the same
+// recommendation `fix --all --review` applies without asking, so the
 // trade-off is visible before a user opens the preview screen.
 func TestClassifySetsBenefitAndSideEffectFromTheRecommendation(t *testing.T) {
 	a := fix.Action{

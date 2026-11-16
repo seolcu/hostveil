@@ -2,7 +2,7 @@ package model
 
 // RemediationKind classifies how a finding can be fixed.
 //
-// The zero value is RemediationUnset — deliberately inert. In Hostveil v2
+// The zero value is RemediationUnset: inert. In Hostveil v2
 // the zero value was "Auto", so any Finding built without setting the
 // field silently presented a fix button it never had. Here an
 // unclassified finding is NOT fixable, and a validation pass rejects any
@@ -10,13 +10,13 @@ package model
 type RemediationKind int
 
 const (
-	RemediationUnset       RemediationKind = iota // 0 = not classified, not fixable
+	RemediationUnset       RemediationKind = iota // 0 = unclassified and unfixable
 	RemediationAuto                               // exactly one mechanical action
 	RemediationReview                             // multiple independent alternatives; user picks
 	RemediationManual                             // guidance only, no automatable action
 	RemediationUnavailable                        // known issue, no fix exists yet (e.g. CVE with no patch)
 
-	remediationCount // sentinel, not a kind; keep last
+	remediationCount // sentinel; keep last
 )
 
 type remediationDef struct {
@@ -32,13 +32,13 @@ type remediationDef struct {
 //
 // The kind is an explicit column and the lookup is built from it, never
 // from the slice index. The numeric value is what reaches disk and the
-// wire, so nothing may depend on a row's position — that is the invariant
+// wire, so nothing may depend on a row's position, that is the invariant
 // the whole enum-table shape has to protect.
 //
 // RemediationUnset has a row so the zero value has a name and a label of
-// its own rather than falling out of a default arm. Its false fixability
+// its own. Its false fixability
 // is not a judgement about the finding: an unclassified finding is not
-// "known to have no fix", it is one nobody has classified, and both must
+// "known to have no fix", it is one that was never classified, and both must
 // refuse to offer a fix button.
 var remediationDefs = []remediationDef{
 	{RemediationUnset, "unset", "Unclassified", "?", false},
@@ -58,9 +58,9 @@ func (r RemediationKind) IsFixable() bool {
 
 // Valid reports whether the kind was classified (i.e. not the zero value).
 //
-// This asks only about Unset, not about table membership. A value outside
+// This asks only about Unset. A value outside
 // the enum entirely is a bug or a corrupt snapshot, and the right answer
-// to that is a finding rendered "Unclassified" with no fix button — which
+// to that is a finding rendered "Unclassified" with no fix button, which
 // is what the other three methods already do. Failing Valid instead would
 // send it through Finding.Validate and drop it from the report, trading a
 // visible oddity for a silent disappearance.
@@ -68,14 +68,14 @@ func (r RemediationKind) Valid() bool {
 	return r != RemediationUnset
 }
 
-// Abbr returns the short lowercase form for surfaces with a width budget —
+// Abbr returns the short lowercase form for surfaces with a width budget:
 // the TUI's finding rows, which upper-case it.
 //
 // Every abbreviation is at most six characters, because the TUI pads the
 // column to that width and a longer one would shift every row. That is the
 // same contract Severity.Abbr carries, and the same reason.
 //
-// "n/a" rather than "none" for Unavailable: the finding is real and the
+// "n/a" for Unavailable: the finding is real and the
 // absence is of a *fix*, which is what N/A says on the score axes already.
 func (r RemediationKind) Abbr() string {
 	if d, ok := remediationIndex[r]; ok {
@@ -116,7 +116,7 @@ func ParseRemediationKind(s string) (RemediationKind, bool) {
 	return kind, ok
 }
 
-// MarshalJSON writes the name rather than the ordinal. See enum.go.
+// MarshalJSON writes the name. See enum.go.
 func (r RemediationKind) MarshalJSON() ([]byte, error) { return marshalEnum(r.String()) }
 
 // UnmarshalJSON accepts the name or the integer older snapshots hold.

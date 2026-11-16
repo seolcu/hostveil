@@ -95,7 +95,7 @@ func TestApplyConfirmsTheFindingIsGone(t *testing.T) {
 
 // The case that shaped the design. A persisted sysctl drop-in is correct and
 // complete, and the running kernel still reports the old value until the next
-// boot — so a checker that still sees the finding is not evidence the fix
+// boot, so a checker that still sees the finding is not evidence the fix
 // failed. Both facts are reported; neither is collapsed into the other.
 func TestAStillPresentFindingIsReportedNotTreatedAsFailure(t *testing.T) {
 	e := recheckEngine(t, &stubChecker{
@@ -113,7 +113,7 @@ func TestAStillPresentFindingIsReportedNotTreatedAsFailure(t *testing.T) {
 		t.Errorf("Verified = %v, want still-present", out.Verified)
 	}
 	if out.CheckpointID == "" {
-		t.Error("no checkpoint — the change is real and must stay rollbackable")
+		t.Error("no checkpoint; the change is real and must stay rollbackable")
 	}
 	// The Fixed decision is unchanged. Collapsing the two facts would call
 	// this fix broken, or call an unverified one confirmed.
@@ -125,7 +125,7 @@ func TestAStillPresentFindingIsReportedNotTreatedAsFailure(t *testing.T) {
 	}
 	// The score is the other half, and it moves where the Fixed mark does
 	// not. A mode fix declares nothing about taking effect later, so it was
-	// scored as in force the moment it was applied — and then the checker
+	// scored as in force the moment it was applied, and then the checker
 	// looked and still reported the finding. That is the host contradicting
 	// the credit, which is the one kind of evidence allowed to take it back.
 	if !out.Pending {
@@ -166,7 +166,7 @@ func TestAnUnrunnableRecheckIsUnavailableNotAnAnswer(t *testing.T) {
 			// that it takes effect later, or by a checker holding the finding
 			// in its hand. "Could not look" is neither. If it counted, then
 			// re-checking would make Hostveil more pessimistic than not
-			// re-checking — and an operator applying fixes one at a time
+			// re-checking, and an operator applying fixes one at a time
 			// would score below one who ran `fix --all` over the same set.
 			if out.Pending {
 				t.Error("a re-check that established nothing was treated as evidence the fix is not in force")
@@ -186,8 +186,8 @@ func (c *countingChecker) Check(ctx context.Context, env platform.Env) ([]model.
 	return c.stubChecker.Check(ctx, env)
 }
 
-// A batch re-checks nothing, on purpose. applyFix runs in a loop there, and
-// verifying each would re-run a checker once per fix — twenty compose
+// A batch re-checks nothing. applyFix runs in a loop there, and
+// verifying each would re-run a checker once per fix: twenty compose
 // findings would mean twenty enumerations of every container on the host.
 // A batch ends with the operator rescanning anyway.
 func TestBatchDoesNotVerifyEachFix(t *testing.T) {
@@ -204,7 +204,7 @@ func TestBatchDoesNotVerifyEachFix(t *testing.T) {
 }
 
 // A domain with no registered checker cannot be re-checked, and that is
-// "unavailable" rather than a claim in either direction.
+// "unavailable", which claims nothing in either direction.
 func TestVerifyWithNoCheckerForTheDomain(t *testing.T) {
 	e := recheckEngine(t, &stubChecker{src: model.SourceSSH}) // a different domain
 
@@ -218,7 +218,7 @@ func TestVerifyWithNoCheckerForTheDomain(t *testing.T) {
 }
 
 // Every result an interface can receive has to say something, and the
-// still-present sentence must not read as a failure — it is most often a
+// still-present sentence must not read as a failure: it is most often a
 // change that is correct and not yet in force.
 func TestEveryVerificationResultHasAMessage(t *testing.T) {
 	for _, v := range []model.FixVerification{
@@ -243,10 +243,10 @@ func TestEveryVerificationResultHasAMessage(t *testing.T) {
 }
 
 // A re-check that no longer sees the finding has established that the
-// artifact the fix wrote is correct — and where that artifact is not what the
+// artifact the fix wrote is correct, and where that artifact is not what the
 // host is running from, that is all it has established.
 //
-// This is the case VerifyGone was quietly covering, in the dangerous
+// This is the case VerifyGone was silently covering, in the dangerous
 // direction: the compose checker reads the project file, the compose fix edits
 // that file, so the re-check finds nothing and the operator is told "the
 // finding is gone" while the container still publishes the port on every

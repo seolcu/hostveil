@@ -87,14 +87,13 @@ func BinaryFromArchive(archive []byte) ([]byte, error) {
 // Replace writes the new binary over path, atomically.
 //
 // Beside the target and then renamed, for two reasons that are each sufficient.
-// A running executable cannot be opened for writing at all — the kernel
-// answers ETXTBSY — so writing through the path is not merely unwise here, it
-// does not work. And a rename either happens or does not: a truncate-then-write
+// A running executable cannot be opened for writing at all (the kernel
+// answers ETXTBSY) so writing through the path does not work here. And a rename either happens or does not: a truncate-then-write
 // that is interrupted leaves a host with a zero-length Hostveil, which is the
 // state in which the tool that would tell you something is wrong is the thing
 // that is wrong.
 //
-// The mode is taken from the file being replaced rather than assumed, so a
+// The mode is taken from the file being replaced, so a
 // deployment that tightened it keeps its choice.
 func Replace(path string, binary []byte) error {
 	info, err := os.Stat(path)
@@ -104,14 +103,14 @@ func Replace(path string, binary []byte) error {
 	return platform.WriteFileAtomic(path, binary, info.Mode().Perm())
 }
 
-// Remove deletes the binary. State is deliberately left alone; see StateNote.
+// Remove deletes the binary. State is left alone; see StateNote.
 func Remove(path string) error { return os.Remove(path) }
 
 // StateNote is what to say after removing the binary.
 //
 // The checkpoints are backups of every file Hostveil edited on this host, so
 // deleting them with the program would take away the ability to undo work the
-// program did — and an operator uninstalling a tool is not necessarily
+// program did, and an operator uninstalling a tool is not necessarily
 // abandoning the changes it made. The installer says the same thing in the
 // same words; saying it differently here would read as two different policies.
 func StateNote(dir string) string {
@@ -140,7 +139,7 @@ func InstalledVersion(ctx context.Context, r platform.CommandRunner, path string
 	if err != nil {
 		return "", err
 	}
-	// "Hostveil v3.17.0" — the last field, with the leading v left on for
+	// "Hostveil v3.17.0"; the last field, with the leading v left on for
 	// SameVersion to deal with.
 	fields := strings.Fields(string(out))
 	if len(fields) == 0 {

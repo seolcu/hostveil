@@ -12,8 +12,8 @@ import (
 
 // What a terminal interface has instead of borders and shadows is the grid:
 // columns that start where the column above started, and lines that meet the
-// lines they cross. Nothing here is about content — every check below passes
-// on a screen full of the wrong words — and that is the point. These are the
+// lines they cross. Nothing here is about content (every check below passes
+// on a screen full of the wrong words) and that is what these tests catch. These are the
 // faults a reader sees before they have read anything.
 
 // columnIndex is the display column needle starts at.
@@ -30,12 +30,12 @@ func columnIndex(row []rune, needle string) int {
 	return lipgloss.Width(string(row)[:at])
 }
 
-// rowRunes is one rendered frame as a grid of display *columns* — escape
+// rowRunes is one rendered frame as a grid of display *columns*: escape
 // sequences dropped, and a glyph that occupies two columns followed by a
 // continuation entry so that index == column in either width mode.
 //
 // Indexing by rune would be the same thing only while every glyph is one
-// column wide, which is precisely the assumption that broke the grid under
+// column wide, which is the assumption that broke the grid under
 // RUNEWIDTH_EASTASIAN=1. A test written on it would have agreed with the bug.
 func rowRunes(t *testing.T, frame string) [][]rune {
 	t.Helper()
@@ -72,7 +72,7 @@ func cover(rows [][]rune, r, c int) rune {
 
 // arms is the box-drawing character with exactly these connections, and the
 // whole of what "the lines meet" means: a glyph is right when its arms are
-// the neighbours that actually reach it.
+// the neighbours that reach it.
 var arms = map[[4]bool]rune{
 	// up, down, left, right
 	{true, true, false, false}:   '│',
@@ -97,8 +97,8 @@ func reachesHorizontally(rows [][]rune, r, c int) bool {
 // stops dead where a rule crosses it, is the same defect from two sides: the
 // two regions were drawn without knowing about each other, and it shows. The
 // header rule needs a ┬ where the body's columns begin, the footer rule a ┴,
-// and the rules a column draws inside itself — the pane's divider above its
-// actions, the verdict band's under its sentence — a ├ where they arrive at
+// and the rules a column draws inside itself (the pane's divider above its
+// actions, the verdict band's under its sentence) a ├ where they arrive at
 // the separator.
 //
 // Stated as "every junction glyph has exactly the arms its neighbours give
@@ -132,10 +132,10 @@ func TestEveryRuleMeetsTheColumnsItCrosses(t *testing.T) {
 							n++
 						}
 					}
-					// Only where three or four lines actually arrive. Two arms is
+					// Only where three or four lines arrive. Two arms is
 					// a plain rule or a plain separator and needs no glyph of its
-					// own, and zero or one is a │ used as punctuation — the spark
-					// strip's dividers, the inline block's gutter — which is text
+					// own, and zero or one is a │ used as punctuation (the spark
+					// strip's dividers, the inline block's gutter) which is text
 					// and not grid, however much it looks like one here.
 					if n < 3 {
 						continue
@@ -150,22 +150,22 @@ func TestEveryRuleMeetsTheColumnsItCrosses(t *testing.T) {
 	}
 }
 
-// The grid has to survive every width, not the two a screenshot was taken
-// at. This sweeps each arrangement across the sizes a terminal is actually
+// The grid has to survive every width, including ones no screenshot was
+// taken at. This sweeps each arrangement across the sizes a terminal is
 // dragged through and holds three things at once:
 //
 //   - the frame is exactly the terminal, in both directions. A row one column
 //     over wraps in the alt screen and pushes everything below it off the
 //     bottom, which is how a layout fault becomes a missing footer.
 //   - every body row reaches both of its column separators. A row that came
-//     up short leaves a gap in the vertical rule — the fault that reads as
+//     up short leaves a gap in the vertical rule: the fault that reads as
 //     the lines being broken, and the one that a fixed-width test at one
 //     size will never produce.
 //   - the columns are given back cleanly as the terminal narrows: below the
 //     thresholds there are no separators to reach, and nothing may draw one.
 //
-// The width sweep is the point. `TestFrameFitsTerminalWidth` already sweeps
-// widths, but only ever with the default arrangement — five of the six were
+// The width sweep is what this file adds. `TestFrameFitsTerminalWidth` already sweeps
+// widths, but only ever with the default arrangement: five of the six were
 // covered at whatever sizes a test happened to name, which for the rail
 // layouts is on both sides of the width where the rail is dropped.
 func TestEveryArrangementHoldsItsGridAtEveryWidth(t *testing.T) {
@@ -227,14 +227,14 @@ func TestEveryArrangementHoldsItsGridAtEveryWidth(t *testing.T) {
 }
 
 // The findings list is a grid: severity, id, title, service. Two of those
-// columns were laid out from arithmetic that did not match what was drawn —
-// the severity was padded in the budget and not in the render, and the id
-// field was a fixed thirteen that several real ids overrun — so the title
+// columns were laid out from arithmetic that did not match what was drawn
+// (the severity was padded in the budget and not in the render, and the id
+// field was a fixed thirteen that several real ids overrun) so the title
 // column stepped left and right down the list and the right-aligned service
 // stopped short of the pane separator on exactly the rows whose title nearly
 // filled the space.
 //
-// Checked through the rendered frame rather than findingRow, because the
+// Checked through the rendered frame, because the
 // caller is where the column width comes from and a row that lines up in
 // isolation is not the claim.
 func TestEveryFindingRowPutsItsColumnsInTheSamePlace(t *testing.T) {
@@ -266,7 +266,7 @@ func TestEveryFindingRowPutsItsColumnsInTheSamePlace(t *testing.T) {
 		if titleAt == -1 {
 			titleAt = title
 		} else if title != titleAt {
-			t.Errorf("%s: title starts at column %d, the rows before it start at %d — "+
+			t.Errorf("%s: title starts at column %d, the rows before it start at %d; "+
 				"the id column is not one width", f.ID, title, titleAt)
 		}
 		if f.Service == "" {
@@ -276,7 +276,7 @@ func TestEveryFindingRowPutsItsColumnsInTheSamePlace(t *testing.T) {
 		if endsAt == -1 {
 			endsAt = end
 		} else if end != endsAt {
-			t.Errorf("%s: the service ends at column %d and the rows before it end at %d — "+
+			t.Errorf("%s: the service ends at column %d and the rows before it end at %d; "+
 				"the column is ragged", f.ID, end, endsAt)
 		}
 	}
@@ -328,14 +328,14 @@ func TestTheHeaderComposesRowsThatFitBeforeTheFrameClipsThem(t *testing.T) {
 //
 // The value is right-aligned into a fixed field, so a value as wide as the
 // field has no gap in front of it and the digits butt against the bar. The
-// only value that wide is "100~" — a domain that covered part of its ground
-// and found nothing in that part — so every fixture in this package rendered
+// only value that wide is "100~" (a domain that covered part of its ground
+// and found nothing in that part) so every fixture in this package rendered
 // the roomy case and none rendered this one.
 func TestTheRailKeepsTheMeterAndTheNumberApart(t *testing.T) {
 	m := layoutModel(100, 40)
 	var seen bool
 	for _, row := range m.railRows(railWidth, 40) {
-		// Runes, not bytes: the meter is drawn in block elements, so a byte
+		// Runes: the meter is drawn in block elements, so a byte
 		// index one past the last one lands inside it.
 		rs := []rune(plain(row))
 		bar := -1

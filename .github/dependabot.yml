@@ -1,6 +1,6 @@
 version: 2
 
-# Grouped, so a week's updates arrive as one pull request rather than six.
+# Grouped, so a week's updates arrive as one pull request.
 # Hostveil has few direct dependencies and a hand-cut release process, so a
 # stream of individual pull requests would be most of the repository's
 # traffic while telling a maintainer nothing they could not read in one
@@ -9,7 +9,7 @@ version: 2
 #
 # The commit-message prefix is not cosmetic. Merges to main are squashed and
 # the pull request title becomes the commit subject, which is what the
-# release version is computed from — and .github/workflows/pr-title.yml
+# release version is computed from, and .github/workflows/pr-title.yml
 # rejects any title whose type and scope are not on its lists, so an
 # unprefixed Dependabot pull request simply cannot merge.
 updates:

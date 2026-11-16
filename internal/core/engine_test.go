@@ -183,8 +183,7 @@ func TestEngineSkipsComposeWithoutDocker(t *testing.T) {
 		}
 	}
 	// This engine registers only the compose checker, so skipping it leaves
-	// no axis at all — and a score with nothing behind it is N/A, not a
-	// perfect 100. A real host runs the other eight checkers and gets a
+	// no axis at all, and a score with nothing behind it is N/A. A real host runs the other eight checkers and gets a
 	// number; see TestEngineSkipsDockerDomainsWhenDaemonUnreachable.
 	if report.Score.Applicable {
 		t.Error("a report with every axis excluded must not claim an applicable score")
@@ -194,12 +193,12 @@ func TestEngineSkipsComposeWithoutDocker(t *testing.T) {
 // TestEngineSkipsDockerDomainsWhenDaemonUnreachable is the regression guard
 // for the bug that motivated PartialError and the daemon probe: running
 // without access to the Docker socket (no sudo, not in the docker group) used
-// to leave the CLI on PATH, so Available() said yes, every check quietly found
+// to leave the CLI on PATH, so Available() said yes, every check silently found
 // nothing, and the domain reported Done. Its axis was then scored a perfect
-// 100 — the CVE scan in particular claiming a clean bill of health for a host
+// 100: the CVE scan in particular claiming a clean bill of health for a host
 // it had never looked at.
 //
-// The axis must be N/A, not perfect, and the reason must be actionable.
+// The axis must be N/A, and the reason must be actionable.
 func TestEngineSkipsDockerDomainsWhenDaemonUnreachable(t *testing.T) {
 	engine := New(Config{
 		Registry: check.NewRegistry(composecheck.New(), cvecheck.New()),
@@ -223,7 +222,7 @@ func TestEngineSkipsDockerDomainsWhenDaemonUnreachable(t *testing.T) {
 	}
 	for _, ax := range report.Score.Axes {
 		if (ax.Source == model.SourceCompose || ax.Source == model.SourceCVE) && ax.Applicable {
-			t.Errorf("%s axis must be N/A when the daemon is unreachable, not scored", ax.Source)
+			t.Errorf("%s axis must be N/A when the daemon is unreachable", ax.Source)
 		}
 	}
 }
@@ -236,8 +235,8 @@ func TestEngineSkipsDockerDomainsWhenDaemonUnreachable(t *testing.T) {
 // UI can offer a button that leads nowhere.
 //
 // Up: the checker decides how much human judgment applying it needs, and a
-// fix registered as Auto — a statement about its shape, one mechanical
-// action — cannot talk it down. Without this, ssh.passwordauth ships as
+// fix registered as Auto (a statement about its shape, one mechanical
+// action) cannot talk it down. Without this, ssh.passwordauth ships as
 // Auto and "fix all safe" disables password logins unattended on a host
 // the user may only reach by password.
 func TestClassifyTakesTheMoreCautiousKind(t *testing.T) {
@@ -328,7 +327,7 @@ func TestClassifyTakesTheMoreCautiousKind(t *testing.T) {
 	}
 }
 
-// tallyRunner counts how many times each command actually reached the host.
+// tallyRunner counts how many times each command reached the host.
 type tallyRunner struct {
 	mu       sync.Mutex
 	calls    map[string]int
@@ -368,11 +367,11 @@ func (r *tallyRunner) count(cmd string) int {
 // need the same facts: the compose and CVE checkers both enumerate compose
 // projects and both inspect the containers Compose did not create, and the
 // ports checker re-probes the firewall the firewall checker just probed.
-// Each of those ran twice per scan, concurrently — and `docker inspect`
+// Each of those ran twice per scan, concurrently, and `docker inspect`
 // over every container on a busy host is megabytes of output to fetch and
 // parse for the second time.
 //
-// Deduplicating at the runner rather than in the checkers is what keeps the
+// Deduplicating at the runner is what keeps the
 // checkers ignorant of each other; this test is what keeps that true.
 func TestScanAsksTheHostEachQuestionOnce(t *testing.T) {
 	dir := t.TempDir()
@@ -402,7 +401,7 @@ func TestScanAsksTheHostEachQuestionOnce(t *testing.T) {
 	}
 }
 
-// The cache belongs to the scan, not the engine. A fix runs commands that
+// The cache belongs to the scan. A fix runs commands that
 // change the host, and serving one of those from a cache would mean the
 // second `ufw allow` of a session silently never happened.
 func TestFixCommandsBypassTheScanCache(t *testing.T) {
@@ -415,13 +414,13 @@ func TestFixCommandsBypassTheScanCache(t *testing.T) {
 		}
 	}
 	if n := r.count("trivy "); n != 3 {
-		t.Errorf("the engine's fix runner ran %d commands, want 3 — it is caching", n)
+		t.Errorf("the engine's fix runner ran %d commands, want 3; it is caching", n)
 	}
 }
 
 // cancelEngine builds an engine over a real compose file, so a scan produces
 // findings when it is allowed to finish and the cancelled case is a genuine
-// contrast rather than two empty reports.
+// contrast with the cancelled one.
 func cancelEngine(t *testing.T) *Engine {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "docker-compose.yml")
@@ -440,8 +439,8 @@ func cancelEngine(t *testing.T) *Engine {
 	})
 }
 
-// A cancelled scan describes nothing — every exec'd checker dies the instant
-// the context is cancelled — so it must not replace a good report. The
+// A cancelled scan describes nothing (every exec'd checker dies the instant
+// the context is cancelled) so it must not replace a good report. The
 // dashboard reached this by the shortest route: closing a browser tab
 // mid-rescan cancelled the scan, and the near-empty result became both the
 // current report and the delta baseline, so the next scan reported every

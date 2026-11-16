@@ -28,7 +28,7 @@ func TestUFWDockerAppendsTheBlockOnceAndReloads(t *testing.T) {
 		t.Errorf("after.rules became:\n%s", out)
 	}
 	if _, err := a.Transform(out); err == nil {
-		t.Error("a second block must be refused, not appended")
+		t.Error("a second block must be refused")
 	}
 }
 
@@ -45,7 +45,7 @@ func TestEnvFilesResolveAgainstTheProjectDirectory(t *testing.T) {
 		t.Errorf("paths = %v", a.Paths)
 	}
 	if a.SafeRoot != "" {
-		t.Errorf("a file outside the project must drop SafeRoot rather than be refused: %q", a.SafeRoot)
+		t.Errorf("a file outside the project must drop SafeRoot and still be accepted: %q", a.SafeRoot)
 	}
 	if got := a.Mode(0o644); got.Perm() != 0o600 {
 		t.Errorf("0644 -> %v", got)

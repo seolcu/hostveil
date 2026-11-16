@@ -16,8 +16,8 @@ import (
 // The release publishes one per format per architecture, and installing it is
 // what keeps dpkg or rpm describing the filesystem correctly. There is no apt
 // or dnf repository to upgrade from, so `apt install --only-upgrade hostveil`
-// would find nothing and report success — which is the failure mode this
-// avoids by fetching the file the release actually has.
+// would find nothing and report success, which is the failure mode this
+// avoids by fetching the file the release has.
 func PackageAsset(o Origin, version string) (string, error) {
 	ext := ""
 	switch o {
@@ -33,9 +33,9 @@ func PackageAsset(o Origin, version string) (string, error) {
 
 // InstallPackage hands a downloaded package file to the tool that owns it.
 //
-// The file is installed by path rather than by name. apt and dnf both accept
+// The file is installed by path. apt and dnf both accept
 // that and both record it properly, so the package database stays true and a
-// later `apt remove hostveil` still works — which is the whole reason for not
+// later `apt remove hostveil` still works, which is the whole reason for not
 // simply writing over /usr/bin/hostveil.
 func InstallPackage(ctx context.Context, r platform.CommandRunner, o Origin, path string) error {
 	argv, err := installArgv(r, o, path)
@@ -52,7 +52,7 @@ func installArgv(r platform.CommandRunner, o Origin, path string) ([]string, err
 	switch o {
 	case OriginDeb:
 		if platform.Has(r, "apt-get") {
-			// apt-get, not apt: apt prints that its CLI is not a stable
+			// apt-get: apt prints that its CLI is not a stable
 			// interface for scripts, and this is a script.
 			return []string{"apt-get", "install", "-y", "--allow-downgrades", path}, nil
 		}
@@ -74,7 +74,7 @@ func installArgv(r platform.CommandRunner, o Origin, path string) ([]string, err
 
 // RemovePackage uninstalls through the tool that owns the binary.
 //
-// By package name here, not by path: removal is a database operation and the
+// By package name here: removal is a database operation and the
 // file may already be gone. Unlike the install side this needs no repository,
 // so it is the ordinary command and it works everywhere.
 func RemovePackage(ctx context.Context, r platform.CommandRunner, o Origin) error {

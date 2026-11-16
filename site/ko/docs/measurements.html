@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>실측 결과 — Hostveil 문서</title>
+    <title>실측 결과; Hostveil 문서</title>
     <meta name="description" content="2026년 9월 재실행 결과입니다. Hostveil, Lynis, CIS Docker 검사, Docker 브리지 TCP 스캔으로 수정·재시작·롤백 전후를 비교하고, 별도 대조군과 미해결 불일치도 공개합니다.">
     <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
-    <meta property="og:title" content="실측 결과 — Hostveil 문서">
+    <meta property="og:title" content="실측 결과; Hostveil 문서">
     <meta property="og:description" content="새 VM에서 측정한 2026년 9월 결과입니다. Auto·Review 수정, 독립 하드닝 대조군, 롤백 후 남은 변경과 측정의 한계를 확인할 수 있습니다.">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://hostveil.seolcu.com/ko/docs/measurements">
@@ -30,15 +30,15 @@
     <script>
       // Send a Korean-speaking reader to the Korean page, once.
       //
-      // GitHub Pages serves files, not content negotiation, so the only place
-      // this decision can be made is here — and the risk of making it here is
-      // trapping someone: a reader who deliberately clicked "English" must not
+      // GitHub Pages serves files with no content negotiation, so the only place
+      // this decision can be made is here, and the risk of making it here is
+      // trapping someone: a reader who clicked "English" must not
       // be bounced back on the next click. So the switcher records that choice
       // and this defers to it forever after.
       //
       // Only from the English page, only when the browser's own preference
-      // list actually leads with Korean, and never when a crawler is reading
-      // (they do not run this) — the hreflang links above are what they read.
+      // list leads with Korean, and never when a crawler is reading
+      // (they do not run this): the hreflang links above are what they read.
       (function () {
         try {
           if (document.documentElement.lang !== "en") return;

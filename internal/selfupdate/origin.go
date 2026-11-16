@@ -35,7 +35,7 @@ func DetectOrigin(ctx context.Context, r platform.CommandRunner, path string) Or
 		return OriginGoInstall
 	}
 	// The install script's destination. Anything else is a copy somebody put
-	// somewhere deliberately, and moving it is not this program's business.
+	// somewhere, and moving it is not this program's business.
 	if filepath.Clean(path) == "/usr/bin/hostveil" {
 		return OriginStandalone
 	}
@@ -65,9 +65,9 @@ func ownedByRPM(ctx context.Context, r platform.CommandRunner, path string) bool
 // underGoBin reports whether the path is where `go install` would have put it.
 //
 // GOBIN wins when it is set, then GOPATH/bin, then the default ~/go/bin. The
-// environment is read rather than shelling out to `go env`, because a host
+// environment is read directly, because a host
 // running a release binary usually has no Go toolchain and the question is
-// about a path, not about a compiler.
+// about a path.
 func underGoBin(path string) bool {
 	clean := filepath.Clean(path)
 	var dirs []string

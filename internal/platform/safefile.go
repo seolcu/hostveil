@@ -8,7 +8,7 @@ import (
 )
 
 // This file holds the file operations Hostveil uses on paths another account
-// can shape — anything under a user's home. Plain os.ReadFile, os.Stat, and
+// can shape: anything under a user's home. Plain os.ReadFile, os.Stat, and
 // os.Chmod all follow symlinks, and Hostveil runs as root, so on such paths
 // each is a confused deputy: a user who replaces their own config file with a
 // symlink to /etc/passwd turns a routine permission fix into root chmod'ing
@@ -25,10 +25,9 @@ import (
 // normally. The fstat check happens on the open descriptor, so there is no
 // gap for the file to be swapped between the check and the read.
 func ReadFileNoFollow(path string, limit int64) ([]byte, error) {
-	// G304: the variable path is the point, and this function is the
-	// hardened way to open one — O_NOFOLLOW refuses a symlink, O_NONBLOCK
-	// refuses to hang on a FIFO, and the checks below run on the descriptor
-	// rather than on the name. Flagging the safe opener while the plain
+	// G304: the variable path is intended, and this function is the
+	// hardened way to open one; O_NOFOLLOW refuses a symlink, O_NONBLOCK
+	// refuses to hang on a FIFO, and the checks below run on the descriptor. Flagging the safe opener while the plain
 	// os.ReadFile calls it replaces go unflagged is the finding backwards.
 	//nolint:gosec // G304: this is the guarded open the callers were given
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
@@ -57,7 +56,7 @@ func ReadFileNoFollow(path string, limit int64) ([]byte, error) {
 
 // ReadFileBounded reads a regular file without allowing a FIFO or device to
 // block the caller and without holding more than limit bytes in memory.
-// Symlinks are followed deliberately; system configuration commonly uses
+// Symlinks are followed; system configuration commonly uses
 // them (for example /etc/sysctl.d/99-sysctl.conf on Ubuntu).
 func ReadFileBounded(path string, limit int64) ([]byte, error) {
 	//nolint:gosec // G304: this is the bounded, type-checked opener for variable paths
@@ -93,13 +92,11 @@ func readLimited(r io.Reader, path string, limit int64) ([]byte, error) {
 // ChmodNoFollow changes a file's or directory's permission bits without ever
 // following a symlink: the path is opened with O_NOFOLLOW and the mode is
 // applied through the descriptor, so the bits land on the inode that was
-// opened and nothing else. A symlink at path fails with ELOOP rather than
-// chmod'ing its target.
+// opened and nothing else. A symlink at path fails with ELOOP.
 func ChmodNoFollow(path string, mode os.FileMode) error {
-	// G304: the variable path is the point, and this function is the
-	// hardened way to open one — O_NOFOLLOW refuses a symlink, O_NONBLOCK
-	// refuses to hang on a FIFO, and the checks below run on the descriptor
-	// rather than on the name. Flagging the safe opener while the plain
+	// G304: the variable path is intended, and this function is the
+	// hardened way to open one; O_NOFOLLOW refuses a symlink, O_NONBLOCK
+	// refuses to hang on a FIFO, and the checks below run on the descriptor. Flagging the safe opener while the plain
 	// os.ReadFile calls it replaces go unflagged is the finding backwards.
 	//nolint:gosec // G304: this is the guarded open the callers were given
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)

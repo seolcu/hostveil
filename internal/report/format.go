@@ -1,8 +1,8 @@
 // Package report renders a completed model.Report into a file an operator
 // can read or hand to a colleague, or that another program can ingest.
 //
-// It depends only on internal/model (and, for JSON/SARIF, internal/clirender
-// — which itself depends only on internal/model, so there is no cycle) and
+// It depends only on internal/model (and, for JSON/SARIF, internal/clirender,
+// which itself depends only on internal/model, so there is no cycle) and
 // must never import internal/fix, internal/history, internal/check, or
 // internal/compose: those are UI-forbidden packages, and this package is
 // reached from internal/core on behalf of every UI.
@@ -12,8 +12,8 @@ package report
 // parameters, and file extensions), its human label, and the MIME type a
 // consumer should be told it is receiving.
 //
-// This is the one table every caller resolves a format against — the CLI's
-// --format flag, the TUI's picker, and the web dashboard's route — so a
+// This is the one table every caller resolves a format against (the CLI's
+// --format flag, the TUI's picker, and the web dashboard's route) so a
 // new format only ever needs one new row here.
 type Format struct {
 	ID          string

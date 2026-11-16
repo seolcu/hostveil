@@ -23,7 +23,7 @@ const stampPath = "testdata/web-shot.stamp"
 // comparing: the TUI draws into a string, so the test can produce the exact
 // thing the picture was made from. The dashboard cannot be pinned that way.
 // Its screenshot is a browser rendering a page, and there is no headless
-// browser in this test suite — docs/DEVELOPMENT.md tells a human to take it
+// browser in this test suite: docs/DEVELOPMENT.md tells a human to take it
 // with Firefox against the demo VM.
 //
 // So this pins the *inputs* instead. Everything that decides what that page
@@ -35,8 +35,8 @@ const stampPath = "testdata/web-shot.stamp"
 // was nothing at all and site/assets/tui.png stayed wrong for two releases.
 //
 // A hash cannot say what moved, so the failure prints each input's own digest
-// beside the recorded one — which narrows a re-shoot to "the stylesheet
-// changed" rather than "something did".
+// beside the recorded one, which narrows a re-shoot to "the stylesheet
+// changed".
 //
 // After re-taking the screenshot, update the stamp:
 //
@@ -99,11 +99,11 @@ type screenshotInput struct{ name, digest string }
 // left the terminal screenshot stale.
 func screenshotInputs(t *testing.T) []screenshotInput {
 	t.Helper()
-	// The fixture the picture is *of*, not only the code that draws it.
+	// The fixture the picture is *of*, as well as the code that draws it.
 	//
 	// Without this the stamp answered half the question: PR #701 changed
-	// uitest.PublishedReport — a domain appeared, another stopped being
-	// mislabelled — so the published screenshot became wrong while every
+	// uitest.PublishedReport (a domain appeared, another stopped being
+	// mislabelled) so the published screenshot became wrong while every
 	// input this hashed stayed identical and the alarm said nothing. What
 	// decides what the picture shows is the page *and* the data.
 	rep, err := json.Marshal(uitest.PublishedReport())

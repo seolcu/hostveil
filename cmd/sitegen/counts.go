@@ -88,7 +88,7 @@ var (
 // on it from the registry, and returns how the findings resolve.
 //
 // An Unavailable cell is left as written: the registry has no fix for it
-// either way, and Unavailable — nobody can fix it, not only Hostveil — is a
+// either way, and Unavailable (no fix exists anywhere yet) is a
 // fact about the finding the registry does not record.
 func syncChecks(frag, lang string, r *fix.Registry) (string, tally, error) {
 	labels := kindLabels[lang]
@@ -136,8 +136,8 @@ func syncChecks(frag, lang string, r *fix.Registry) (string, tally, error) {
 // figures in order: total, fixable, auto, review. internal/docs holds the
 // READMEs to the same wording independently.
 var readmeCounts = map[string]struct{ file, sentence string }{
-	"en": {"README.md", "Hostveil can report **%d findings** across those domains, and **%d of them\ncarry a fix**: %d Hostveil will apply unattended, %d only after you have read\nthe diff."},
-	"ko": {"README.ko.md", "Hostveil은 이 영역들에서 **발견 항목 %d개**를 보고할 수 있고, 그중 **%d개에\n수정이 붙어 있습니다.** %d개는 무인으로 적용하고, %d개는 차이를 읽은 뒤에만\n적용합니다."},
+	"en": {"README.md", "Hostveil can report %d findings across those domains. %d of them carry a\nfix: Hostveil applies %d unattended and %d only after you have read the diff."},
+	"ko": {"README.ko.md", "Hostveil은 이 영역들에서 발견 항목 %d개를 보고할 수 있습니다. 그중 %d개에\n수정이 붙어 있습니다. %d개는 무인으로 적용하고, %d개는 차이를 읽은 뒤에만\n적용합니다."},
 }
 
 const (

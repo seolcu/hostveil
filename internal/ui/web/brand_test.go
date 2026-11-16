@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
-// The brand mark ships as two files on purpose: favicon.svg keeps an opaque
+// The brand mark ships as two files intentionally: favicon.svg keeps an opaque
 // tile because a browser tab has no known background, and mark.svg drops it
 // so the status-bar figure dissolves into whatever palette the page runs in.
 // index.html asks for one and app.css paints the other, so a missing or
 // misnamed asset is a broken tab icon or an empty 20px gap before the brand
-// text — neither of which any Go test noticed when the files landed.
+// text; neither of which any Go test noticed when the files landed.
 func TestBrandAssetsAreServed(t *testing.T) {
 	s, _ := testServer(t)
 	srv := httptest.NewServer(s.Handler())
@@ -29,7 +29,7 @@ func TestBrandAssetsAreServed(t *testing.T) {
 			t.Errorf("%s returned %d", path, resp.StatusCode)
 		}
 		// The browser refuses to rasterize an SVG served under another type,
-		// so the icon silently disappears rather than erroring.
+		// so the icon silently disappears with no error.
 		if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, "image/svg+xml") {
 			t.Errorf("%s Content-Type = %q, want image/svg+xml", path, ct)
 		}
@@ -39,9 +39,9 @@ func TestBrandAssetsAreServed(t *testing.T) {
 	}
 }
 
-// The page has to actually reference both variants, each in its own place:
+// The page has to reference both variants, each in its own place:
 // the tab icon from index.html, the status-bar mark from app.css. Renaming
-// an asset without updating its reference degrades silently — the dashboard
+// an asset without updating its reference degrades silently: the dashboard
 // still loads, just without its mark.
 func TestBrandAssetsAreReferenced(t *testing.T) {
 	index, err := assets.ReadFile("assets/index.html")

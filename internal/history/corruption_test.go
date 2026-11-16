@@ -45,8 +45,8 @@ func blobPath(t *testing.T, s *Store, cp Checkpoint) string {
 
 // The checkpoint is the only backup, so a damaged one must be refused rather
 // than written over the live file. A blob truncated by a crash between the
-// write returning and the data reaching disk — or by delayed allocation on
-// XFS or btrfs — used to be restored as-is, and an empty sshd_config is the
+// write returning and the data reaching disk (or by delayed allocation on
+// XFS or btrfs) used to be restored as-is, and an empty sshd_config is the
 // unrecoverable outcome the whole recovery layer exists to prevent.
 func TestRollbackRefusesATruncatedBackup(t *testing.T) {
 	s, path, cp := savedCheckpoint(t)
@@ -94,7 +94,7 @@ func TestRollbackRefusesASilentlyCorruptedBackup(t *testing.T) {
 	}
 }
 
-// force is for discarding the operator's later edits, not for restoring
+// force is for discarding the operator's later edits. It never restores
 // garbage. A damaged backup is not something --force should push through:
 // there is nothing correct on the other side of it.
 func TestForceDoesNotOverrideADamagedBackup(t *testing.T) {
@@ -137,8 +137,8 @@ func TestBackupsWithoutAHashStillRestore(t *testing.T) {
 }
 
 // An unreadable checkpoint used to vanish from the list with no message, so
-// a fix that had genuinely been applied looked like it never was — and it
-// also dropped out of recordedWrites, which can turn an honest rollback into
+// a fix that had been applied looked like it never was, and it
+// also dropped out of recordedWrites, which can turn an accurate rollback into
 // a false external-edit refusal.
 func TestUnreadableCheckpointIsReportedNotHidden(t *testing.T) {
 	s, _, good := savedCheckpoint(t)
@@ -161,7 +161,7 @@ func TestUnreadableCheckpointIsReportedNotHidden(t *testing.T) {
 	if !strings.Contains(err.Error(), "20260101-000000.000-deadbeef-deadbeef") {
 		t.Errorf("the warning should name the unreadable checkpoint: %v", err)
 	}
-	// The readable ones still come back — a partial list is useful, an empty
+	// The readable ones still come back; a partial list is useful, an empty
 	// one is not.
 	if len(cps) != 1 || cps[0].ID != good.ID {
 		t.Errorf("the readable checkpoint should still be listed, got %+v", cps)
@@ -216,17 +216,17 @@ func TestSaveRecordsTheBackupHash(t *testing.T) {
 
 // A checkpoint directory with no meta.json is not a damaged checkpoint. It is
 // the residue of a Save that never finished, and writeMeta's own comment says
-// so: metadata is written last precisely so "an interrupted Save leaves a
+// so: metadata is written last so "an interrupted Save leaves a
 // directory nothing will try to restore from".
 //
-// List tried anyway, and reported it as unreadable recovery history — a
+// List tried anyway, and reported it as unreadable recovery history; a
 // warning in all three UIs saying part of the operator's ability to undo is
 // gone, when nothing was lost at all. Apply order is backup → write, so a
 // Save that did not complete means the target file was never touched and
 // there is nothing to undo.
 //
-// This is not only the crash case. Save returns on the first failed write —
-// a full disk, EPERM, a read-only mount — applyEdit refuses to apply, and the
+// This covers more than the crash case. Save returns on the first failed write
+// (a full disk, EPERM, a read-only mount) applyEdit refuses to apply, and the
 // partial directory stays on disk permanently, so every `hostveil history`
 // from then on reports damage that no rollback could ever fix.
 func TestAnInterruptedSaveIsNotDamagedHistory(t *testing.T) {
@@ -278,7 +278,7 @@ func TestAFailedSaveLeavesNoDirectoryBehind(t *testing.T) {
 	id := NewID("compose.ds018")
 
 	// A files/ directory the blob write cannot use. MkdirAll then succeeds
-	// because it already exists, and WriteFileAtomic fails inside it — which
+	// because it already exists, and WriteFileAtomic fails inside it, which
 	// is the shape of a full disk or a read-only mount, reached here through
 	// a permission bit instead.
 	files := filepath.Join(store.checkpointsDir(), id, "files")

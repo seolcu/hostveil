@@ -3,7 +3,7 @@
 # the seeded finding is reported, the fix lands, the host really changed, a
 # rescan agrees, and a rollback puts the host back.
 #
-# Usage (as root, on a disposable host — it edits /etc and restarts daemons):
+# Usage (as root, on a disposable host; it edits /etc and restarts daemons):
 #   scripts/e2e/individual.sh accounts       # no daemons needed; container-safe
 #   scripts/e2e/individual.sh owner          # no daemons needed; container-safe
 #   scripts/e2e/individual.sh compose        # needs a Docker daemon
@@ -21,8 +21,8 @@
 #   scripts/e2e/individual.sh fedora-updates # Fedora (dnf5) with systemd; installs dnf-automatic
 #   scripts/e2e/individual.sh fedora-firewall # Fedora with firewalld; run through scripts/e2e/vm.sh
 #
-# Why it exists: these fixes are excluded from every batch on purpose, so
-# `fix --all --review` — the E2E job's and the measurement harness's path —
+# Why it exists: these fixes are excluded from every batch, so
+# `fix --all --review` (the E2E job's and the measurement harness's path)
 # never runs them. Before this, every one of them had been exercised against a
 # fake CommandRunner and nothing else.
 
@@ -37,7 +37,7 @@ apt-get() { command apt-get -o DPkg::Lock::Timeout=300 "$@"; }
 HV=${HOSTVEIL:-hostveil}
 
 # DIAGNOSE names a unit whose state is worth printing when a scenario fails;
-# a daemon left down says why in its own journal, not in ours.
+# a daemon left down says why in its own journal.
 DIAGNOSE=""
 
 SCENARIO=""
@@ -50,8 +50,8 @@ diagnose() {
 }
 
 # fail also writes the reason and the diagnosis into the job summary when
-# there is one, so a failed run is read from `gh run view` rather than dug out
-# of the raw log, which took a second CI round trip more than once.
+# there is one, so a failed run is read from `gh run view`. Digging it out
+# of the raw log took a second CI round trip more than once.
 fail() {
     printf 'FAIL %s\n' "$*" >&2
     diagnose >&2
@@ -72,7 +72,7 @@ step() { printf '\n== %s\n' "$*"; }
 
 # count ID [SERVICE]: how many open findings with this ID (and service) the
 # scan reports. scan exits non-zero when it finds High findings, which on a
-# seeded host is the point, so its status is not the test.
+# seeded host is the goal, so its status is not the test.
 count() {
     local id=$1 svc=${2:-}
     "$HV" scan --json 2>/dev/null >/tmp/hv-scan.json || true
@@ -243,7 +243,7 @@ scenario_dockerd_revert() {
     local before
     before=$(sha256sum "$DAEMON_JSON" | cut -d' ' -f1)
     expect_count 1 dockerd.no-new-privileges
-    # Compared before and after rather than required to be zero: an earlier
+    # Compared before and after: an earlier
     # scenario on the same host leaves its own, rolled-back checkpoints.
     local recorded
     recorded=$("$HV" history | grep -cF '  dockerd.no-new-privileges  (' || true)
@@ -591,7 +591,7 @@ JSON5
 # What OpenClaw binds to when gateway.bind is not set. Hostveil assumes
 # loopback; OpenClaw resolves an unset bind as "auto", and inside a container
 # auto warned that it was binding off loopback. This is the same on a VM.
-# Observed and printed here, not asserted, until the answer is known.
+# Observed and printed here until the answer is known.
 observe_openclaw_default_bind() {
     local home
     home=$(getent passwd "$OC_USER" | cut -d: -f6)
@@ -715,9 +715,9 @@ scenario_fedora_updates() {
 # reachable PORT: whether PORT answers from off this host. scripts/e2e/vm.sh
 # forwards it from the machine running the VM and names the way back in as
 # HOSTVEIL_E2E_OUTSIDE, so the connection arrives on the VM's own network card
-# and firewalld decides it — not the host's opinion of itself.
+# and firewalld decides it.
 #
-# An HTTP answer, not a TCP connect: QEMU accepts the connection on the far
+# An HTTP answer: QEMU accepts the connection on the far
 # side of the forward before it tries the guest, so a bare connect succeeds
 # whatever the firewall does. The listener is an HTTP server so that only a
 # packet the firewall let through produces a 200.
@@ -726,10 +726,10 @@ reachable() {
     [[ $(curl -s -m 3 -o /dev/null -w '%{http_code}' "http://$host:$((base + $1))/") == 200 ]]
 }
 
-# Every firewall fix was ufw-only, so on firewalld — Fedora's and the RHEL
-# family's default — none of these findings had a fix. And the reading was
+# Every firewall fix was ufw-only, so on firewalld (Fedora's and the RHEL
+# family's default) none of these findings had a fix. And the reading was
 # wrong too: a port firewalld refused was reported reachable, and a stopped
-# firewalld read as "cannot read firewall state" rather than no firewall.
+# firewalld read as "cannot read firewall state".
 scenario_fedora_firewall() {
     [[ -n ${HOSTVEIL_E2E_OUTSIDE:-} ]] || fail "run this through scripts/e2e/vm.sh, which provides the outside view"
     command -v firewall-cmd >/dev/null || fail "this scenario is for a host with firewalld"

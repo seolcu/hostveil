@@ -8,9 +8,9 @@ import (
 
 // progressTracker keeps a per-domain snapshot of the scan in flight.
 //
-// The engine's progress emit is deliberately lossy — a full channel buffer
-// drops events rather than stall a checker — so the consumer keeps
-// latest-state-per-domain instead of replaying a stream. A dropped event is
+// The engine's progress emit is lossy (a full channel buffer
+// drops events so a checker never stalls) so the consumer keeps the
+// latest state per domain. A dropped event is
 // invisible as long as a later one lands, and each domain's final event
 // always does because the drain goroutine empties the channel faster than
 // checkers finish.
@@ -22,7 +22,7 @@ type progressTracker struct {
 
 // begin marks a scan as started and clears the previous snapshot. It
 // returns false when one is already running, which is what turns a second
-// rescan click into a 409 rather than a queued multi-minute scan.
+// rescan click into a 409.
 func (p *progressTracker) begin() bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()

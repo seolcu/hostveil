@@ -16,7 +16,7 @@ import (
 )
 
 // newEngine is how every command obtains its engine. It is a variable so a
-// test can supply one wired to a fake runner and a temp state directory —
+// test can supply one wired to a fake runner and a temp state directory:
 // otherwise `fix` and `rollback`, the two commands that mutate the host,
 // could only be exercised by scanning the machine running the tests.
 var newEngine = func() *core.Engine { return buildEngine() }
@@ -56,7 +56,7 @@ func cmdFix(ctx context.Context, args []string) int {
 
 	if all {
 		// --all applies every Auto fix on the host, so there is no one
-		// finding to disambiguate and no alternative to pick — Auto fixes
+		// finding to disambiguate and no alternative to pick: Auto fixes
 		// have exactly one action by definition. Both flags parsed into
 		// this set and were then silently dropped, which is the worst
 		// available answer: `fix --all --action 1` looked like it chose
@@ -88,7 +88,7 @@ func cmdFix(ctx context.Context, args []string) int {
 		return 1
 	}
 	if !finding.IsFixable() {
-		fmt.Fprintf(os.Stderr, "hostveil: %s is %s — Hostveil cannot fix it automatically.\nGuidance: %s\n",
+		fmt.Fprintf(os.Stderr, "hostveil: %s is %s; Hostveil cannot fix it automatically.\nGuidance: %s\n",
 			finding.ID, finding.Remediation.Label(), finding.HowToFix)
 		return 1
 	}
@@ -137,8 +137,8 @@ func fixAll(ctx context.Context, yes, review bool) int {
 
 	var auto, reviewed, individual []model.Finding
 	for _, f := range report.Findings {
-		// Fixed, not !Active: this is the batch's own question — has Hostveil
-		// already applied something here — and for a pending fix it has. It
+		// Fixed, not !Active: this is the batch's own question (has Hostveil
+		// already applied something here) and for a pending fix it has. It
 		// covers the Review branch below as well, which is why it is not
 		// IsAutoFixable.
 		if f.Fixed {
@@ -172,13 +172,13 @@ func fixAll(ctx context.Context, yes, review bool) int {
 	if len(auto) > 0 {
 		fmt.Printf("Will apply %d safe (Auto) fixes:\n", len(auto))
 		for _, f := range auto {
-			fmt.Printf("  • %s (%s) — %s\n", f.ID, f.Service, f.Title)
+			fmt.Printf("  • %s (%s); %s\n", f.ID, f.Service, f.Title)
 		}
 	}
 	if len(reviewed) > 0 {
 		fmt.Printf("\nAnd %d Review fixes, each through its first alternative:\n", len(reviewed))
 		for _, f := range reviewed {
-			fmt.Printf("  • %s (%s) — %s\n", f.ID, f.Service, f.Title)
+			fmt.Printf("  • %s (%s); %s\n", f.ID, f.Service, f.Title)
 		}
 		fmt.Println("\nThese are Review because they can cut off access to this host, or because")
 		fmt.Println("they run a command with no checkpoint to undo. Read them before saying yes.")
@@ -198,12 +198,12 @@ func fixAll(ctx context.Context, yes, review bool) int {
 	out := apply(ctx, batch)
 	// One sentence, rendered by the engine, so this and the other two
 	// interfaces cannot describe the same outcome differently. Only the
-	// per-failure detail and the rollback hint are the CLI's own — it has
+	// per-failure detail and the rollback hint are the CLI's own: it has
 	// the room for the first and is the only place the second is a command
 	// you can type.
 	// The tick is a claim, so it is only made when nothing failed. A batch
 	// that applied nothing and failed three times used to print
-	// "✓ Applied 0 · failed 3" and exit 0 — which is what a cron wrapper
+	// "✓ Applied 0 · failed 3" and exit 0, which is what a cron wrapper
 	// reads as a clean run on a host where every fix was refused.
 	mark := "✓"
 	if len(out.Failed) > 0 {
@@ -228,7 +228,7 @@ func fixAll(ctx context.Context, yes, review bool) int {
 
 // printIndividual lists the fixes no batch applies, with the command that
 // applies each one. They are offered, and the operator has to ask for them by
-// name, because each can break a service that set something on purpose.
+// name, because each can break a service that set something intentionally.
 func printIndividual(fs []model.Finding) {
 	if len(fs) == 0 {
 		return
@@ -240,7 +240,7 @@ func printIndividual(fs []model.Finding) {
 		if f.Service != "" {
 			cmd += " --service " + f.Service
 		}
-		fmt.Printf("  • %s — %s\n", cmd, f.Title)
+		fmt.Printf("  • %s; %s\n", cmd, f.Title)
 	}
 }
 
@@ -355,7 +355,7 @@ func serviceSuffix(service string) string {
 // reasons.
 //
 // The first is correctness. This used to build a fresh bufio.Scanner around
-// os.Stdin on every call, and a Scanner reads ahead into its own buffer — so
+// os.Stdin on every call, and a Scanner reads ahead into its own buffer, so
 // asking two questions in a row (choose an alternative, then confirm) could
 // read both answers into the first scanner and throw the second away with
 // it, leaving the confirmation to consume EOF and read as "no". One reader

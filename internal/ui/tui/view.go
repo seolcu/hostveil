@@ -24,7 +24,7 @@ import (
 //
 // This used to be a package-level palette, fixed at init and duplicated by
 // hand in the web dashboard's CSS. The hexes now come from
-// internal/ui/theme — one registry, shared with the dashboard — and a themed
+// internal/ui/theme (one registry, shared with the dashboard) and a themed
 // TUI needs to rebuild them at runtime, which a package var cannot do.
 type styles struct {
 	cInk     color.Color
@@ -47,10 +47,10 @@ type styles struct {
 	sel   lipgloss.Style
 	track lipgloss.Style
 	// accent draws structure: which panel this is, where the cursor is, and
-	// which key does the thing. Never risk — the heats own that, and a header
+	// which key does the thing. Never risk: the heats own that, and a header
 	// that borrowed one would be claiming the panel is dangerous.
 	accent lipgloss.Style
-	// manual and unavail are kindStyle's other two colors — muted, not heats.
+	// manual and unavail are kindStyle's other two colors, both muted.
 	// See the Palette doc comment in internal/ui/theme.
 	manual  lipgloss.Style
 	unavail lipgloss.Style
@@ -86,27 +86,27 @@ func newStyles(t theme.Theme) *styles {
 
 // kindStyle colors the remediation column.
 //
-// Deliberately not a heat. The severity column two fields to the left is
+// Not a heat colour. The severity column two fields to the left is
 // already drawn in crit/high/med/low, and painting the kind in one of those
-// too would put two differently-meaning colours from the same set on one row —
+// too would put two differently-meaning colours from the same set on one row:
 // a HIGH row whose kind came out yellow reads as a row that is somehow both.
 //
 // So: safe for Auto, which is the same green the pick marker already spends on
 // the same claim; accent for Review, which is the colour this TUI uses for
 // "there is a key here that does something"; manual and unavail for the two
-// kinds that offer no button at all but are not the same kind of nothing — a
+// kinds that offer no button at all but are not the same kind of nothing; a
 // host can carry many Manual findings by design, which must not read as an
-// emergency, so both are muted rather than heats (see the Palette doc
+// emergency, so both are muted (see the Palette doc
 // comment) and merely distinct from each other and from the neutral grey.
-// Unset stays on the plain dim grey: it is not a kind Hostveil ever assigns
-// on purpose, so it gets no color of its own to be muted about.
+// Unset stays on the plain dim grey: it is not a kind Hostveil ever assigns,
+// so it gets no color of its own to be muted about.
 func (s *styles) kindStyle(f model.Finding) lipgloss.Style {
-	// Pending is drawn in the accent rather than the safe green, and the
-	// distinction is the point: green on this column has meant "Hostveil can
+	// Pending is drawn in the accent, and the
+	// distinction matters: green on this column has meant "Hostveil can
 	// deal with this" since the column existed, and a row whose fix is
 	// written but not in force is not dealt with. The accent is what this
 	// interface spends on "there is something for you here", which is exactly
-	// what is true — the something is a restart.
+	// what is true: the something is a restart.
 	if f.Pending {
 		return s.accent
 	}
@@ -127,7 +127,7 @@ func (s *styles) kindStyle(f model.Finding) lipgloss.Style {
 // sty returns the active styles, building them on first use. The lazy build
 // is deliberate: an appModel is a plain struct that several call sites (and
 // every layout test) construct as a literal, and a zero value must render in
-// the default theme rather than in no colors at all.
+// the default theme.
 func (m *appModel) sty() *styles {
 	if m.st == nil {
 		if m.th.ID == "" {
@@ -181,7 +181,7 @@ func (s *styles) band(v uint8) color.Color {
 // least ink: on a real host, Container at 0, Dockerd at 10 and CVEs at 16
 // filled nothing of six cells while the two clean domains filled all six in
 // green. Scanning the rail, the eye landed on what was fine. Worse, an empty
-// track is what a *skipped* domain is drawn as deliberately — so the two
+// track is what a *skipped* domain is drawn as, so the two
 // states the whole scanner exists to keep apart, "nothing there" and "I could
 // not look", arrived as the same row.
 //
@@ -191,8 +191,8 @@ func (s *styles) band(v uint8) color.Color {
 // The two glyphs a meter is drawn from do not measure the same.
 //
 // █ is East Asian *Ambiguous*, so on a terminal that draws that class
-// double-width — which an operator says with RUNEWIDTH_EASTASIAN=1, and which
-// internal/textwidth explains Hostveil must honour — it is two columns. ░ is
+// double-width (which an operator says with RUNEWIDTH_EASTASIAN=1, and which
+// internal/textwidth explains Hostveil must honour) it is two columns. ░ is
 // not ambiguous and is always one. That asymmetry is why a meter cannot be
 // built by repeating either glyph `width` times, and why it cannot be built by
 // dividing `width` by a single cell size either: the answer differs between
@@ -207,8 +207,8 @@ func meterGlyphWidths() (on, off int) {
 // meterCells is the most filled blocks a budget of `width` columns can hold.
 //
 // It is what "how full is this bar" is measured in, and it is not `width`.
-// Building meters with strings.Repeat("█", width) — a rune count handed a
-// column budget — made every strip on the screen twice as wide as the space
+// Building meters with strings.Repeat("█", width) (a rune count handed a
+// column budget) made every strip on the screen twice as wide as the space
 // computed for it under RUNEWIDTH_EASTASIAN, so the axes rail, the score gauge
 // and the domain meters all composed past the edge of the terminal and were
 // clipped. internal/ui/tui/alignment_test.go skipped itself in that mode from
@@ -236,7 +236,7 @@ func (s *styles) meterAtLeastOne(pct uint8, width int, c color.Color, ran bool) 
 //
 // Exactly, in both modes. Callers lay out around a meter by subtracting its
 // width from their own, so a bar that came out narrower than it was given
-// would pull everything to its right along with it — which is the same defect
+// would pull everything to its right along with it, which is the same defect
 // as the one this function was rewritten to fix, arriving from the other side.
 func (s *styles) meter(pct uint8, width int, c color.Color) string {
 	if width < 1 {
@@ -341,15 +341,15 @@ func (m *appModel) View() tea.View {
 
 	// Paint the terminal background too. Without it a theme only recolors the
 	// text and the terminal's own background shows through every gap, which
-	// reads as a broken palette rather than a chosen one. Bubble Tea resets
-	// this to the terminal's default when the program exits — note that a
+	// reads as a broken palette. Bubble Tea resets
+	// this to the terminal's default when the program exits: note that a
 	// terminal whose background was itself set by an earlier escape sequence
-	// comes back to its default rather than to that value.
+	// comes back to its default and loses that value.
 	return tea.View{Content: content, AltScreen: true, BackgroundColor: s.cInk}
 }
 
 // deltaLine summarises what moved since the previous scan. The CLI prints
-// the same counts and then names the findings; here it stays one line —
+// the same counts and then names the findings; here it stays one line:
 // the list below already shows what is outstanding, and the question this
 // answers is only "did the last round of fixes help?". Nothing is rendered
 // when there is no previous scan to compare against.
@@ -391,14 +391,14 @@ func (m *appModel) listHintFor() string {
 	return listHint
 }
 
-// messageRows draws the one-screen result of an action — a fix applied, a
+// messageRows draws the one-screen result of an action: a fix applied, a
 // rollback done, a batch finished, or the error from any of them.
 //
 // It wraps each line of m.status separately and keeps the blank ones, which
 // is the whole difference from what it did before. The summaries hand it a
 // what-happened line, the facts under it, and a warning below those; wrapping
-// the lot as one paragraph — which is what textwidth.Wrap does, since
-// strings.Fields treats a newline as a space — turned four separate facts
+// the lot as one paragraph (which is what textwidth.Wrap does, since
+// strings.Fields treats a newline as a space) turned four separate facts
 // into a run-on remark that broke wherever the column happened to fall.
 func (m *appModel) messageRows(n int) []string {
 	s := m.sty()
@@ -418,17 +418,17 @@ func (m *appModel) messageRows(n int) []string {
 //
 // It used to be the status line alone, centred in an otherwise empty frame,
 // which answered neither question an operator has while waiting. "Is it
-// hung?" needs to name what is working now — almost always the CVE domain,
+// hung?" needs to name what is working now: almost always the CVE domain,
 // which on a host with many images takes minutes. "How far in?" needs a
 // denominator, which the events cannot supply and the engine can.
 //
-// There is deliberately no estimate of the time remaining. Eleven of the
+// There is no estimate of the time remaining. Eleven of the
 // twelve domains together finish inside a second; the twelfth shells out to
 // Trivy, whose duration depends on the images, their size, and whether the
 // vulnerability database needs downloading first. Nearly all of the unknown
 // is in the one domain nothing can predict, and a number that is confidently
-// wrong for the whole wait is worse than no number — the same reason a
-// skipped domain is scored N/A rather than 100.
+// wrong for the whole wait is worse than no number: the same reason a
+// skipped domain is scored N/A.
 func (m *appModel) scanningRows(n int) []string {
 	s := m.sty()
 	domains := m.scanDomains()
@@ -438,7 +438,7 @@ func (m *appModel) scanningRows(n int) []string {
 		return centerRows(m.wrapRows(s.dim, m.status, m.proseWidth(bodyInset), bodyInset), n)
 	}
 
-	// Narrow enough to read as one block rather than a band across a wide
+	// Narrow enough to read as one block on a wide
 	// terminal, and wide enough for the longest domain name beside its state.
 	width := min(m.proseWidth(bodyInset), 34)
 	head := fmt.Sprintf("Scanning %d of %d domains", m.scanDone, len(domains))
@@ -461,7 +461,7 @@ func (m *appModel) scanningRows(n int) []string {
 // answer. There is no bar, for the reason scanningRows gives for not
 // estimating time remaining: ApplyFix and ApplyBatch return one result each
 // with nothing emitted in between, so a percentage here would have no real
-// denominator behind it. The elapsed clock is what answers "is it hung?" —
+// denominator behind it. The elapsed clock is what answers "is it hung?":
 // the same question scanningRows answers the same way, and often for the
 // same underlying reason: applying a fix re-checks its whole domain
 // afterward, and for a Review fix on a cve.* finding that domain is Trivy.
@@ -493,8 +493,8 @@ func scanPercent(done, total int) uint8 {
 // report a second later.
 //
 // Every piece is measured and cut before it is styled. Truncating the styled
-// row instead cuts inside an escape sequence — truncate counts columns of the
-// bytes it is given, and an escape is bytes with no columns — which puts the
+// row instead cuts inside an escape sequence (truncate counts columns of the
+// bytes it is given, and an escape is bytes with no columns) which puts the
 // sequence's own digits on the screen.
 func (m *appModel) scanDomainRow(src model.Source, width int) string {
 	s := m.sty()
@@ -535,8 +535,7 @@ func formatElapsed(d time.Duration) string {
 // listRows draws the body of the findings screen: the rail, the list and the
 // detail pane side by side, each dropped when the terminal is too narrow.
 //
-// Everything below it is written against a column width rather than the
-// terminal width, which is what lets the same list render at 120 columns and
+// Everything below it is written against a column width, which is what lets the same list render at 120 columns and
 // at 46 without a second code path.
 func (m *appModel) listRows(budget int) []string {
 	if budget <= 0 {
@@ -567,8 +566,8 @@ func (m *appModel) listRows(budget int) []string {
 // paneRows is the detail column: the finding under the cursor, in full.
 //
 // The dashboard's pane shows an overview until something is clicked and the
-// finding after that. A terminal has no "nothing selected" state — the
-// cursor is always on a row — so the pane follows it, which is the closer
+// finding after that. A terminal has no "nothing selected" state (the
+// cursor is always on a row) so the pane follows it, which is the closer
 // translation of what the pane is for: reading the finding without leaving
 // the list.
 func (m *appModel) paneRows(w, budget int) []string {
@@ -583,8 +582,8 @@ func (m *appModel) paneRows(w, budget int) []string {
 	body := indentRows(m.detailBodyRows(f, max(textwidth.MinWrap, min(w-2*paneInset, maxProse))), paneInset)
 	out := make([]string, 0, len(body)+4)
 	out = append(out, body...)
-	// The dashboard closes this pane with a row of buttons — Preview fix,
-	// Explain with AI — and the terminal closed it with nothing, leaving the
+	// The dashboard closes this pane with a row of buttons (Preview fix,
+	// Explain with AI) and the terminal closed it with nothing, leaving the
 	// two keys that act on what the pane is showing documented only in the
 	// footer, among fourteen others. A pane that reads a finding out and then
 	// does not say what can be done about it is where the two interfaces
@@ -593,7 +592,7 @@ func (m *appModel) paneRows(w, budget int) []string {
 	// The divider is drawn at the pane's own width and *not* indented with the
 	// rows around it: it is the one row here that has to meet the separator to
 	// its left, and joinColumns can only turn that meeting into a ├ if the
-	// rule actually reaches the column edge.
+	// rule reaches the column edge.
 	out = append(out, "", m.ruleRowOf(w))
 	out = append(out, indentRows(m.paneActionRows(f), paneInset)...)
 	return m.clipRows(out, budget)
@@ -613,7 +612,7 @@ func (m *appModel) paneActionRows(f model.Finding) []string {
 }
 
 // emptyListRows is what the list column says when there is nothing in it: a
-// clean host, a filter that matched nothing, or a host nobody could look at.
+// clean host, a filter that matched nothing, or a host the scan could not look at.
 //
 // "Clean" is a claim about the whole host, so it may only be made when the
 // whole host was examined. The CLI has always drawn that line; this view and
@@ -627,17 +626,17 @@ func (m *appModel) emptyListRows(chips string, w int) []string {
 	s := m.sty()
 	switch {
 	case m.filterActive():
-		// Asked explicitly rather than inferred from the chip row: the chips
+		// Asked explicitly: the chips
 		// are drawn from the unfiltered report, so they are there whenever the
 		// host has findings at all, filtered or not.
 		return []string{chips, "", indentRows([]string{s.dim.Render("No findings match the filter.")}, bodyInset)[0]}
 	case m.report.IncompleteDomains() > 0:
 		// Wrapped, for the reason the preview's warning is wrapped: this row is
 		// far longer than the "Clean." it replaces, and clipped at the terminal
-		// edge it degrades into "No problems found in the domains that" — which
+		// edge it degrades into "No problems found in the domains that", which
 		// reads as the very claim it exists to withhold.
 		warn := lipgloss.NewStyle().Foreground(s.cHigh)
-		msg := fmt.Sprintf("No problems found in the domains that ran — but %d did not complete.",
+		msg := fmt.Sprintf("No problems found in the domains that ran, but %d did not complete.",
 			m.report.IncompleteDomains())
 		return m.wrapRows(warn, msg, max(textwidth.MinWrap, min(w-2*bodyInset, maxProse)), bodyInset)
 	default:
@@ -724,7 +723,7 @@ func (m *appModel) listColumn(budget, w int) []string {
 	return out
 }
 
-// activeTotal counts findings that are not fixed, ignoring the filter — the
+// activeTotal counts findings that are not fixed, ignoring the filter: the
 // denominator for the "shown/total" indicator.
 func (m *appModel) activeTotal() int {
 	n := 0
@@ -750,10 +749,9 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	s := m.sty()
 	sevC := s.severityColor(f.Severity)
 	gutter := lipgloss.NewStyle().Foreground(sevC).Render("▌")
-	// The marker column is one width for every row, measured rather than
-	// assumed to be two. "·" and the tick are East Asian Ambiguous, so on a
+	// The marker column is one width for every row, and it is measured. "·" and the tick are East Asian Ambiguous, so on a
 	// terminal that draws that class wide they are two columns each and a
-	// marked row started its severity one column right of an unmarked one —
+	// marked row started its severity one column right of an unmarked one:
 	// the whole list stepping in and out down the left edge.
 	markW := m.markColumns()
 	mark := padRight("", markW)
@@ -761,9 +759,9 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 		if m.selected[f.Key()] {
 			mark = s.safe.Render(padRight(m.gl.Of(glyph.OK)+" ", markW))
 		} else {
-			// Safe, not slate. The dot means Hostveil can fix this row by
+			// Safe green. The dot means Hostveil can fix this row by
 			// itself, which is the same claim the FIXABLE chip makes and
-			// spends the same color on — and drawn in the muted grey it was
+			// spends the same color on, and drawn in the muted grey it was
 			// the only mark on the screen that said something while looking
 			// like it did not.
 			mark = s.safe.Render(padRight("· ", markW))
@@ -772,17 +770,17 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	sev := sevAbbr(f.Severity)
 	kind := kindCell(f)
 
-	// Budget the row from what is actually drawn rather than a fixed 46.
+	// Budget the row from what is drawn.
 	// The old constant did not account for the trailing service suffix at
 	// all, so a finding on "cloud/nextcloud-12" overran the terminal by
-	// however long the service name happened to be — and it did not account
+	// however long the service name happened to be, and it did not account
 	// for an ID longer than its field either. Both are host-supplied, so
 	// neither has a safe upper bound.
 	gutterAndMark := lipgloss.Width("▌") + markW
 	idW := m.idColumnWidth(w)
 	body := fmt.Sprintf("%-4s %-*s %-*s ", sev, kindColumns, kind, idW, truncate(f.ID, idW))
 
-	// The suffix is dropped rather than truncated when there is no room for
+	// The suffix is dropped whole when there is no room for
 	// it: a service name cut to "(clo…" identifies nothing, and the title is
 	// the more useful of the two.
 	//
@@ -790,13 +788,13 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	// second thing entirely and only became visible when the list stopped
 	// being the width of the terminal. In a narrow column the suffix fits and
 	// the title does not, so the row came out as "agent.auth-disabled O
-	// (openclaw@root)" — the service named in full beside a single letter of
+	// (openclaw@root)": the service named in full beside a single letter of
 	// the problem. The service qualifies the title; a title with nothing left
 	// of it has nothing to qualify.
 	//
 	// This is computed once, for the cursor row and every other row alike.
 	// It used to be computed twice, and the cursor branch simply did not do
-	// the suffix half — so moving the cursor onto a row erased the one
+	// the suffix half, so moving the cursor onto a row erased the one
 	// column that said which container it was about, on the row the operator
 	// was by definition looking at.
 	const minTitleWidth = 16
@@ -808,7 +806,7 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	title := truncate(f.Title, avail-lipgloss.Width(plainSuffix))
 
 	// The service is set flush right, the way the dashboard's row does it,
-	// rather than trailing the title. Two reasons, and the second is the one
+	// away from the title. Two reasons, and the second is the one
 	// that matters on a wide terminal: it makes a column of service names the
 	// eye can run down, and it stops the service from sliding left to right
 	// with every title length so that "which container is this?" is answered
@@ -816,7 +814,7 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	//
 	// Always, whatever the gap. This used to right-align only where at least
 	// four columns separated the two, on the reasoning that a name one space
-	// from the title is not a column — which is true of that row read on its
+	// from the title is not a column, which is true of that row read on its
 	// own and false of the list it sits in. A row whose title happened to land
 	// three columns short ended three columns short, so the column of service
 	// names ran down the list and then stepped sideways for one row and back,
@@ -829,9 +827,8 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 
 	if cursor {
 		// One Render over the whole row. The suffix cannot carry its own dim
-		// style here — inverse video is the selection, and a second colour
-		// inside it reads as a rendering fault rather than as a quieter
-		// column.
+		// style here: inverse video is the selection, and a second colour
+		// inside it reads as a rendering fault.
 		return gutter + mark + s.sel.Render(padRight(body+title+plainSuffix, w-gutterAndMark))
 	}
 
@@ -858,13 +855,13 @@ const kindColumns = 6
 //
 // A pending row does not report its RemediationKind. The kind answers "what
 // is there to do about this", and for a row Hostveil has already fixed the
-// answer is no longer "auto" — nothing is going to be pressed here, and the
+// answer is no longer "auto": nothing is going to be pressed here, and the
 // row is still on the list only because the change has not reached the host.
 // Showing AUTO there would invite the operator to apply a fix that has
 // already been applied, on the one row where doing so achieves nothing.
 //
-// Abbreviated to fit the column rather than widening it, which is what this
-// column has always done — HIGH, MED, AUTO and N/A are all short for
+// Abbreviated to fit the column, which is what this
+// column has always done: HIGH, MED, AUTO and N/A are all short for
 // something. "PENDING" would have cost every row on every screen a column of
 // title, permanently, to carry a state most rows never enter. The full word
 // is in the JSON, on the dashboard chip and in the sentence under the row,
@@ -882,7 +879,7 @@ func kindAbbr(r model.RemediationKind) string {
 
 // markColumns is the width of the pick-marker column, which is the widest of
 // the three things that can be drawn in it. Two columns on every terminal
-// that draws ambiguous characters narrow, and the point of measuring is the
+// that draws ambiguous characters narrow, and the reason for measuring is the
 // one that does not.
 func (m *appModel) markColumns() int {
 	return max(2, lipgloss.Width(m.gl.Of(glyph.OK)+" "), lipgloss.Width("· "))
@@ -898,7 +895,7 @@ func (m *appModel) markColumns() int {
 // left edge it produced is the first thing the eye catches in a list that is
 // otherwise a grid.
 //
-// So: the widest id actually on screen, floored at the common case so a list
+// So: the widest id on screen, floored at the common case so a list
 // of short ids does not close the gap the titles are read across, and capped
 // at a third of the column so one long id cannot spend the title's room.
 func (m *appModel) idColumnWidth(w int) int {
@@ -913,15 +910,15 @@ func (m *appModel) idColumnWidth(w int) int {
 // batchRow is the terminal's batch bar: the dashboard has a row of buttons
 // over the list saying what a batch would do, and the terminal had the same
 // information only in the footer, where it reads as one more key among
-// fourteen rather than as the state the list is in.
+// fourteen and hides the state the list is in.
 //
-// It says what pressing the key does *now*, which is the whole point — `a`
+// It says what pressing the key does *now*, which is its purpose; `a`
 // applies the marked findings, or every Auto finding when nothing is marked,
 // and those are different enough that a bar naming only one of them would be
 // wrong half the time.
 func (m *appModel) batchRow(w int) string {
 	s := m.sty()
-	// The current filter, not the whole report: `a` applies over the list
+	// The current filter: `a` applies over the list
 	// that is on screen, and a bar counting anything else promises work the
 	// key will not do. See Report.AutoFixable.
 	autos := len(m.report.AutoFixable(m.filter))
@@ -941,7 +938,7 @@ func (m *appModel) batchRow(w int) string {
 // The table it used to hold now lives on model.Source, because the
 // dashboard kept an independent copy of the same nine entries and both
 // went stale together when the sysctl domain landed. One table, two
-// readers. The empty-label fallback is for a domain added without one —
+// readers. The empty-label fallback is for a domain added without one:
 // an ugly name beats a blank filter line that says nothing is filtered.
 func sourceLabel(s model.Source) string {
 	if l := s.Label(); l != "" {
@@ -954,8 +951,8 @@ func sourceLabel(s model.Source) string {
 //
 // It replaces a line that appeared only while a filter was set and named
 // what it was. That told the user what they had just pressed and nothing
-// else: the shape of the report — how much of a wall of findings is
-// High, how much of it Hostveil can fix on its own — was reachable only
+// else: the shape of the report (how much of a wall of findings is
+// High, how much of it Hostveil can fix on its own) was reachable only
 // by scrolling and counting, in the one interface where scrolling is most
 // expensive. The dashboard has never made anyone do that, and this is its
 // chip bar: a count per severity, the fixable count, and the active filter
@@ -966,8 +963,8 @@ func sourceLabel(s model.Source) string {
 // than the host, and the number a narrowed list most needs beside it is what
 // it was narrowed from.
 //
-// The severity threshold is a range, not a selection, so every chip at or
-// above it reads as active — anything else would dim the HIGH chip on a
+// The severity threshold is a range, so every chip at or
+// above it reads as active; anything else would dim the HIGH chip on a
 // list that is showing exactly the High findings.
 func (m *appModel) chipRow(w int) string {
 	s := m.sty()
@@ -992,7 +989,7 @@ func (m *appModel) chipRow(w int) string {
 		chips = append(chips, chipSpec{fmt.Sprintf("%s %d", sevAbbr(sev), n), on, s.severityColor(sev)})
 	}
 	if fixable > 0 {
-		// Safe rather than the dashboard's slate. "Fixable" is a claim about
+		// Safe green, unlike the dashboard's slate. "Fixable" is a claim about
 		// safety, which is the one thing besides risk this design system lets
 		// a color mean, and spending it here is what makes the count read as
 		// the good news it is.
@@ -1005,8 +1002,7 @@ func (m *appModel) chipRow(w int) string {
 }
 
 // chipSpec is one chip before it is drawn. The row has to decide which chips
-// survive a narrow column, and that decision is about the chip rather than
-// about the escape sequences it renders to.
+// survive a narrow column, and that decision is about the chip itself.
 type chipSpec struct {
 	label string
 	on    bool
@@ -1016,14 +1012,14 @@ type chipSpec struct {
 // fitChips joins the chips that fit and says how many did not.
 //
 // Clipping the joined row instead is what the frame used to do, and it cut
-// through a chip rather than between two: the console arrangement narrows the
+// through the middle of a chip: the console arrangement narrows the
 // list column enough that "FIXABLE 38" came out as "FIXABLE 3". A truncated
 // label is obviously truncated; a truncated *count* is a different number,
 // and this row exists to be read as numbers.
 //
 // A chip that is on is never dropped. The fill is what says which filter is
 // running, and for the domain filter this row is the only place the domain is
-// named at all — the head line's "FINDINGS · 3/26" says the list is narrowed
+// named at all: the head line's "FINDINGS · 3/26" says the list is narrowed
 // but not by what. So the active ones are kept and the rest fill the room
 // that is left, in their own order.
 func (m *appModel) fitChips(chips []chipSpec, w int) string {
@@ -1086,11 +1082,11 @@ func (m *appModel) fitChips(chips []chipSpec, w int) string {
 }
 
 // chip draws one filter chip the way the dashboard's stylesheet does: the
-// chip's own color on the page while it is merely available, and filled —
-// ink on that color — while it is on.
+// chip's own color on the page while it is merely available, and filled
+// (ink on that color) while it is on.
 //
 // The fill is an attribute, so it does not survive being stripped of
-// styling, and it is deliberately not the only thing carrying the state:
+// styling, and it is not the only thing carrying the state:
 // the head line above prints the narrowed count over the unnarrowed one
 // ("FINDINGS · 3/26"), which is what a monochrome terminal, a pipe and a
 // screenshot all still show.
@@ -1104,8 +1100,8 @@ func (m *appModel) chip(label string, on bool, c color.Color) string {
 // coverageRows names the domains that did not fully cover their ground, with
 // the reason each gave.
 //
-// The axes strip already marks them — "N/A" for a domain that did not run,
-// a "~" on a degraded score — but a mark is not an answer. It says a number
+// The axes strip already marks them: "N/A" for a domain that did not run,
+// a "~" on a degraded score, but a mark is not an answer. It says a number
 // is missing without saying whether the host has no Docker, or the daemon
 // refused, or the scan ran as a user who cannot read the socket, which are
 // the difference between "nothing to see" and "look again with sudo". The
@@ -1114,9 +1110,8 @@ func (m *appModel) chip(label string, on bool, c color.Color) string {
 //
 // One row per notice, most severe state first, so a run that is capped or
 // shed keeps the alarming ones and drops the routine ones. Reasons are
-// truncated with an ellipsis rather than left for the frame to cut at the
-// terminal edge: a sentence that stops mid-word reads as a rendering fault,
-// and one that stops at "…" reads as a sentence with more to it — which the
+// truncated with an ellipsis before the terminal edge: a sentence that stops mid-word reads as a rendering fault,
+// and one that stops at "…" reads as a sentence with more to it, which the
 // CLI will print in full.
 func (m *appModel) coverageRows() []string {
 	s := m.sty()
@@ -1138,15 +1133,15 @@ func (m *appModel) coverageRows() []string {
 
 	rows := append(append(errored, degraded...), skipped...)
 	// A host with no Docker, no Trivy and no systemd contributes four of
-	// these, and one that could scan nothing at all would contribute twelve —
+	// these, and one that could scan nothing at all would contribute twelve;
 	// a header taller than the list it is heading. The frame's own fallback
-	// bounds that (it drops the whole region rather than squeezing the body),
+	// bounds that (it drops the whole region),
 	// but dropping every notice because there are many is the wrong end to
 	// give way at: the first ones are the ones a reader acts on.
 	if len(rows) > maxCoverageRows {
 		hidden := len(rows) - (maxCoverageRows - 1)
 		rows = rows[:maxCoverageRows-1]
-		rows = append(rows, s.dim.Render(fmt.Sprintf("%s %d more domain(s) did not fully run — hostveil scan lists them", m.gl.Of(glyph.Skipped), hidden)))
+		rows = append(rows, s.dim.Render(fmt.Sprintf("%s %d more domain(s) did not fully run; hostveil scan lists them", m.gl.Of(glyph.Skipped), hidden)))
 	}
 	return rows
 }
@@ -1163,7 +1158,7 @@ func (m *appModel) notice(marker, name, state, reason, fallback string) string {
 }
 
 // filterActive reports whether the list is narrowed. The chip row shows the
-// filter's *state*, so it cannot answer this — it is drawn either way.
+// filter's *state*, so it cannot answer this: it is drawn either way.
 func (m *appModel) filterActive() bool {
 	return m.filter.MinSeverity != nil || m.filter.Source != model.SourceUnset || m.filter.FixableOnly
 }
@@ -1175,8 +1170,8 @@ func reasonOr(reason, fallback string) string {
 	return reason
 }
 
-// sevAbbr upper-cases the model's abbreviation rather than keeping a
-// second table of its own. The abbreviations are pinned to four characters
+// sevAbbr upper-cases the model's abbreviation, so there is no
+// second table. The abbreviations are pinned to four characters
 // there, which is the width findingRow pads this column to.
 func sevAbbr(s model.Severity) string {
 	return strings.ToUpper(s.Abbr())
@@ -1184,7 +1179,7 @@ func sevAbbr(s model.Severity) string {
 
 // serviceLabel is the unstyled suffix. It is unstyled because the cursor row
 // needs the same text inside one inverse-video Render, and a pre-styled
-// string cannot be put there — which is how the cursor row came to be built
+// string cannot be put there, which is how the cursor row came to be built
 // by a separate branch that dropped the suffix entirely.
 func serviceLabel(f model.Finding) string {
 	if f.Service == "" {
@@ -1203,8 +1198,7 @@ func (m *appModel) detailRows() []string {
 
 // detailBodyRows is one finding written out, wrapped to w.
 //
-// It takes the finding and the width rather than reading the cursor and
-// m.width because three things now render it: the full-screen detail view,
+// It takes the finding and the width as arguments because three things now render it: the full-screen detail view,
 // the detail pane beside the list, and the block that opens inline under a
 // row. They differ in how much room they have and in nothing else, and a
 // second copy of this text is a second place for the AI box to be forgotten.
@@ -1217,7 +1211,7 @@ func (m *appModel) detailBodyRows(f model.Finding, w int) []string {
 //
 // It is split from the facts because the inline block does not want it. That
 // block is drawn immediately under the list row for the same finding, and the
-// row above it already carries the severity and the id — so two of these three
+// row above it already carries the severity and the id, so two of these three
 // lines said again, four columns to the right, what the reader had just read.
 // The facts below are the same text in all three places and stay in one copy,
 // which is what the note on detailBodyRows is protecting.
@@ -1250,10 +1244,9 @@ func (m *appModel) detailFactsRows(f model.Finding, w int) []string {
 		out = append(out, "", s.accent.Render("HOW TO FIX"))
 		out = append(out, styledRows(s.bone, wrap(f.HowToFix, w))...)
 	}
-	// Under the instructions, not above them: a reader with no fix button
+	// Under the instructions: a reader with no fix button
 	// still needs the how-to first, and this answers the question they ask
-	// second. Dim, because it explains an absence rather than asking for
-	// anything.
+	// second. Dim, because it only explains an absence.
 	if f.WhyNoFix != "" {
 		out = append(out, "", s.accent.Render("WHY THERE IS NO FIX BUTTON"))
 		out = append(out, styledRows(s.dim, wrap(f.WhyNoFix, w))...)
@@ -1282,7 +1275,7 @@ func (m *appModel) previewRows() []string {
 	// What this fix is, before what it does. The header above carries only the
 	// fix's label, so the screen an operator reads immediately before pressing
 	// y did not name the finding it repairs, whether Hostveil considers it
-	// safe to apply unattended, or the file it edits — while the rollback
+	// safe to apply unattended, or the file it edits, while the rollback
 	// confirmation, which asks a strictly smaller question, said all three.
 	meta := strings.ToUpper(m.preview.FindingID + "  ·  " + m.preview.Kind.String())
 	if p := m.preview.Actions[clamp(m.previewAction, 0, len(m.preview.Actions)-1)].Path; p != "" {
@@ -1317,10 +1310,9 @@ func (m *appModel) previewRows() []string {
 	}
 	if a.Warning != "" {
 		// It is the one place the preview explains what cannot be undone, and
-		// unwrapped it ran past the terminal edge and was clipped mid-sentence
-		// — cut, in the exec case, at "There is no rollback" with the reason
-		// that follows lost. Hanging, so the continuation sits under the text
-		// rather than under the marker.
+		// unwrapped it ran past the terminal edge and was clipped mid-sentence;
+		// cut, in the exec case, at "There is no rollback" with the reason
+		// that follows lost. Hanging, so the continuation sits under the text.
 		out = append(out, m.hangingRows(lipgloss.NewStyle().Foreground(s.cHigh),
 			m.gl.Of(glyph.Warning)+"  ", a.Warning, m.proseWidth(bodyInset), bodyInset)...)
 		out = append(out, "")
@@ -1338,8 +1330,8 @@ func (m *appModel) previewRows() []string {
 			}
 		}
 		// The reassurance belongs on the screen where the decision is made.
-		// An exec action already says the opposite here, through its warning
-		// — "there is no rollback checkpoint" — and saying only the alarming
+		// An exec action already says the opposite here, through its warning;
+		// "there is no rollback checkpoint", and saying only the alarming
 		// half leaves the operator to infer the safe half from its absence.
 		out = append(out, "")
 		if a.Irreversible {
@@ -1367,7 +1359,7 @@ func (m *appModel) previewRows() []string {
 }
 
 // historyRows lists every applied fix, newest first, so a fix applied here
-// can be undone here rather than only from the CLI. Non-reversible
+// can be undone here as well as from the CLI. Non-reversible
 // (command) fixes are dimmed: they are part of the record but there is
 // nothing file-backed to restore.
 func (m *appModel) historyRows(budget int) []string {
@@ -1394,7 +1386,7 @@ func (m *appModel) historyRows(budget int) []string {
 
 	// Chrome is the header, plus the trend and the warning when there is
 	// room. They are shed in that order as the terminal shrinks: a shape is
-	// the first thing to lose, then the warning, and the header last —
+	// the first thing to lose, then the warning, and the header last;
 	// a list with no header is still a list.
 	chrome := 1
 	if warn != "" {
@@ -1444,9 +1436,9 @@ func (m *appModel) historyRows(budget int) []string {
 
 // checkpointRow is one applied fix: when, what it was about, what it did.
 //
-// The id column is measured, not assumed. At a fixed %-15s every id longer
-// than fifteen — firewall.inactive, fileperms.sshd-config, updates.disabled, all
-// of them ordinary — pushed its own label right, so the labels stepped in and
+// The id column is measured. At a fixed %-15s every id longer
+// than fifteen (firewall.inactive, fileperms.sshd-config, updates.disabled, all
+// of them ordinary) pushed its own label right, so the labels stepped in and
 // out down a list whose whole job is to be scanned for the one you want to
 // undo.
 func (m *appModel) checkpointRow(cp model.Checkpoint, cursor bool, idW int) string {
@@ -1479,17 +1471,17 @@ func (m *appModel) checkpointIDWidth() int {
 }
 
 // themeRows is the color-theme picker. Moving the cursor restyles the whole
-// frame on the spot rather than showing a swatch and a name: a palette is
+// frame on the spot: a palette is
 // only judgeable against the meters, severity gutters and diffs it will
-// actually be drawn with.
+// be drawn with.
 func (m *appModel) themeRows() []string {
 	s := m.sty()
 	out := []string{""}
 
 	all := theme.All()
 	// A row is "› " + an 18-column name + a two-space gap + five two-column
-	// swatches. The swatch is dropped rather than clipped on a terminal too
-	// narrow for it — half a palette says less than none.
+	// swatches. The swatch is dropped whole on a terminal too
+	// narrow for it: half a palette says less than none.
 	const nameW, swatchW = 18, 10
 	showSwatch := m.width >= 2+nameW+2+swatchW
 	for i, t := range all {
@@ -1516,7 +1508,7 @@ func (m *appModel) themeRows() []string {
 	return out
 }
 
-// exportFormatNote is one clause of context per format — core.FormatInfo
+// exportFormatNote is one clause of context per format: core.FormatInfo
 // carries only a label, and a picker choosing between formats needs to
 // say what each is for.
 func exportFormatNote(id string) string {
@@ -1564,7 +1556,7 @@ func (m *appModel) exportPickerRows() []string {
 }
 
 // exportPathRows shows the free-text destination field with a visible
-// cursor — a styled space at exportPathCursor, the same idea the picker
+// cursor: a styled space at exportPathCursor, the same idea the picker
 // rows use for a selection marker, adapted to a caret position.
 func (m *appModel) exportPathRows() []string {
 	s := m.sty()
@@ -1582,7 +1574,7 @@ func (m *appModel) exportPathRows() []string {
 	row := s.bone.Render(before) + s.sel.Render(at) + s.bone.Render(after)
 	out = append(out, "  "+row)
 	out = append(out, "")
-	out = append(out, styledRows(s.dim, wrap("Every character is editable — this is only a starting point.",
+	out = append(out, styledRows(s.dim, wrap("Every character is editable; this is only a starting point.",
 		min(m.width-2, 78)))...)
 	return out
 }
@@ -1598,8 +1590,8 @@ func (m *appModel) adviceRows() []string {
 
 	desc := m.aiContext
 	if desc == "" {
-		out = append(out, styledRows(s.dim, wrap("No host description saved — press c to add one so a "+
-			"verdict can be judged for this host specifically, not in general.", w))...)
+		out = append(out, styledRows(s.dim, wrap("No host description saved; press c to add one so a "+
+			"verdict can be judged for this host specifically.", w))...)
 	} else {
 		out = append(out, s.accent.Render("THIS HOST"))
 		out = append(out, styledRows(s.bone, wrap(desc, w))...)
@@ -1623,11 +1615,11 @@ func (m *appModel) adviceRows() []string {
 	return out
 }
 
-// aiContextRows is the free-text host-description editor — the same
+// aiContextRows is the free-text host-description editor: the same
 // cursor-rendering shape as exportPathRows, applied to a different field.
 func (m *appModel) aiContextRows() []string {
 	s := m.sty()
-	out := []string{"", s.dim.Render("Describe this host in one line — its purpose, and whether it favors staying current or staying stable:")}
+	out := []string{"", s.dim.Render("Describe this host in one line; its purpose, and whether it favors staying current or staying stable:")}
 
 	before := string(m.aiContextText[:m.aiContextCursor])
 	at := " "
@@ -1641,13 +1633,13 @@ func (m *appModel) aiContextRows() []string {
 	row := s.bone.Render(before) + s.sel.Render(at) + s.bone.Render(after)
 	out = append(out, "  "+row)
 	out = append(out, "")
-	out = append(out, styledRows(s.dim, wrap("Used by every AI explanation from here on, not just this screen.",
+	out = append(out, styledRows(s.dim, wrap("Used by every AI explanation from here on, on every screen.",
 		min(m.width-2, 78)))...)
 	return out
 }
 
 // swatch previews the five colors that carry meaning, in that theme's own
-// palette rather than the active one.
+// palette.
 func swatch(t theme.Theme) string {
 	var b strings.Builder
 	for _, hex := range []string{t.Palette.Crit, t.Palette.High, t.Palette.Med, t.Palette.Low, t.Palette.Safe} {
@@ -1714,7 +1706,7 @@ func (m *appModel) forceRows() []string {
 }
 
 // overflowTail is how a strip that gets exactly one row says what it could
-// not fit. Two of them need it — the axes spark and the chip row — and a
+// not fit. Two of them need it (the axes spark and the chip row) and a
 // second spelling of the same idea is how "+3" and "3 more" end up on
 // adjacent rows meaning the same thing.
 //
@@ -1730,7 +1722,7 @@ func (m *appModel) overflowTail(n int) string {
 
 // wrapHint reflows a key-binding hint onto as many lines as the terminal
 // needs. The hints are written as fixed two-line strings, and the longer of
-// the two is 75 columns — wider than a 72-column pane, where it wrapped and
+// the two is 75 columns: wider than a 72-column pane, where it wrapped and
 // pushed the frame. Items are separated by three spaces, which is the only
 // place a break is legible.
 func (m *appModel) wrapHint(hint string) string {
@@ -1814,7 +1806,7 @@ func scrollOffset(cursor, total, visible, offset int) int {
 // It used to count runes, which is right for ASCII and wrong for anything
 // wider: a Hangul or CJK cell handed a 20-column budget came back 34
 // columns and pushed the row past the edge of the terminal. padRight, three
-// lines below, has always measured columns — so the two disagreed about the
+// lines below, has always measured columns, so the two disagreed about the
 // same row.
 func truncate(s string, max int) string { return textwidth.Truncate(s, max) }
 
@@ -1828,8 +1820,8 @@ func padRight(s string, n int) string {
 // --- indentation ---------------------------------------------------------
 //
 // The dashboard pads a region and lets everything inside it align to that
-// padding — `.detail { padding: 16px 22px }`, the filter bar and the batch
-// bar `9px 14px` — so a paragraph that wraps keeps its left edge, because
+// padding: `.detail { padding: 16px 22px }`, the filter bar and the batch
+// bar `9px 14px`, so a paragraph that wraps keeps its left edge, because
 // the padding belongs to the box and not to the first line of what is in it.
 // A terminal has to do that by hand, and where this did not, it showed:
 //
@@ -1846,7 +1838,7 @@ func padRight(s string, n int) string {
 //	bodyInset  the left margin of a full-screen body
 //	paneInset  the same inside a column, where the separator is the edge and
 //	           a second column of margin is one the list wanted
-//	stepInset  a nested list under a label — options, paths, commands
+//	stepInset  a nested list under a label; options, paths, commands
 const (
 	bodyInset = 2
 	paneInset = 1
@@ -1855,7 +1847,7 @@ const (
 
 // maxProse caps a line of running text at the measure the dashboard caps it
 // at (`.detail p { max-width: 74ch }`), so a 200-column terminal sets the
-// same paragraph the browser does rather than one 200 columns wide.
+// same paragraph the browser does.
 const maxProse = 74
 
 // proseWidth is how wide running text is set inside a region with this
@@ -1865,7 +1857,7 @@ func (m *appModel) proseWidth(inset int) int {
 }
 
 // indentRows shifts every row right, wrapped continuations included. Blank
-// rows stay blank rather than becoming rows of spaces.
+// rows stay blank.
 func indentRows(rows []string, n int) []string {
 	if n <= 0 {
 		return rows
@@ -1890,9 +1882,8 @@ func (m *appModel) wrapRows(st lipgloss.Style, text string, contentW, n int) []s
 	return indentRows(styledRows(st, wrap(text, max(textwidth.MinWrap, contentW))), n)
 }
 
-// hangingRows is wrapRows for a block led by a marker — the ⚠ of a warning —
-// where the continuation lines align under the text rather than under the
-// marker.
+// hangingRows is wrapRows for a block led by a marker (the ⚠ of a warning)
+// where the continuation lines align under the text.
 func (m *appModel) hangingRows(st lipgloss.Style, marker, text string, contentW, n int) []string {
 	lead := lipgloss.Width(marker)
 	lines := strings.Split(wrap(text, max(textwidth.MinWrap, contentW-lead)), "\n")
@@ -1910,7 +1901,7 @@ func (m *appModel) hangingRows(st lipgloss.Style, marker, text string, contentW,
 // wrap reflows s to width display columns.
 //
 // It used to count bytes, so Hangul wrapped at roughly two-thirds of the
-// width it was given — 24 columns used of 40. `explain --ai` renders
+// width it was given: 24 columns used of 40. `explain --ai` renders
 // whatever the local model wrote, which is the path that reaches this with
 // text the byte count is wrong about.
 func wrap(s string, width int) string { return textwidth.Wrap(s, width, "") }
@@ -1922,7 +1913,7 @@ func wrap(s string, width int) string { return textwidth.Wrap(s, width, "") }
 // helped. "Since last scan" already sits on the findings list and answers
 // only about the most recent round.
 //
-// Nothing is drawn for a single scan — a sparkline of one point is a shape
+// Nothing is drawn for a single scan: a sparkline of one point is a shape
 // with no information in it, and a first run should not be handed a chart
 // that implies a history it does not have.
 func (m *appModel) trendLine() string {
@@ -1931,11 +1922,11 @@ func (m *appModel) trendLine() string {
 	}
 	s := m.sty()
 
-	// The most recent scans, not the oldest, when the terminal cannot hold
+	// The most recent scans when the terminal cannot hold
 	// them all. The label and the two scores cost about 24 columns.
 	//
-	// In points, not columns: every bar in the ramp — ▁▂▃▄▅▆▇█ and the · a
-	// scan with no score contributes — is East Asian Ambiguous, so on a
+	// In points: every bar in the ramp (▁▂▃▄▅▆▇█ and the · a
+	// scan with no score contributes) is East Asian Ambiguous, so on a
 	// terminal that draws that class wide each point is two columns and this
 	// line would be twice the space budgeted for it. Same arithmetic as
 	// meterCells, one screen over.

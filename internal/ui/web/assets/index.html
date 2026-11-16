@@ -6,7 +6,7 @@
   <title>Hostveil</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <!-- Generated from internal/ui/theme: the palettes, then the layout that
-       draws from them. theme.js is blocking and in <head> on purpose — it
+       draws from them. theme.js is blocking and in <head>: it
        restores the saved theme before the first paint, and the page's CSP
        (default-src 'self') rules out doing that inline. -->
   <link rel="stylesheet" href="/themes.css">
@@ -18,7 +18,7 @@
   <script src="/model.js"></script>
 </head>
 <body>
-  <!-- The rail is a sibling of everything else, not a child of it, so it
+  <!-- The rail is a sibling of everything else, so it
        runs the full height of the window beside .stack. -->
   <aside class="rail" id="rail"></aside>
 

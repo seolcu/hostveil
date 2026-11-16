@@ -50,7 +50,7 @@ func TestListenersParsesSsOutput(t *testing.T) {
 }
 
 // The header row and unparseable junk are skipped, never surfaced as an
-// error — one odd line must not cost us the whole socket table.
+// error: one odd line must not cost us the whole socket table.
 func TestListenersSkipsHeaderAndGarbage(t *testing.T) {
 	ls, err := Listeners(context.Background(), ssRunner{out: "State Recv-Q Send-Q Local\nnonsense\n\n"})
 	if err != nil {

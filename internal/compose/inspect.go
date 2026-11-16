@@ -19,7 +19,7 @@ const composeProjectLabel = "com.docker.compose.project"
 // Container is a running container that no compose file describes, normalized
 // into the same Service shape the compose rules already audit.
 //
-// The two are deliberately not interchangeable. A compose service can be
+// The two are not interchangeable. A compose service can be
 // fixed by editing its file; a container started with `docker run` has no
 // file to edit, and its settings live only in the daemon's record of how it
 // was created. Callers must not offer a file-editing fix for one of these.
@@ -35,7 +35,7 @@ type Container struct {
 //
 // Without this the compose and CVE checkers see only what `docker compose ls`
 // reports, so a hand-started `docker run -d --privileged -p 6379:6379 redis`
-// — the most dangerous object likely to be on the box — produced no findings
+// (the most dangerous object likely to be on the box) produced no findings
 // on either of the two highest-weighted axes. Those axes were not reporting
 // "nothing wrong"; they were reporting on a subset of the containers and
 // scoring as if it were all of them.
@@ -112,7 +112,7 @@ func parseInspect(raw []byte) ([]Container, error) {
 
 // toService maps the daemon's record of a container onto the Service fields
 // the rules read. Fields with no meaningful runtime equivalent are left zero
-// and the caller skips the rules that depend on them — see the checker.
+// and the caller skips the rules that depend on them: see the checker.
 func (e dockerContainer) toService(name string) Service {
 	s := Service{
 		Name:        name,
@@ -166,7 +166,7 @@ func inspectPorts(bindings map[string][]hostIP) []Port {
 	}
 	// Map iteration order is random and these ports reach a finding's
 	// evidence, so a stable order keeps repeat scans from producing a delta
-	// that reports a change nobody made.
+	// that reports a change that did not happen.
 	sort.Slice(ports, func(i, j int) bool {
 		if ports[i].HostPort != ports[j].HostPort {
 			return ports[i].HostPort < ports[j].HostPort

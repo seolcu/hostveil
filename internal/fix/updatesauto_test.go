@@ -7,8 +7,8 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// The most ordinary hardening step on a Debian host — switching automatic
-// security updates on — was Review, and only because the one fix Hostveil had
+// The most ordinary hardening step on a Debian host (switching automatic
+// security updates on) was Review, and only because the one fix Hostveil had
 // ran `apt-get install`. On the common host the package is already there and
 // the whole remediation is two lines in a config file, which is a file edit:
 // reversible from a checkpoint, and something `fix --all` can do on its own.
@@ -29,7 +29,7 @@ func TestAutoUpdatesIsAnEditWhenTheMechanismIsAlreadyInstalled(t *testing.T) {
 		t.Fatalf("no fix for an installed mechanism: %v", err)
 	}
 	if got := fx.EffectiveKind(); got != model.RemediationAuto {
-		t.Errorf("EffectiveKind = %v, want Auto — an edit needs no human", got)
+		t.Errorf("EffectiveKind = %v, want Auto; an edit needs no human", got)
 	}
 	if len(fx.Actions) != 1 || fx.Actions[0].Kind != ActionEdit {
 		t.Fatalf("want one edit action, got %+v", fx.Actions)
@@ -50,7 +50,7 @@ func TestAutoUpdatesIsAnEditWhenTheMechanismIsAlreadyInstalled(t *testing.T) {
 		}
 	}
 
-	// An existing assignment is rewritten, not appended to: apt reads the last
+	// An existing assignment is rewritten: apt reads the last
 	// one, so appending leaves the file saying both things.
 	out, err = fx.Actions[0].Transform([]byte("APT::Periodic::Update-Package-Lists \"0\";\nAPT::Periodic::Unattended-Upgrade \"0\";\n"))
 	if err != nil {
@@ -77,7 +77,7 @@ func TestAutoUpdatesStillInstallsWhenTheMechanismIsMissing(t *testing.T) {
 		t.Fatalf("want an exec action to install the package, got %v", fx.Actions[0].Kind)
 	}
 	if got := fx.EffectiveKind(); got != model.RemediationReview {
-		t.Errorf("EffectiveKind = %v, want Review — an install has no checkpoint", got)
+		t.Errorf("EffectiveKind = %v, want Review; an install has no checkpoint", got)
 	}
 }
 

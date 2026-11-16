@@ -23,8 +23,8 @@ type Project struct {
 	// File is the first config file, which is what a project is named after
 	// in a message. It is NOT the file a fix should edit: on a layered
 	// project the merged state is what docker runs, and the setting that
-	// decides it may be declared in any of Files — or, for the sequence-typed
-	// keys compose appends rather than replaces, in several at once.
+	// decides it may be declared in any of Files, or, for the sequence-typed
+	// keys compose appends, in several at once.
 	File string
 	// Files is every config file docker composes this project from, in the
 	// order it applies them. Later files win for scalars; ports and volumes
@@ -54,8 +54,7 @@ type Service struct {
 	EnvFile     StringOrList `yaml:"env_file"`
 	// Command is the service's argv override, and it is where a reverse
 	// proxy's most dangerous setting usually lives: nearly every Traefik
-	// tutorial passes `--api.insecure=true` here rather than in a config
-	// file. StringOrList because compose accepts both the shell form and the
+	// tutorial passes `--api.insecure=true` here. StringOrList because compose accepts both the shell form and the
 	// exec form.
 	Command     StringOrList      `yaml:"command"`
 	Healthcheck *yaml.Node        `yaml:"healthcheck"`
@@ -136,11 +135,11 @@ func (p *Port) parseShort(s string) error {
 	parts := strings.Split(s, ":")
 	switch len(parts) {
 	case 1:
-		// container-only, e.g. "80" — not published to the host.
+		// container-only, e.g. "80", not published to the host.
 		p.ContainerPort = parts[0]
 		p.Published = false
 	case 2:
-		// HOST:CONTAINER — published on all interfaces.
+		// HOST:CONTAINER; published on all interfaces.
 		p.HostPort = parts[0]
 		p.ContainerPort = parts[1]
 		p.Published = true
@@ -264,10 +263,10 @@ func (s *StringOrList) UnmarshalYAML(node *yaml.Node) error {
 // ServiceNames returns the project's service names in a stable order.
 //
 // Ranging a Project's map directly varies the order between runs, which
-// decides which service's failure is reported as the first one — so both
+// decides which service's failure is reported as the first one, so both
 // container checkers sorted, and both wrote out the same six lines to do it.
 // Only one of the two copies carried that sentence, which made the other the
-// one that could quietly stop sorting.
+// one that could silently stop sorting.
 func (p Project) ServiceNames() []string {
 	names := make([]string, 0, len(p.Services))
 	for name := range p.Services {

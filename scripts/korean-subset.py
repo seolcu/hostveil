@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Rebuild site/assets/fonts/ — the Korean webfonts the Korean site is set in.
+"""Rebuild site/assets/fonts/: the Korean webfonts the Korean site is set in.
 
     pip install fonttools brotli
     python3 scripts/korean-subset.py
 
 Why the site ships a font at all. The site is set in the reader's own system
-face — San Francisco, Segoe UI, whatever the desktop uses — and for Latin that
+face (San Francisco, Segoe UI, whatever the desktop uses) and for Latin that
 is the whole story. For Hangul it is not: a Mac draws it in Apple SD Gothic
 Neo, Windows in Malgun Gothic, and a Linux desktop in whatever the
 distribution happened to install, often under a name the stack did not ask
@@ -19,24 +19,24 @@ Myeongjo) for the body beside this sans for the labels. The brand moved to a
 single sans, and a second Korean face would now only be a second voice.
 
 Why a subset. Korean is 11,172 syllables and the full face is megabytes. The
-whole Korean site — 16 pages — uses 766 of them, so the subset is the site's
+whole Korean site (16 pages) uses 766 of them, so the subset is the site's
 own repertoire and nothing else, which is what gets a weight down to
 about 50KB. **This is why internal/docs/koreanfont_test.go exists**: a subset
 is silent when it is wrong. Write one new Korean sentence with one syllable
 that was not in the site when this ran, and that syllable alone falls back to
-a system font mid-word — a different face, a different weight, at a size
-nobody chose. It is invisible to anyone reviewing the diff and invisible to
+a system font mid-word: a different face, a different weight, at a size
+no one chose. It is invisible to anyone reviewing the diff and invisible to
 anyone whose system font happens to look close enough. The manifest this
 writes is what the test reads, so the build fails instead.
 
 Hangul only. Every @font-face in site/korean.css carries a unicode-range of
 the Hangul blocks, so Latin, digits and punctuation keep coming from the
 system face exactly as they do on the English pages, and an
-English page — which contains three Hangul syllables, the 한국어 switcher —
+English page (which contains three Hangul syllables, the 한국어 switcher)
 downloads none of this. That is also why the subset drops the Latin the source
 faces carry: unicode-range means it could never be reached.
 
-Not byte-reproducible, deliberately. woff2 output depends on the fonttools and
+Not byte-reproducible. woff2 output depends on the fonttools and
 brotli versions, so this is not wired into the `git diff --exit-code site/`
 gate the way cmd/sitegen is. What is pinned is coverage, which does not depend
 on either.
@@ -56,10 +56,10 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 KO_HTML = ROOT / "site" / "ko"
 OUT = ROOT / "site" / "assets" / "fonts"
 
-# Pinned to a commit rather than to main: this has to fetch the same bytes in a
+# Pinned to a commit: this has to fetch the same bytes in a
 # year's time, and google/fonts rebuilds these files in place. The digest is
-# checked as well, so a URL that starts answering with something else is loud
-# rather than quietly baked into the next subset.
+# checked as well, so a URL that starts answering with something else fails
+# loudly.
 UPSTREAM = "https://raw.githubusercontent.com/google/fonts/e1118da94a8cb00cf6d06cdac9ef13eb1e5c6ab7"
 
 SOURCES = [
@@ -76,9 +76,8 @@ SOURCES = [
 ]
 
 # The blocks site/korean.css declares as the unicode-range. Syllables are what
-# modern Korean is actually written in; the jamo blocks are here so that a
-# stray ㄱ or a decomposed syllable is covered rather than being the one
-# character on the page in another face.
+# modern Korean is written in; the jamo blocks are here so that a
+# stray ㄱ or a decomposed syllable is covered.
 HANGUL_BLOCKS = [
     (0x1100, 0x11FF),  # Hangul Jamo
     (0x3130, 0x318F),  # Hangul Compatibility Jamo
@@ -96,13 +95,13 @@ def in_hangul(ch: str) -> bool:
 def site_hangul() -> list[str]:
     """Every Hangul codepoint the generated Korean site contains.
 
-    The whole file is read, not just the text nodes: an aria-label and a title
+    The whole file is read, attributes included: an aria-label and a title
     attribute are read aloud and shown in a tooltip, so a syllable there needs
     a glyph as much as one in a paragraph does.
     """
     pages = sorted(KO_HTML.rglob("*.html"))
     if not pages:
-        sys.exit(f"no pages under {KO_HTML} — run `go run ./cmd/sitegen` first")
+        sys.exit(f"no pages under {KO_HTML}; run `go run ./cmd/sitegen` first")
     seen: set[str] = set()
     for page in pages:
         seen.update(c for c in page.read_text(encoding="utf-8") if in_hangul(c))
@@ -136,7 +135,7 @@ def run(*argv: str) -> None:
 def main() -> None:
     for tool in ("fonttools", "pyftsubset"):
         if subprocess.run(["which", tool], capture_output=True).returncode != 0:
-            sys.exit(f"{tool} not found — pip install fonttools brotli")
+            sys.exit(f"{tool} not found; pip install fonttools brotli")
 
     chars = site_hangul()
     print(f"{len(chars)} distinct Hangul codepoints across {len(list(KO_HTML.rglob('*.html')))} Korean pages")
@@ -184,7 +183,7 @@ def main() -> None:
         "# The Korean webfonts under site/assets/fonts/ carry exactly the Hangul",
         "# below and nothing else. internal/docs/koreanfont_test.go reads this file",
         "# and fails the build when the Korean site uses a syllable that is not in",
-        "# it — which would otherwise be one character silently rendered by the",
+        "# it, which would otherwise be one character silently rendered by the",
         "# reader's system font in the middle of a word.",
         "#",
         "# Re-run the script after editing Korean copy in cmd/sitegen/content/ko/.",

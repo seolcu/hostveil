@@ -3,7 +3,7 @@
 // keys on disk in a user's home; misconfigured, the failure mode is
 // unauthenticated remote code execution as a real account.
 //
-// The scope is deliberately narrow. These projects ship their own config
+// The scope is narrow. These projects ship their own config
 // auditors, which cover their settings far more thoroughly than Hostveil
 // could sustain across two fast-moving upstream schemas. What they cannot see
 // is the host: whether the gateway is *actually* listening on a reachable
@@ -42,27 +42,25 @@ func New() *Checker {
 // Source identifies the agent domain.
 func (*Checker) Source() model.Source { return model.SourceAgent }
 
-// Available probes for an actual agent installation, not merely for the
-// ability to look.
+// Available probes for an agent installation. The ability to look is
+// not enough.
 //
-// The failure modes are kept distinct on purpose. An unreadable /etc/passwd
+// The failure modes are kept distinct. An unreadable /etc/passwd
 // means we could not look, a home we cannot enter means we could not look
 // *there*, and a host with no runtime installed means there was nothing to
 // find. All three skip the domain, but conflating them would let "I couldn't
-// look" pass for "nothing there". The domain is skipped rather than reported
-// clean because a host that has never installed an agent should not collect a
+// look" pass for "nothing there". The domain is skipped because a host that has never installed an agent should not collect a
 // free perfect score for a domain that never applied.
 //
-// The middle one is why the unreadable list is read here rather than
-// discarded. On a multi-user host scanned without root, every other account's
+// The middle one is why the unreadable list is read here. On a multi-user host scanned without root, every other account's
 // home denies entry, so reporting absence would tell an operator there is no
-// agent runtime while one runs behind a wide-open gateway two accounts over —
+// agent runtime while one runs behind a wide-open gateway two accounts over,
 // and would say nothing about sudo, the one thing that would show it.
 func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 	// Same distinction, one level up. homes() reads /etc/passwd and keeps uid
 	// 0 and 1000..65533, which is the Linux convention. macOS ships an
 	// /etc/passwd too and its user accounts start at 501, so the walk finds
-	// only /var/root and installs() reports nothing found — "no agent runtime
+	// only /var/root and installs() reports nothing found: "no agent runtime
 	// here" about a host whose /Users was never opened. That is the reading
 	// this function's own comment above says it exists to prevent, defeated
 	// by a passwd file that does not describe the host.
@@ -80,7 +78,7 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 	if len(unreadable) > 0 {
 		sort.Strings(unreadable)
 		return false, "cannot read home directories (" + strings.Join(unreadable, ", ") +
-			") — re-run with sudo to scan them for agent runtimes"
+			"); re-run with sudo to scan them for agent runtimes"
 	}
 	names := make([]string, 0, len(c.Runtimes))
 	for _, rt := range c.Runtimes {
@@ -95,7 +93,7 @@ type scan struct {
 	cfg      map[string]any
 	cfgKnown bool
 	// cfgMissing is a runtime installed but never configured. It is not a
-	// blind spot — there is nothing to read — and for a key with a
+	// blind spot (there is nothing to read) and for a key with a
 	// documented Unset default it is a complete answer.
 	cfgMissing bool
 	env        envFile
@@ -118,7 +116,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 
 	var findings []model.Finding
 	var reasons []string
-	// Coverage counts configs we needed to read, not installs. An install
+	// Coverage counts configs we needed to read. An install
 	// that has no config file yet is not ground we failed to cover, and
 	// counting it would understate the fraction for no reason.
 	covered, total := 0, 0
@@ -151,8 +149,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			total++
 			cfg, derr := decodeConfig(b, in.rt.Format)
 			if derr != nil {
-				// An unparseable config is our blind spot, not the operator's
-				// defect, so it degrades coverage without inventing a finding.
+				// An unparseable config is our blind spot, so it degrades coverage without inventing a finding.
 				reasons = append(reasons, fmt.Sprintf("cannot parse %s config for %s", in.rt.Display, in.user.Name))
 			} else {
 				s.cfg, s.cfgKnown = cfg, true
@@ -173,7 +170,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	if len(reasons) > 0 {
 		sort.Strings(reasons)
 		return findings, &check.PartialError{
-			Reason:  strings.Join(reasons, "; ") + " — re-run with sudo for full coverage",
+			Reason:  strings.Join(reasons, "; ") + "; re-run with sudo for full coverage",
 			Covered: covered,
 			Total:   total,
 		}
@@ -185,11 +182,11 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 // runtime's own hardened baseline.
 //
 // Lstat, never Stat. These paths belong to the account being audited, and a
-// finding here carries an Auto chmod fix — following a symlink would let any
+// finding here carries an Auto chmod fix: following a symlink would let any
 // user point their "config file" at /etc/passwd, collect a finding about its
 // 0644 mode, and have root tighten it for them, which on /etc/passwd is a
 // host-wide denial of service. A symlink or any other non-regular file is not
-// the layout the registry describes, so it is skipped, not judged.
+// the layout the registry describes, so it is skipped.
 func modeFindings(s scan) []model.Finding {
 	var out []model.Finding
 	for _, rule := range s.in.rt.Modes {
@@ -211,7 +208,7 @@ func modeFindings(s scan) []model.Finding {
 
 		var keys []string
 		if rule.Secret && !rule.Dir {
-			// "Secrets live in a secrets file" is the design, not a defect.
+			// "Secrets live in a secrets file" is the design.
 			// The finding is only meaningful once we know real credentials are
 			// in there *and* the file is readable beyond its owner.
 			keys = secretKeysIn(s, path)
@@ -227,7 +224,7 @@ func modeFindings(s scan) []model.Finding {
 		if rule.Secret {
 			id, sev = "agent.secret-exposed", model.SeverityHigh
 			title = s.in.rt.Display + " credentials are readable beyond their owner"
-			desc = "This path holds the API keys the agent authenticates with. Every account on this host can read it, so any of them — or anything running as them — can take those keys and spend, read, or act with them elsewhere."
+			desc = "This path holds the API keys the agent authenticates with. Every account on this host can read it, so any of them (or anything running as them) can take those keys and spend, read, or act with them elsewhere."
 		}
 
 		opts := []model.FindingOption{
@@ -273,12 +270,12 @@ func secretKeysIn(s scan, path string) []string {
 }
 
 // gatewayFindings judges the runtime's network exposure from its configured
-// bind, corroborated by what the host is actually listening on.
+// bind, corroborated by what the host is listening on.
 // The firewall used to be probed for this and handed in. It stopped being
-// read when the severity levels merged — blast radius and confidence are not
+// read when the severity levels merged (blast radius and confidence are not
 // urgency, so a reachable gateway behind a firewall is the same level as one
-// without — and the parameter outlived the use by long enough that the
-// comment at the call site still described it as load-bearing.
+// without) and the parameter outlived the use by long enough that the
+// comment at the call site still described it as required.
 //
 // What that cost was not a wrong answer, it was work: producing the argument
 // meant running up to four firewall binaries on every scan of every host and
@@ -303,8 +300,7 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 
 	// Resolve the bind: config first, then the documented default, then any
 	// environment override. An empty result means "we cannot tell", which is
-	// different from "loopback" — we fall back to the listener rather than
-	// assuming either way.
+	// different from "loopback": we fall back to the listener.
 	bind := ""
 	if s.cfgKnown {
 		if bind = lookupString(s.cfg, gw.BindKey); bind == "" {
@@ -334,17 +330,17 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 	}
 
 	// The firewall decides how bad it is, never whether it is true. An
-	// observed listener with no firewall behind it is reachable now, today —
+	// observed listener with no firewall behind it is reachable now, today,
 	// and so, on the urgency scale, is a gateway bound to a routable address
 	// with a firewall in front of it that the operator may have opened. Both
 	// are High; what the firewall status changes is the confidence, which
-	// rides in the evidence rather than in the level.
+	// rides in the evidence.
 	sev := model.SeverityHigh
 
 	// The bind can be rewritten only where Hostveil can edit it: a JSON5
 	// config that sets the key itself, with no environment override on top.
-	// Anywhere else — a default, an env var, a listener seen but not
-	// configured — there is no line to change, and the finding says so.
+	// Anywhere else (a default, an env var, a listener seen but not
+	// configured) there is no line to change, and the finding says so.
 	rebind := []model.FindingOption{}
 	rebindable := s.cfgKnown && s.in.rt.Format == FormatJSON5 && bindExposed &&
 		lookupString(s.cfg, gw.BindKey) == bind && len(gw.LoopbackOnly) > 0
@@ -363,7 +359,7 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 
 	opts := []model.FindingOption{
 		model.WithService(s.in.subject()),
-		model.WithDescription("The " + s.in.rt.Display + " gateway is bound to an address reachable from the network. The gateway drives an agent that can read files and run commands, so anyone who can reach this port — and get past whatever authentication is configured — is operating the agent on this host."),
+		model.WithDescription("The " + s.in.rt.Display + " gateway is bound to an address reachable from the network. The gateway drives an agent that can read files and run commands, so anyone who can reach this port (and get past whatever authentication is configured) is operating the agent on this host."),
 		model.WithHowToFix("Bind the gateway to loopback and reach it over an SSH tunnel or a tailnet instead of exposing the port. If it must be remote, put it behind an authenticated reverse proxy and a firewall rule that allows only the addresses you use."),
 		model.WithEvidence("port", strconv.Itoa(port)),
 		model.WithEvidence("basis", basis),
@@ -382,10 +378,10 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 		s.in.rt.Display+" gateway is reachable from the network",
 		sev, model.SourceAgent, gatewayKind, opts...)}
 
-	// Authentication is only judged once the gateway is actually exposed.
+	// Authentication is only judged once the gateway is exposed.
 	// Every one of these runtimes treats "no auth on loopback" as a
 	// legitimate single-user default, so flagging it would put a High on
-	// a correct install — a score you could not improve by doing everything
+	// a correct install: a score you could not improve by doing everything
 	// right.
 	if s.cfgKnown && gw.AuthKey != "" {
 		auth := lookupString(s.cfg, gw.AuthKey)
@@ -405,7 +401,7 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 				append(rebind,
 					model.WithService(s.in.subject()),
 					model.WithDescription("The gateway is reachable from the network and requires no credential to talk to. Anyone who can reach the port can drive the agent: read the files it can read, run the commands it can run, and use the API keys it holds."),
-					model.WithHowToFix("Set the gateway's authentication mode to a token or password with a long random value, and bind the gateway to loopback as well — authentication is the second line, not the first."),
+					model.WithHowToFix("Set the gateway's authentication mode to a token or password with a long random value, and bind the gateway to loopback as well; binding to loopback is the first line and authentication the second."),
 					model.WithEvidence("setting", gw.AuthKey),
 					model.WithEvidence("value", shown),
 					model.WithEvidence("port", strconv.Itoa(port)),
@@ -419,8 +415,8 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 // listening on: every non-loopback socket held by one of the runtime's own
 // binaries, on any port, since the port is a flag Hostveil never sees.
 //
-// ss names the owning process only for a scan that can see it — a non-root
-// scan of another account's process reports none — and an unnamed listener is
+// ss names the owning process only for a scan that can see it (a non-root
+// scan of another account's process reports none) and an unnamed listener is
 // not attributed. That is the direction to fail in: naming it would put an
 // agent finding on whatever else answers on the port.
 func listenerOnlyFindings(s scan, listeners []platform.Listener) []model.Finding {
@@ -447,7 +443,7 @@ func listenerOnlyFindings(s scan, listeners []platform.Listener) []model.Finding
 		s.in.rt.Display+" gateway is reachable from the network",
 		model.SeverityHigh, model.SourceAgent, model.RemediationManual,
 		model.WithService(s.in.subject()),
-		model.WithDescription("The "+s.in.rt.Display+" web interface is listening on an address reachable from the network. It drives an agent that can read files and run commands, so anyone who can reach this port — and get past whatever authentication it was started with — is operating the agent on this host."),
+		model.WithDescription("The "+s.in.rt.Display+" web interface is listening on an address reachable from the network. It drives an agent that can read files and run commands, so anyone who can reach this port (and get past whatever authentication it was started with) is operating the agent on this host."),
 		model.WithHowToFix("Restart it bound to loopback (the default, `--host 127.0.0.1`) and reach it over an SSH tunnel or a tailnet instead. If it must be remote, put it behind an authenticated reverse proxy and a firewall rule that allows only the addresses you use."),
 		model.WithEvidence("port", strings.Join(ports, model.EvidenceSeparator)),
 		model.WithEvidence("basis", "listener"),
@@ -461,12 +457,12 @@ func listenerOnlyFindings(s scan, listeners []platform.Listener) []model.Finding
 // The port is the only trigger. A process name never matches on its own,
 // however tempting it is as a way to catch a gateway moved to a port we could
 // not read: these runtimes are reported by ss under whatever interpreter runs
-// them — python3, node, uvicorn — and matching those would attribute any
+// them (python3, node, uvicorn) and matching those would attribute any
 // unrelated Python or Node service on the host to an agent gateway. The
 // default port is always known, so the fallback bought very little and cost a
 // false positive on some of the most common process names there are.
 //
-// ProcNames is still used, for what it is actually good for: when several
+// ProcNames is still used, for what it is good for: when several
 // listeners share the port, prefer the one the runtime plausibly owns, so the
 // evidence names a useful process.
 func matchListener(listeners []platform.Listener, port int, procs []string) (platform.Listener, bool) {
@@ -488,7 +484,7 @@ func matchListener(listeners []platform.Listener, port int, procs []string) (pla
 
 // dangerFindings applies the runtime's danger-key table. Rules sharing an ID
 // are collapsed into one finding listing every key that tripped it, so an
-// operator sees one problem rather than the same problem twice.
+// operator sees one problem once.
 func dangerFindings(s scan) []model.Finding {
 	type hit struct {
 		rules []DangerRule

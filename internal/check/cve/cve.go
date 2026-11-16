@@ -1,6 +1,6 @@
 // Package cve implements the optional CVE checker backed by Trivy. It is
 // the one domain that may be absent: when Trivy is not installed the
-// checker skips cleanly (a first-class Skipped state, not an error), and
+// checker skips cleanly (a first-class Skipped state), and
 // scoring renormalizes so the host is neither penalized nor given a false
 // perfect vulnerability score.
 package cve
@@ -36,7 +36,7 @@ func (*Checker) Source() model.Source { return model.SourceCVE }
 // scan; images are scanned when a Docker daemon is.
 func (*Checker) Available(_ context.Context, env platform.Env) (bool, string) {
 	if !platform.Has(env.Runner, "trivy") {
-		return false, "Trivy not installed — CVE scan skipped (install it to enable vulnerability scanning)"
+		return false, "Trivy not installed: CVE scan skipped (install it to enable vulnerability scanning)"
 	}
 	return true, ""
 }
@@ -44,9 +44,9 @@ func (*Checker) Available(_ context.Context, env platform.Env) (bool, string) {
 // Check scans the host's packages and every compose and standalone image
 // with Trivy.
 //
-// Failures are counted rather than swallowed, because "no vulnerabilities
+// Failures are counted, because "no vulnerabilities
 // found" and "nothing could be examined" score identically but mean opposite
-// things. Some targets unscannable is Degraded; all of them is an outright
+// things. Some targets unscannable is Degraded; all of them is a complete
 // error, which drops the axis from scoring entirely.
 func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	var cov check.Coverage
@@ -57,7 +57,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		cov.Covered(1)
 	}
 
-	// The daemon is probed, not merely looked up on PATH: an unreachable
+	// The daemon is probed: an unreachable
 	// socket would otherwise let the image scan proceed, fail on every
 	// image, and report zero image vulnerabilities. A host with no docker at
 	// all has no images, which is a complete answer.
@@ -71,7 +71,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		if hostErr != nil {
 			return nil, fmt.Errorf("%v, and %s", hostErr, reason)
 		}
-		cov.Missed(0, reason+" — images were not scanned")
+		cov.Missed(0, reason+"; images were not scanned")
 		return host, cov.Err()
 	}
 
@@ -98,8 +98,8 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	}
 
 	// Images belonging to containers no compose file describes. Without
-	// these, a hand-started container's vulnerabilities were not merely
-	// unreported — the axis scored as though the image were not on the host.
+	// these, a hand-started container's vulnerabilities went unreported, and
+	// the axis scored as though the image were not on the host.
 	// A failure to enumerate these is tracked apart from a failure to scan an
 	// image. Folding it into the image counters would make "3 of 4 images
 	// scanned" mean two different things, and could make a host whose only
@@ -124,7 +124,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		return nil, fmt.Errorf("no image could be scanned: %w", firstErr)
 	}
 
-	// Each blind spot is recorded rather than returned, so hitting two of
+	// Each blind spot is recorded, so hitting two of
 	// them reports two. Returning at the first is how an unparsed compose
 	// file used to disappear from a scan that also had an image fail.
 	cov.Covered(attempted - failed)
@@ -132,22 +132,22 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		cov.Missed(failed, fmt.Sprintf("some images could not be scanned (first failure: %v)", firstErr))
 	}
 	// A compose file we could not parse is a set of images we never even knew
-	// to scan, so it degrades the axis exactly like a failed enumeration does
-	// — the images are absent from `attempted`, and without this the axis
+	// to scan, so it degrades the axis exactly like a failed enumeration does;
+	// the images are absent from `attempted`, and without this the axis
 	// would score as if they did not exist.
 	if len(unparsed) > 0 {
 		cov.Missed(len(unparsed), "cannot parse compose file(s): "+strings.Join(unparsed, ", ")+
-			" — images defined there were not scanned")
+			"; images defined there were not scanned")
 	}
 	// Every image we knew about scanned, but we could not find out which
-	// containers exist outside Compose — so the axis covered less ground than
+	// containers exist outside Compose, so the axis covered less ground than
 	// a clean result would claim. It carries no unit count: the images it
 	// would have added are exactly the ones that could not be enumerated.
 	if enumErr != nil {
-		cov.Missed(0, "scanned compose images only — cannot enumerate containers started outside Compose")
+		cov.Missed(0, "scanned compose images only; cannot enumerate containers started outside Compose")
 	}
 	// Nothing missed includes the no-images case: a host with no containers
-	// genuinely has no image vulnerabilities.
+	// has no image vulnerabilities.
 	return findings, cov.Err()
 }
 
@@ -157,16 +157,16 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 // target is one image to scan and where it came from.
 //
 // The four strings travel together because they were travelling together
-// anyway — as four positional parameters on scanImage, parseTrivy, imageOpts,
+// anyway, as four positional parameters on scanImage, parseTrivy, imageOpts,
 // outdatedFinding and unpatchedFinding, in that order, five times. Four
 // adjacent same-typed arguments transpose silently: swap service and file and
 // the finding names a path as its service and a service as its file, renders
 // without complaint, and is wrong in the two fields an operator uses to find
 // the thing.
 //
-// internal/ui/tui's Opts already states this rule for itself — "one struct
-// rather than three parameters because the third would have been the one that
-// tipped the signature into being read wrong at a call site." This is the same
+// internal/ui/tui's Opts already states this rule for itself: one struct,
+// because a third parameter would tip the signature into being read wrong
+// at a call site. This is the same
 // rule, one argument later.
 type target struct {
 	image      string
@@ -181,7 +181,7 @@ type target struct {
 // The scan was serial, and Trivy is the slowest thing Hostveil runs: a host
 // with twenty images spent twenty sequential image scans in a domain the
 // other eight checkers had long since finished. The cap exists because the
-// opposite mistake is just as easy — Trivy is CPU- and IO-heavy, and one
+// opposite mistake is just as easy: Trivy is CPU- and IO-heavy, and one
 // process per image on a small VPS would thrash the box Hostveil is meant to
 // be looking after gently. Four keeps the pipeline full without becoming the
 // load spike.
@@ -197,21 +197,21 @@ const dbTimeout = 5 * time.Minute
 // run at a time.
 //
 // Trivy's filesystem cache is a single-writer BoltDB. Two processes that both
-// want it is not a rare interleaving — it is the ordinary case when four start
+// want it is not a rare interleaving: it is the ordinary case when four start
 // together, and the loser does not degrade, it exits: "unable to initialize fs
 // cache: cache may be in use by another process". So the parallelism above was
-// quietly costing coverage on every scan it sped up.
+// silently costing coverage on every scan it sped up.
 //
 // The damage is not that findings go missing. It is that they go missing in
 // the flattering direction: an image that could not be scanned contributes no
 // vulnerabilities, so the axis reads *better* the less of the host it saw. The
 // demo VM's vulnerability axis scored 44/100 on a run that reached 1 of its 7
-// images, 25/100 on a run that reached 3, and 16/100 — the truth — on the run
+// images, 25/100 on a run that reached 3, and 16/100 (the truth) on the run
 // that reached all seven.
 //
 // Hostveil said "partial" every time, which is the coverage machinery working
 // exactly as designed: a domain that could not look never claims it found
-// nothing. But a Degraded axis is still scored, deliberately, so the honest
+// nothing. But a Degraded axis is still scored, so the accurate
 // flag sat beside a number that was wrong by 28 points.
 //
 // Warming the cache first is the obvious fix and it is not enough. Four
@@ -221,14 +221,14 @@ const dbTimeout = 5 * time.Minute
 //	shared cache   3 of 4 succeed   one exits on the lock
 //	this commit    4 of 4
 //
-// because the contention is over the lock rather than over the contents.
+// because the contention is over the lock.
 var memoryCache = []string{"--cache-backend", "memory"}
 
 // warmCache downloads the vulnerability DB before the fan-out, and reports
 // whether Trivy accepted the memory cache backend.
 //
 // Both halves are needed and neither is sufficient. Without the DB on disk,
-// four scans race to download it and *all four* fail, memory backend or not —
+// four scans race to download it and *all four* fail, memory backend or not:
 // the backend only decides where an image's analysis goes, and the DB is
 // shared either way. Without the memory backend, they race for the cache lock.
 //
@@ -236,7 +236,7 @@ var memoryCache = []string{"--cache-backend", "memory"}
 // testing: `--cache-backend` is marked experimental, `memory` is newer than
 // the flag itself, and an unsupported value fails immediately and legibly
 // ("unknown cache type"). Nothing here can tell that apart from a download
-// that failed for want of a network, and it does not need to — either way the
+// that failed for want of a network, and it does not need to: either way the
 // fast path is not available, and the caller falls back to scanning one image
 // at a time, which is correct on every version of Trivy there has ever been.
 // Downloading the DB with the flag set is safe: the backend governs the
@@ -257,7 +257,7 @@ func warmCache(ctx context.Context, r platform.CommandRunner) error {
 // scanAll scans every target with bounded concurrency and returns the merged
 // findings, how many failed, and the first failure in target order.
 //
-// Results are collected by index rather than appended as they arrive, so the
+// Results are collected by index, so the
 // findings and the reported error do not depend on which Trivy process
 // happened to finish first. A scan that reordered its own output between runs
 // would show up as a spurious delta on the next re-scan.
@@ -272,9 +272,8 @@ func scanAll(ctx context.Context, r platform.CommandRunner, targets []target) (f
 	// it populates is the one a later scan of the same image will reuse.
 	//
 	// For more than one, the fast path has to be earned. Where Trivy will not
-	// give both halves of it, the scans go one at a time rather than four at
-	// a time into a lock they cannot share — slower than this domain was
-	// yesterday, and the first version of it that reports what it actually
+	// give both halves of it, the scans go one at a time: slower than this domain was
+	// yesterday, and the first version of it that reports what it
 	// examined.
 	cacheArgs, parallelism := []string(nil), 1
 	if len(targets) > 1 && warmCache(ctx, r) == nil {
@@ -291,7 +290,7 @@ func scanAll(ctx context.Context, r platform.CommandRunner, targets []target) (f
 			defer func() { <-slots }()
 
 			// check.runOne's recover only covers the goroutine it runs the
-			// whole Checker in, which is not this one — scanAll spawns its
+			// whole Checker in, which is not this one: scanAll spawns its
 			// own, so a panic scanning one image would otherwise take down
 			// the process this domain is supposed to only ever degrade. One
 			// bad image becomes a normal per-target failure instead, folded
@@ -344,7 +343,7 @@ type trivyVuln struct {
 
 // hostSkipDirs keeps the host scan to the operating system's own package
 // databases. Container storage is scanned image by image above, and the rest
-// is data, not installed packages.
+// is data.
 var hostSkipDirs = []string{"/proc", "/sys", "/dev", "/run", "/tmp", "/var/tmp", "/var/lib/docker",
 	"/var/lib/containerd", "/var/lib/rancher", "/var/log", "/home", "/root", "/srv", "/mnt", "/media", "/snap"}
 
@@ -422,13 +421,13 @@ func parseHostTrivy(out []byte) ([]model.Finding, error) {
 // imageTimeout bounds a single image scan. Trivy downloads its vulnerability
 // DB on first use and falls back to pulling from a remote registry when it
 // cannot read an image locally, so an unbounded scan can hang for as long as
-// the network allows — the flag makes Trivy exit with a legible message, and
+// the network allows: the flag makes Trivy exit with a legible message, and
 // the context guarantees termination if it hangs before parsing its own flags.
 const imageTimeout = 5 * time.Minute
 
 // demoteToManual marks findings for an image whose container has no compose
 // file. The registered fix for cve.outdated-image runs
-// `docker compose -f <file> pull <service>`, and there is no file — so the
+// `docker compose -f <file> pull <service>`, and there is no file, so the
 // checker declares Manual and Engine.classify, which takes whichever side
 // demands more human involvement, keeps the registry from offering a fix
 // that could not run.
@@ -438,8 +437,8 @@ func demoteToManual(fs []model.Finding) []model.Finding {
 		// See the same line in internal/check/compose: these IDs are
 		// registered, so fix.WhyNoFix has nothing to say about them, and the
 		// panel that exists to answer "why is there no button" was blank.
-		fs[i].WhyNoFix = "This container was started with `docker run`, not Compose, so there is no compose file to pull through."
-		fs[i].HowToFix = "This container was started with `docker run`, not Compose, so Hostveil cannot update it for you. " +
+		fs[i].WhyNoFix = "This container was started with `docker run`, so there is no compose file to pull through."
+		fs[i].HowToFix = "This container was started with `docker run`, so Hostveil cannot update it for you. " +
 			"Pull the image and recreate the container yourself. " + fs[i].HowToFix
 		if fs[i].Evidence == nil {
 			fs[i].Evidence = map[string]string{}
@@ -473,10 +472,10 @@ func parseTrivy(out []byte, t target) ([]model.Finding, error) {
 		return nil, fmt.Errorf("decode trivy output for %s: %w", t.image, err)
 	}
 
-	// Split into the two groups that have genuinely different remediations:
-	// vulnerabilities a newer image could fix, and vulnerabilities nobody has
+	// Split into the two groups that have different remediations:
+	// vulnerabilities a newer image could fix, and vulnerabilities no vendor has
 	// fixed yet. Everything within a group shares one remediation, which is
-	// why the group — not the individual CVE — is the finding.
+	// why the group (not the individual CVE) is the finding.
 	var fixable, unpatched group
 	seen := map[string]bool{}
 	for _, res := range report.Results {
@@ -540,15 +539,14 @@ func (g *group) sorted() []string {
 
 // worst returns the severity the finding carries: the most severe member of
 // this group alone. A group's severity must never be borrowed from the other
-// one — an unfixable Critical must not inflate a finding whose remediation
+// one: an unfixable Critical must not inflate a finding whose remediation
 // cannot touch it, and vice versa.
 func (g *group) worst() model.Severity { return g.sevOf[g.sorted()[0]] }
 
 // summary renders "12 high, 108 medium" for the severities present.
 //
-// It walks model.AllSeverities rather than a list written out here. The list
-// written out here was the four-level scale, and when Critical and High
-// merged into one constant both rows stayed — so the same constant was read
+// It walks model.AllSeverities. A list written out here was the four-level scale, and when Critical and High
+// merged into one constant both rows stayed, so the same constant was read
 // twice and a group of two top-severity vulnerabilities rendered as
 // "2 high, 2 high". The scale is the model's to enumerate, and a copy of it
 // in this file is a copy that goes stale exactly when the model changes.
@@ -576,7 +574,7 @@ func (g *group) worstList() string {
 }
 
 // evidence attaches the machine-readable detail. The CVE list is joined with
-// ", " rather than "," on purpose: clirender's wrap splits on whitespace, so
+// ", ": clirender's wrap splits on whitespace, so
 // a comma-only list would be one unbreakable word that overflows a terminal
 // the day anything starts rendering evidence.
 func (g *group) evidence() []model.FindingOption {
@@ -628,18 +626,18 @@ func imageOpts(t target) []model.FindingOption {
 //
 // The line is drawn at digest-vs-not, and only there. A digest is the one
 // reference Docker's data model guarantees is immutable, so a pull on it is
-// provably a no-op. Every other reference — :latest, :15, :15.2, no tag at
-// all — is a mutable pointer by construction, and official images really do
+// provably a no-op. Every other reference (:latest, :15, :15.2, no tag at
+// all) is a mutable pointer by construction, and official images really do
 // get rebuilt under a patch tag with refreshed base layers. Splitting
 // "floating" from "exact" tags by their spelling would need a heuristic that
-// is wrong for :2024-01-15, :v1.2.3-alpine and :stable — and wrong in the
+// is wrong for :2024-01-15, :v1.2.3-alpine and :stable, and wrong in the
 // unsafe direction, suppressing a real fix on the strength of a string.
 func imageReferenceIsMutable(image string) bool {
 	return !strings.Contains(image, "@")
 }
 
 // outdatedFinding reports the vulnerabilities a newer image would fix. It
-// carries the only CVE remediation Hostveil can actually perform; see the fix
+// carries the only CVE remediation Hostveil can perform; see the fix
 // registry's doc comment for why no per-CVE finding does.
 func outdatedFinding(t target, g group) (model.Finding, bool) {
 	if g.empty() {
@@ -669,11 +667,11 @@ func outdatedFinding(t target, g group) (model.Finding, bool) {
 		g.worst(), model.SourceCVE, rem, opts...), true
 }
 
-// unpatchedFinding reports the vulnerabilities nobody has fixed yet.
+// unpatchedFinding reports the vulnerabilities with no fix yet.
 //
 // It exists so that an image whose vulnerabilities are ALL unfixed still
 // produces a finding. Without it, aggregating per-CVE findings away would
-// make such a host look clean — the same "couldn't look means nothing there"
+// make such a host look clean: the same "couldn't look means nothing there"
 // lie this domain told once before, arrived at from the other direction. It
 // also keeps `hostveil scan`'s non-zero exit working for an image whose only
 // Critical has no patch.

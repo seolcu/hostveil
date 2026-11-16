@@ -16,8 +16,8 @@ import (
 // published number.
 //
 // A figure off a measurement run is checked against the committed JSON. A
-// figure about the *program* — how many findings it can report, how many of
-// them it can fix, how many fuzz targets run nightly — had nowhere to be
+// figure about the *program* (how many findings it can report, how many of
+// them it can fix, how many fuzz targets run nightly) had nowhere to be
 // checked against, so it was published nowhere: the fix coverage appeared only
 // inside a release note, and the testing regime appeared in no README and on no
 // page. Those are among the strongest things here and a visitor could not find
@@ -34,9 +34,9 @@ var countedCell = regexp.MustCompile(`<[^<>]*data-counted="([^"]+)"[^<>]*>([^<]*
 
 // counts derives every publishable quantity from the code that owns it.
 //
-// Nothing here is a literal. The whole point is that adding a checker, or
+// Nothing here is a literal, so that adding a checker, or
 // registering a fix for a finding that did not have one, moves these numbers
-// and fails the build until the pages move with them — which is the mechanism
+// and fails the build until the pages move with them, which is the mechanism
 // that has caught the domain table, the axis labels and the fuzz matrix
 // falling behind, applied to the figures that had no mechanism at all.
 func counts(t *testing.T) map[string]int {
@@ -89,8 +89,8 @@ func counts(t *testing.T) map[string]int {
 func TestTheCountsAreNotAccidentallyZero(t *testing.T) {
 	for name, n := range counts(t) {
 		if n == 0 {
-			t.Errorf("%s counted 0 — either the harvester broke or the claim is not worth "+
-				"publishing; both fail here rather than reaching a page", name)
+			t.Errorf("%s counted 0; either the harvester broke or the claim is not worth "+
+				"publishing; both fail here before reaching a page", name)
 		}
 	}
 }
@@ -132,7 +132,7 @@ func countedPages() []string {
 // sentence a README makes, in its own words, with the figures filled in.
 //
 // Markdown has no attributes, and the READMEs are where most people read any
-// of this. Requiring the phrase verbatim is stricter than checking the digits —
+// of this. Requiring the phrase verbatim is stricter than checking the digits:
 // it fails a README that quotes a right number inside a sentence that has
 // stopped being true around it.
 type countClaim struct {
@@ -148,13 +148,13 @@ func publishedCountClaims() []countClaim {
 			file:   "README.md",
 			what:   "how much of what it finds it can also fix",
 			keys:   []string{"findings.total", "findings.fixable", "findings.auto", "findings.review"},
-			phrase: "**%s findings** across those domains, and **%s of them carry a fix**: %s Hostveil will apply unattended, %s only after you have read the diff",
+			phrase: "%s findings across those domains. %s of them carry a fix: Hostveil applies %s unattended and %s only after you have read the diff",
 		},
 		{
 			file:   "README.ko.md",
 			what:   "how much of what it finds it can also fix",
 			keys:   []string{"findings.total", "findings.fixable", "findings.auto", "findings.review"},
-			phrase: "이 영역들에서 **발견 항목 %s개**를 보고할 수 있고, 그중 **%s개에 수정이 붙어 있습니다.** %s개는 무인으로 적용하고, %s개는 차이를 읽은 뒤에만 적용합니다",
+			phrase: "이 영역들에서 발견 항목 %s개를 보고할 수 있습니다. 그중 %s개에 수정이 붙어 있습니다. %s개는 무인으로 적용하고, %s개는 차이를 읽은 뒤에만 적용합니다",
 		},
 		{
 			file:   "README.md",

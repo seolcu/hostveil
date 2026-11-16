@@ -1,12 +1,12 @@
 name: Bug report
-description: Something hostveil did wrong — a crash, a bad fix, or a finding it got wrong or missed.
+description: Something hostveil did wrong; a crash, a bad fix, or a finding it got wrong or missed.
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
         Thanks for taking the time to file a report. If this is a **security
-        vulnerability in hostveil itself**, please don't use this form — report
+        vulnerability in hostveil itself**, please don't use this form: report
         it privately per [SECURITY.md](https://github.com/seolcu/hostveil/blob/main/SECURITY.md) instead.
   - type: textarea
     id: what-happened
@@ -54,7 +54,7 @@ body:
       label: Relevant config and output
       description: >
         For a wrong or missing finding, the config that should (or should not)
-        have triggered it is the single most useful thing you can include — the
+        have triggered it is the single most useful thing you can include; the
         `sshd_config` snippet, the `docker-compose.yml` service, the `ss`/`ufw`
         line. Paste `hostveil scan --json` output if it helps. Redact secrets.
       render: text

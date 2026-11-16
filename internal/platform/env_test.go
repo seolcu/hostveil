@@ -71,8 +71,8 @@ func TestParseOSReleaseID(t *testing.T) {
 	}
 }
 
-// A host with no readable os-release is not an error — Detect is documented
-// as tolerant, and an unknown distro must degrade rather than fail the scan.
+// A host with no readable os-release is not an error: Detect is documented
+// as tolerant, and an unknown distro must degrade and let the scan go on.
 func TestAMissingOSReleaseIsEmptyNotFatal(t *testing.T) {
 	orig := osReleasePath
 	osReleasePath = filepath.Join(t.TempDir(), "nope")
@@ -83,7 +83,7 @@ func TestAMissingOSReleaseIsEmptyNotFatal(t *testing.T) {
 	}
 }
 
-// Order is load-bearing: Debian and Ubuntu ship both apt-get and (on some
+// Order matters: Debian and Ubuntu ship both apt-get and (on some
 // images) other tools, so the most specific has to win. Getting this
 // backwards sends the updates checker down the wrong branch entirely.
 func TestDetectPackageManager(t *testing.T) {
@@ -141,8 +141,7 @@ func TestDetectServiceManager(t *testing.T) {
 	}
 }
 
-// Detect must fill in what it can and leave the rest empty rather than
-// failing, and it must carry the runner through — checkers construct no
+// Detect must fill in what it can and leave the rest empty, and it must carry the runner through: checkers construct no
 // runner of their own, so an Env without one is a nil dereference waiting
 // in every domain.
 func TestDetectIsTolerantAndCarriesTheRunner(t *testing.T) {

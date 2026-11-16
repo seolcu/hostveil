@@ -1,6 +1,6 @@
 // Package ports implements a native host listening-port checker. It reads
 // the host's TCP listening sockets with `ss` and flags services bound to a
-// non-loopback address — the natively-installed exposed database, admin
+// non-loopback address: the natively-installed exposed database, admin
 // panel, or app that the Compose-only exposure checks never see, because it
 // isn't a container at all.
 package ports
@@ -32,7 +32,7 @@ func New() *Checker { return &Checker{RedisConfigPath: "/etc/redis/redis.conf"} 
 func (*Checker) Source() model.Source { return model.SourcePorts }
 
 // Available requires the `ss` tool (iproute2); without it the domain is
-// skipped cleanly rather than guessed at.
+// skipped cleanly.
 func (*Checker) Available(_ context.Context, env platform.Env) (bool, string) {
 	if !platform.Has(env.Runner, "ss") {
 		return false, "ss (iproute2) is not installed"
@@ -61,7 +61,7 @@ var datastorePorts = map[int]string{
 
 // adminPorts maps well-known admin/management-UI ports to a human name.
 // Only single-purpose admin UIs whose default port is unambiguous belong
-// here — Cockpit's 9090 is absent because Prometheus claims the same port,
+// here: Cockpit's 9090 is absent because Prometheus claims the same port,
 // and a finding titled with the wrong product half the time teaches the
 // user to ignore the whole domain.
 var adminPorts = map[int]string{
@@ -128,7 +128,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	}
 
 	// Generic non-loopback listeners are only worth flagging when there is
-	// no host firewall acting as a backstop — otherwise every expected web
+	// no host firewall acting as a backstop: otherwise every expected web
 	// server would be noise. When there is no firewall, surface them once,
 	// aggregated, at low severity.
 	//
@@ -143,7 +143,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			findings = append(findings, genericFinding(generic))
 		case firewall.StatusUnknown:
 			return findings, &check.PartialError{
-				Reason: "cannot read firewall state — re-run with sudo to judge whether open ports are shielded",
+				Reason: "cannot read firewall state; re-run with sudo to judge whether open ports are shielded",
 			}
 		}
 	}
@@ -163,7 +163,7 @@ func redisFindings(data []byte, path string) []model.Finding {
 			model.WithDescription(desc), model.WithHowToFix(how), model.WithEvidence("config", path)))
 	}
 	if !regexpLine(text, `bind\s+(127\.0\.0\.1|localhost)(\s|$)`) {
-		add("ports.redis-bind", "Redis is configured to listen beyond loopback", "Redis should normally be reached by local applications or a private proxy, not every network attached to the host.", "Bind Redis to 127.0.0.1 in "+path+" after confirming no remote client connects directly.", model.RemediationReview)
+		add("ports.redis-bind", "Redis is configured to listen beyond loopback", "Redis should normally be reached by local applications or a private proxy. Every other network attached to the host should not reach it.", "Bind Redis to 127.0.0.1 in "+path+" after confirming no remote client connects directly.", model.RemediationReview)
 	}
 	if !regexpLine(text, `protected-mode\s+yes(\s|$)`) {
 		// Unlike its siblings, this carries no caveat: protected-mode yes is
@@ -185,7 +185,7 @@ func regexpLine(text, expression string) bool {
 
 // dockerProxy is the process Docker publishes a port through. Its traffic is
 // accepted by Docker's own rules before ufw or firewalld sees it, so a rule
-// in either neither shields it nor closes it — on a real Fedora 44 a
+// in either neither shields it nor closes it, on a real Fedora 44 a
 // published port answered from outside with firewalld running.
 const dockerProxy = "docker-proxy"
 
@@ -193,7 +193,7 @@ func exposedFinding(l platform.Listener, shield firewall.Shield, id, title, desc
 	opts := []model.FindingOption{
 		// Attribute the finding to this specific listener so two different
 		// exposed datastores (e.g. Redis and Postgres) get distinct Keys and
-		// are each counted, rather than deduplicated to one by (source, id).
+		// are each counted.
 		model.WithService(listenerSubject(l)),
 		model.WithDescription(desc),
 		model.WithHowToFix(fmt.Sprintf("Bind %s to 127.0.0.1 instead of %s, or restrict access with a host firewall / VPN. If it must be remote, put it behind an authenticated reverse proxy.", portLabel(l), l.Addr)),

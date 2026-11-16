@@ -14,8 +14,8 @@ REPO="seolcu/hostveil"
 
 # Colors mean one thing across all of hostveil: risk and success/failure,
 # never structure. This matches internal/clirender/text.go, the only other
-# place in the codebase that colors raw sequential terminal output — plain
-# 16-color ANSI rather than truecolor, since a shell script can't assume
+# place in the codebase that colors raw sequential terminal output: plain
+# 16-color ANSI, since a shell script can't assume
 # 24-bit support, and gated the same way `colorEnabled()` gates the CLI.
 if [[ -t 1 && -z "${NO_COLOR+x}" ]]; then
   BOLD=$'\033[1m'; DIM=$'\033[2m'; RESET=$'\033[0m'
@@ -57,9 +57,9 @@ package_owner() {
 
 # uninstall removes what this script installed, and nothing else.
 #
-# It deliberately does not delete the state directory. That is where the
-# rollback checkpoints live — the backups of every file Hostveil has edited
-# on this host — and removing Hostveil is not a statement that the operator
+# It does not delete the state directory. That is where the
+# rollback checkpoints live (the backups of every file Hostveil has edited
+# on this host) and removing Hostveil is not a statement that the operator
 # no longer wants the ability to undo what it did. So the path is printed
 # with the command to remove it, and the decision stays theirs.
 #
@@ -136,7 +136,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$UNINSTALL" != true ]]; then
-  echo "${BOLD}▣ Hostveil${RESET}${DIM} — guided hardening for self-hosted Linux${RESET}"
+  echo "${BOLD}▣ Hostveil${RESET}${DIM}: guided hardening for self-hosted Linux${RESET}"
 fi
 
 # ─── privilege ────────────────────────────────────────────────────────────
@@ -144,11 +144,11 @@ fi
 # and the script used to assume it was: it called `sudo install` unconditionally,
 # so on a host where you are *already* root and sudo is not installed it got all
 # the way through downloading and verifying and then died with
-# "sudo: command not found". That is not an exotic host — Debian's own default
+# "sudo: command not found". That is not an exotic host: Debian's own default
 # is root-only administration with no sudo, and every `docker run … | bash` is
 # the same shape.
 #
-# An array rather than a string so that the empty case expands to nothing at
+# An array so that the empty case expands to nothing at
 # all, instead of to an empty argument that `install` would read as a filename.
 SUDO=()
 if [[ ${EUID} -ne 0 ]]; then
@@ -396,7 +396,7 @@ curl -fsSL --retry 3 "$URL" -o "${TMPDIR}/${TAR}" || {
 # This used to warn and install anyway when the checksums file could not be
 # fetched or did not list the archive. That turns a network-level attacker
 # who can serve one file and block another into an attacker who can hand you
-# any binary they like — and this binary is about to be installed to
+# any binary they like, and this binary is about to be installed to
 # /usr/bin and run as root. There is no partial credit here: either the
 # artifact matches what the release published, or it does not get installed.
 echo "  ${DIM}•${RESET} hostveil: verifying checksum..."
@@ -424,7 +424,7 @@ echo "  ${GREEN}✓${RESET} checksum verified"
 
 # The checksums file comes from the same GitHub release as the tarball, so
 # matching it proves the download was not corrupted or partially swapped in
-# transit — not that the release itself is genuine. The release workflow
+# transit. It does not prove the release itself is genuine. The release workflow
 # mints a signed build provenance attestation tying the archive to the
 # workflow run and commit that produced it, and that is the claim worth
 # checking. Verified when the tooling is present; silently skipped when it

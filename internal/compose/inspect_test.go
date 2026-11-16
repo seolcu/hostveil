@@ -36,8 +36,8 @@ const twoContainers = `[
 ]`
 
 // Compose-managed containers are already audited through their compose file.
-// Including them here would report every finding twice — once fixable, once
-// not — which is worse than not seeing them at all.
+// Including them here would report every finding twice (once fixable, once
+// not) which is worse than not seeing them at all.
 func TestComposeManagedContainersAreExcluded(t *testing.T) {
 	cs, err := parseInspect([]byte(twoContainers))
 	if err != nil {
@@ -74,7 +74,7 @@ func TestInspectMapsSecurityRelevantFields(t *testing.T) {
 		t.Error("a null healthcheck must stay nil so the rule fires")
 	}
 
-	// The port is published on all interfaces — the thing that makes a
+	// The port is published on all interfaces: the thing that makes a
 	// datastore reachable from the internet.
 	if len(s.Ports) != 1 {
 		t.Fatalf("Ports = %+v", s.Ports)
@@ -110,7 +110,7 @@ func TestReadOnlyBindDetected(t *testing.T) {
 }
 
 // Docker writes bind options as a comma-joined list ("rw,z" under SELinux),
-// so :ro has to be found inside it rather than compared to the whole field.
+// so :ro has to be found inside it.
 func TestReadOnlyInsideCommaJoinedOptions(t *testing.T) {
 	in := `[{"Name":"/x","Config":{"Image":"a"},"HostConfig":{"Binds":["/etc:/etc:ro,z"]}}]`
 	cs, err := parseInspect([]byte(in))
@@ -137,7 +137,7 @@ func TestUnpublishedPortNotMarkedPublished(t *testing.T) {
 
 // PortBindings is a map, so iteration order is random. Findings carry these
 // values as evidence, and unstable evidence makes every rescan report a
-// change nobody made.
+// change that did not happen.
 func TestPortOrderIsStable(t *testing.T) {
 	in := `[{"Name":"/x","Config":{"Image":"a"},"HostConfig":{"PortBindings":{
 	 "80/tcp":[{"HostIp":"0.0.0.0","HostPort":"8080"}],
@@ -221,6 +221,6 @@ func TestContainerOrderIsStable(t *testing.T) {
 
 func TestMalformedInspectOutputIsAnError(t *testing.T) {
 	if _, err := parseInspect([]byte("not json")); err == nil {
-		t.Error("malformed docker inspect output must be an error, not an empty clean result")
+		t.Error("malformed docker inspect output must be an error")
 	}
 }

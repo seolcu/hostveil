@@ -54,7 +54,7 @@ func TestModeTableDescribesExactlyThePlan(t *testing.T) {
 		}
 	}
 	// One row per planned change and no more: a row for a path that is not
-	// in the plan is the checkpoint recording work nobody did.
+	// in the plan is the checkpoint recording work that never happened.
 	if got := len(strings.Split(strings.TrimRight(table, "\n"), "\n")); got != len(changes) {
 		t.Errorf("table has %d rows for %d planned changes:\n%s", got, len(changes), table)
 	}
@@ -70,7 +70,7 @@ func TestModeTableOnAnEmptyPlan(t *testing.T) {
 
 // The arrow column is aligned in display columns. Measuring the path with
 // len() counts bytes, so a single non-ASCII path threw every arrow in the
-// table out of line — and paths come from the operator.
+// table out of line, and paths come from the operator.
 func TestModeTableAlignsNonASCIIPaths(t *testing.T) {
 	dir := t.TempDir()
 	var paths []string
@@ -98,7 +98,7 @@ func TestModeTableAlignsNonASCIIPaths(t *testing.T) {
 			continue
 		}
 		if got != col {
-			t.Errorf("modes start at column %d on one row and %d on another — the table is ragged:\n%s",
+			t.Errorf("modes start at column %d on one row and %d on another; the table is ragged:\n%s",
 				col, got, modeTable(changes))
 			break
 		}

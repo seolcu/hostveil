@@ -14,10 +14,10 @@ import (
 //
 // Two shapes. The mode findings chmod a path under the runtime's state
 // directory; the config-key findings rewrite one value in the runtime's own
-// config file, which became possible when internal/json5 arrived — see
+// config file, which became possible when internal/json5 arrived: see
 // Default's doc comment for what that unblocked and what it did not.
 //
-// Exact IDs, not an "agent.*" glob, for the same reason registerFilePerms
+// Exact IDs, for the same reason registerFilePerms
 // spells its five out: TestEveryRegisteredFixIsValid rejects globs so that
 // widening what the registry claims to fix is a deliberate act. It matters
 // more here than anywhere: three of this domain's findings are still
@@ -43,7 +43,7 @@ func registerAgent(r *Registry) {
 			"to. \"all\" also moves your own direct chat into the sandbox.",
 		""))
 	gateway := "Once the gateway restarts it listens on loopback only, so every client that reached it over the " +
-		"network — your laptop, a phone app, another machine's integration — loses it until you reach it over " +
+		"network (your laptop, a phone app, another machine's integration) loses it until you reach it over " +
 		"an SSH tunnel or a tailnet."
 	r.Register("agent.gateway-exposed", riskyAgentKey(gateway, "a restart of the OpenClaw gateway"))
 	r.Register("agent.auth-disabled", riskyAgentKey(gateway+" Without network exposure, no authentication is the "+
@@ -52,8 +52,7 @@ func registerAgent(r *Registry) {
 }
 
 // riskyAgentKey wraps buildAgentConfigKey for the agent findings that were
-// declined for what the edit can cut off rather than for not knowing what to
-// write. The edit is the same json5 one; what this adds is the Warning, the
+// declined for what the edit can cut off. Hostveil knows what to write. The edit is the same json5 one; what this adds is the Warning, the
 // note that the gateway reads its config at start, and IndividualOnly.
 func riskyAgentKey(warning, takesEffectOn string) Builder {
 	return func(f model.Finding) (Fix, error) {
@@ -74,21 +73,21 @@ func riskyAgentKey(warning, takesEffectOn string) Builder {
 	}
 }
 
-// agentBenefit and agentAltBenefit name what each config-key fix actually
+// agentBenefit and agentAltBenefit name what each config-key fix
 // buys, keyed by finding ID since buildAgentConfigKey is one generic builder
 // shared across all four. agentAltBenefit only needs an entry for
 // agent.exec-unrestricted, the one finding with a second alternative.
 var agentBenefit = map[string]string{
 	"agent.exec-unrestricted": "Stops the agent executing shell commands at all without an explicit " +
-		"human decision each time — closes the most direct path from \"the agent was tricked by its " +
+		"human decision each time; closes the most direct path from \"the agent was tricked by its " +
 		"input\" to \"a shell command ran on this host.\"",
 	"agent.elevated-enabled": "Stops the agent running with elevated or administrative privileges by " +
 		"default, so a prompt-injected or misused tool call can't act with more authority than the " +
 		"task ever needed.",
 	"agent.control-ui-insecure": "Closes the agent's control UI to unauthenticated access, so reaching " +
-		"it requires being someone the operator actually let in.",
+		"it requires being someone the operator let in.",
 	"agent.ssrf-private-network": "Stops the agent's own tool calls reaching internal or private " +
-		"network addresses on the operator's behalf — closes the classic SSRF pivot from \"the agent " +
+		"network addresses on the operator's behalf; closes the classic SSRF pivot from \"the agent " +
 		"fetched a URL\" to \"the agent probed the internal network.\"",
 }
 
@@ -99,28 +98,27 @@ func init() {
 	agentBenefit["agent.gateway-exposed"] = "Nothing on the network can drive the agent any more; only processes " +
 		"on this host, and you through a tunnel, can reach it."
 	agentBenefit["agent.auth-disabled"] = agentBenefit["agent.gateway-exposed"]
-	agentAltBenefit["agent.sandbox-off"] = "Every session, your own included, runs its tools in a container — the " +
+	agentAltBenefit["agent.sandbox-off"] = "Every session, your own included, runs its tools in a container: the " +
 		"strongest setting, at the cost of your direct chat losing the host too."
 }
 
 var agentAltBenefit = map[string]string{
 	"agent.exec-unrestricted": "Keeps the agent able to run commands, but only after a human is asked " +
-		"first — still stops an unattended compromise from acting through it.",
+		"first; still stops an unattended compromise from acting through it.",
 }
 
 // buildAgentConfigKey rewrites the config keys the checker named.
 //
 // Everything it needs comes from evidence: "config" is the file, "set" is the
 // assignment list that settles the finding, and "set-alt" is a second,
-// independent alternative where the safe value is a choice rather than a
-// single answer. The values are not re-derived here, because internal/fix
+// independent alternative where the safe value is a choice. The values are not re-derived here, because internal/fix
 // cannot import the checker and a second table of what "safe" means is a
 // second answer to the question.
 //
-// A finding whose evidence carries no "set" is an error rather than a fix
-// assembled from a guess. That is the same refusal sysctlPairs makes, and it
-// is what keeps agent.sandbox-off — whose safe value nothing in Hostveil
-// knows — from being handed a value invented at this layer.
+// A finding whose evidence carries no "set" is an error. Hostveil never
+// assembles a fix from a guess. That is the same refusal sysctlPairs makes, and it
+// is what keeps agent.sandbox-off (whose safe value nothing in Hostveil
+// knows) from being handed a value invented at this layer.
 func buildAgentConfigKey(f model.Finding) (Fix, error) {
 	path := f.Evidence["config"]
 	if path == "" {
@@ -167,7 +165,7 @@ func agentEditAction(root, path, benefit string, as []assignment) Action {
 		SafeRoot: root,
 		// No VerifyCmd: neither runtime ships a config validator, and there
 		// is nothing on the host that would answer. The equivalent guarantee
-		// is inside the transform — json5.Doc.Bytes re-parses what it
+		// is inside the transform: json5.Doc.Bytes re-parses what it
 		// produced and refuses to return it unless the tree matches the
 		// original with exactly these keys changed. An sshd -t answers "will
 		// the service accept this"; this answers "did the edit do only what
@@ -182,7 +180,7 @@ func agentEditAction(root, path, benefit string, as []assignment) Action {
 					// The key was there when the scan read it. That it is
 					// not there now means the file changed underneath, and
 					// writing anything on that basis would be a fix aimed at
-					// a config nobody has looked at.
+					// a config the operator has not seen.
 					return nil, fmt.Errorf("%s no longer sets %s; re-scan before fixing", path, a.key)
 				}
 				if err := doc.Set(a.key, a.value); err != nil {

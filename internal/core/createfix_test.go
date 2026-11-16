@@ -14,7 +14,7 @@ import (
 
 // An edit action could only ever modify a file already on disk, which left
 // the whole kernel-hardening domain unfixable: persisting a sysctl value
-// means writing a drop-in that by definition is not there — if it were, the
+// means writing a drop-in that by definition is not there, if it were, the
 // value would be set and the finding would not have fired.
 //
 // CreateIfMissing closes that, and the delicate half is not the write but
@@ -51,8 +51,8 @@ func createEngine(t *testing.T, path string) *Engine {
 	return New(Config{Fixes: r, Store: history.NewStore(t.TempDir())})
 }
 
-// The whole point: a fix creates a file that was not there, and rolling it
-// back leaves the host as it found it — no file, not an empty one. An empty
+// A fix creates a file that was not there, and rolling it
+// back leaves the host as it found it, with no file at all. An empty
 // drop-in would look configured while configuring nothing.
 func TestCreateThenRollbackRemovesTheFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "60-hostveil-kptr.conf")
@@ -84,8 +84,8 @@ func TestCreateThenRollbackRemovesTheFile(t *testing.T) {
 }
 
 // The diff an operator approves must show the whole file as an addition.
-// A preview that rendered nothing — or that failed because the target is
-// absent — would ask them to approve a change they cannot see.
+// A preview that rendered nothing (or that failed because the target is
+// absent) would ask them to approve a change they cannot see.
 func TestPreviewOfACreatedFileShowsTheWholeBody(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "60-hostveil-kptr.conf")
 	e := createEngine(t, path)
@@ -106,7 +106,7 @@ func TestPreviewOfACreatedFileShowsTheWholeBody(t *testing.T) {
 	}
 }
 
-// Rollback deletes, and deletion cannot be undone — so the external-edit
+// Rollback deletes, and deletion cannot be undone, so the external-edit
 // guard matters more here than anywhere else. An operator who tuned the
 // drop-in Hostveil created must not have it removed out from under them by
 // a rollback that thinks it is restoring an absence.
@@ -134,7 +134,7 @@ func TestRollbackDeclinesToDeleteAnEditedFile(t *testing.T) {
 
 // And the escape hatch the declined rollback exists to offer.
 //
-// core.RollbackForce had no test at all. The two lines that select it —
+// core.RollbackForce had no test at all. The two lines that select it:
 //
 //	restore := e.store.Rollback
 //	if force { restore = e.store.RollbackForce }
@@ -184,9 +184,8 @@ func TestForcingADeclinedRollbackRestoresAndRescores(t *testing.T) {
 	}
 }
 
-// Deleting a file that is already gone is the desired end state, not a
-// failure. An operator who removed the drop-in by hand and then rolled back
-// should get success, not an error describing what they already did.
+// Deleting a file that is already gone reaches the desired end state. An operator who removed the drop-in by hand and then rolled back
+// should get success.
 func TestRollbackOfAnAlreadyDeletedFileSucceeds(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "60-hostveil-kptr.conf")
 	e := createEngine(t, path)
@@ -206,7 +205,7 @@ func TestRollbackOfAnAlreadyDeletedFileSucceeds(t *testing.T) {
 
 // CreateIfMissing is opt-in per action for a reason: for every other fix a
 // missing target is a real error. An sshd_config that is not there means
-// the finding was stale or the path was wrong, and quietly creating one
+// the finding was stale or the path was wrong, and silently creating one
 // would be worse than failing.
 func TestEditWithoutCreateStillFailsOnAMissingFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "absent.conf")

@@ -14,8 +14,8 @@ import (
 
 // The re-exec discards every variable a user set, and always has.
 //
-// sudo's env_reset keeps only what env_keep names — TERM, LANG, LC_* and a
-// short list — never an application's own. alreadyElevated's comment says so,
+// sudo's env_reset keeps only what env_keep names (TERM, LANG, LC_* and a
+// short list) never an application's own. alreadyElevated's comment says so,
 // and drew the conclusion about exactly one variable: the marker this code
 // used to pass itself. It applies identically to every variable a user sets
 // on Hostveil's own command line.
@@ -28,7 +28,7 @@ import (
 // were ignored the same way.
 //
 // The end-to-end job never caught it because it runs as root with
-// HOSTVEIL_NO_SUDO=1 — both of the branches that skip the re-exec.
+// HOSTVEIL_NO_SUDO=1: both of the branches that skip the re-exec.
 func TestElevationCarriesTheVariablesTheUserSet(t *testing.T) {
 	set := map[string]string{
 		"HOSTVEIL_DEBUG":  "1",
@@ -79,11 +79,11 @@ func TestElevationIsUnchangedWhenNothingIsSet(t *testing.T) {
 // other end.
 //
 // The list above is hand-written, and a hand-written list of variables is the
-// shape of thing that falls behind the code reading them — which here is
+// shape of thing that falls behind the code reading them, which here is
 // silent by construction: the variable simply stops working under sudo, on
 // the path most users take, with nothing to report.
 //
-// So this harvests what the binary actually reads and requires each name to
+// So this harvests what the binary reads and requires each name to
 // be either carried or excused with a reason. Excusing one is a sentence, not
 // a deletion.
 func TestEveryReadVariableIsCarriedOrExcusedOnPurpose(t *testing.T) {
@@ -94,7 +94,7 @@ func TestEveryReadVariableIsCarriedOrExcusedOnPurpose(t *testing.T) {
 		if _, ok := notCarried[name]; ok {
 			continue
 		}
-		t.Errorf("cmd/hostveil reads %s but the re-exec does not carry it — under sudo it is "+
+		t.Errorf("cmd/hostveil reads %s but the re-exec does not carry it; under sudo it is "+
 			"silently empty. Add it to carriedThroughSudo, or to notCarried with the reason.", name)
 	}
 	for _, name := range carriedThroughSudo {
@@ -104,7 +104,7 @@ func TestEveryReadVariableIsCarriedOrExcusedOnPurpose(t *testing.T) {
 	}
 }
 
-// notCarried are the variables read in cmd/hostveil that deliberately do not
+// notCarried are the variables read in cmd/hostveil that do not
 // cross the re-exec, each with the reason it must not.
 var notCarried = map[string]string{
 	"HOSTVEIL_NO_SUDO": "reaching the re-exec at all means this was unset",
@@ -113,8 +113,8 @@ var notCarried = map[string]string{
 	"SUDO_USER": "sudo sets it in the child itself, which is what makes it the guard",
 	"SUDO_UID":  "sudo sets it in the child to the invoking account; preserving a caller value would let it forge report ownership",
 	"SUDO_GID":  "sudo sets it in the child to the invoking account; preserving a caller value would let it forge report ownership",
-	"USER": "sudo sets it to the target user, and that is the value to ignore rather than " +
-		"preserve — sshHint reads SUDO_USER first for exactly that reason, and falls back to " +
+	"USER": "sudo sets it to the target user, and that is the value to ignore; " +
+		" sshHint reads SUDO_USER first for exactly that reason, and falls back to " +
 		"this one only where no elevation happened and it is already correct",
 	"LOGNAME":           "the same as USER, and read for the same fallback",
 	"HOSTVEIL_SNAPSHOT": "test-only, and it gates a test that never elevates",
@@ -122,9 +122,9 @@ var notCarried = map[string]string{
 
 // readEnvNames harvests the variable names cmd/hostveil reads.
 //
-// It walks the package's own source rather than a list kept here, and it
+// It walks the package's own source, and it
 // resolves single-assignment consts, because two of the names are held that
-// way (themeEnv, glyphsEnv) — a harvest that only looked at call arguments
+// way (themeEnv, glyphsEnv): a harvest that only looked at call arguments
 // would miss exactly the two variables a user is most likely to set.
 func readEnvNames(t *testing.T) []string {
 	t.Helper()
@@ -195,8 +195,8 @@ func readEnvNames(t *testing.T) []string {
 				// Literals only for the injected shape. The one non-literal
 				// read in this package is elevatedArgv's own loop over
 				// carriedThroughSudo, whose names are on the list by
-				// construction — erroring on it would make the list fail the
-				// test that exists to keep the list honest.
+				// construction: erroring on it would make the list fail the
+				// test that exists to keep the list accurate.
 				if lit, ok := call.Args[0].(*ast.BasicLit); ok {
 					if str, ok := stringLit(lit); ok {
 						names = append(names, str)
@@ -216,19 +216,19 @@ func readEnvNames(t *testing.T) []string {
 				if s, ok := consts[arg.Name]; ok {
 					names = append(names, s)
 				} else {
-					t.Errorf("os.%s is called with %s, which this harvest cannot resolve — "+
+					t.Errorf("os.%s is called with %s, which this harvest cannot resolve; "+
 						"a variable it cannot see is one nothing checks", sel.Sel.Name, arg.Name)
 				}
 			default:
-				// Anything else — os.Getenv(pkg.Const), os.Getenv(name) — is a
+				// Anything else (os.Getenv(pkg.Const), os.Getenv(name)) is a
 				// read this harvest cannot resolve, and the arm above already
 				// says why that must be loud. It used to fall out of the
 				// switch instead, so a qualified constant was invisible: the
 				// variable would be undocumented and uncarried with every test
 				// here still green, which is the failure this whole file is a
-				// monument to, arriving through the test rather than the code.
+				// written to prevent, arriving through the test.
 				t.Errorf("os.%s is called with a %T this harvest cannot resolve. Give the name a "+
-					"const in this package, or teach the harvest to see it — do not leave it "+
+					"const in this package, or teach the harvest to see it: do not leave it "+
 					"unreadable, because an unread variable is silently empty under sudo",
 					sel.Sel.Name, arg)
 			}
@@ -240,10 +240,10 @@ func readEnvNames(t *testing.T) []string {
 
 	// Nothing-extracted guard. cmd/hostveil reads several; a harvest that
 	// stopped matching would pass this test vacuously while the list it
-	// checks quietly stopped being checked.
+	// checks silently stopped being checked.
 	if len(names) < 5 {
-		t.Fatalf("only %d environment reads harvested from cmd/hostveil (%v) — the harvest is "+
-			"broken, not the list", len(names), names)
+		t.Fatalf("only %d environment reads harvested from cmd/hostveil (%v): the harvest is "+
+			"broken", len(names), names)
 	}
 	return names
 }

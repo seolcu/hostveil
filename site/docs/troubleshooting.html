@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Troubleshooting — Hostveil docs</title>
+    <title>Troubleshooting; Hostveil docs</title>
     <meta name="description" content="What Hostveil's less obvious messages mean and how to diagnose them: HOSTVEIL_DEBUG command tracing, Degraded domains, declined rollbacks, an empty history, exit code 3, and command timeouts.">
     <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0b0b0c" media="(prefers-color-scheme: dark)">
-    <meta property="og:title" content="Troubleshooting — Hostveil docs">
+    <meta property="og:title" content="Troubleshooting; Hostveil docs">
     <meta property="og:description" content="Diagnose a Hostveil result: trace every command it runs, and read Degraded, declined rollback, empty history, and exit code 3.">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://hostveil.seolcu.com/docs/troubleshooting">
@@ -29,15 +29,15 @@
     <script>
       // Send a Korean-speaking reader to the Korean page, once.
       //
-      // GitHub Pages serves files, not content negotiation, so the only place
-      // this decision can be made is here — and the risk of making it here is
-      // trapping someone: a reader who deliberately clicked "English" must not
+      // GitHub Pages serves files with no content negotiation, so the only place
+      // this decision can be made is here, and the risk of making it here is
+      // trapping someone: a reader who clicked "English" must not
       // be bounced back on the next click. So the switcher records that choice
       // and this defers to it forever after.
       //
       // Only from the English page, only when the browser's own preference
-      // list actually leads with Korean, and never when a crawler is reading
-      // (they do not run this) — the hreflang links above are what they read.
+      // list leads with Korean, and never when a crawler is reading
+      // (they do not run this): the hreflang links above are what they read.
       (function () {
         try {
           if (document.documentElement.lang !== "en") return;
@@ -125,7 +125,7 @@
           <article class="docs-prose">
             <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">Docs</a> / Troubleshooting</p>
             <h1>Troubleshooting</h1>
-            <p class="lead">What the less obvious messages mean, and how to find out what Hostveil actually did.</p>
+            <p class="lead">What the less obvious messages mean, and how to find out what Hostveil did.</p>
 
             <h2 id="debug">See every command Hostveil runs</h2>
             <p>Most questions about a wrong-looking result come down to one command answering differently than expected. Set <code>HOSTVEIL_DEBUG=1</code> to trace them:</p>
@@ -140,7 +140,7 @@
 
             <h2 id="score-did-not-move">I applied fixes and the score did not move</h2>
             <p>On a host with containers this is the expected outcome of <code>fix --all</code>.</p>
-            <p>A fix Hostveil applies is not always a change the host has seen. A Compose file is read when the container is recreated; a systemd drop-in when the unit is reloaded; a sysctl drop-in at the next boot or at <code>sysctl --system</code>. Until then the file on disk is correct and the running system is exactly as it was, so the finding stays charged in the score, and the row stays on the list marked <code>PEND</code> in the terminal and <em>Applied — not in force yet</em> on the dashboard.</p>
+            <p>A fix Hostveil applies is not always a change the host has seen. A Compose file is read when the container is recreated; a systemd drop-in when the unit is reloaded; a sysctl drop-in at the next boot or at <code>sysctl --system</code>. Until then the file on disk is correct and the running system is exactly as it was, so the finding stays charged in the score, and the row stays on the list marked <code>PEND</code> in the terminal and <em>Applied, waiting to take effect</em> on the dashboard.</p>
             <p><code>fix --all</code> says how many are waiting, and each fix names the command that puts it in force. Run it, scan again, and the number moves. The score describes the host, and the host had not changed yet.</p>
             <p>See <a href="scoring#limits">Scoring</a> for the rule, and <a href="fixing#verify">Fixing</a> for what the re-check after a fix can and cannot establish.</p>
 

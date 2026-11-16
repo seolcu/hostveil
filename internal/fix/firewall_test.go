@@ -18,7 +18,7 @@ func firewallFinding(opts ...model.FindingOption) model.Finding {
 
 // The order is the fix. Enabling a default-deny policy first and allowing SSH
 // second is the lockout this refused to risk for years, so the commands are
-// asserted in sequence rather than as a set.
+// asserted in sequence.
 func TestTheFirewallFixOpensSSHBeforeItClosesEverything(t *testing.T) {
 	fx, err := buildEnableFirewall(firewallFinding(model.WithEvidence("ssh_port", "2222")))
 	if err != nil {
@@ -31,7 +31,7 @@ func TestTheFirewallFixOpensSSHBeforeItClosesEverything(t *testing.T) {
 		t.Errorf("Kind = %v, want the declared Auto that Validate accepts for a single action", fx.Kind)
 	}
 	if got := fx.EffectiveKind(); got != model.RemediationReview {
-		t.Errorf("EffectiveKind = %v, want Review — this cannot be rolled back", got)
+		t.Errorf("EffectiveKind = %v, want Review; this cannot be rolled back", got)
 	}
 	if len(fx.Actions) != 1 {
 		t.Fatalf("want one action carrying both commands in order, got %d", len(fx.Actions))
@@ -51,7 +51,7 @@ func TestTheFirewallFixOpensSSHBeforeItClosesEverything(t *testing.T) {
 	}
 }
 
-// "I could not tell" must not quietly become 22. A host running sshd on 2222
+// "I could not tell" must not silently become 22. A host running sshd on 2222
 // whose port Hostveil failed to read would be locked out by a fix that
 // guessed, and the guess would look exactly like knowledge.
 func TestNoFirewallFixWithoutTheSSHPort(t *testing.T) {
@@ -85,7 +85,7 @@ func TestNoFirewallFixWithoutUfw(t *testing.T) {
 // Two ports at once is how an operator changes the SSH port without locking
 // themselves out: `Port 22` and `Port 2222` both listening, verify the new
 // one, then drop the old. The fix allowed the first and `ufw --force enable`
-// severed the second, with no checkpoint to undo it — on a host reached only
+// severed the second, with no checkpoint to undo it, on a host reached only
 // over SSH.
 //
 // The whole justification for this fix existing is that Hostveil now knows
@@ -110,7 +110,7 @@ func TestTheFirewallFixAllowsEverySSHPortBeforeItClosesEverything(t *testing.T) 
 		{"ufw", "--force", "enable"},
 	} {
 		if strings.Join(cmds[i], " ") != strings.Join(want, " ") {
-			t.Errorf("command %d is %v, want %v — every port has to be open before the policy closes", i, cmds[i], want)
+			t.Errorf("command %d is %v, want %v; every port has to be open before the policy closes", i, cmds[i], want)
 		}
 	}
 	if !strings.Contains(fx.Actions[0].Warning, "2222") {

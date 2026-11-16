@@ -7,16 +7,16 @@ import "testing"
 // first Match, so every finding it reports is about the *global* configuration
 // above one.
 //
-// setSSHDDirective has a guard meant to keep the fix on the same footing —
-// "do not edit inside/after Match blocks" — and it cannot fire. The keyword
+// setSSHDDirective has a guard meant to keep the fix on the same footing:
+// "do not edit inside/after Match blocks", and it cannot fire. The keyword
 // test above it already requires the line to be the directive being set, so
 // the Match test is only reachable when the directive *is* "match", which no
 // fix sets. Both halves of the editor walk into the block as a result.
 
 // The directive exists, but only inside a Match block. Editing it changes what
-// SSH does for the sessions that block selects — something the operator wrote
-// deliberately and the finding never referred to — while the global setting
-// the finding was actually about stays exactly as it was.
+// SSH does for the sessions that block selects (something the operator wrote
+// and the finding never referred to) while the global setting
+// the finding was about stays exactly as it was.
 func TestDirectiveInsideAMatchBlockIsLeftAlone(t *testing.T) {
 	in := []byte("PermitRootLogin no\n" +
 		"\n" +
@@ -34,7 +34,7 @@ func TestDirectiveInsideAMatchBlockIsLeftAlone(t *testing.T) {
 	}
 }
 
-// The directive is absent, so the fix appends it — and appending to the end of
+// The directive is absent, so the fix appends it, and appending to the end of
 // a file that ends in a Match block puts it *inside* that block. The operator
 // asked to disable password authentication everywhere and got it disabled for
 // one user, with the global default untouched and the finding still true.
@@ -53,7 +53,7 @@ func TestAppendGoesAboveATrailingMatchBlock(t *testing.T) {
 	}
 	if global > match {
 		t.Errorf("the directive was appended inside the trailing Match block, so it "+
-			"applies to that block only rather than globally:\n%s", out)
+			"applies to that block only:\n%s", out)
 	}
 }
 
@@ -66,7 +66,7 @@ func TestAppendWithoutAMatchBlockGoesAtTheEnd(t *testing.T) {
 	}
 }
 
-// And a directive above a Match block is still the one that gets rewritten —
+// And a directive above a Match block is still the one that gets rewritten,
 // that is the global setting the finding is about.
 func TestDirectiveAboveAMatchBlockIsRewritten(t *testing.T) {
 	in := []byte("PasswordAuthentication yes\n" +

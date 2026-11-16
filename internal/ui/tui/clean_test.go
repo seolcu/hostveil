@@ -19,8 +19,8 @@ func emptyList(t *testing.T, r model.Report) string {
 
 // "Clean" is a claim about the whole host, and finding nothing is not the
 // same as being unable to look. The two score identically and mean opposite
-// things, which is the rule the whole scanner is built on — a skipped domain
-// is N/A rather than 100, a degraded one is scored with a flag.
+// things, which is the rule the whole scanner is built on: a skipped domain
+// is N/A, a degraded one is scored with a flag.
 //
 // This view broke the rule at the last step. It said "No problems found.
 // Clean." whenever the list was empty, so a host where the Docker socket was
@@ -64,7 +64,7 @@ func TestListClaimsCleanWhenEveryDomainRan(t *testing.T) {
 	}
 }
 
-// A report with no domains at all is not a failed scan — it is a bare
+// A report with no domains at all is not a failed scan: it is a bare
 // finding set, which is what every zero-value model in these tests is. The
 // guard must not turn those into a warning.
 func TestListWithNoDomainsStillReadsClean(t *testing.T) {
@@ -101,7 +101,7 @@ func TestFilteredEmptyListStillNamesTheFilter(t *testing.T) {
 
 // The incomplete-scan message is five times longer than the "Clean." it
 // replaces, and listRows does no wrapping of its own. Unwrapped at 40
-// columns it was clipped to "No problems found in the domains that" — the
+// columns it was clipped to "No problems found in the domains that": the
 // warning gone, and what survived reading as the clean result the whole
 // guard exists to withhold. The preview pane learned the same lesson about
 // its rollback warning; this is that lesson applied here.
@@ -122,8 +122,8 @@ func TestEmptyListMessagesSurviveNarrowTerminals(t *testing.T) {
 					t.Errorf("width %d, %s: line %d is %d columns:\n%q", w, name, i, got, line)
 				}
 			}
-			// Clipping shows up as a missing tail, so assert the last word
-			// rather than a prefix that survives being cut.
+			// Clipping shows up as a missing tail, so assert the last word.
+			// A prefix would survive being cut.
 			want := "complete."
 			if name == "clean" {
 				want = "Clean."

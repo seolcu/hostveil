@@ -16,7 +16,7 @@ type Doc struct {
 
 // Section is one heading and its content. Exactly one of Paragraphs, KV,
 // Table, or Findings is normally populated, but a renderer should not assume
-// that — render whichever fields are non-empty, in this field order.
+// that: render whichever fields are non-empty, in this field order.
 type Section struct {
 	Heading    string
 	Level      int // 1 = top-level, 2 = subsection
@@ -37,15 +37,14 @@ type Table struct {
 	Rows    [][]string
 }
 
-// FindingBlock is one finding, rendered in plain language rather than as an
-// ID: what it means, how to fix it (or why Hostveil won't), and whatever
+// FindingBlock is one finding, rendered in plain language: what it means, how to fix it (or why Hostveil won't), and whatever
 // evidence the checker recorded.
 type FindingBlock struct {
 	Title, Severity, Domain, Service string
 	Description, HowToFix, WhyNoFix  string
-	// FixBenefit and FixSideEffect are the recommended fix's trade-off —
-	// model.Finding.FixBenefit/FixSideEffect verbatim — shown together
-	// rather than either/or like HowToFix/WhyNoFix, since a fix can have
+	// FixBenefit and FixSideEffect are the recommended fix's trade-off
+	// (model.Finding.FixBenefit/FixSideEffect verbatim) shown together
+	// (HowToFix/WhyNoFix are either/or), since a fix can have
 	// both a real benefit and a real side effect at once. Empty when the
 	// finding has no registered fix.
 	FixBenefit, FixSideEffect string

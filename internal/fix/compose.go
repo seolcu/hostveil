@@ -17,14 +17,14 @@ func registerCompose(r *Registry) {
 	r.Register("compose.ds019", buildBindLoopback)
 	r.Register("compose.dr002", buildBindLoopback)
 	// Registered by exact ID, never as "cve.*": the glob would sweep up
-	// every per-CVE finding, which the registry declines on purpose.
+	// every per-CVE finding, which the registry declines.
 	r.Register("cve.outdated-image", buildRepullImage)
 }
 
 // composeEdit builds an edit action for a compose file.
 //
 // Every one of them carries TakesEffectOn, because a compose file is not what
-// docker is running from — it is what docker was told, once. The container
+// docker is running from: it is what docker was told, once. The container
 // keeps its old configuration until it is recreated, so an edit here is
 // correct and not yet in force, and the re-check has to say which.
 func composeEdit(path, label, benefit, warning, service string, mutate func(*compose.Doc) error) Action {
@@ -67,7 +67,7 @@ func composeFiles(f model.Finding) ([]string, error) {
 }
 
 // composeScalarTarget is the file to edit when adding or replacing a scalar
-// key — security_opt, restart, mem_limit.
+// key: security_opt, restart, mem_limit.
 //
 // Compose resolves scalars last-wins, so the file that decides is the last one
 // defining the service. Writing into an earlier one would be overwritten by
@@ -95,13 +95,13 @@ func composeScalarTarget(f model.Finding) (string, error) {
 
 // composePortTarget is the file to edit when rebinding a published port, and
 // it is a different question from the scalar one because compose *appends*
-// port mappings rather than replacing them. A wide binding in any one file
+// port mappings across files. A wide binding in any one file
 // exposes the service however the others bind it, so rewriting one file while
 // another still publishes 0.0.0.0 changes nothing docker will do.
 //
-// One file publishing it wide: that is the file, and on the common layout —
-// a base binding to loopback and an override republishing it — this is the
-// override, which is precisely the file the old code did not edit.
+// One file publishing it wide: that is the file, and on the common layout
+// (a base binding to loopback and an override republishing it) this is the
+// override, which is the file the old code did not edit.
 //
 // Several: Hostveil declines. It is the same answer persistSysctl gives when
 // the file it would write is outranked. A fix that cannot name the deciding
@@ -139,7 +139,7 @@ func composePortTarget(f model.Finding, port string) (string, error) {
 		return "", fmt.Errorf("finding %s: port %s is published by the merge of %d files and by none of them alone, so Hostveil cannot tell which one decides it",
 			f.ID, port, len(files))
 	default:
-		return "", fmt.Errorf("finding %s: port %s is published on every interface by %s, and compose appends port mappings rather than replacing them — rewriting one would leave the others binding 0.0.0.0",
+		return "", fmt.Errorf("finding %s: port %s is published on every interface by %s, and compose appends port mappings across files; rewriting one would leave the others binding 0.0.0.0",
 			f.ID, port, strings.Join(publishes, " and "))
 	}
 }
@@ -155,7 +155,7 @@ func buildAddNoNewPrivileges(f model.Finding) (Fix, error) {
 		Kind:  model.RemediationAuto,
 		Actions: []Action{composeEdit(path, "Add security_opt no-new-privileges:true",
 			"A process that breaks into this container can no longer gain more privilege than it started "+
-				"with via a setuid binary — one of the more common container-escape stepping stones, closed.",
+				"with via a setuid binary; one of the more common container-escape stepping stones, closed.",
 			recreateNote(svc), svc,
 			func(d *compose.Doc) error { return d.AddSecurityOpt(svc, "no-new-privileges:true") })},
 	}, nil
@@ -179,12 +179,12 @@ func buildAddRestart(f model.Finding) (Fix, error) {
 }
 
 // memLimits are the alternatives offered for ds010. Hostveil cannot know
-// what a service actually uses, so it offers defensible starting points and
-// lets the user pick rather than inventing a number.
+// what a service uses, so it offers defensible starting points and
+// lets the user pick.
 //
 // The typical container leads, because Actions[0] is the recommendation and
 // `fix --all --review` applies it without asking. This list used to lead with
-// 512m, the smallest — while the warning printed beside every alternative
+// 512m, the smallest, while the warning printed beside every alternative
 // said "Start generous, watch `docker stats`, and tighten later". A reviewed
 // batch therefore capped every unlimited container on the host at 512m, which
 // is what OOM-kills a media transcoder or a JVM. Leading with the smallest
@@ -208,7 +208,7 @@ func buildSetMemLimit(f model.Finding) (Fix, error) {
 	actions := make([]Action, 0, len(memLimits))
 	for _, m := range memLimits {
 		actions = append(actions, composeEdit(path,
-			fmt.Sprintf("Limit %s to %s — %s", svc, m.value, m.kind), benefit, warning, svc,
+			fmt.Sprintf("Limit %s to %s; %s", svc, m.value, m.kind), benefit, warning, svc,
 			func(d *compose.Doc) error { return d.SetScalar(svc, "mem_limit", m.value) }))
 	}
 	return Fix{
@@ -223,7 +223,7 @@ func buildSetMemLimit(f model.Finding) (Fix, error) {
 //
 // It refuses digest-pinned references. The checker declares those Manual
 // too, so the rule is encoded at both ends and Engine.classify takes the
-// stricter — neither side alone can produce a fix button that leads
+// stricter: neither side alone can produce a fix button that leads
 // nowhere. Keep both: for a while classify did not take the stricter when
 // the checker's side was Manual, and this refusal was the only thing
 // holding the promise.
@@ -237,7 +237,7 @@ func buildRepullImage(f model.Finding) (Fix, error) {
 	if err != nil {
 		return Fix{}, err
 	}
-	// The bare service name, not f.Service: CVE image findings qualify the
+	// The bare service name: CVE image findings qualify the
 	// service with its compose project to keep two projects' same-named
 	// services distinct in Finding.Key(), and `docker compose -f <file>` wants
 	// the name as written in that file.
@@ -259,11 +259,11 @@ func buildRepullImage(f model.Finding) (Fix, error) {
 			{
 				Label: "Pull the new image and recreate " + svc + " now",
 				Benefit: "Re-resolves the tag to whatever it currently points at, which is how the vendor " +
-					"ships fixes for a floating-tag image — it may include a patch for the CVE that " +
+					"ships fixes for a floating-tag image; it may include a patch for the CVE that " +
 					"triggered this finding, though Hostveil cannot guarantee it does, since the same tag " +
 					"can also move for unrelated reasons. On a host where staying current matters more than " +
 					"staying unchanged, this is the fastest way to find out.",
-				Warning: "This recreates the container: the service goes down briefly and comes back on a different image. " + noRollback + " Note the current image ID (`docker compose -f " + path + " images`) before applying, so you can pin it back if the new one misbehaves. The new image may also carry unrelated upstream changes since you last pulled — on a host you are not trying to disturb, that is a real cost to weigh against a fix that is not guaranteed to land anyway.",
+				Warning: "This recreates the container: the service goes down briefly and comes back on a different image. " + noRollback + " Note the current image ID (`docker compose -f " + path + " images`) before applying, so you can pin it back if the new one misbehaves. The new image may also carry unrelated upstream changes since you last pulled. On a host you are not trying to disturb, that is a real cost to weigh against a fix that is not guaranteed to land anyway.",
 				Kind:    ActionExec,
 				Commands: [][]string{
 					pull,
@@ -273,7 +273,7 @@ func buildRepullImage(f model.Finding) (Fix, error) {
 			{
 				Label: "Download the new image only; recreate " + svc + " on your own schedule",
 				Benefit: "Downloads the new image without touching the running container, so there is a " +
-					"chance to inspect it — its digest, its changed packages, its release notes — before " +
+					"chance to inspect it (its digest, its changed packages, its release notes) before " +
 					"deciding whether pulling it in is worth the risk to a service that is stable today.",
 				Warning:  "This changes nothing that is running: the image is downloaded but the container keeps using the old one until you recreate it, and the finding will still be reported until then. " + noRollback,
 				Kind:     ActionExec,
@@ -294,7 +294,7 @@ func buildBindLoopback(f model.Finding) (Fix, error) {
 	}
 	svc := f.Service
 	// It says "once recreated" because until then it is not true. The old
-	// wording — "After this, the service is reachable only from this host" —
+	// wording: "After this, the service is reachable only from this host":
 	// was false at apply time and stayed false indefinitely, on the highest
 	// severity fix in the compose domain.
 	warning := "Once " + svc + " is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. " + recreateNote(svc)
@@ -302,7 +302,7 @@ func buildBindLoopback(f model.Finding) (Fix, error) {
 		Label: fmt.Sprintf("Bind %s port %s to localhost", svc, hostPort),
 		Kind:  model.RemediationAuto,
 		Actions: []Action{composeEdit(path, "Bind published port to 127.0.0.1",
-			"Once recreated, the service stops being reachable from the network at all — only processes "+
+			"Once recreated, the service stops being reachable from the network at all; only processes "+
 				"on this host can reach it, closing off whatever guessing or scanning the open port "+
 				"currently invites.",
 			warning, svc,
@@ -313,12 +313,12 @@ func buildBindLoopback(f model.Finding) (Fix, error) {
 // recreateNote is the sentence every compose edit carries, because none of
 // them changes anything that is running.
 //
-// buildRepullImage has said this since it was written — "This changes nothing
+// buildRepullImage has said this since it was written: "This changes nothing
 // that is running: the image is downloaded but the container keeps using the
-// old one until you recreate it" — and it was the only fix in the domain that
+// old one until you recreate it", and it was the only fix in the domain that
 // did, on the least severe finding in it. The port-rebinding fixes said the
 // opposite.
 func recreateNote(svc string) string {
-	return "This edits the file, not the running container: `docker compose up -d " + svc +
+	return "This edits the file. The running container changes only after `docker compose up -d " + svc +
 		"` is what puts the change into force."
 }

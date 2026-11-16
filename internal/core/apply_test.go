@@ -100,7 +100,7 @@ func TestApplyRollbackRoundTrip(t *testing.T) {
 	}
 	// Mode restored. This used to pass vacuously: nothing had changed the
 	// mode, so "preserved" was true by default. Loosen it between apply and
-	// rollback so the assertion has something to catch — os.WriteFile
+	// rollback so the assertion has something to catch: os.WriteFile
 	// ignores its perm argument on an existing file, which is why rollback
 	// needs an explicit chmod.
 	if fi, err := os.Stat(path); err == nil && fi.Mode().Perm() != 0o640 {
@@ -140,7 +140,7 @@ func TestRollbackRestoresAChangedMode(t *testing.T) {
 		t.Fatal(err)
 	}
 	if fi.Mode().Perm() != 0o640 {
-		t.Errorf("mode = %#o, want 0640 — the checkpoint recorded it and rollback must apply it", fi.Mode().Perm())
+		t.Errorf("mode = %#o, want 0640; the checkpoint recorded it and rollback must apply it", fi.Mode().Perm())
 	}
 }
 
@@ -149,7 +149,7 @@ func TestRollbackRestoresAChangedMode(t *testing.T) {
 // but a TUI or web session holds one engine for its lifetime: if Rollback
 // restores the files without undoing ApplyFix's mark-fixed→rescore tail,
 // the finding stays filtered out of every UI's active list and the gauge
-// keeps crediting a fix that no longer exists — a rollback that looks like
+// keeps crediting a fix that no longer exists; a rollback that looks like
 // it did nothing.
 func TestRollbackUnmarksFixedAndRescores(t *testing.T) {
 	dir := t.TempDir()
@@ -182,13 +182,13 @@ func TestRollbackUnmarksFixedAndRescores(t *testing.T) {
 	if !engine.state.current.Findings[0].Fixed {
 		t.Fatal("apply did not mark the finding fixed")
 	}
-	// Deliberately not asserted here any more: that the score went up. A
+	// No longer asserted here: that the score went up. A
 	// compose edit is not in force until the container is recreated, so this
-	// apply leaves the number alone on purpose — see
+	// apply leaves the number alone: see
 	// TestAnInForceFixMovesTheScoreAndAPendingOneDoesNot, which owns that
 	// claim now and owns both halves of it. What this test is about is the
 	// rollback tail, and for that the pending case is the harder one: the
-	// score never moved, so an unmark that quietly did nothing would look
+	// score never moved, so an unmark that silently did nothing would look
 	// exactly like a correct one.
 	if !engine.state.current.Findings[0].Pending {
 		t.Fatal("a compose edit is not in force when it is written; apply did not record that")
@@ -199,10 +199,10 @@ func TestRollbackUnmarksFixedAndRescores(t *testing.T) {
 		t.Fatalf("rollback: %v", err)
 	}
 	if engine.state.current.Findings[0].Fixed {
-		t.Error("rollback left the finding marked fixed — it stays hidden in every UI")
+		t.Error("rollback left the finding marked fixed; it stays hidden in every UI")
 	}
 	if engine.state.current.Findings[0].Pending {
-		t.Error("rollback left the finding marked pending — the fix it was waiting on is gone")
+		t.Error("rollback left the finding marked pending; the fix it was waiting on is gone")
 	}
 	if len(rb.Unfixed) != 1 || rb.Unfixed[0] != "compose.ds018" {
 		t.Errorf("unexpected Unfixed: %v", rb.Unfixed)
@@ -216,14 +216,14 @@ func TestRollbackUnmarksFixedAndRescores(t *testing.T) {
 // this whole rule, and it has to be a pair.
 //
 // The score is what Hostveil says about the host, so it may only move when the
-// host has moved. A fix whose artifact is what the domain reads — a file mode
-// is the plainest case, since chmod IS the state — is in force the moment it
+// host has moved. A fix whose artifact is what the domain reads (a file mode
+// is the plainest case, since chmod IS the state) is in force the moment it
 // is applied, and the number must follow. A fix whose artifact is read by
 // something that has not read it again is not, and the number must not: the
 // compose file says one thing and the running container still does another.
 //
 // Asserting only the second half would pass for an engine that had simply
-// stopped scoring fixes at all, which is the failure mode this replaced —
+// stopped scoring fixes at all, which is the failure mode this replaced;
 // a number that ignores what happened is no better than one that overstates
 // it. So the first half is the control, and neither assertion means anything
 // without the other.
@@ -258,8 +258,7 @@ func TestAnInForceFixMovesTheScoreAndAPendingOneDoesNot(t *testing.T) {
 				t.Fatalf("Pending = %v, want %v (verified %s)", out.Pending, tc.wantPending, out.Verified)
 			}
 			// Fixed either way. Applied and in force are two facts, and this
-			// change separates them rather than collapsing the first into the
-			// second — see model.FixVerification.
+			// change keeps them separate: see model.FixVerification.
 			if !engine.state.current.Findings[0].Fixed {
 				t.Error("the fix was applied and the finding is not marked fixed")
 			}
@@ -284,12 +283,12 @@ func TestAnInForceFixMovesTheScoreAndAPendingOneDoesNot(t *testing.T) {
 
 // TestABatchChargesAPendingFixToo is the path-independence half.
 //
-// ApplyBatch deliberately does not re-check — twenty compose findings would
-// mean twenty enumerations of every container on the host — so if pending were
-// decided by verification rather than by the fix's own declaration, the batch
+// ApplyBatch does not re-check (twenty compose findings would
+// mean twenty enumerations of every container on the host) so if pending were
+// decided by verification, the batch
 // would be the optimistic path and `fix --all` would score a host higher than
 // applying the same fixes one at a time. Action.TakesEffectOn is on the fix
-// precisely so both paths reach the same answer with no re-check.
+// so both paths reach the same answer with no re-check.
 func TestABatchChargesAPendingFixToo(t *testing.T) {
 	f := composeFindingOn(t, "compose.ds006")
 
@@ -563,7 +562,7 @@ func TestModeCheckpointStoresNoContents(t *testing.T) {
 			continue
 		}
 		found = true
-		// Still reversible — it restores modes, not bytes.
+		// Still reversible; it restores modes.
 		if !cp.Reversible {
 			t.Error("a mode checkpoint must be reversible")
 		}
@@ -573,7 +572,7 @@ func TestModeCheckpointStoresNoContents(t *testing.T) {
 	}
 }
 
-// Preview must never touch the host — the same contract previewEdit has.
+// Preview must never touch the host: the same contract previewEdit has.
 func TestModePreviewIsPure(t *testing.T) {
 	engine := fixEngine(t)
 	f, path := permFinding(t, 0o666, "0640")
@@ -609,7 +608,7 @@ func TestModeFixAbortsWhenAPathIsMissing(t *testing.T) {
 }
 
 // A directory already at its target mode must produce no change at all.
-// tighten() carries the type bits through precisely so that planModes sees a
+// tighten() carries the type bits through so that planModes sees a
 // fixed point here; when it dropped fs.ModeDir the comparison against the
 // full mode never matched, and applyMode would checkpoint and chmod a
 // compliant directory while reporting success for work it had not done.
@@ -640,7 +639,7 @@ func TestModeFixOnCompliantDirectoryIsANoOp(t *testing.T) {
 	}
 }
 
-// A directory that genuinely is too permissive must still be tightened, and
+// A directory that is too permissive must still be tightened, and
 // must still be a directory afterwards.
 func TestModeFixTightensLooseDirectory(t *testing.T) {
 	engine := fixEngine(t)
@@ -669,7 +668,7 @@ func TestModeFixTightensLooseDirectory(t *testing.T) {
 	}
 }
 
-// Auto means "safe to apply unattended", so `fix --all` must actually pick
+// Auto means "safe to apply unattended", so `fix --all` must pick
 // a mode fix up. ApplyBatch takes only single-action Auto fixes, which is
 // exactly the shape ActionMode produces.
 func TestApplyBatchIncludesModeFixes(t *testing.T) {
@@ -692,7 +691,7 @@ func TestApplyBatchIncludesModeFixes(t *testing.T) {
 // applyEdit is a read-modify-write, and the web dashboard serves requests
 // concurrently. Without the lock, two fixes to one compose file both read the
 // original, both transform their own copy, and the later write erases the
-// earlier fix — while both checkpoints record success and both findings are
+// earlier fix, while both checkpoints record success and both findings are
 // marked Fixed. The loss is silent, in the subsystem whose entire promise is
 // that changes are recorded and reversible.
 func TestConcurrentFixesToOneFileDoNotLoseEachOther(t *testing.T) {
@@ -734,7 +733,7 @@ func TestConcurrentFixesToOneFileDoNotLoseEachOther(t *testing.T) {
 	// Both edits must be present. Either one missing means a write was lost.
 	for _, want := range []string{"no-new-privileges", "127.0.0.1:8080:80"} {
 		if !strings.Contains(string(after), want) {
-			t.Errorf("a concurrent fix was lost — %q missing from:\n%s", want, after)
+			t.Errorf("a concurrent fix was lost; %q missing from:\n%s", want, after)
 		}
 	}
 }
@@ -770,7 +769,7 @@ func TestCurrentIsASnapshot(t *testing.T) {
 // would turn "tighten your agent config" into root breaking the host's
 // account database.
 //
-// The fix refuses rather than skipping, because a mode fix that silently
+// The fix refuses the whole plan, because a mode fix that silently
 // tightened some of its paths would report success over a file it left
 // exposed.
 func TestModeFixRefusesToFollowASymlink(t *testing.T) {
@@ -792,18 +791,18 @@ func TestModeFixRefusesToFollowASymlink(t *testing.T) {
 
 	engine := fixEngine(t)
 	if _, err := engine.PreviewFix(f); err == nil {
-		t.Error("previewing a mode fix on a symlink must fail, not report a plan")
+		t.Error("previewing a mode fix on a symlink must fail")
 	}
 	if _, err := engine.ApplyFix(context.Background(), f, 0); err == nil {
 		t.Fatal("applying a mode fix to a symlink must fail")
 	}
 	if fi, _ := os.Stat(victim); fi.Mode().Perm() != 0o644 {
-		t.Errorf("the symlink's target is now %#o — the chmod followed the link", fi.Mode().Perm())
+		t.Errorf("the symlink's target is now %#o; the chmod followed the link", fi.Mode().Perm())
 	}
 }
 
 // A batch cut short must say so. Ctrl-C in the TUI maps straight to tea.Quit
-// with no guard while a batch is in flight, so the process exits mid-loop —
+// with no guard while a batch is in flight, so the process exits mid-loop:
 // the checkpoints for whatever landed are on disk, and without this flag the
 // outcome is indistinguishable from a batch that ran to completion and found
 // the rest ineligible.
@@ -872,7 +871,7 @@ func TestCompletedBatchIsNotMarkedInterrupted(t *testing.T) {
 
 // A checkpoint must not outlive the write it describes.
 //
-// The backup is taken first, deliberately — nothing is written until there is
+// The backup is taken first: nothing is written until there is
 // something to go back to. But when the write then fails, the checkpoint that
 // survives says a reversible fix was applied to a file that never changed:
 // `hostveil history` lists it with a full diff, and its AppliedSHA256 asserts
@@ -894,7 +893,7 @@ func TestAFailedWriteLeavesNoCheckpointBehind(t *testing.T) {
 		model.WithEvidence("port", "6379"))
 
 	// The write goes through a temp file beside the target, so an unwritable
-	// directory fails it — after the backup, which is the ordering that
+	// directory fails it, after the backup, which is the ordering that
 	// produces the stale checkpoint.
 	if err := os.Chmod(dir, 0o555); err != nil {
 		t.Fatal(err)
@@ -979,8 +978,8 @@ func TestNoBackupMeansNoWrite(t *testing.T) {
 
 // "One fix at a time, and a scan is a fix for this purpose."
 //
-// The apply-versus-apply half of that has a test. The half that is actually
-// surprising — that a scan takes the same lock — did not, and it is the half
+// The apply-versus-apply half of that has a test. The half that is
+// surprising (that a scan takes the same lock) did not, and it is the half
 // the sentence was written to explain: a scan reads the files a fix is
 // part-way through writing, so a report built during one describes a host that
 // existed at no single moment.
@@ -1012,7 +1011,7 @@ func TestAScanWaitsForAFixToFinish(t *testing.T) {
 
 	finished := <-fixDone
 	if scanEnded.Before(finished) {
-		t.Errorf("the scan finished at %v, before the fix released the lock at %v — "+
+		t.Errorf("the scan finished at %v, before the fix released the lock at %v; "+
 			"a scan that overlaps a fix reads a host part-way through being edited",
 			scanEnded.Sub(scanStarted), finished.Sub(scanStarted))
 	}

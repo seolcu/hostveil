@@ -11,14 +11,14 @@ package fix
 // all three of:
 //
 //  1. Reversible. The action leaves a checkpoint that restores exactly what
-//     it changed — an edit stores the original bytes, a mode change stores
+//     it changed: an edit stores the original bytes, a mode change stores
 //     the original permission bits. Exec actions are never Auto, and the
-//     reason is that nothing about them can be recorded to undo, not that
-//     they fail to be file edits: applyExec has no checkpoint at all.
-//  2. Recoverable in practice, not just on disk. If the change is wrong,
+//     reason is that nothing about them can be recorded to undo:
+//     applyExec has no checkpoint at all.
+//  2. Recoverable in practice as well as on disk. If the change is wrong,
 //     the user must still be able to reach the machine to roll it back.
-//     Anything that can sever the operator's own access — SSH
-//     authentication, firewall policy — fails this even though the file
+//     Anything that can sever the operator's own access (SSH
+//     authentication, firewall policy) fails this even though the file
 //     edit itself is perfectly reversible.
 //  3. Unambiguous. Exactly one correct remediation, and applying it cannot
 //     break a legitimate configuration.
@@ -34,24 +34,24 @@ package fix
 // The checker's declared kind and the registered fix's kind are resolved
 // by Engine.classify, which takes whichever demands more human
 // involvement. A fix registered here as Auto is a statement about its
-// shape — one mechanical action — and does not override a checker that
+// shape (one mechanical action) and does not override a checker that
 // asked for Review.
 //
 // firewall.inactive was on the list below until the checker started
-// recording the port sshd is actually listening on. The refusal was never
-// about the commands — it was that Hostveil could not know which port to keep
+// recording the port sshd is listening on. The refusal was never
+// about the commands: it was that Hostveil could not know which port to keep
 // open, and a firewall enabled without that answer locks the operator out with
 // no checkpoint to undo it. With the port in evidence the fix allows it first
 // and enables the policy second, as two commands of one action, and stays
 // Review: the change cannot be rolled back and it takes every other inbound
-// port with it, both of which an operator should decide rather than discover.
+// port with it, both of which an operator should decide in advance.
 //
 // firewall.default-allow reuses the same evidence and the same fix, applied
 // to a firewall that happens to already be running: allow SSH first, then
 // flip the default inbound policy from accept to deny. It was declined for
-// exactly firewall.inactive's original reason — no known SSH port — and that
+// exactly firewall.inactive's original reason (no known SSH port) and that
 // reason no longer holds here either. Both are built for ufw and for
-// firewalld — the default on Fedora and the RHEL family, where until 3.34.0
+// firewalld: the default on Fedora and the RHEL family, where until 3.34.0
 // every firewall finding had no fix at all. On firewalld the SSH allow goes
 // into the permanent configuration with firewall-offline-cmd before the
 // daemon starts, and the target flip is a reload after the allow; an exposed
@@ -65,13 +65,13 @@ package fix
 //
 // Twelve container findings used to sit in the register below, every one for
 // the same reason: the remediation removes or restricts something the author
-// may have set on purpose — privileged mode, a capability, host networking,
-// a Docker socket mount — and Hostveil cannot tell a load-bearing setting
+// may have set intentionally (privileged mode, a capability, host networking,
+// a Docker socket mount) and Hostveil cannot tell a setting something depends on
 // from a cargo-culted one. That reason is still true. What it no longer
 // decides is whether there is a button. A fix that might break a deployment
-// is Review rather than Auto, carries a Warning that names what it might
-// break, and is IndividualOnly so no batch — `fix --all --review` included —
-// applies it on nobody's behalf. Each is a file edit with a checkpoint, so
+// is Review, carries a Warning that names what it might
+// break, and is IndividualOnly so no batch: `fix --all --review` included:
+// applies it unattended. Each is a file edit with a checkpoint, so
 // the operator who presses it and finds the service broken rolls it back
 // exactly. The builders and their warnings are in compose_risky.go.
 //
@@ -82,7 +82,7 @@ package fix
 // alternative; and expiring a password stored under a weak hash, which is
 // the one thing Hostveil can do without inventing the credential. The UID-0
 // checker learned to stop reporting an account that is locked and expired,
-// because that is an account nobody can log in as.
+// because that is an account no one can log in as.
 //
 // network_risky.go took four more. firewall.docker-bypass installs the
 // ufw-docker block in after.rules and reloads ufw through AfterWrite, which
@@ -92,15 +92,15 @@ package fix
 // chmod, durable on k0s and lasting until the next start on k3s, which its
 // Warning says along with where the persistent setting lives.
 //
-// # Findings deliberately left without a fix
+// # Findings left without a fix
 //
-// These are fixable in principle and are demoted to Manual on purpose.
+// These are fixable in principle and are demoted to Manual.
 // TestKnownUnregisteredFindings pins each one, so registering a fix means
 // deleting an assertion and arguing with the reason.
 //
-//   - cve.<vulnerability-id> — no longer emitted at all, and must never
+//   - cve.<vulnerability-id>: no longer emitted at all, and must never
 //     become fixable if it returns. Trivy's fixed_version is the OS package
-//     version inside the image (`3.0.11-1~deb12u2`), not an image tag.
+//     version inside the image (`3.0.11-1~deb12u2`). Image tags use a different scheme.
 //     There is no mapping from one to the other; treating them as
 //     interchangeable is what issue #473 was. Nothing Hostveil can compute
 //     turns "openssl must reach 3.0.11-1~deb12u2" into an image reference,
@@ -109,55 +109,55 @@ package fix
 //     a thing you can act on, and every CVE in an image shares the single
 //     remediation that cve.outdated-image now carries. The registry matches
 //     that ID exactly, so no cve.* glob can sweep the old shape back in.
-//   - compose.dr005 — moving a value into an env_file is a two-file change
+//   - compose.dr005: moving a value into an env_file is a two-file change
 //     where Action carries one Path, and a move that does not delete the
-//     original improves nothing. More to the point, by the time the secret
+//     original improves nothing. Also, by the time the secret
 //     is found it has already leaked into backups and git history, so the
 //     real remediation is rotating it, which Hostveil cannot do.
-//   - compose.ds012 — the remediation is a healthcheck, and the right one
+//   - compose.ds012: the remediation is a healthcheck, and the right one
 //     depends entirely on what the service exposes: an HTTP path, a CLI
 //     probe, a port to open. A static audit cannot learn any of them, and a
-//     guessed healthcheck is worse than none — a probe that does not match
+//     guessed healthcheck is worse than none: a probe that does not match
 //     the app marks a working container unhealthy, and anything waiting on
 //     `condition: service_healthy` then never starts. The finding's own
 //     how-to-fix says this cannot be filled in automatically; this is the
 //     registry agreeing with it.
-//   - ports.exposed — the aggregate finding, which fires only when no
+//   - ports.exposed: the aggregate finding, which fires only when no
 //     firewall is active at all. Its remediation is firewall.inactive's,
 //     and it is declined for firewall.inactive's reason: enabling
 //     default-deny on a box reached over SSH can lock the operator out
 //     irrecoverably, and exec fixes have no checkpoint. Fixing the firewall
 //     resolves this finding as a side effect, which is the right order.
-//   - accounts.duplicate-uid — the remediation is giving one of the
+//   - accounts.duplicate-uid: the remediation is giving one of the
 //     accounts a new UID, which means re-owning every file it holds across
 //     the filesystem. That is not one action and not one checkpoint, and a
 //     partial migration leaves two accounts each owning half of what was
 //     theirs.
-//   - proxmox.webui-open — the edit is a few lines in /etc/default/pveproxy
+//   - proxmox.webui-open: the edit is a few lines in /etc/default/pveproxy
 //     and the values are the operator's alone: which network is the
 //     management network is not in any file Hostveil reads, and a guess that
 //     leaves out the address the operator is using locks them out of the
 //     hypervisor's interface on the next restart. LISTEN_IP, the other half,
 //     breaks clusters whose nodes reach each other across subnets, which
 //     upstream warns about in the same breath as documenting it.
-//   - proxmox.root-no-tfa — enrolling a second factor is a person holding a
+//   - proxmox.root-no-tfa: enrolling a second factor is a person holding a
 //     device, and writing tfa.cfg on their behalf would be Hostveil inventing
 //     a credential.
-//   - accounts.sudo-nopasswd — the blocker is not the lockout risk alone;
+//   - accounts.sudo-nopasswd: the blocker is not the lockout risk alone;
 //     accounts.emptypassword carries a comparable one and is registered
-//     below, disclosed through a Warning instead of declined. What actually
+//     below, disclosed through a Warning instead of declined. What
 //     stops this one is that the finding has nowhere to point an edit.
 //     passwordlessSudoers asks `sudo -n -l -U <user>` for the *effective*
-//     grant rather than reading /etc/sudoers, deliberately: the rule
+//     grant: the rule
 //     granting NOPASSWD could be a line naming the account, a line naming a
 //     group it belongs to (%sudo, %wheel), or reach it through an alias or
 //     an nsswitch-resolved group, across /etc/sudoers and every file
 //     #includedir pulls in. Resolving that the way sysctl/origin.go resolves
-//     which sysctl.d file wins is a real project and out of scope here — so
+//     which sysctl.d file wins is a real project and out of scope here, so
 //     the finding names the account, never a file or a line, and there is
 //     structurally nothing for an Edit action to target. Cloud and VM images
 //     shipping this rule because the account they create has no password is
-//     why the finding is common, not why it is declined; the how-to-fix
+//     why the finding is common. It is declined for another reason: the how-to-fix
 //     tells the operator to set that password and confirm it in a second
 //     session before removing the rule themselves.
 //
@@ -173,7 +173,7 @@ package fix
 // only ever removes access; SaveModes checkpoints the prior mode, so it
 // rolls back exactly; and no permission on an agent's own state directory
 // can sever the operator's access to the host the way an SSH or firewall
-// edit can. The values are also not guesses — each target's mode is the
+// edit can. The values are also not guesses: each target's mode is the
 // baseline the runtime's own hardening guide specifies.
 //
 // The one deployment it could disrupt is an agent daemon running as a
@@ -183,20 +183,20 @@ package fix
 //
 // A path under a home carries one more obligation that /etc never did: the
 // account that owns it can shape it, so "safe to apply unattended" must hold
-// against an adversarial layout, not just a mistaken one. Every step from
-// detection to apply therefore refuses to follow a symlink — the checker
+// against an adversarial layout as well as a mistaken one. Every step from
+// detection to apply therefore refuses to follow a symlink (the checker
 // Lstats and skips non-regular files, planModes re-vets the type, and the
-// chmod itself goes through a descriptor opened O_NOFOLLOW — because a
+// chmod itself goes through a descriptor opened O_NOFOLLOW) because a
 // symlink at ~/.openclaw/openclaw.json pointing at /etc/passwd would
 // otherwise turn `fix --all` into root tightening the password database off
 // the host. Any future Auto fix whose target another account can influence
 // owes the same discipline.
 //
 // That obligation came due immediately: the agent config-key fixes below are
-// the first edits — writes, not chmods — aimed at a path inside a home, and
+// the first edits (writes) aimed at a path inside a home, and
 // they carry Action.NoFollow so the read refuses a symlink the way the chmod
 // already did. The write never needed it, because WriteFileAtomic renames
-// over a link rather than through it; the read did, because a preview
+// over a link and never writes through it; the read did, because a preview
 // renders the file it read into a diff, and root reading an arbitrary file
 // for somebody is the whole of the exposure.
 //
@@ -208,8 +208,8 @@ package fix
 // re-encoding it through encoding/json deletes every one of them. There was
 // no editor that could make a one-key change without doing that damage.
 //
-// internal/json5 is that editor, built the way internal/compose/edit.go is —
-// locate the value's bytes, replace exactly those, leave the rest alone —
+// internal/json5 is that editor, built the way internal/compose/edit.go is
+// (locate the value's bytes, replace exactly those, leave the rest alone)
 // with one difference worth knowing. compose can fall back to re-encoding
 // the whole document through yaml.v3 when its text surgery is not provably
 // right, because yaml.v3 keeps comments. There is no such fallback here, so
@@ -223,17 +223,16 @@ package fix
 // than from a decision made here. internal/check/agent's DangerRule now
 // carries the safe values for each key, and the checker reads the finding's
 // remediation kind off them: one safe value is Auto, two are Review.
-// agent.exec-unrestricted is the Review case — tools.exec.security is deny
+// agent.exec-unrestricted is the Review case; tools.exec.security is deny
 // or ask, and which is right depends on whether the agent is meant to run
-// commands at all, so they are independent alternatives rather than a
-// sequence. agent.elevated-enabled, agent.control-ui-insecure and
+// commands at all, so they are independent alternatives. agent.elevated-enabled, agent.control-ui-insecure and
 // agent.ssrf-private-network each have exactly one correct value, are one
 // mechanical file edit, and cannot sever anyone's access to the host.
 //
 // The other three are registered now too, as IndividualOnly Review fixes
 // through the same editor. agent.sandbox-off was declined because nothing
 // here named a mode that turns the sandbox on; OpenClaw's sandbox reference
-// does — non-main and all — and the rule table carries them as its safe
+// does (non-main and all) and the rule table carries them as its safe
 // values. agent.gateway-exposed and agent.auth-disabled share one edit,
 // gateway.bind to loopback, offered only where the config file sets the bind
 // itself: off the network, no authentication is the single-user default the
@@ -252,7 +251,7 @@ package fix
 // container reads it at start, often from CADDY_ADMIN, and stays Manual.
 //
 // proxmox.enterprise-repo-unsubscribed was declined as two changes in
-// sequence — disable one source, add another. It is one: the enterprise
+// sequence; disable one source, add another. It is one: the enterprise
 // source file rewritten to the no-subscription repository, same path on
 // download.proxmox.com and signed by the same key (proxmox.go). Two
 // enterprise files, PVE's and Ceph's, are still two edits and stay Manual.
@@ -264,8 +263,8 @@ package fix
 // way ufw applies them, so a port ufw refuses is not reported reachable. A
 // port Docker publishes, or a host without ufw running, stays Manual with the
 // reason. kube.anonymous-auth and kube.secrets-unencrypted write a drop-in in
-// config.yaml.d — read after config.yaml, outranked only by the command line,
-// which the checker declines for — and restart k3s through AfterWrite.
+// config.yaml.d (read after config.yaml, outranked only by the command line,
+// which the checker declines for) and restart k3s through AfterWrite.
 //
 // Hermes has no danger rules at all, and if it gains some they are not
 // covered by any of this: its bind and auth may come from the config, from
@@ -278,8 +277,8 @@ package fix
 // for the same reason and one more. A GOOSE_MODE in the environment wins over
 // ~/.config/goose/config.yaml, and nothing on disk says whether one is set
 // where Goose is started. And the host the rule is really about is the one
-// that never wrote the key — auto is the default — so the remedy is an
-// insert, which a replace-only editor deliberately does not do, into YAML,
+// that never wrote the key (auto is the default) so the remedy is an
+// insert, which a replace-only editor does not do, into YAML,
 // which it does not read. The fix registered for OpenClaw's spelling of the
 // finding never reaches it: the checker declares Manual, and the more
 // cautious of the two kinds wins.
@@ -288,8 +287,8 @@ package fix
 // a package to install and a daemon to start, with default rules and disk use
 // the operator has to accept. forensic.time-unsynced needs a time source, and
 // which one to trust is not written anywhere on the host. forensic.weblog-no-size
-// changes a log format, and every parser of that log — a fail2ban filter, a
-// log shipper, a traffic report — expects the old one; Hostveil cannot see
+// changes a log format, and every parser of that log (a fail2ban filter, a
+// log shipper, a traffic report) expects the old one; Hostveil cannot see
 // which of them read it. forensic.no-remote-log needs a second machine to send
 // to, which is not something a fix on this one can create.
 //
@@ -300,28 +299,27 @@ package fix
 // edit actions could only modify a file already on disk.
 //
 // Action.CreateIfMissing removes that blocker. An unambiguous setting can now
-// be Auto as one persistent, reversible edit that deliberately leaves the
+// be Auto as one persistent, reversible edit that leaves the
 // running kernel untouched. Topology-dependent settings remain Review and
 // retain two independent alternatives:
 //
-//   - write the drop-in — persistent, effective at the next boot;
-//   - `sysctl -w` — effective now, gone at the next boot.
+//   - write the drop-in; persistent, effective at the next boot;
+//   - `sysctl -w`; effective now, gone at the next boot.
 //
 // Neither dominates for those controls. An operator hardening a box they are
 // about to reboot wants the first; one who cannot restart a production host
-// today wants the second now and the first later. That is a choice, not a
-// sequence.
+// today wants the second now and the first later. That is a choice.
 //
 // They are Review and not Auto, and the reason is not the shape. Writing
 // the drop-in is one mechanical, reversible file edit and would otherwise
-// qualify — but it is not unambiguous. rp_filter is 1 on a single-homed
+// qualify, but it is not unambiguous. rp_filter is 1 on a single-homed
 // server and 2 on a VPN or multi-homed one; sysrq has a restricted-bitmask
 // answer as legitimate as 0. Hostveil audits only the unambiguous half of
 // each and writes only what it audited, but the operator is the one who
 // knows which host this is, so they see it first.
 //
 // One file per finding, never a shared 99-hostveil.conf. Independence is
-// the whole point: applying the second fix must not have to read what the
+// required: applying the second fix must not have to read what the
 // first wrote, and rolling one back must not take another's line with it.
 //
 // # The service-hardening domain, all fourteen registered
@@ -343,9 +341,9 @@ package fix
 // tunables blocks VPN and network daemons that legitimately touch /proc/sys;
 // systemd.protect-control-groups and systemd.restrict-namespaces are
 // exactly what a container runtime needs to do; systemd.memory-deny-write-
-// execute is documented to break JIT runtimes — Node.js, Java, Mono,
-// LuaJIT — common in self-hosted app stacks. None of that is visible from
-// the unit — it depends on what the program does — so no amount of reading
+// execute is documented to break JIT runtimes (Node.js, Java, Mono,
+// LuaJIT) common in self-hosted app stacks. None of that is visible from
+// the unit (it depends on what the program does) so no amount of reading
 // gets Hostveil to "unambiguous". Those eight used to stay declined. They
 // are registered now as IndividualOnly Review fixes whose Warnings name
 // exactly the workloads above (riskySystemdDirectives in systemd.go): the
@@ -354,38 +352,38 @@ package fix
 //
 // The other six carry no such blind spot, and NoNewPrivileges was the first:
 // it closes the setuid path, and nothing about the unit hides whether a
-// service deliberately escalates the way a unit hides which directories a
+// service escalates the way a unit hides which directories a
 // program writes to. It is also the same protection the container domain
 // fixes automatically under the same name. ProtectClock, LockPersonality,
 // RestrictSUIDSGID, ProtectKernelLogs, and ProtectKernelModules followed for
 // the same reason each other: the exception class is narrow and identifiable
 // (a time-sync daemon, an emulation layer, an installer, a diagnostics tool,
-// a service that loads modules at runtime rather than at boot), the way
-// ssh.passwordauth's Warning asks "do I have SSH keys set up" rather than
-// naming an invisible property of the host.
+// a service that loads modules at runtime), the way
+// ssh.passwordauth's Warning asks "do I have SSH keys set up". Neither names
+// an invisible property of the host.
 //
 // This paragraph used to argue the whole domain away, on two legs that no
 // longer hold for these six. One was about shape: "a drop-in and a restart
 // are not two alternatives, they are one procedure in two steps, and systemd
-// has no equivalent of `sysctl -w`". Action.TakesEffectOn is precisely the
-// shape that objection describes — write the artifact now, name what has to
-// happen for it to be in force — and every compose fix stands on it; the
+// has no equivalent of `sysctl -w`". Action.TakesEffectOn is the
+// shape that objection describes (write the artifact now, name what has to
+// happen for it to be in force) and every compose fix stands on it; the
 // sentence predates it. The other was that the failure surfaces late: a
 // service that does not come back is discovered at the next restart, which
 // on a host like this can be the next reboot. That rules out Auto, but it
-// does not rule out fixing it at all — it is exactly what Review is for. The
+// does not rule out fixing it at all: it is exactly what Review is for. The
 // checker declares Review for each of the six, the registration here is one
-// action — Auto's shape and nothing more — and resolvedKind shows the
+// action (Auto's shape and nothing more) and resolvedKind shows the
 // operator the more cautious of the two. firewall.inactive reaches the
 // screen the same way.
 //
 // The re-check after applying any of the six will still report the finding,
-// and that is correct rather than a failure. This checker asks systemd for
+// and that is correct. This checker asks systemd for
 // each unit's effective configuration, and systemd has not re-read the file;
-// VerifyStillPresent says so in the sentence it was written for — "the
+// VerifyStillPresent says so in the sentence it was written for: "the
 // change may not take effect until '<unit>' restarts". For the same reason
 // these fixes are absent from internal/fix/roundtrip_test.go: the loop needs
-// a checker that reads what the fix wrote, and this one deliberately does
+// a checker that reads what the fix wrote, and this one does
 // not.
 //
 // # The Docker daemon domain, all seven registered
@@ -401,9 +399,9 @@ package fix
 // Action.AfterWrite answers the first: the restart is part of the action, and
 // a daemon that refuses the new file is given the old one back and started
 // again, so a fix that reports success is one in force. setJSONKey
-// (daemonjson.go) answers the second for daemon.json — locate the value's
+// (daemonjson.go) answers the second for daemon.json (locate the value's
 // bytes, replace or insert, and refuse anything that does not parse back to
-// the original with exactly one key changed — and a drop-in that overrides
+// the original with exactly one key changed) and a drop-in that overrides
 // ExecStart answers it for the unit. Each fix's Warning carries what used to
 // be its reason here: the API pair can sever a remote operator's channel;
 // group-members cannot tell Portainer's agent from a forgotten grant;
@@ -412,13 +410,13 @@ package fix
 // schedules. The two daemon defaults that need a full restart also offer to
 // write the file and leave the restart to the operator, with TakesEffectOn.
 //
-// One thing Pending does not do, so that nobody reads it as more than it is:
+// One thing Pending does not do, so that no one reads it as more than it is:
 // it corrects the score between an apply and the next scan, and nothing more.
 // A rescan builds findings from the checkers, so for a domain whose checker
-// reads the artifact rather than the running state — compose above all — the
+// reads the artifact (compose above all) the
 // scan after a fix still reports the finding gone while the container runs the
 // old configuration. That gap is older than this and is what TakesEffectOn was
-// introduced to describe rather than to close; it is why
+// introduced to describe; it does not close it, which is why
 // scripts/measure/run.sh has a separate phase for after the services are
 // restarted. Closing it would mean the compose checker reading containers, and
 // that is a different change.
@@ -426,18 +424,17 @@ package fix
 // # The one CVE finding that does have a fix
 //
 // cve.outdated-image, the per-image rollup, IS registered, because its
-// remediation differs in kind from the per-CVE one rather than being a
-// softer version of it. Re-pulling a mutable tag needs no version mapping
-// at all — only the tag the user already chose — and it claims nothing
+// remediation differs in kind from the per-CVE one. Re-pulling a mutable tag needs no version mapping
+// at all (only the tag the user already chose) and it claims nothing
 // about which CVEs the new image happens to fix. Its how-to-fix says only
 // that it re-resolves the tag, which is the whole of what it can promise.
 //
 // It is declined for digest-pinned references, where a pull is a no-op by
-// construction and the honest remediation, repinning to a newer digest,
+// construction and the accurate remediation, repinning to a newer digest,
 // needs exactly the data the per-image report does not have. Digest-vs-tag
 // is the only split drawn: every non-digest reference is a mutable pointer,
 // and guessing which tags are "really" pinned from their spelling would be
-// wrong for :2024-01-15 and :stable — and wrong in the direction that
+// wrong for :2024-01-15 and :stable, and wrong in the direction that
 // suppresses a real fix.
 //
 // Being exec, it is Review and can never be Auto, so "fix all safe" does
@@ -445,9 +442,9 @@ package fix
 // one action.
 //
 // Its sibling cve.unpatched-image is Unavailable and has no fix by
-// construction: it collects exactly the vulnerabilities nobody has
+// construction: it collects exactly the vulnerabilities no vendor has
 // published a fix for. It exists so that an image whose vulnerabilities are
-// all unfixed still produces a finding rather than vanishing into a clean
+// all unfixed still produces a finding and never vanishes into a clean
 // report.
 func Default() *Registry {
 	r := NewRegistry()

@@ -9,7 +9,7 @@ import (
 
 // panicOnImage is a platform.CommandRunner whose Run panics for one named
 // image and behaves like an ordinary failing run otherwise (never "no
-// findings" — that would make the panicking path indistinguishable from a
+// findings", that would make the panicking path indistinguishable from a
 // clean scan of the other target).
 type panicOnImage struct{ image string }
 
@@ -27,8 +27,8 @@ func (r panicOnImage) LookPath(string) (string, error) { return "/usr/bin/trivy"
 var errTrivyStub = errors.New("stub trivy failure")
 
 // scanAll runs each target's scan in its own goroutine once there is more
-// than one, and check.runOne's recover — the one every other domain relies
-// on — does not reach a goroutine scanAll spawns itself. Before scanAll grew
+// than one, and check.runOne's recover (the one every other domain relies
+// on) does not reach a goroutine scanAll spawns itself. Before scanAll grew
 // its own recover, a bug in one image's scan (or its JSON parsing) took the
 // whole process down instead of degrading to a per-image failure the way
 // Trivy erroring on that image already does.

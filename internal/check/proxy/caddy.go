@@ -30,7 +30,7 @@ import (
 // older, so there is no configuration of it that this rule could flag.
 //
 // Only the Caddyfile is read. A JSON configuration is reported as a coverage
-// gap rather than read as clean, because a Caddyfile's absence says nothing
+// gap, because a Caddyfile's absence says nothing
 // about what the JSON beside it contains.
 
 // caddyDefaultConfig is where both the distribution packages and the official
@@ -38,7 +38,7 @@ import (
 const caddyDefaultConfig = "/etc/caddy/Caddyfile"
 
 // caddyGlobal is the parent recorded for a line inside the global options
-// block — a block opened by a bare `{` at the top of the file, which is the
+// block: a block opened by a bare `{` at the top of the file, which is the
 // only place `admin` is valid.
 const caddyGlobal = "{"
 
@@ -53,11 +53,10 @@ type caddyLine struct {
 //
 // The grammar is line-oriented, unlike nginx's: a newline ends a directive, a
 // token that is exactly `{` opens a block and one that is exactly `}` closes
-// it. Braces inside a token are placeholders (`{env.ADMIN}`), not blocks,
-// which is why they are compared as whole unquoted tokens. `#` starts a
+// it. Braces inside a token are placeholders (`{env.ADMIN}`), which is why they are compared as whole unquoted tokens. `#` starts a
 // comment only at the start of a token, and quotes and backticks group a token
 // across whitespace. A heredoc (`<<MARKER`) runs to the line that starts with
-// the marker, and its body is skipped rather than read as directives: it is
+// the marker, and its body is skipped: it is
 // content the proxy serves, and an `admin :2019` inside a respond body is not
 // a setting.
 func caddyLines(body string) []caddyLine {
@@ -118,8 +117,7 @@ type caddyToken struct {
 }
 
 // caddyTokens splits one line. A quoted token that runs past the end of the
-// line is cut there: Caddy allows it, and what it holds is a value rather than
-// a directive this package reads.
+// line is cut there: Caddy allows it, and what it holds is a value.
 func caddyTokens(line string) []caddyToken {
 	var out []caddyToken
 	var b strings.Builder
@@ -315,14 +313,14 @@ func auditHostCaddy(root string) (findings []model.Finding, browse []string, gap
 			}
 			return nil, nil, "", false
 		}
-		return nil, nil, "could not read " + entry + " — Caddy's configuration was not audited; re-run with sudo", false
+		return nil, nil, "could not read " + entry + "; Caddy's configuration was not audited; re-run with sudo", false
 	}
 	a := auditCaddyfile(entry, func(p string) (string, bool) { return p, true })
 	if len(a.files) == 0 {
-		return nil, nil, "could not read " + entry + " — Caddy's configuration was not audited; re-run with sudo", false
+		return nil, nil, "could not read " + entry + "; Caddy's configuration was not audited; re-run with sudo", false
 	}
 	if len(a.unread) > 0 {
-		gap = "could not read " + strings.Join(a.unread, ", ") + " — directives there were not audited; re-run with sudo"
+		gap = "could not read " + strings.Join(a.unread, ", ") + "; directives there were not audited; re-run with sudo"
 	}
 	if exposed, _ := adminExposed(a.admin); exposed {
 		findings = append(findings, caddyAdminFinding(a.admin, "admin "+a.admin+" in "+a.adminFile,
@@ -396,9 +394,9 @@ func auditContainerCaddy(p compose.Project, name string, svc compose.Service) (f
 		a = auditCaddyfile(host, func(q string) (string, bool) { return containerPath(svc, q) })
 		switch {
 		case len(a.files) == 0:
-			gap = "could not read " + host + " (service " + name + "'s Caddyfile) — its configuration was not audited"
+			gap = "could not read " + host + " (service " + name + "'s Caddyfile); its configuration was not audited"
 		case len(a.unread) > 0:
-			gap = "could not read " + strings.Join(a.unread, ", ") + " — directives there were not audited"
+			gap = "could not read " + strings.Join(a.unread, ", ") + "; directives there were not audited"
 		}
 	case cfg != caddyDefaultConfig:
 		gap = "service " + name + " reads its Caddyfile from " + cfg + ", which is not a bind mount Hostveil can read"
@@ -441,18 +439,18 @@ func auditContainerCaddy(p compose.Project, name string, svc compose.Service) (f
 }
 
 func caddyAdminFinding(addr, where string, sev model.Severity, service, file string, extra ...model.FindingOption) model.Finding {
-	desc := "Caddy's admin API is listening on " + strconv.Quote(addr) + " rather than on loopback. " +
+	desc := "Caddy's admin API is listening on " + strconv.Quote(addr) + " beyond loopback. " +
 		"It has no authentication, and it is not a status page: a single request can read the running configuration or replace it, " +
 		"which means anyone who reaches the port can reroute every site this proxy serves, point it at a server of their own, or turn it off."
 	if service != "" && sev != model.SeverityHigh {
-		desc += " The port is not published to the host, so reaching it takes a foothold in another container on the same network first — which is exactly what a compromised neighbour has."
+		desc += " The port is not published to the host, so reaching it takes a foothold in another container on the same network first, which is exactly what a compromised neighbour has."
 	}
 	fix := "Set the global option back to the default (`admin localhost:2019`), or `admin off` if nothing calls the API, then `systemctl reload caddy`. " +
-		"If something off the host genuinely manages Caddy, use the `remote` admin listener, which requires client certificates, rather than exposing this one."
+		"If something off the host manages Caddy, use the `remote` admin listener, which requires client certificates, and keep this one on loopback."
 	if service != "" {
 		fix = "Keep the admin address on loopback: remove the non-loopback CADDY_ADMIN value or `admin` option (" + where + "), " +
-			"and do not publish port 2019. Recreate the container afterwards — Caddy reads this at start. " +
-			"If something outside the container genuinely manages Caddy, use the `remote` admin listener, which requires client certificates."
+			"and do not publish port 2019. Recreate the container afterwards: Caddy reads this at start. " +
+			"If something outside the container manages Caddy, use the `remote` admin listener, which requires client certificates."
 	}
 	opts := []model.FindingOption{
 		model.WithDescription(desc),

@@ -10,7 +10,7 @@ import (
 )
 
 // reportCrash is what run()'s top-level recover calls, and it is the recover
-// of last resort — everything else check.runOne and internal/core's own
+// of last resort: everything else check.runOne and internal/core's own
 // crash containment do not already catch. It must never itself be able to
 // panic (see its doc comment), and it must leave something for
 // `hostveil diagnostics` to find.
@@ -40,8 +40,8 @@ func TestReportCrashRecordsAndReportsWithoutPanicking(t *testing.T) {
 	}
 }
 
-// A panic reached with no arguments at all — plausible for a bug in
-// resolveCommand itself — must not make reportCrash index out of range on
+// A panic reached with no arguments at all (plausible for a bug in
+// resolveCommand itself) must not make reportCrash index out of range on
 // args[0].
 func TestReportCrashHandlesNoArguments(t *testing.T) {
 	if os.Geteuid() == 0 {

@@ -22,7 +22,7 @@ import (
 //
 // downloadClient must follow them: a release asset URL answers 302 and sends
 // the caller on to objects.githubusercontent.com. One shared no-redirect
-// client made every download fail with "returned 302 Found" — on the one path
+// client made every download fail with "returned 302 Found", on the one path
 // a `--check` smoke test never reaches.
 func resolveClient() *http.Client {
 	return &http.Client{
@@ -43,7 +43,7 @@ func cmdUpdate(ctx context.Context, args []string) int {
 	)
 	fs.BoolVar(&check, "check", false, "report whether a newer version exists and exit without installing")
 	fs.BoolVar(&yes, "yes", false, "do not ask before installing")
-	// Parsed before elevating, and elevated only where root is actually
+	// Parsed before elevating, and elevated only where root is
 	// needed. This is the one command whose need for root depends on its
 	// flags: --check makes a single HTTP request and writes nothing, so
 	// asking for a password to run it is the same defect as asking for one
@@ -90,7 +90,7 @@ func cmdUpdate(ctx context.Context, args []string) int {
 		fmt.Fprintln(os.Stderr, "hostveil:", err)
 		return 1
 	}
-	// Confirmed, not assumed. `apt-get install` on a package whose version
+	// Confirmed. `apt-get install` on a package whose version
 	// dpkg already records exits 0 having done nothing, and a `go install`
 	// that resolves to a cached build does the same. Printing a tick over
 	// that is the one thing this project refuses to do anywhere else.
@@ -181,7 +181,7 @@ func cmdUninstall(ctx context.Context, args []string) int {
 	}
 
 	fmt.Printf("This will remove Hostveil %s, installed by %s.\n", version, origin)
-	// Said before the prompt, not after. The checkpoints are the backups of
+	// Said before the prompt. The checkpoints are the backups of
 	// every file Hostveil edited here, and whether they matter is exactly what
 	// the operator is being asked to decide.
 	if note := selfupdate.StateNote(history.DefaultDir()); note != "" {
