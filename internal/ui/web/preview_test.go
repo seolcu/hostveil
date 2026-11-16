@@ -8,8 +8,8 @@ import (
 )
 
 // /api/preview had no test at all before Benefit was added beside Warning,
-// so this is the first to pin ActionPreview's actual JSON shape rather than
-// just the route's existence.
+// so this is the first to pin ActionPreview's JSON shape beyond the
+// route's existence.
 func TestPreviewCarriesBenefitAlongsideWarning(t *testing.T) {
 	s, _ := testServer(t)
 	rec := httptest.NewRecorder()

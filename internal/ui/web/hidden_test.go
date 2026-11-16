@@ -21,7 +21,7 @@ import (
 //
 // So each of them needs its own [hidden] rule, or a base rule that is
 // display:none until something turns it on. This walks the elements that
-// carry the attribute in index.html rather than a list typed out here, so a
+// carry the attribute in index.html, so a
 // band added later is covered the moment it is written.
 //
 // Not solved with a blanket `[hidden] { display: none !important }`:

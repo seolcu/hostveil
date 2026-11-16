@@ -34,7 +34,7 @@
 // started substituting long scoring labels into a narrow column. Read
 // everything through the accessors below, never the tables directly, so a
 // value the engine knows and the page does not still renders as something
-// rather than as undefined.
+// readable.
 const M = window.HOSTVEIL_MODEL || {};
 const SRC = M.domains || {};
 const SEV = M.severities || {};
@@ -44,7 +44,7 @@ const BANDS = M.bands || [];
 
 function srcLabel(s) { return (SRC[s] && SRC[s].label) || String(s); }
 
-// Enum values arrive as names now, not ordinals, so anything that needs the
+// Enum values arrive as names now, so anything that needs the
 // model's ordering asks for it. rank is the row's position in the table the
 // engine declared; sorting by the name itself would put "low" before
 // "medium" and domains in alphabetical order, which is not an ordering
@@ -65,8 +65,7 @@ let sortBy = "severity"; // "severity" | "domain" | "remediation"; see #sort
 
 // Comparators for the findings list. Each reads the same rank() the model's
 // own tables carry, so "Domain" and "Remediation" sort in the order the
-// engine declared them in, not alphabetically or by whichever order the
-// scan happened to enumerate them.
+// engine declared them in.
 const sortComparators = {
   severity: (a, b) => rank(SEV, a.severity) - rank(SEV, b.severity),
   domain: (a, b) => rank(SRC, a.source) - rank(SRC, b.source),
@@ -79,8 +78,7 @@ async function api(path, opts) {
   const res = await fetch(path, opts);
   if (!res.ok) {
     // The status matters on one route: a declined rollback answers 409,
-    // and a decline is a question for the operator rather than a failure
-    // to report. Carrying it on the error is what lets the caller tell
+    // and a decline is a question for the operator. Carrying it on the error is what lets the caller tell
     // them apart, without it the dashboard turned every decline into
     // "Rollback failed" and offered nothing further, while the server had
     // supported force all along.
@@ -194,7 +192,7 @@ function renderFilterbar(all) {
 
   // Severity chips (only those present), each with a live count. Ordered
   // by the model's table, so the chips run most-severe-first for the same
-  // reason the findings do, rather than because a literal here says so.
+  // reason the findings do.
   const sevCounts = {};
   all.forEach((f) => { if (SEV[f.severity]) sevCounts[f.severity] = (sevCounts[f.severity] || 0) + 1; });
   for (const [key, sev] of Object.entries(SEV)) {
@@ -266,10 +264,9 @@ function applyBatch() {
 }
 
 // applyMany drives a per-item progress modal over `findings`, calling
-// /api/fix/one once per finding in sequence rather than the batch routes'
-// one-shot /api/fix/all or /api/fix/batch. That endpoint is Engine.ApplyOne:
+// /api/fix/one once per finding in sequence. That endpoint is Engine.ApplyOne:
 // the batch loop's own eligibility rule and no-verify semantics exposed
-// per item, not a loop over the single-fix endpoint, which would re-run
+// per item. A loop over the single-fix endpoint would re-run
 // each finding's domain checker (expensive for compose and cve) once per
 // item instead of zero times. See internal/core.ApplyOne's doc comment.
 async function applyMany(findings, verb) {
@@ -447,7 +444,7 @@ function render() {
   //
   // When no domain ran there is nothing to average, so the number would be
   // arbitrary, and an empty meter next to a digit reads as "terrible host"
-  // rather than "nothing was examined", which are opposite messages.
+  // when the truth is "nothing was examined".
   document.getElementById("gauge").replaceChildren(
     el("span", { class: "gauge-label" }, "Security"),
     ...(score.applicable === false
@@ -458,7 +455,7 @@ function render() {
                            (n) => el("span", { class: "gauge-after" }, `${n} after fixes`))])
   );
 
-  // Per-axis bars. The short domain label, not the axis label: the column
+  // Per-axis bars. The short domain label: the column
   // is 72px with an ellipsis, and "Container exposure" does not fit where
   // "Container" does. This was a hand-written table of short labels keyed
   // by axis ID, nine rows for eleven domains, so the two domains added
@@ -523,7 +520,7 @@ function render() {
       el("div", { class: "title" },
         el("div", { class: "name" }, f.title),
         el("div", { class: "rem rem-" + f.remediation }, f.id + "  ·  " +
-          (isPending(f) ? "Applied, not in force yet" : remLabel(f.remediation)))
+          (isPending(f) ? "Applied, waiting to take effect" : remLabel(f.remediation)))
       ),
       f.service ? el("span", { class: "svc" }, f.service) : ""
     );
@@ -584,7 +581,7 @@ function renderOverview(all, visible, rows) {
   }
 
   // Jump list: the most severe handful, so the worst problems are one click
-  // away rather than a scroll-and-hunt.
+  // away.
   const top = visible.slice(0, 6);
   if (top.length) {
     box.append(el("div", { class: "over-head" }, "Most severe"));
@@ -620,12 +617,12 @@ function selectFinding(f, li) {
     f.description ? el("p", {}, f.description) : "",
     f.how_to_fix ? el("div", { class: "howto" }, "How to fix") : "",
     f.how_to_fix ? el("p", {}, f.how_to_fix) : "",
-    // Under the instructions, not above them: this answers the question a
+    // Under the instructions: this answers the question a
     // reader asks second, and it is absent entirely on anything fixable.
     f.why_no_fix ? el("div", { class: "howto" }, "Why there is no fix button") : "",
     f.why_no_fix ? el("p", { class: "whynofix" }, f.why_no_fix) : ""
   );
-  // Shown immediately rather than behind a "Preview fix" click: there is
+  // Shown immediately: there is
   // nothing to decide before seeing it, and gating it behind a button meant
   // a second click re-appended a second copy underneath the first, since
   // nothing ever removed the one already there.
@@ -636,7 +633,7 @@ function selectFinding(f, li) {
     d.append(box);
     loadPreview(f, box);
   }
-  // A row, not two bare buttons appended straight to #detail: without a
+  // A row: without a
   // wrapper neither had any margin of its own, so whichever came right
   // before (a paragraph, or the fixbox) butted straight up against
   // "Explain with AI" with no breathing room at all.
@@ -646,7 +643,7 @@ function selectFinding(f, li) {
 
 // explainAI asks the server for the advisory AI explanation. It degrades in
 // place: with no Ollama reachable the server answers with ai_error, which
-// renders as a note rather than an error state; AI is optional everywhere.
+// renders as a note; AI is optional everywhere.
 async function explainAI(f, btn) {
   const d = document.getElementById("detail");
   const old = d.querySelector(".aibox");
@@ -751,8 +748,7 @@ async function applyFix(f, action) {
     // The restart hint is not decoration. An edit fix writes the file and
     // nothing reloads the service, so until the operator restarts it the
     // score has improved for a change that is not yet in effect. The CLI has
-    // always said so. verify_message is rendered by the engine, not composed
-    // here: the difference between "re-checked and gone" and "applied but
+    // always said so. verify_message is rendered by the engine: the difference between "re-checked and gone" and "applied but
     // not yet in force" is subtle enough that three interfaces phrasing it
     // themselves would make three different claims.
     showOutcomeModal("Fix applied", o);
@@ -864,7 +860,7 @@ function checkpointBox(cp) {
     // what ran instead of a button that would lead nowhere.
     if (cp.commands) body.append(cmdList(cp.commands));
     body.append(el("p", { class: "empty" },
-      "This fix ran a command rather than editing a file, so there is nothing to restore automatically. Undo it by hand if you need to."));
+      "This fix ran a command and edited no file, so there is nothing to restore automatically. Undo it by hand if you need to."));
   }
 
   return el("div", { class: "fixbox" },
@@ -892,7 +888,7 @@ async function rollback(cp, force = false) {
     await refresh();
     await showHistory();
   } catch (e) {
-    // 409 is the engine declining, not failing: the file changed after
+    // 409 is the engine declining: the file changed after
     // Hostveil wrote it, so restoring the backup would discard whatever
     // was done in between. Rollback keeps no checkpoint of its own, so
     // say that and make the override a second, informed answer.
@@ -910,7 +906,7 @@ async function rollback(cp, force = false) {
 async function refresh() { report = await api("/api/result"); render(); }
 
 // refreshTrend is called on load and after a rescan, never after a fix: a
-// fix changes the live score, not the series of saved scans.
+// fix changes the live score and leaves the saved scans alone.
 async function refreshTrend() {
   try {
     trend = await api("/api/trend");
@@ -950,8 +946,8 @@ document.getElementById("modal").addEventListener("cancel", (e) => {
   if (e.target.hasAttribute("data-busy")) e.preventDefault();
 });
 document.getElementById("modal").addEventListener("click", (e) => {
-  // A click that lands on the <dialog> itself rather than on modal-body's
-  // content is a click on the ::backdrop. A <dialog> has no other way to
+  // A click that lands on the <dialog> itself, outside modal-body's
+  // content, is a click on the ::backdrop. A <dialog> has no other way to
   // tell the two apart.
   if (e.target === e.currentTarget && !e.currentTarget.hasAttribute("data-busy")) closeModal();
 });
@@ -974,7 +970,7 @@ function showOutcomeModal(title, o) {
 
 // confirmModal replaces window.confirm() with the same modal every other
 // dialog in this file uses: a native confirm() looks like the browser
-// interrupting the page, not the dashboard asking a question, and it can't
+// interrupting the page, and it can't
 // carry more than one line of plain text. Resolves true on the confirm
 // button, false on Cancel *or* on any other way the dialog closes (Escape,
 // a click on the backdrop): a dismissal is a "no" here the same way it is
@@ -1013,7 +1009,7 @@ function initThemePicker() {
   }));
   sel.onchange = () => {
     document.documentElement.setAttribute("data-theme", sel.value);
-    // Per browser, not per host: the server's theme stays whatever Hostveil
+    // Per browser: the server's theme stays whatever Hostveil
     // was started with, so two people reading the same dashboard can each
     // have their own.
     try { localStorage.setItem("hostveil.theme", sel.value); } catch (e) { /* private mode */ }
@@ -1021,10 +1017,9 @@ function initThemePicker() {
 }
 
 // ── sort control ───────────────────────────────────────────────────────
-// Lives in the findings pane's own header, not the top statusbar: it is a
-// list-scoped choice, not a global one. Same read-then-write pattern as the
+// Lives in the findings pane's own header: it is a list-scoped choice. Same read-then-write pattern as the
 // theme picker, minus the localStorage: a sort choice is about what
-// you are looking at right now, not a standing preference across sessions.
+// you are looking at right now, so it is not remembered across sessions.
 function initSortPicker() {
   const sel = document.getElementById("sort");
   if (!sel) return;
@@ -1042,7 +1037,7 @@ document.getElementById("history").onclick = showHistory;
 document.getElementById("advise").onclick = showAdvise;
 
 // Export opens a modal to choose the format, then downloads /api/export as
-// a file rather than navigating to it: the route can answer 409 (no scan
+// a file: the route can answer 409 (no scan
 // yet) or 400 (bad format), and a plain <a href> navigation on an error
 // response would replace this whole page with a blank error document
 // instead of leaving flash() to say what happened.
@@ -1105,7 +1100,7 @@ async function whileBusy(el, label, fn) {
   }
 }
 
-// A rescan is started, not awaited: the server answers 202 immediately and
+// A rescan is started and not awaited: the server answers 202 immediately and
 // the scan runs in the background, so the page polls the status route and
 // narrates which domains are still working instead of freezing a button
 // for minutes. A 409 means a scan is already running: poll that one.
@@ -1119,8 +1114,7 @@ rescanBtn.onclick = () => whileBusy(rescanBtn, "Rescanning…", async () => {
 });
 
 // scanStartedAt is set once per poll loop (pollRescan) and read by
-// renderScanProgress for the elapsed clock. Module-level rather than a
-// parameter because whileBusy/watchScan/pollRescan's call chain has no
+// renderScanProgress for the elapsed clock. Module-level because whileBusy/watchScan/pollRescan's call chain has no
 // natural place to thread it through, and there is only ever one scan
 // running at a time (the engine serialises scan/apply/rollback behind one
 // mutex, so a second poll loop can never overlap this one).
@@ -1141,9 +1135,8 @@ function formatElapsed(ms) {
 }
 
 // scanStateWord is the label a domain's row shows, in the TUI's own
-// wording (internal/ui/tui/view.go's scanDomainRow), not SCAN[state].name,
-// which is the stable wire name ("degraded"), not the word a reader wants
-// ("partial").
+// wording (internal/ui/tui/view.go's scanDomainRow). SCAN[state].name is
+// the stable wire name ("degraded"), and a reader wants "partial".
 function scanStateWord(state) {
   switch (state) {
     case "running": return "scanning…";
@@ -1156,8 +1149,8 @@ function scanStateWord(state) {
 }
 
 // scanStateClass picks up colors this file already assigns the same states
-// elsewhere (.dom-err is --crit, .axis.partial is --med) rather than
-// inventing a fourth place these four colors get decided.
+// elsewhere (.dom-err is --crit, .axis.partial is --med), so there is no
+// fourth place these four colors get decided.
 function scanStateClass(state) {
   switch (state) {
     case "done": return "scan-done";
@@ -1180,7 +1173,7 @@ function scanStateClass(state) {
 // reported at least once, in no particular order, some of them possibly
 // absent (not yet started). The full roster comes from SRC (the model's own
 // domain table, already loaded for the filter chips), so an absent domain
-// reads as "waiting" rather than not appearing at all: the same thing
+// reads as "waiting": the same thing
 // internal/ui/tui/tui.go's scanDomains() does with its fetched plan.
 function renderScanProgress(verb, domains) {
   const bySource = {};
@@ -1266,8 +1259,7 @@ fixallBtn.onclick = async () => {
 // state a rescan puts the page in, and answered the same way: disable the
 // buttons that would race it, narrate it, then load the result it produced.
 //
-// The status check and the result both fire at once rather than one after
-// the other. The ordinary case (a page opened long after the only scan
+// The status check and the result both fire at once. The ordinary case (a page opened long after the only scan
 // there has ever been) needs both regardless, so making the second wait on
 // the first would only have added a network round trip to every load for a
 // question the running flag alone can't answer. Fetched early and running

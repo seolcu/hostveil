@@ -29,7 +29,7 @@ func TestBrandAssetsAreServed(t *testing.T) {
 			t.Errorf("%s returned %d", path, resp.StatusCode)
 		}
 		// The browser refuses to rasterize an SVG served under another type,
-		// so the icon silently disappears rather than erroring.
+		// so the icon silently disappears with no error.
 		if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, "image/svg+xml") {
 			t.Errorf("%s Content-Type = %q, want image/svg+xml", path, ct)
 		}

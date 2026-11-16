@@ -26,7 +26,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 /* .stack is the column of chrome above the two panes. body splits sideways
-   so the rail can sit beside the whole thing rather than inside it. With the
+   so the rail can sit beside the whole thing. With the
    rail hidden this is a flex row of one item. */
 .stack { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 ::selection { background: var(--bone); color: var(--ink); }
@@ -36,26 +36,25 @@ body {
   flex: 0 0 auto; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 26px;
   padding: 11px 18px; border-bottom: 1px solid var(--line); background: var(--ink-2);
 }
-/* wrap, not overflow: the bar's content needs ~860px, and with .actions pinned
+/* wrap: the bar's content needs ~860px, and with .actions pinned
    right by margin-left:auto and no wrapping the History/Rescan/Fix-all buttons
    ran clean off the right edge (unreachable) on every viewport between the
    560px mobile breakpoint and ~880px (tablets, split-screen, small laptops).
    Wrapping drops .actions to its own right-aligned row instead. */
 .brand { display: inline-flex; align-items: center; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; }
 .brand b { color: var(--bone); }
-/* The tile-less mark, so it dissolves into any theme's status bar rather than
-   sitting on a plate of its own. (The favicon carries a tile instead, for the
+/* The tile-less mark, so it dissolves into any theme's status bar. (The favicon carries a tile instead, for the
    unknown background of a browser tab.)
 
-   1.7em, not a pixel count, and the same 1.7em the marketing site uses. The
+   1.7em, and the same 1.7em the marketing site uses. The
    two surfaces had the mark at 2.2x and 3.1x their own cap height, which is
    what made the lockups look like two different marks at two different
    weights. At 1.7em the package (the solid body, ignoring the pins) lands
    on the cap height and the pins overhang it the way ascenders overhang an
    x-height, so the figure reads as the same size as the word beside it.
 
-   em rather than the cap unit: cap would make the two surfaces agree exactly
-   rather than within 5%, and 5% of a cap height is not visible, but cap is
+   em: the cap unit would make the two surfaces agree exactly where em
+   agrees within 5%, and 5% of a cap height is not visible, but cap is
    too new to put on a public page where an unsupported declaration is
    dropped and the mark collapses. */
 /* Nudged up half a descender. align-items:center centres the mark on the
@@ -79,7 +78,7 @@ button:disabled { opacity: .45; cursor: default; }
 
 /* theme picker: wears the button's chrome so the action row stays one
    object. The options themselves are drawn by the OS, so they are given
-   explicit colors rather than inheriting a transparent background. */
+   explicit colors so they never inherit a transparent background. */
 /* The right padding is not symmetric: the browser draws the
    dropdown arrow inside the control, and with uppercase + letter-spacing the
    longest name ("Catppuccin Mocha") ran right into it. */
@@ -91,9 +90,8 @@ button:disabled { opacity: .45; cursor: default; }
 #theme:hover, #sort:hover { border-color: var(--bone); }
 #theme:focus-visible, #sort:focus-visible { outline: 2px solid var(--safe); outline-offset: 1px; }
 #theme option, #sort option { background: var(--ink-2); color: var(--bone); text-transform: none; }
-/* #sort sits in the findings pane's own header rather than the (already
-   busy) top statusbar, so it is smaller than its top-bar siblings; a
-   list-scoped control, not a global one. */
+/* #sort sits in the findings pane's own header, so it is smaller than its
+   top-bar siblings; it is a list-scoped control. */
 #sort { padding: 5px 16px 5px 10px; font-size: 10px; }
 
 /* ── exposure gauge (the signature) ── */
@@ -117,7 +115,7 @@ button:disabled { opacity: .45; cursor: default; }
    descendants, and the six places that draw one read it. Those six each
    named the custom property directly before this: six chances for one of
    them to be edited to a different heat, which severitycss_test.go could not
-   have caught: it checks that a rule *exists* per severity, not that the six
+   have caught: it checks that a rule *exists* per severity and ignores whether the six
    agree on which colour it is. */
 .high, .c-high, .sev-high { --sev: var(--crit); }
 .medium, .c-med, .sev-medium { --sev: var(--med); }
@@ -144,7 +142,7 @@ button:disabled { opacity: .45; cursor: default; }
 .axis-val { font-size: 11px; min-width: 30px; }
 /* The headroom: what the score becomes once every fix Hostveil offers is
    applied. Slate and small: it is context for the number beside
-   it, not a second number competing with it, and it is absent entirely on a
+   it, and it is absent entirely on a
    row with nothing to fix. */
 .axis-after, .dom .after, .gauge-after { color: var(--slate); font-size: 11px; }
 .gauge-after { font-size: 12px; margin-left: 10px; white-space: nowrap; }
@@ -163,7 +161,7 @@ button:disabled { opacity: .45; cursor: default; }
 
 /* ── domain coverage notice: which checkers did not fully run ──
    Persistent, unlike .status; a score drawn from a partial scan must keep
-   saying so, not flash once and vanish. */
+   saying so. */
 .domains { flex: 0 0 auto; padding: 8px 18px; border-bottom: 1px solid var(--line);
   color: var(--med); font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .domains[hidden] { display: none; }
@@ -263,8 +261,7 @@ ul { list-style: none; margin: 0; padding: 0; }
   margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .detail p { max-width: 74ch; margin: 0 0 12px; }
 .detail .howto { color: var(--accent); text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px; }
-/* Explain with AI + Close, as one row rather than two bare buttons appended
-   straight to #detail, without this neither carried a margin of its own,
+/* Explain with AI + Close, as one row: without this neither carried a margin of its own,
    so whichever came right before (a paragraph, or the fixbox) butted
    straight up against them with no breathing room at all. */
 .detail-actions { display: flex; gap: 8px; margin-top: 18px; }
@@ -273,8 +270,8 @@ ul { list-style: none; margin: 0; padding: 0; }
    #detail shows a selected finding, or (while a scan is running) this
    checklist instead, one row per domain the model knows about. Colors
    mirror what the same four states already mean elsewhere on this page
-   (.dom-err is --crit, .axis.partial is --med) rather than deciding a
-   fourth time what "degraded" or "failed" looks like. */
+   (.dom-err is --crit, .axis.partial is --med), so "degraded" and "failed"
+   are decided in one place. */
 .scan-domains { max-width: 52ch; }
 .scan-domain-row { display: flex; justify-content: space-between; gap: 12px;
   padding: 7px 0; border-bottom: 1px solid var(--ink-2); font-size: 12px; }
@@ -345,7 +342,7 @@ pre.diff .ctx { color: var(--slate); }
 .modal-body .row { display: flex; gap: 8px; margin-top: 14px; }
 .modal-body .meta { color: var(--slate); font-size: 11px; }
 .modal-body .warn { color: var(--high); }
-/* Export's format list; radios rather than a native <select>, so the whole
+/* Export's format list; radios, so the whole
    row is one click target and the choice is visible without opening a
    second control inside the first one. */
 .modal-fmt { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
@@ -365,7 +362,7 @@ pre.diff .ctx { color: var(--slate); }
   white-space: pre-wrap; word-break: break-word;
 }
 
-/* ── scrollbars: quiet, and said rather than inferred ──
+/* ── scrollbars: quiet, and set explicitly ──
    The ::-webkit- rules are Chromium's; Firefox ignores every one of them and
    was left to derive the scrollbar from `color-scheme: dark`, which themes.css
    has set all along. That inference is not reliable: a headless Firefox draws

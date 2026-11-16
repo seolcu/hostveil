@@ -81,7 +81,7 @@ func New(engine *core.Engine, addr string, opts Opts) *Server {
 // curl 127.0.0.1:8787/api/fix/all and have root edit files on their behalf.
 // That is a privilege-escalation path, and the token is what closes it.
 //
-// A failure of the system CSPRNG is fatal rather than degraded: falling back
+// A failure of the system CSPRNG is fatal: falling back
 // to something guessable would leave the door open while reporting that it
 // was shut.
 func newToken() string {
@@ -105,14 +105,13 @@ func newToken() string {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /", http.FileServer(http.FS(mustSub())))
-	// Generated from internal/ui/theme rather than shipped as static assets,
-	// which is what keeps the dashboard's palette and the TUI's identical:
+	// Generated from internal/ui/theme, which is what keeps the dashboard's palette and the TUI's identical:
 	// there is one registry of hexes and both read from it.
 	mux.HandleFunc("GET /themes.css", s.handleThemesCSS)
 	mux.HandleFunc("GET /theme.js", s.handleThemeJS)
 	// Same arrangement, one layer down: every enum the page has to read
 	// (domains, severities, remediation kinds, scan states, score bands)
-	// comes from internal/model rather than from copies kept in app.js.
+	// comes from internal/model, so app.js keeps no copies.
 	mux.HandleFunc("GET /model.js", s.handleModelJS)
 	mux.HandleFunc("GET /api/result", s.handleResult)
 	mux.HandleFunc("GET /api/preview", s.handlePreview)
@@ -142,7 +141,7 @@ const shutdownGrace = 5 * time.Second
 // ListenAndServe opens the listener immediately and serves the dashboard
 // until ctx is cancelled, at which point it stops accepting and drains
 // in-flight requests. The first scan runs the same way a rescan does (as a
-// tracked background scan behind s.progress) rather than blocking here.
+// tracked background scan behind s.progress), so nothing blocks here.
 //
 // It used to run the initial scan synchronously before opening the
 // listener, on a host with many Docker images that is minutes during which
@@ -160,8 +159,8 @@ const shutdownGrace = 5 * time.Second
 // Ctrl-C nor `systemctl stop` and died only when systemd escalated to
 // SIGKILL: mid-fix, if that is what it happened to be doing.
 func (s *Server) ListenAndServe(ctx context.Context) error {
-	// Background scans derive from this context, not from the requests that
-	// start them. Set before the listener opens, so no handler can observe
+	// Background scans derive from this context. The requests that start
+	// them do not own them. Set before the listener opens, so no handler can observe
 	// it half-initialized.
 	s.baseCtx = ctx
 
@@ -174,8 +173,7 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 	// is the first scan there has ever been a chance to start) so unlike
 	// handleRescan there is nothing to do with the return value.
 	s.progress.begin()
-	// runTrackedScan reads s.baseCtx, set to ctx two lines up, rather than
-	// taking a context argument, since it also runs from
+	// runTrackedScan reads s.baseCtx, set to ctx two lines up, since it also runs from
 	// handleRescan, where the request's own context must not be the one a
 	// scan runs under (see hostWork).
 	go s.runTrackedScan()
@@ -269,7 +267,7 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request) bool {
 		Value:    s.token,
 		Path:     "/",
 		HttpOnly: true,
-		// Strict, not Lax: Lax would send the cookie on a top-level
+		// Strict: Lax would send the cookie on a top-level
 		// navigation from another site, which is exactly the CSRF shape the
 		// origin check below exists to stop.
 		SameSite: http.SameSiteStrictMode,
@@ -286,7 +284,7 @@ func tokenEqual(got, want string) bool {
 // hostAllowed permits only loopback hosts, blocking DNS-rebinding attacks
 // that would let a malicious website reach the local dashboard.
 //
-// The port has to be checked, not just discarded. net.SplitHostPort splits at
+// The port has to be checked. net.SplitHostPort splits at
 // the last colon and never asks whether what follows is a number, so
 // "127.0.0.1:8787.evil.example.com" parses as host 127.0.0.1 with the
 // attacker's domain as its port, and returned the loopback host this
@@ -317,8 +315,7 @@ func hostAllowed(host string) bool {
 }
 
 // isNumericPort reports whether p is a port number and nothing else. An empty
-// port is the "host:" form, which addresses the default port rather than a
-// name of the attacker's choosing.
+// port is the "host:" form, which addresses the default port.
 func isNumericPort(p string) bool {
 	if p == "" {
 		return true
@@ -350,7 +347,7 @@ func sameOrigin(r *http.Request) bool {
 	}
 	// Neither header: not a browser request. It still had to present the
 	// access token to reach this point, which a cross-origin page cannot
-	// read, so this is the local-curl case rather than an open door.
+	// read, so this is the local-curl case.
 	return true
 }
 
@@ -359,7 +356,7 @@ func sameOrigin(r *http.Request) bool {
 // Hand-rolled prefix trimming was doing this, which credits the wrong host
 // for anything the URL grammar allows and it does not; "http://evil.com\@"
 // forms, userinfo, uppercase schemes. Comparing hosts is a security decision,
-// so it uses the parser rather than an approximation of one.
+// so it uses the real parser.
 func hostFromURL(u string) string {
 	parsed, err := url.Parse(u)
 	if err != nil {
@@ -415,12 +412,11 @@ type resultPayload struct {
 // handleTrend serves the score of every retained scan, plus the sparkline
 // the TUI draws from the same points.
 //
-// The glyphs come from model.Sparkline rather than being bucketed again in
-// JavaScript: two implementations of one rule is the shape that has already
+// The glyphs come from model.Sparkline: two implementations of one rule is the shape that has already
 // gone wrong twice here; the severity palette before internal/ui/theme,
 // the domain table before /model.js.
 //
-// It is its own route rather than a field on /api/result because the result
+// It is its own route because the result
 // is refetched after every fix, and re-reading thirty snapshots from disk
 // each time would be unrequested work. The trend only moves when a
 // scan does.
@@ -494,7 +490,7 @@ func hostWork(r *http.Request) context.Context {
 // The client polls /api/rescan/status and fetches /api/result when the
 // running flag drops.
 //
-// The scan runs under the server's base context rather than the request's:
+// The scan runs under the server's base context:
 // a closed tab must not abort a scan (the hostWork rule), but Ctrl-C on the
 // server should.
 func (s *Server) handleRescan(w http.ResponseWriter, _ *http.Request) {
@@ -509,7 +505,7 @@ func (s *Server) handleRescan(w http.ResponseWriter, _ *http.Request) {
 }
 
 // scanEventBuffer sizes the progress channel. The engine drops events on a
-// full buffer rather than stall a checker; a generous buffer plus a
+// full buffer so a checker never stalls; a generous buffer plus a
 // dedicated drain goroutine makes that a non-event.
 const scanEventBuffer = 64
 
@@ -530,8 +526,7 @@ func (s *Server) runTrackedScan() {
 	// a panic that isn't a checker's own (check.runOne already contains
 	// those) but one in the scoring or persistence code ScanWith runs after
 	// every checker has returned. Without this, that panic ends the process
-	// mid-request, for every connection the dashboard is serving, not just
-	// this one. See internal/core/contain.go for the equivalent guard on the
+	// mid-request, for every connection the dashboard is serving. See internal/core/contain.go for the equivalent guard on the
 	// fix path; a crash here is not recorded there for internal/diagnostics
 	// the way a fix's is, because layering keeps this package from importing
 	// internal/history to find out where: surviving the panic is the load-
@@ -660,7 +655,7 @@ func (s *Server) handleFix(w http.ResponseWriter, r *http.Request) {
 // fixOneResponse is a single finding's outcome from the batch loop's own
 // per-item step (see Engine.ApplyOne): no verify, unlike POST /api/fix.
 // Skipped mirrors what a batch response would have counted this finding as:
-// already fixed, not eligible, or a fix whose shape did not match.
+// already fixed, ineligible, or a fix whose shape did not match.
 type fixOneResponse struct {
 	model.FixOutcome
 	Skipped bool `json:"skipped,omitempty"`
@@ -693,9 +688,9 @@ func (s *Server) handleFixOne(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleFixAll(w http.ResponseWriter, r *http.Request) {
 	report, _ := s.engine.Current()
 	// The whole report, which is what the dashboard's button counts: its
-	// filter chips narrow the list, not the batch. The TUI means the other
+	// filter chips narrow the list and leave the batch alone. The TUI means the other
 	// thing by the same words, and saying so through one helper is how the
-	// two stay different rather than accidentally so.
+	// two stay intentionally different.
 	writeJSON(w, s.engine.ApplyBatch(hostWork(r), report.AutoFixable(model.Filter{})))
 }
 
@@ -729,8 +724,7 @@ func (s *Server) handleFixBatch(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHistory(w http.ResponseWriter, _ *http.Request) {
 	cps, err := s.engine.ListCheckpoints()
 	// Unreadable checkpoints leave a usable list behind, so the dashboard
-	// still renders it and carries the warning alongside rather than replacing
-	// the whole history view with a 500.
+	// still renders it and carries the warning alongside.
 	if err != nil && !core.IsIncompleteHistory(err) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -765,7 +759,7 @@ func (s *Server) handleRollback(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := rollback(req.CheckpointID)
 	if err != nil {
-		// 409 rather than 400 so the client can tell "this file changed
+		// 409 so the client can tell "this file changed
 		// since the fix, confirm before discarding" apart from a genuine
 		// failure. The engine declined; it did not fail.
 		if core.IsExternalEdit(err) {

@@ -18,7 +18,7 @@ import (
 //
 // A sitemap that silently lost a page would be indistinguishable from a
 // complete one, which is the failure mode of every reference in this
-// repository, and the reason the generator derives rather than copies.
+// repository, and the reason the generator derives the lists.
 func TestTheSitemapListsEveryRenderedPageExactlyOnce(t *testing.T) {
 	root := repoRootFromSitegen(t)
 	raw, err := os.ReadFile(filepath.Join(root, "site", "sitemap.xml"))
@@ -86,7 +86,7 @@ func TestTheSitemapListsEveryRenderedPageExactlyOnce(t *testing.T) {
 // `git diff --exit-code site/`, and which the whole generator rests on. A
 // constant date would be a lie a crawler acts on.
 //
-// Written down as a test rather than a comment because the next person to read
+// Written down as a test because the next person to read
 // the sitemap spec will reach for it.
 func TestTheSitemapCarriesNoTimestamp(t *testing.T) {
 	raw := string(readSite(t, "sitemap.xml"))
