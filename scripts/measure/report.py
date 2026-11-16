@@ -91,7 +91,7 @@ def rollback_verdict(work):
     A path that only appears after the fixes ran is a file a fix created.
     Whether its absence beforehand is *known* depends on where it lives: the
     directories run.sh enumerates whole were listed entry by entry, so a name
-    missing from that listing was genuinely not there. Anywhere else, the
+    missing from that listing was not there. Anywhere else, the
     before-state was never observed, and the run says so instead of assuming
     it.
     """
@@ -142,7 +142,7 @@ def rollback_verdict(work):
 # restored, and a control run takes before → controlled, because nothing
 # Hostveil does is involved in one.
 #
-# "restored" sorts last on purpose even though a control run never reaches it:
+# "restored" sorts last even though a control run never reaches it:
 # every delta is measured against "before", so this list is about reading
 # order rather than arithmetic.
 PHASE_ORDER = ("before", "controlled", "after", "restarted", "reviewed", "restored")
@@ -259,7 +259,7 @@ def main():
 
     phases = {}
     for phase in PHASE_ORDER:
-        # Only the phases that actually ran. A control run has two of them and
+        # Only the phases that ran. A control run has two of them and
         # a hostveil run has five, and reading a fixed list would put an
         # {"error": "No such file"} object under every phase the other kind of
         # run does not have; a report that looks like five failed

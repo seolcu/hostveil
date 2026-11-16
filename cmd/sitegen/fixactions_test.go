@@ -66,7 +66,7 @@ func TestFixActionsRendersNoLiteralBackticks(t *testing.T) {
 // linkFixColumnRows needs to get right on the real checks.html source for
 // each language: every Auto/Review row for a
 // registered ID becomes a link, and every link it produces points at an id
-// renderFixActions actually emitted; a stray anchor pointing at nothing
+// renderFixActions emitted; a stray anchor pointing at nothing
 // would be a worse reading experience than the plain text it replaced. This
 // is the test that would have caught the Korean page shipping the section
 // but linking to it with the English word.

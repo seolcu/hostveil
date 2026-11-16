@@ -16,7 +16,7 @@ import "github.com/seolcu/hostveil/internal/model"
 
 // PublishedReport is the scan the website's screenshots show.
 //
-// It is deliberately a mixed host rather than a wrecked one. Every claim the
+// It is a mixed host rather than a wrecked one. Every claim the
 // pages make beside these pictures has to be visible in them: three severity
 // levels, a domain that ran but covered only part of its ground, a domain that
 // did not run at all and reads N/A instead of a free 100, findings at every

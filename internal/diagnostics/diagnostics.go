@@ -1,14 +1,14 @@
 // Package diagnostics records what a crash looked like, entirely on disk and
 // entirely local. It has no network client and imports nothing that has one,
-// that is the point of it: a panic anywhere in Hostveil leaves a record
+// that is its purpose: a panic anywhere in Hostveil leaves a record
 // here, and nothing here, nor `hostveil diagnostics` (cmd/hostveil) which
 // reads these back, ever sends that record anywhere. Packaging it for a bug
 // report and mailing it off are different acts, and this package and the
 // command that reads it only ever do the first: the operator pastes the
 // result into an issue by hand.
 //
-// A dependency-free leaf package on purpose, so internal/check and
-// internal/core (which the panics actually happen in) and cmd/hostveil (which
+// A dependency-free leaf package, so internal/check and
+// internal/core (which the panics happen in) and cmd/hostveil (which
 // packages them) can all call it without creating an import cycle or
 // widening the UI-layering allowlist in internal/ui/{tui,web}.
 package diagnostics
@@ -45,7 +45,7 @@ type CrashRecord struct {
 //
 // stack must be captured by the caller, with debug.Stack() called directly
 // inside the recover (not passed through another function first) so it
-// names the frames that actually panicked rather than this one.
+// names the frames that panicked rather than this one.
 func NewRecord(version, command, where string, panicValue any, stack []byte) CrashRecord {
 	return CrashRecord{
 		At:      time.Now(),

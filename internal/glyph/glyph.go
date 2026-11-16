@@ -11,7 +11,7 @@
 // The default is therefore Plain, which is every symbol Hostveil drew
 // before this package existed; nothing about an ordinary run changes.
 //
-// Both sets are held to one column per symbol. That is the load-bearing
+// Both sets are held to one column per symbol. That is the essential
 // property, not a nicety: the TUI's frame arithmetic budgets columns, and a
 // symbol two cells wide pushes its row past the edge of the terminal, which
 // in alt-screen mode wraps and shoves every row below it off the bottom.
@@ -96,7 +96,7 @@ var defs = []def{
 	{Cursor, "cursor", "›", ""},   // nf-fa-angle_right
 }
 
-// There is deliberately no arrow row. "→" appears once, inside the
+// There is no arrow row. "→" appears once, inside the
 // evidence-change detail a delta prints, three call frames below anything
 // holding an Options, and the Nerd arrow is a slightly longer arrow. A row
 // nothing asks for is a row that goes stale unnoticed.

@@ -134,6 +134,6 @@ func TestARealConfigIsStillRead(t *testing.T) {
 		t.Fatalf("check: %v", err)
 	}
 	if _, ok := findByID(fs, "agent.config-perms"); !ok {
-		t.Error("a genuinely world-readable config must still be reported")
+		t.Error("a world-readable config must still be reported")
 	}
 }

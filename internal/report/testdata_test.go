@@ -17,7 +17,7 @@ func sampleReport() model.Report {
 	// cannot reach without importing internal/core; the same reason the
 	// export renderers themselves never build a Fix.
 	high.FixBenefit = "Keeps key-based root access working while removing the one thing root " +
-		"logins are actually dangerous for: a guessable or stolen password."
+		"logins are dangerous for: a guessable or stolen password."
 	high.FixSideEffect = "Keep a working key for root, or use a sudo user instead."
 
 	medium := model.NewFinding("agent.dockersock", "Container has the Docker socket mounted",

@@ -75,8 +75,8 @@ sudo dnf install ./hostveil-&lt;version&gt;.x86_64.rpm</code></pre></div>
             <p>Each archive also ships an SBOM (<code>.sbom.json</code>) listing everything that went into the binary, so you can answer &ldquo;does this contain the library in today&rsquo;s advisory&rdquo; without building it yourself.</p>
 
             <h2 id="macos">Running it on macOS</h2>
-            <p>The macOS build is a real build. The installer takes it, it runs, and it produces a report. It is published because Hostveil is often driven from a laptop and because a build no one runs breaks without anyone noticing. What it is not is a macOS auditor: there is no Darwin-specific rule anywhere in the tool.</p>
-            <p>On a Mac with no Docker, ten of the twelve domains report <strong>N/A</strong>. Seven find nothing to look at on their own (no <code>/proc/sys</code>, no systemd, no <code>apt</code> or <code>dnf</code>, no <code>ss</code>), and three more are excluded on purpose, because on macOS they would have answered a question they had not asked:</p>
+            <p>The macOS build is a real build. The installer takes it, it runs, and it produces a report. It is published because Hostveil is often driven from a laptop and because a build that is never run breaks without anyone noticing. What it is not is a macOS auditor: there is no Darwin-specific rule anywhere in the tool.</p>
+            <p>On a Mac with no Docker, ten of the twelve domains report <strong>N/A</strong>. Seven find nothing to look at on their own (no <code>/proc/sys</code>, no systemd, no <code>apt</code> or <code>dnf</code>, no <code>ss</code>), and three more are excluded, because on macOS they would have answered a question they had not asked:</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Domain</th><th>On macOS</th></tr></thead>

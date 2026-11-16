@@ -19,7 +19,7 @@ import (
 // Reason string, which collapses stderr to one line and truncates it to 200
 // runes.
 //
-// What it deliberately does not record is stdout. `docker inspect` alone
+// What it does not record is stdout. `docker inspect` alone
 // reaches megabytes, and the output frequently contains environment
 // variables: a trace an operator pastes into a bug report must not be a
 // credential leak. The command, how long it took, and whether it failed are

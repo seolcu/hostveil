@@ -44,7 +44,7 @@ var recommendedFirst = map[string]struct{ label, why string }{
 	},
 	"dockerd.no-new-privileges": {
 		label: "restart Docker now",
-		why:   "the alternative writes the file and changes nothing until a restart nobody has scheduled, so the finding stands",
+		why:   "the alternative writes the file and changes nothing until an unscheduled restart, so the finding stands",
 	},
 	"dockerd.userns-remap": {
 		label: "restart Docker now",
@@ -56,7 +56,7 @@ var recommendedFirst = map[string]struct{ label, why string }{
 	},
 	"proxy.traefik-api-insecure": {
 		label: "recreate",
-		why:   "the alternative edits the file and leaves the dashboard open until a recreate nobody has scheduled",
+		why:   "the alternative edits the file and leaves the dashboard open until an unscheduled recreate",
 	},
 	"compose.ds009": {
 		label: "1000:1000",
@@ -64,7 +64,7 @@ var recommendedFirst = map[string]struct{ label, why string }{
 	},
 	"proxy.no-scan-jail": {
 		label: "fail2ban's own default",
-		why:   "a batch applying this with nobody watching should not also be the one picking the longer, harder-to-notice-and-undo ban",
+		why:   "an unattended batch applying this should not also be the one picking the longer, harder-to-notice-and-undo ban",
 	},
 }
 

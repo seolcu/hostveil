@@ -13,7 +13,7 @@ import (
 // The score series has been on disk since the store was written, and #603
 // put ScoreHistory on the engine so both interfaces could draw it without
 // reimplementing the shape. Neither did yet: this is that follow-up, and
-// the point of it is that both draw from one implementation.
+// it checks that both draw from one implementation.
 func TestTrendRouteServesTheSparklineTheTUIDraws(t *testing.T) {
 	s, _ := testServer(t)
 	srv := httptest.NewServer(s.Handler())

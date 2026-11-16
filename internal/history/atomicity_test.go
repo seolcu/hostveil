@@ -24,7 +24,7 @@ import (
 //
 // A test that provokes a torn write would have to crash the process at a
 // chosen instant, which is not something a unit test can do reliably. So
-// this asserts the property the invariant is actually about: no production
+// this asserts the property the invariant is about: no production
 // file here calls os.WriteFile at all. It is the same shape as the UI
 // layering tests: read the source, fail on the call that must not exist.
 func TestNoProductionWriteBypassesAtomicWrite(t *testing.T) {

@@ -5,9 +5,9 @@
 // nothing else. This domain reads the three things a single-host audit can see
 // and nothing inside a guest could: who can reach the management interface,
 // whether root@pam logs into it with a second factor, and whether the host is
-// actually receiving the updates its repository configuration claims.
+// receiving the updates its repository configuration claims.
 //
-// # What is deliberately not here
+// # What is not here
 //
 // **The datacenter firewall.** It is off by default and that matters, but a
 // host with no filtering is already the firewall domain's finding. What that
@@ -108,7 +108,7 @@ const pveproxyDefaults = "/etc/default/pveproxy"
 //
 // Upstream's defaults are the finding: listen on the wildcard address, and a
 // POLICY of allow when no ACL matches. Either of two settings narrows it:
-// LISTEN_IP, or an allow-list that something actually enforces. ALLOW_FROM on
+// LISTEN_IP, or an allow-list that something enforces. ALLOW_FROM on
 // its own enforces nothing, because what it does is win over a DENY_FROM, and
 // with the default policy an address that matches neither is let in anyway.
 func (c *Checker) auditWebUI() ([]model.Finding, string) {
@@ -212,7 +212,7 @@ type tfaEntry struct {
 func (e tfaEntry) on() bool { return e.Enable == nil || *e.Enable }
 
 // tfaUser holds the factor lists proxmox-tfa's TfaUserData serializes. The
-// recovery codes are left out on purpose: they are a way back in when the
+// recovery codes are left out: they are a way back in when the
 // factor is lost, not a factor, and a root with only those still logs in with
 // a password alone.
 type tfaUser struct {
@@ -252,7 +252,7 @@ func (c *Checker) auditRootTFA() ([]model.Finding, string) {
 		}
 		users = cfg.Users
 	case os.IsNotExist(err):
-		// Written on the first enrolment, so no file means nobody has one.
+		// Written on the first enrolment, so no file means no account has one.
 	default:
 		return nil, "could not read " + tfaConfig + "; root's second factor was not audited; re-run with sudo"
 	}
@@ -274,14 +274,14 @@ func (c *Checker) auditRootTFA() ([]model.Finding, string) {
 	)}, ""
 }
 
-// --- updates actually arriving ------------------------------------------------
+// --- updates arriving ------------------------------------------------
 
 const enterpriseHost = "enterprise.proxmox.com"
 
 // auditRepos reports an enterprise repository enabled on a host with no active
 // subscription.
 //
-// That is the out-of-box state of every PVE install, and it fails quietly in
+// That is the out-of-box state of every PVE install, and it fails silently in
 // the worst direction: `apt update` gets a 401 from the enterprise mirror,
 // prints an error most people learn to ignore, and the host stops receiving
 // Proxmox's own security updates while Debian's keep arriving and make it look

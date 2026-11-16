@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Provision a deliberately vulnerable Ubuntu 24.04 "home server" for the
+# Provision a vulnerable Ubuntu 24.04 "home server" for the
 # hostveil demo. Runs as root via Vagrant's shell provisioner. Everything
 # here is REAL (real Docker, real running stacks, real weak configs) so
 # every Hostveil domain fires authentically.
@@ -26,7 +26,7 @@ fi
 systemctl enable --now docker
 usermod -aG docker vagrant || true   # so `docker ps` works without sudo in the demo
 
-# --- hostveil demo: a deliberately dangerous Docker daemon -----------------
+# --- hostveil demo: a dangerous Docker daemon -----------------
 # This is the real thing, not a mock: an unauthenticated Docker API on 2375
 # is root on this VM for anyone who can reach the port, and a 0666 socket is
 # root for any local account. It is acceptable here only because the
@@ -52,7 +52,7 @@ printf '[Service]\nExecStart=\nExecStart=%s -H tcp://0.0.0.0:2375\n' \
 # dockerd.socket-world-writable (High). Set on the socket unit, not with
 # chmod: dockerd recreates the socket from this unit at every start, so a
 # chmod would be gone by the time Hostveil looked, and the unit drop-in is
-# the misconfiguration people actually make.
+# the misconfiguration people make.
 install -d /etc/systemd/system/docker.socket.d
 printf '[Socket]\nSocketMode=0666\n' \
   > /etc/systemd/system/docker.socket.d/10-hostveil-demo.conf
@@ -68,7 +68,7 @@ id ci_runner >/dev/null 2>&1 || useradd -r -M -s /usr/sbin/nologin ci_runner
 usermod -aG docker ci_runner || true
 
 # no-new-privileges, userns-remap and live-restore need no seeding: all three
-# are off by default on a stock install, which is the point of the rules.
+# are off by default on a stock install, which is why the rules exist.
 # dockerd.api-tls-unverified is not seeded; it needs a server keypair, which
 # is more machinery than the demo earns. Unit tests cover it.
 
@@ -200,7 +200,7 @@ systemctl start stacks-backup.service || true
 
 echo "==> [8/10] self-hosted AI agent runtime configs (OpenClaw + Hermes)"
 # NOTE: neither project is packaged for apt, and neither ships a daemon we
-# could honestly run here, so this seeds their *configuration* rather than
+# could accurately run here, so this seeds their *configuration* rather than
 # installing them. That is enough for the agent domain: Hostveil detects a
 # runtime by its home-directory layout and judges the config and file modes,
 # which is exactly the ground these fixtures cover.
@@ -222,7 +222,7 @@ install -m 0644 -o vagrant -g vagrant "$DEMO/seed/hermes.env" /home/vagrant/.her
 echo "==> [9/10] deploy vulnerable compose stacks"
 mkdir -p /opt/stacks
 cp -r "$DEMO/stacks/." /opt/stacks/
-# Bring the stacks up once now. They have no restart policy on purpose, so
+# Bring the stacks up once now. They have no restart policy, so
 # they do NOT come back on their own after a reboot: nothing auto-starts.
 # Use `demo/run.sh up` on the host to start the demo whenever you want it.
 for dir in /opt/stacks/*/; do

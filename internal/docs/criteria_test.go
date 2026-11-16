@@ -94,7 +94,7 @@ func TestTheCLIPagePublishesTheSARIFMapping(t *testing.T) {
 		for _, w := range want {
 			for lang, body := range pages {
 				if !strings.Contains(body, w) {
-					t.Errorf("%s cli page does not publish %q, which the SARIF export actually emits", lang, w)
+					t.Errorf("%s cli page does not publish %q, which the SARIF export emits", lang, w)
 				}
 			}
 		}

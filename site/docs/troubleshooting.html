@@ -31,12 +31,12 @@
       //
       // GitHub Pages serves files, not content negotiation, so the only place
       // this decision can be made is here, and the risk of making it here is
-      // trapping someone: a reader who deliberately clicked "English" must not
+      // trapping someone: a reader who clicked "English" must not
       // be bounced back on the next click. So the switcher records that choice
       // and this defers to it forever after.
       //
       // Only from the English page, only when the browser's own preference
-      // list actually leads with Korean, and never when a crawler is reading
+      // list leads with Korean, and never when a crawler is reading
       // (they do not run this): the hreflang links above are what they read.
       (function () {
         try {
@@ -125,7 +125,7 @@
           <article class="docs-prose">
             <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">Docs</a> / Troubleshooting</p>
             <h1>Troubleshooting</h1>
-            <p class="lead">What the less obvious messages mean, and how to find out what Hostveil actually did.</p>
+            <p class="lead">What the less obvious messages mean, and how to find out what Hostveil did.</p>
 
             <h2 id="debug">See every command Hostveil runs</h2>
             <p>Most questions about a wrong-looking result come down to one command answering differently than expected. Set <code>HOSTVEIL_DEBUG=1</code> to trace them:</p>

@@ -1,4 +1,4 @@
-# hostveil demo: a deliberately vulnerable Ubuntu 24.04 "home server".
+# hostveil demo: a vulnerable Ubuntu 24.04 "home server".
 #
 # One command on any OS:  vagrant up
 # Works with libvirt/KVM (Linux, fast) and VirtualBox (macOS/Windows/Linux).
@@ -30,7 +30,7 @@ Vagrant.configure("2") do |config|
     lv.cpus = 2
 
     # The box ships an 8.7GB disk and this demo does not fit on it. The seven
-    # deliberately-outdated images are 3.8GB, Trivy's vulnerability DB is
+    # intentionally outdated images are 3.8GB, Trivy's vulnerability DB is
     # another 1.2GB, and Ubuntu and the Go toolchain take most of what is
     # left: a provisioned VM sat at 95% full with 492MB free.
     #
@@ -38,7 +38,7 @@ Vagrant.configure("2") do |config|
     # Trivy exports an image to a temp file before scanning it, so an image
     # larger than the free space cannot be scanned at all: jellyfin and
     # nextcloud are 1.32GB each, and both failed with "no space left on
-    # device" however few scans ran at once. Hostveil reported it honestly as
+    # device" however few scans ran at once. Hostveil reported it accurately as
     # partial coverage, and a vulnerability axis that skipped the two
     # heaviest images scored *better* than the truth, which is the one thing
     # a demo of a security tool must not do.

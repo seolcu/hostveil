@@ -3,14 +3,14 @@
 // Every checker reaches the OS through a platform.CommandRunner, so every
 // checker's tests need a fake one. Nineteen were written by hand, and between
 // them they had two shapes: a set of binaries that exist, and a map from a
-// command with its arguments to what that command prints. What actually
+// command with its arguments to what that command prints. What
 // differed was which default each took (some listed the binaries present,
 // some listed the ones missing) and how each spelled the argv it scripted.
 //
 // The spelling is the part that bites. A scripted argv that no longer matches
 // what the caller runs does not fail the test. It falls through to the fake's
 // unscripted-command error, and every checker reads a command that errored as
-// a tool that did not answer: the same value a genuinely broken host
+// a tool that did not answer: the same value a broken host
 // produces. So a test written to cover the working case goes on passing while
 // silently covering the opposite one. Script through Docker or Listeners
 // below, or through platform's exported argv, rather than by writing the
@@ -130,7 +130,7 @@ func (r *Runner) Listeners(out string) *Runner {
 }
 
 // Env wraps the runner in a scan environment, which is what a checker's
-// Check and Available actually take.
+// Check and Available take.
 func (r *Runner) Env() platform.Env { return platform.Env{Runner: r} }
 
 // LookPath resolves a binary, honouring Only and Without.

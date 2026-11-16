@@ -7,7 +7,7 @@ import (
 	// This test file imports internal/history to build the exact error the
 	// engine returns when it declines a rollback. The layering test scans
 	// production files only, and asserting against a stand-in would be
-	// asserting against something core.IsExternalEdit does not actually
+	// asserting against something core.IsExternalEdit does not
 	// recognise, which is the bug this covers.
 	"github.com/seolcu/hostveil/internal/history"
 	"github.com/seolcu/hostveil/internal/model"

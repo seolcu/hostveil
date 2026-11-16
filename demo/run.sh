@@ -96,7 +96,7 @@ clear_stale_forward() {
 
   echo "==> stopping stale demo port forward on localhost:8787…"
   # Each PID came from an exact command-line match above, not from a port-wide
-  # kill. Split on newlines/spaces deliberately; kill accepts the resulting
+  # kill. Split on newlines/spaces; kill accepts the resulting
   # PID list as separate arguments.
   # shellcheck disable=SC2086
   kill $pids
@@ -154,9 +154,9 @@ EOF
 }
 
 # Bring every stack up inside the VM (idempotent). Stacks have no restart
-# policy on purpose, so they need starting after each boot.
+# policy, so they need starting after each boot.
 start_stacks() {
-  # Single quotes on purpose: $d is the guest's loop variable and must reach
+  # Single quotes: $d is the guest's loop variable and must reach
   # the guest shell unexpanded. Expanding it here would send one empty path.
   # shellcheck disable=SC2016
   vagrant ssh -c 'for d in /opt/stacks/*/; do (cd "$d" && sudo docker compose up -d); done' 2>/dev/null
@@ -171,7 +171,7 @@ start_stacks() {
 # `hostveil` here: nothing else in this file passes any environment into
 # the guest at all.
 #
-# Only variables the host actually has set are emitted, so a host with none
+# Only variables the host has set are emitted, so a host with none
 # of these set builds the exact command line it built before. No provider or
 # model is ever assumed here: see demo/README.md for how to point this at
 # OpenCode Zen/Go, Anthropic, or a local Ollama.

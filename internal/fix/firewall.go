@@ -19,7 +19,7 @@ import (
 // port.
 //
 // It records one now, read from the kernel's socket table: the port sshd is
-// actually serving on, not the one its config claims. That is the whole
+// serving on, not the one its config claims. That is the whole
 // difference. The fix allows that port and only then enables the firewall,
 // as two commands of a single action, in that order.
 //
@@ -35,7 +35,7 @@ func registerFirewall(r *Registry) {
 func buildEnableFirewall(f model.Finding) (Fix, error) {
 	// No port, no fix. A firewall enabled without knowing which port to keep
 	// open is the lockout this refused to risk for years, and "I could not
-	// tell" must not quietly become "22".
+	// tell" must not silently become "22".
 	// Every port sshd is listening on, not the first. Two at once is how an
 	// operator changes the SSH port without locking themselves out (the old
 	// and the new both open until the new one is proven) and allowing one of
@@ -84,7 +84,7 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 		Kind: model.RemediationAuto,
 		Actions: []Action{{
 			Label: "Allow SSH on " + spelled + "/tcp, then enable ufw with a default-deny inbound policy",
-			Benefit: "Turns on default-deny, so only the ports Hostveil confirmed sshd is actually " +
+			Benefit: "Turns on default-deny, so only the ports Hostveil confirmed sshd is " +
 				"listening on stay reachable; everything else stops accepting connections from off this host.",
 			Warning: "Every inbound port except " + spelled + "/tcp stops being reachable the moment this " +
 				"runs, including anything a container publishes. There is no rollback checkpoint: " +
@@ -192,7 +192,7 @@ func enableFirewalld(f model.Finding, ports []int) Fix {
 		Actions: []Action{{
 			Label: "Allow SSH on " + spelled + "/tcp in firewalld's default zone, set it to reject by default, " +
 				"then enable and start firewalld",
-			Benefit: "Turns on default-deny, so only the ports Hostveil confirmed sshd is actually " +
+			Benefit: "Turns on default-deny, so only the ports Hostveil confirmed sshd is " +
 				"listening on (and the services the default zone already allows) stay reachable.",
 			Warning: "Every inbound port the default zone does not already allow, except " + spelled +
 				"/tcp, stops being reachable the moment firewalld starts. Ports Docker publishes stay " +

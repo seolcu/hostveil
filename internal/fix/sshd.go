@@ -23,11 +23,11 @@ import (
 // directive *was* "match", which nothing sets. Both halves of the editor
 // walked into the block. A `PasswordAuthentication yes` under `Match User
 // deploy` was rewritten as though it were the global default: changing what
-// SSH did for that user, which the operator had chosen deliberately and the
+// SSH did for that user, which the operator had chosen and the
 // finding never referred to, while the global setting stayed as it was. And
 // when the directive was absent, appending it to the end of a file that ends
 // in a Match block put it inside that block, so "disable password
-// authentication" quietly meant "disable it for one user". Both results are
+// authentication" silently meant "disable it for one user". Both results are
 // valid sshd_config, so `sshd -t` accepts them and the fix reports success.
 func setSSHDDirective(in []byte, key, value string) []byte {
 	lines := strings.Split(string(in), "\n")

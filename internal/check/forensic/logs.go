@@ -15,7 +15,7 @@ import (
 
 var timedatectlArgv = []string{"timedatectl", "show", "--property=NTPSynchronized,NTP"}
 
-// checkTimeSync reports a clock nobody keeps right. Every timeline an
+// checkTimeSync reports an unsynchronised clock. Every timeline an
 // investigation builds lines up this host's log times against each other and
 // against the outside world (a provider's abuse report, another server's
 // log) and a drifting clock makes "the login came before the upload" a

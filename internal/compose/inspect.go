@@ -19,7 +19,7 @@ const composeProjectLabel = "com.docker.compose.project"
 // Container is a running container that no compose file describes, normalized
 // into the same Service shape the compose rules already audit.
 //
-// The two are deliberately not interchangeable. A compose service can be
+// The two are not interchangeable. A compose service can be
 // fixed by editing its file; a container started with `docker run` has no
 // file to edit, and its settings live only in the daemon's record of how it
 // was created. Callers must not offer a file-editing fix for one of these.
@@ -166,7 +166,7 @@ func inspectPorts(bindings map[string][]hostIP) []Port {
 	}
 	// Map iteration order is random and these ports reach a finding's
 	// evidence, so a stable order keeps repeat scans from producing a delta
-	// that reports a change nobody made.
+	// that reports a change that did not happen.
 	sort.Slice(ports, func(i, j int) bool {
 		if ports[i].HostPort != ports[j].HostPort {
 			return ports[i].HostPort < ports[j].HostPort

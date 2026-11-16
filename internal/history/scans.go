@@ -89,7 +89,7 @@ func scanFiles(dir string) ([]string, error) {
 }
 
 // ScanSnapshot is one saved scan: when it ran, and the opaque bytes it was
-// saved as. The store deliberately does not parse them (it holds
+// saved as. The store does not parse them (it holds
 // snapshots, it does not know what a report is) so the caller unmarshals.
 type ScanSnapshot struct {
 	ID   string

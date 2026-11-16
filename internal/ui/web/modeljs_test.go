@@ -131,7 +131,7 @@ func assertDistinctStrings[T comparable](t *testing.T, what string, vals []T, na
 	}
 }
 
-// The table is only useful if the page can actually fetch it. It is a
+// The table is only useful if the page can fetch it. It is a
 // blocking script in <head>, so a 404 here is a dashboard that renders its
 // domain chips as integers: the original bug, reintroduced through the
 // routing table instead of the data.

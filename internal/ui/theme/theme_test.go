@@ -61,7 +61,7 @@ func TestAllIsACopy(t *testing.T) {
 
 // The default look must not shift under anyone. This is the table every
 // screenshot, every doc and the brand mark are calibrated to, written out
-// again so that changing it is a decision rather than a diff nobody read.
+// again so that changing it is a decision rather than an unread diff.
 func TestHostveilUnchanged(t *testing.T) {
 	want := Palette{
 		Ink: "#111113", Ink2: "#0b0b0c", Ink3: "#1c1c1f",
@@ -91,7 +91,7 @@ func TestHostveilUnchanged(t *testing.T) {
 //
 // Four of the twelve are not One Dark's published values. Three of those are
 // not drift (TestEveryThemeMeetsTheContrastFloor rejects the published Slate,
-// Crit and Low outright) and the fourth, Bone, is a judgement with its own
+// Crit and Low as they are) and the fourth, Bone, is a judgement with its own
 // reason beside it. Either way somebody comparing this against Atom will find
 // a discrepancy and be right to ask, so the numbers are pinned here with the
 // ones they replaced beside them.
@@ -120,7 +120,7 @@ func TestOneDarkUnchanged(t *testing.T) {
 	}
 }
 
-// The theme that used to be the default is gone, and nothing may quietly
+// The theme that used to be the default is gone, and nothing may silently
 // bring it back: its palette was tuned against a near-black page that no
 // remaining theme has, so a stray "instrument" entry would be an
 // unmaintained twelfth of the design system rather than a choice.

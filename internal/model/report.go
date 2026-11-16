@@ -51,7 +51,7 @@ func (s ScanState) String() string {
 	return "pending"
 }
 
-// Ran reports whether the checker actually executed and contributed to
+// Ran reports whether the checker executed and contributed to
 // scoring (Done or Degraded). Skipped/Error/Pending did not.
 func (s ScanState) Ran() bool {
 	return scanStateIndex[s].ran
@@ -212,7 +212,7 @@ func (r Report) AutoFixable(flt Filter) []Finding { return AutoFixable(r.Select(
 // AutoFixable is the same question asked of a slice a caller already has,
 // so a renderer holding the filtered findings does not have to rebuild them
 // to count what the key would apply.
-// Fixed here and not Active, deliberately. This is the other question (has
+// Fixed here and not Active. This is the other question (has
 // Hostveil already applied a fix here) and a pending fix has. Asking Active
 // would put it back in the batch, so `fix --all` would rewrite a file it
 // already wrote and record a second checkpoint over unchanged content, every
@@ -247,7 +247,7 @@ func SortFindings(findings []Finding) {
 // Applicable mirrors ScoreBreakdown.Applicable and must be carried, not
 // flattened to a number: a scan where every domain was skipped or failed
 // has no score at all, and rendering it as 0 would draw a cliff where the
-// truth is "nobody could look". The same lie the aggregate score already
+// truth is "the scan could not look". The same lie the aggregate score already
 // refuses to tell, told again by a chart.
 type ScorePoint struct {
 	At         time.Time `json:"at"`
@@ -271,7 +271,7 @@ type ScorePoint struct {
 // about the only thing it is for.
 //
 // A scan with no applicable score contributes a gap rather than a bar. It
-// is not a zero (nobody could look) and drawing it as the lowest bucket
+// is not a zero (the scan could not look) and drawing it as the lowest bucket
 // would be the same lie the aggregate score refuses to tell.
 func Sparkline(points []ScorePoint) string {
 	// Runes, not a string: every bar is three bytes, so indexing by

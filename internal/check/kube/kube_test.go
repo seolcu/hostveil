@@ -20,7 +20,7 @@ type file struct {
 }
 
 // host lays out a fake root. Every file is written with its mode applied
-// after creation, so the umask cannot quietly tighten a fixture.
+// after creation, so the umask cannot silently tighten a fixture.
 func host(t *testing.T, files map[string]file) string {
 	t.Helper()
 	root := t.TempDir()
@@ -252,7 +252,7 @@ func TestShellWordsKeepsAQuotedSpace(t *testing.T) {
 // systemctl show exits 0 for a unit that does not exist. That is not a
 // command line with no flags on it.
 func TestAnUnreadCommandLineIsAGap(t *testing.T) {
-	// No encryption in any file: only a command line nobody read could
+	// No encryption in any file: only an unread command line could
 	// still be turning it on.
 	root := host(t, with(stock(), map[string]file{"etc/rancher/k3s/config.yaml": {"# empty\n", 0o600}}))
 	for name, r := range map[string]*checktest.Runner{

@@ -144,7 +144,7 @@ func TestUnsupportedMarkdownFailsTheBuild(t *testing.T) {
 		})
 	}
 
-	// And the shapes the file actually uses must keep passing, or the guard
+	// And the shapes the file uses must keep passing, or the guard
 	// has stopped being a guard and started being a wall.
 	ok := "## [3.20.1](https://x/compare) (2026-08-15)\n\nAn intro line.\n\n### Bug Fixes\n\n" +
 		"* **core:** it moved ([#735](https://x/735)). With `code`, **bold** and *emphasis*.\n" +

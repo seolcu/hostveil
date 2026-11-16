@@ -11,7 +11,7 @@ import (
 // HEALTHCHECK, which Docker runs when the compose file names none.
 //
 // ds012 asks a question about the container (its description says a failed
-// service can appear healthy while it is actually down) and answers it from
+// service can appear healthy while it is down) and answers it from
 // the compose file alone. That is not the same question. An image with
 // `HEALTHCHECK` in its Dockerfile gets one whether or not the compose file
 // repeats it, so a service running such an image was told to add a healthcheck

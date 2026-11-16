@@ -23,10 +23,10 @@
 //
 // A distribution's own units are hardened by the distribution, on its
 // schedule, and a drop-in that second-guesses them is the operator taking on
-// maintenance of somebody else's service. More to the point, flagging them
+// maintenance of somebody else's service. Also, flagging them
 // would bury the operator's own services under dozens of findings about
 // software they did not choose to run and cannot sensibly change, and a
-// domain that accuses everything is a domain nobody reads. The units this
+// domain that accuses everything is a domain people stop reading. The units this
 // package reports on are the ones whose author is the person reading the
 // report.
 package systemd
@@ -41,8 +41,8 @@ import (
 )
 
 // operatorUnitDirs are the directories a unit file lives in when a person
-// rather than a package put it there. /run is deliberately absent: units
-// generated at boot are nobody's to edit and do not survive a reboot.
+// rather than a package put it there. /run is absent: units
+// generated at boot are not for anyone to edit and do not survive a reboot.
 var operatorUnitDirs = []string{
 	"/etc/systemd/system/",
 	"/usr/local/lib/systemd/system/",
@@ -72,7 +72,7 @@ var showProperties = []string{
 	"RestrictNamespaces",
 	"LockPersonality",
 	"MemoryDenyWriteExecute",
-	// Which drop-ins systemd actually loaded for this unit, in the order it
+	// Which drop-ins systemd loaded for this unit, in the order it
 	// applied them. Asked for because the fix writes a drop-in, and a drop-in
 	// competes on filename: see dropInPath.
 	"DropInPaths",

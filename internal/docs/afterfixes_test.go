@@ -16,8 +16,8 @@ import (
 //   - nothing where the figure equals the score, because an arrow pointing at
 //     the number it starts from says the fixes are worth nothing, and on a
 //     well-kept host that is most rows;
-//   - nothing where the axis is N/A, because a number beside a domain nobody
-//     looked at is a claim about a domain nobody looked at.
+//   - nothing where the axis is N/A, because a number beside a domain the scan
+//     never looked at is a claim about a domain it never looked at.
 //
 // This is the same shape of check as the Degraded flag's: a rule that lives in
 // prose until one renderer forgets it. It reads the sources rather than
@@ -29,7 +29,7 @@ import (
 // call either (it is JavaScript reading /api/result) so it is the one this
 // reads.
 //
-// That is the point of the shrinking. This file used to grep four sources for
+// That is why it shrank. This file used to grep four sources for
 // the same guard, which is a test that fails when somebody rewrites a
 // condition into an equivalent one and passes when they get the logic wrong
 // in the same words. One irreducible copy is worth grepping for; four are a
@@ -55,7 +55,7 @@ func TestTheDashboardKeepsTheRulesItCannotCallIntoGoFor(t *testing.T) {
 	}
 }
 
-// SARIF is the exception, and it is worth pinning as one so nobody
+// SARIF is the exception, and it is worth pinning as one so no one
 // "fixes" it into agreeing with the three UIs. A property bag is read by a
 // machine that can compare two numbers itself, and a key that appears only
 // sometimes is harder to consume than one that is occasionally equal to its

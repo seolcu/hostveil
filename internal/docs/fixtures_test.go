@@ -13,7 +13,7 @@ import (
 )
 
 // The fixtures the interfaces are drawn from must name findings Hostveil can
-// actually report.
+// report.
 //
 // findings_test.go closes the loop between the checkers and the docs: every ID
 // a checker constructs has to be documented, and every documented row has to

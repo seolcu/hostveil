@@ -104,7 +104,7 @@ func Replace(path string, binary []byte) error {
 	return platform.WriteFileAtomic(path, binary, info.Mode().Perm())
 }
 
-// Remove deletes the binary. State is deliberately left alone; see StateNote.
+// Remove deletes the binary. State is left alone; see StateNote.
 func Remove(path string) error { return os.Remove(path) }
 
 // StateNote is what to say after removing the binary.

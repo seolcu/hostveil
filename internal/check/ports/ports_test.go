@@ -215,7 +215,7 @@ func TestMalformedLinesSkipped(t *testing.T) {
 // those ports. When that cannot be determined (its probes need root), neither
 // answer is safe: flagging invents noise on a firewalled host, staying silent
 // hides real exposure. The domain must say it could not tell instead of
-// quietly picking one.
+// silently picking one.
 func TestGenericExposureWhenFirewallStateUnreadable(t *testing.T) {
 	ss := `LISTEN 0 128 0.0.0.0:8080 0.0.0.0:*
 LISTEN 0 128 0.0.0.0:22 0.0.0.0:*`

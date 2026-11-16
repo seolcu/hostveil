@@ -23,7 +23,7 @@ type modeChange struct {
 }
 
 // planModes stats every path and computes its new mode, purely. It reports
-// only the paths that would actually change, so a fix cannot claim credit
+// only the paths that would change, so a fix cannot claim credit
 // for files that were already compliant.
 //
 // A stat failure aborts the whole plan rather than skipping the file: a fix

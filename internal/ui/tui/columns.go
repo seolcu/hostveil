@@ -17,7 +17,7 @@ import (
 
 // Column geometry. The dashboard collapses to one column below 820px; a
 // terminal has to make the same call in characters, and the numbers below
-// are what the regions actually need rather than a scaled-down guess.
+// are what the regions need rather than a scaled-down guess.
 //
 // minListWidth is the one that decides: a findings row is a severity label,
 // a 13-column id and a title, and under about forty columns the title is
@@ -151,7 +151,7 @@ func beginsWithRule(cell string) bool {
 }
 
 // visibleRunes drops the escape sequences from a styled row, so a caller can
-// ask what is actually drawn in a given column.
+// ask what is drawn in a given column.
 func visibleRunes(s string) []rune {
 	out := make([]rune, 0, len(s))
 	for i := 0; i < len(s); {
@@ -225,7 +225,7 @@ func (m *appModel) railRows(w, budget int) []string {
 	// The indent under each name says so, and a blank line says it louder for
 	// the price of a row.
 	//
-	// Only when the rows are actually there. This is the third tier of the
+	// Only when the rows are there. This is the third tier of the
 	// same budget the two above it come out of, so a terminal that cannot
 	// afford it keeps every domain and loses the gaps rather than the other
 	// way round: head + 2 rows each + one gap between each pair.

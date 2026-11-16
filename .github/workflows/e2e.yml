@@ -11,8 +11,8 @@ name: E2E
 # and the demo VM is manual and asserts nothing. This is the smallest thing
 # that closes the gap and runs on every pull request.
 #
-# Deliberately no Docker and no Trivy: the container domains need a daemon,
-# and the point here is the apply/rollback machinery, not coverage breadth.
+# No Docker and no Trivy: the container domains need a daemon,
+# and this job tests the apply/rollback machinery, not coverage breadth.
 # The domains that cannot run report Skipped, which is itself asserted.
 
 on:
@@ -120,7 +120,7 @@ jobs:
           set -e
           # 1 means unfixed Critical or High findings, which is the whole
           # point of the seed. 0 would mean the scan found nothing; 3 would
-          # mean a domain failed outright.
+          # mean a domain failed completely.
           test "$code" = 1
 
           for id in ssh.rootlogin ssh.passwordauth ssh.emptypasswords; do
@@ -159,7 +159,7 @@ jobs:
           #
           # Unit tests pin the classification against a fake registry. This is
           # the only place it meets a real apt, on a host where the finding
-          # genuinely fires, with a real `fix --all` deciding what to run.
+          # fires, with a real `fix --all` deciding what to run.
           # Written as an if rather than `! dpkg …`: a negated command is
           # exempt from errexit, so the assertion would report nothing however
           # it turned out.
@@ -268,7 +268,7 @@ jobs:
           # Trivy here, so at least one domain is always Skipped, if none is,
           # the report changed shape and this step is looking at the wrong
           # thing. internal/docs/e2e_test.go pins the literal below against
-          # what the model actually writes.
+          # what the model writes.
           skipped=$(jq '[.domains[] | select(.state == "skipped")] | length' /tmp/scan3.json)
           test "$skipped" -gt 0 || {
             echo "no domain reported Skipped, so this step asserts nothing"; exit 1; }
@@ -343,7 +343,7 @@ jobs:
           # and it is the most severe thing this program can say.
           grep -q 'firewall.inactive' /tmp/fw.txt && exit 1
 
-          # And the honest answer in its place: a coverage gap, because a
+          # And the accurate answer in its place: a coverage gap, because a
           # non-root user cannot read the firewall state either.
           grep -q 'firewall partial' /tmp/fw.txt
 
@@ -374,7 +374,7 @@ jobs:
           # refused there, in the documented words. Conditional on the release
           # lookup having worked, and said out loud when it did not: a GitHub
           # outage must not turn into a red build over something this step
-          # never got to observe, and it must not pass quietly either.
+          # never got to observe, and it must not pass silently either.
           if grep -q 'is available' /tmp/up.txt; then
             grep -qi 'could not tell how this binary was installed' /tmp/up.txt
           else
@@ -383,7 +383,7 @@ jobs:
           fi
 
           # --check writes nothing, whatever it finds. That is its whole
-          # contract: a cron job runs it on hosts nobody is watching.
+          # contract: a cron job runs it on unattended hosts.
           hostveil update --check >/tmp/upc.txt 2>&1 || true
           test "$(sha256sum /usr/local/bin/hostveil | cut -d' ' -f1)" = "$before"
 
@@ -409,7 +409,7 @@ jobs:
 
   # The fixes that no batch applies. `fix --all --review` (the path the
   # roundtrip job above and scripts/measure/run.sh both take) skips every
-  # individual-only fix on purpose, so until this job they had only ever run
+  # individual-only fix, so until this job they had only ever run
   # against a fake CommandRunner. These scenarios need a Docker daemon and
   # systemd as PID 1, which a job container does not have, so they run on the
   # runner VM itself; it is discarded when the job ends, which is what makes
@@ -577,7 +577,7 @@ jobs:
   #
   # The binary is built on the runner and mounted in, rather than built inside
   # each image. That is what an operator downloads, so it is what should be
-  # tested, and running it under musl is the point on Alpine.
+  # tested, and Alpine exists here to run it under musl.
   distros:
     needs: binary
     runs-on: ubuntu-latest

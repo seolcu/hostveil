@@ -159,7 +159,7 @@ func (e *Engine) ScanWith(ctx context.Context, progress chan<- model.ScanEvent, 
 	// Checkers are read-only and run concurrently, and several of them ask
 	// the host the same questions: `docker compose ls`, `docker inspect`
 	// over every container, the firewall probe. The cache collapses those to
-	// one execution each for the duration of this scan. It deliberately does
+	// one execution each for the duration of this scan. It does
 	// not replace e.runner: fixes run through the uncached one, because an
 	// exec fix mutates the host and must never be served from a cache.
 	env := platform.Detect(ctx, platform.NewScanCache(e.runner))
@@ -230,7 +230,7 @@ func (e *Engine) ScanWith(ctx context.Context, progress chan<- model.ScanEvent, 
 
 // withoutUnaskedOptIn drops the axis of every opt-in domain this scan did not
 // run. Every other domain that did not run stays, as N/A: that one could not
-// look, and saying so is the point. An opt-in domain nobody asked for was
+// look, and the report says so. An opt-in domain the operator did not ask for was
 // never going to look, and an N/A row for it on every scan would be noise.
 func withoutUnaskedOptIn(b model.ScoreBreakdown, states map[model.Source]model.ScanState) model.ScoreBreakdown {
 	b.Axes = slices.DeleteFunc(b.Axes, func(a model.ScoreAxis) bool {

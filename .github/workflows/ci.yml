@@ -25,7 +25,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # The gate takes about two minutes. Ten is not a target, it is the point
+    # The gate takes about two minutes. Ten is a ceiling, set
     # past which the job is stuck rather than slow, and a stuck job holds the
     # pull request until somebody notices.
     timeout-minutes: 15
@@ -73,7 +73,7 @@ jobs:
 
       # A tool that reports other people's vulnerabilities should not ship
       # its own. govulncheck reports only vulnerabilities in code paths this
-      # binary actually reaches, so a finding here is real rather than a
+      # binary reaches, so a finding here is real rather than a
       # dependency-graph coincidence, which is why it gates the build
       # instead of merely warning.
       - name: Check dependencies for known vulnerabilities
@@ -127,7 +127,7 @@ jobs:
       # during a release, where a failure demotes the release to a draft
       # rather than being caught on the pull request that caused it.
       # Compiling is enough: the tests only pass meaningfully on the platform
-      # they run on, and a build break is what actually escapes review.
+      # they run on, and a build break is what escapes review.
       # Concurrently, and without linux/amd64: the Build step above is that
       # target, so compiling it again is a third of this step spent proving
       # something already proved. The remaining three are independent, and

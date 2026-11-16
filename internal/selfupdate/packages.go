@@ -17,7 +17,7 @@ import (
 // what keeps dpkg or rpm describing the filesystem correctly. There is no apt
 // or dnf repository to upgrade from, so `apt install --only-upgrade hostveil`
 // would find nothing and report success, which is the failure mode this
-// avoids by fetching the file the release actually has.
+// avoids by fetching the file the release has.
 func PackageAsset(o Origin, version string) (string, error) {
 	ext := ""
 	switch o {

@@ -60,7 +60,7 @@ var checkerAsksForMore = map[string]string{
 }
 
 // TestDocumentedFixKindsMatchTheRegistry is the guard for the failure that
-// actually shipped: a table promising a fix button for findings the
+// shipped: a table promising a fix button for findings the
 // registry declines, which Engine.classify demotes to Manual. The column
 // was transcribing what each checker asks for, which is only half of how
 // remediation is settled.
@@ -223,7 +223,7 @@ func jsonEnumNames() []string {
 //
 // Two tests read the finding table and neither looked at this cell:
 // findingRow captures the last column (the fix kind) and weightRow avoids the
-// severity table on purpose. So roughly a hundred and twenty cells across two
+// severity table. So roughly a hundred and twenty cells across two
 // languages restated a model enum with nothing checking the restatement, and
 // when the four-level scale became three, a missed cell would have gone on
 // naming a level that no longer exists, styled by a CSS class that no longer

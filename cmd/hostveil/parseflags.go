@@ -27,7 +27,7 @@ func parseFlags(fs *flag.FlagSet, args []string) int {
 // parseAndElevate is parseFlags followed by the re-exec under sudo, and is
 // what every subcommand calls.
 //
-// The order is the point. Elevation used to happen in run(), before dispatch
+// The order matters. Elevation used to happen in run(), before dispatch
 // and therefore before any subcommand had looked at its arguments, so
 // `hostveil --theme no-such-theme` asked for a password, took it, re-executed
 // as root, and *then* exited 2 on a usage error. resolveCommand routes any

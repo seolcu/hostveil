@@ -77,7 +77,7 @@ func TestEveryPlannedDomainHasARowBeforeItStarts(t *testing.T) {
 	}
 }
 
-// No estimate of the time remaining, deliberately.
+// No estimate of the time remaining.
 //
 // Eleven of the twelve domains together finish inside a second; the twelfth
 // shells out to Trivy, whose duration depends on the images on the host, their
@@ -86,7 +86,7 @@ func TestEveryPlannedDomainHasARowBeforeItStarts(t *testing.T) {
 // so a figure would be confidently wrong for most of the wait: the same
 // reason a skipped domain is scored N/A rather than 100.
 //
-// Pinned because it is a decision, and a decision nobody wrote down is one the
+// Pinned because it is a decision, and an unwritten decision is one the
 // next person re-litigates by adding the feature.
 func TestTheScanScreenDoesNotEstimateWhatItCannotKnow(t *testing.T) {
 	got := strings.ToLower(plain(scanningModel(96, 34).View().Content))

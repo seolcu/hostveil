@@ -76,7 +76,7 @@ func (d *Doc) Bytes() ([]byte, error) {
 	// bytes no parser could read, with the caller none the wiser until the
 	// service that reads the file next fails to start. A fix is only ever
 	// built against a service and key the checker already read, so this
-	// should never actually fire outside the fuzz corpus, but a write this
+	// should never fire outside the fuzz corpus, but a write this
 	// package cannot prove readable is exactly the case Auto fixes exist to
 	// never produce.
 	if err := verifyReloadable(full); err != nil {

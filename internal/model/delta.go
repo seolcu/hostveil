@@ -53,7 +53,7 @@ func (c FindingChange) ChangedEvidence() []string {
 // EvidenceSeparator is the convention for list-valued evidence: checkers
 // join multiple items with it (accounts' account names, fileperms' file
 // list, firewall's available tools, cve's vulnerability IDs). The space is
-// load-bearing: clirender wraps on whitespace, so a comma-only join would
+// required: clirender wraps on whitespace, so a comma-only join would
 // be one unbreakable word that overflows a terminal.
 //
 // It is for evidence a person reads. Anything a fix has to parse back out
@@ -67,7 +67,7 @@ const EvidenceSeparator = ", "
 // under a user's home is not exotic. Splitting such a value on ", " yields
 // two paths that do not exist. Today that fails safe (planModes stats every
 // path and aborts the whole fix when one is missing, so nothing is chmod'ed)
-// but it fails, on a fix that should have worked, for a reason nobody
+// but it fails, on a fix that should have worked, for a reason no one
 // reading the output could guess.
 //
 // ASCII unit separator: it cannot occur in a path (the kernel allows any
@@ -196,7 +196,7 @@ func onlyDomains(r Report, keep map[Source]bool) Report {
 // that is applied and not yet in force reads as what it is: still there. A
 // delta that counted it under Fixed would announce the risk resolved one scan
 // before anything on the host had changed, and then have nothing to say at the
-// scan where it actually was.
+// scan where it was.
 
 func activeByKey(r Report) map[string]Finding {
 	out := make(map[string]Finding, len(r.Findings))

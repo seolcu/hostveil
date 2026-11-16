@@ -26,7 +26,7 @@ var evidenceRead = regexp.MustCompile(`Evidence\["([a-zA-Z0-9_-]+)"\]`)
 // The direction that matters is a fix reading a key no checker writes. It does
 // not fail loudly: the builder returns an error, Engine.classify demotes the
 // finding to Manual, and the user is left with a finding whose fix button
-// vanished and no explanation anywhere. Two keys are deliberately conditional
+// vanished and no explanation anywhere. Two keys are conditional
 // and are listed below with the reason.
 func TestEveryEvidenceKeyAFixReadsIsWrittenByAChecker(t *testing.T) {
 	root := repoRoot(t)
@@ -49,7 +49,7 @@ func TestEveryEvidenceKeyAFixReadsIsWrittenByAChecker(t *testing.T) {
 
 // conditionalKeys are written only in some circumstances, and each fix that
 // reads one says what it does when it is absent. They are named here so the
-// list of what is deliberately optional is written down somewhere rather than
+// list of what is optional is written down somewhere rather than
 // being rediscovered from a nil map.
 var conditionalKeys = map[string]string{
 	"ssh_port": "firewall.inactive carries it only where `ss` could be read; without it the fix errors rather than enabling a firewall on an unknown port",

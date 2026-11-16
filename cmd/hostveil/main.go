@@ -34,9 +34,9 @@ func main() {
 // SIGTERM, and makes a second signal end the process immediately.
 //
 // Every command threads the context down to Engine.Scan, which passes it to
-// exec.CommandContext, so an interrupt actually stops the docker and trivy
+// exec.CommandContext, so an interrupt stops the docker and trivy
 // processes a scan has running rather than leaving them to finish against a
-// terminal nobody is watching. Nothing was cancellable before: the TUI puts
+// unattended terminal. Nothing was cancellable before: the TUI puts
 // the terminal in raw mode and reads Ctrl-C as a key, so a scan there could
 // not be interrupted at all.
 //
@@ -80,7 +80,7 @@ func run(ctx context.Context, args []string) (code int) {
 	//
 	// debug.Stack() runs here, directly in the recover, not inside
 	// reportCrash: a stack captured one call further down would start from
-	// reportCrash's own frame instead of the one that actually panicked.
+	// reportCrash's own frame instead of the one that panicked.
 	defer func() {
 		if r := recover(); r != nil {
 			code = reportCrash(args, r, debug.Stack())
@@ -296,7 +296,7 @@ Exit status:
   hostveil scan is a CI or cron gate:
     0  the scan ran and found nothing High
     1  at least one unfixed High finding
-    3  a detection domain failed outright, so the scan covered less of the
+    3  a detection domain failed completely, so the scan covered less of the
        host than it should have; a clean-looking result you cannot trust
   A domain skipped for a missing dependency, or degraded to partial coverage,
   does not change the status; both are reported in the output instead.
@@ -310,7 +310,7 @@ Environment:
                        stderr: what ran, how long it took, and whether it
                        failed. This is what to attach to a bug report about a
                        domain being skipped or a check reporting the wrong
-                       thing. Command output is deliberately not logged: it
+                       thing. Command output is not logged: it
                        routinely contains environment variables.
   HOSTVEIL_NO_SUDO=1   Never re-exec under sudo (for scripts and CI)
   HOSTVEIL_NO_UPDATE_CHECK

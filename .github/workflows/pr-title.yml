@@ -3,7 +3,7 @@ name: PR Title
 # Merges to main are squashed and the pull request title becomes the commit
 # subject, which is the only record of what a change was when the next release
 # is cut. The version bump and the changelog are both derived from these
-# subjects, so linting them here is what keeps that derivation honest; the
+# subjects, so linting them here is what keeps that derivation accurate; the
 # commits on your branch stay unconstrained.
 #
 # pull_request_target rather than pull_request so the check re-runs on

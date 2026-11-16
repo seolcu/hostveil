@@ -49,7 +49,7 @@ func scoreSection(score model.ScoreBreakdown) Section {
 	}
 	sec.Paragraphs = []string{
 		"Hostveil scores each domain from 0 to 100 by how much of its own credit " +
-			"survives the findings on it, then averages the domains that actually ran, " +
+			"survives the findings on it, then averages the domains that ran, " +
 			"weighted by how much each matters to the whole host. A domain that could " +
 			"not be scanned counts toward nothing, never toward a perfect score - see " +
 			"\"Domains scanned\" below before reading this report as a verdict on the " +
@@ -59,7 +59,7 @@ func scoreSection(score model.ScoreBreakdown) Section {
 		sec.Paragraphs = append(sec.Paragraphs,
 			"\"After fixes\" is the score once every fix Hostveil currently offers - "+
 				"both the ones it can apply unattended and the ones it can only preview "+
-				"- has been applied. It is shown only where it would actually move the "+
+				"- has been applied. It is shown only where it would move the "+
 				"number.")
 	}
 	return sec

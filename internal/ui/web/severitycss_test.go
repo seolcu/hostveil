@@ -37,7 +37,7 @@ func TestTheStylesheetStylesEverySeverityTheModelDeclares(t *testing.T) {
 		// Every construction site in app.js, named by what it draws, so a
 		// reader chasing a failure lands in the right place. The list was
 		// four of these while the comment above already promised the set,
-		// and the two it missed are the ones nobody looks at, which is
+		// and the two it missed are the ones no one looks at, which is
 		// exactly why they need a test rather than a reading.
 		for _, want := range []string{
 			fmt.Sprintf(".finding.%s", sev.String()),       // per-finding gutter

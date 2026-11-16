@@ -1,4 +1,4 @@
-// The domain tables are the answer to "what does this thing actually
+// The domain tables are the answer to "what does this thing
 // look at", and there are three of them: README.md's "What it checks",
 // and the "Domains at a glance" table on the docs site in both languages.
 // All three are prose, and all three restate a list the code owns.
@@ -32,8 +32,8 @@ import (
 // into `hostveil fix`, and it is wrong or right.
 //
 // The Korean README is checked for the same reason the Korean site page is:
-// a translation is a copy of a list the code owns, and the copy nobody on the
-// team reads every day is the one that quietly describes a smaller product.
+// a translation is a copy of a list the code owns, and the copy no one on the
+// team reads every day is the one that silently describes a smaller product.
 func TestReadmeDocumentsEveryDomain(t *testing.T) {
 	for _, tc := range []struct{ path, heading string }{
 		{"README.md", "## What it checks"},

@@ -25,7 +25,7 @@ about 50KB. **This is why internal/docs/koreanfont_test.go exists**: a subset
 is silent when it is wrong. Write one new Korean sentence with one syllable
 that was not in the site when this ran, and that syllable alone falls back to
 a system font mid-word: a different face, a different weight, at a size
-nobody chose. It is invisible to anyone reviewing the diff and invisible to
+no one chose. It is invisible to anyone reviewing the diff and invisible to
 anyone whose system font happens to look close enough. The manifest this
 writes is what the test reads, so the build fails instead.
 
@@ -36,7 +36,7 @@ English page (which contains three Hangul syllables, the 한국어 switcher)
 downloads none of this. That is also why the subset drops the Latin the source
 faces carry: unicode-range means it could never be reached.
 
-Not byte-reproducible, deliberately. woff2 output depends on the fonttools and
+Not byte-reproducible. woff2 output depends on the fonttools and
 brotli versions, so this is not wired into the `git diff --exit-code site/`
 gate the way cmd/sitegen is. What is pinned is coverage, which does not depend
 on either.
@@ -59,7 +59,7 @@ OUT = ROOT / "site" / "assets" / "fonts"
 # Pinned to a commit rather than to main: this has to fetch the same bytes in a
 # year's time, and google/fonts rebuilds these files in place. The digest is
 # checked as well, so a URL that starts answering with something else is loud
-# rather than quietly baked into the next subset.
+# rather than silently baked into the next subset.
 UPSTREAM = "https://raw.githubusercontent.com/google/fonts/e1118da94a8cb00cf6d06cdac9ef13eb1e5c6ab7"
 
 SOURCES = [
@@ -76,7 +76,7 @@ SOURCES = [
 ]
 
 # The blocks site/korean.css declares as the unicode-range. Syllables are what
-# modern Korean is actually written in; the jamo blocks are here so that a
+# modern Korean is written in; the jamo blocks are here so that a
 # stray ㄱ or a decomposed syllable is covered rather than being the one
 # character on the page in another face.
 HANGUL_BLOCKS = [

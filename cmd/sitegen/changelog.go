@@ -58,7 +58,7 @@ var (
 	// versionHeading matches "## [3.20.1](compare-url) (2026-08-15)".
 	versionHeading = regexp.MustCompile(`^## \[([^\]]+)\]\(([^)]+)\)(?:\s+\((.+)\))?\s*$`)
 	// mdLink, mdCode, mdBold and mdEm are the whole inline vocabulary the
-	// changelog uses. Underscores are deliberately absent: every one in the
+	// changelog uses. Underscores are absent: every one in the
 	// file is inside a code span (`sshd_config`, `HOSTVEIL_DEBUG`), and
 	// treating them as emphasis would eat identifiers.
 	mdLink = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)

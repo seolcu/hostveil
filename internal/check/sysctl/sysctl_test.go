@@ -66,7 +66,7 @@ func withConf(t *testing.T, c *Checker, dropIns map[string]string, legacy string
 	}
 	c.ConfDirs = []string{dir}
 	if legacy != "" {
-		// Deliberately not inside dir: the real one lives beside sysctl.d,
+		// Not inside dir: the real one lives beside sysctl.d,
 		// not in it, and its name would otherwise be sorted in as a drop-in.
 		c.ConfFile = filepath.Join(t.TempDir(), "sysctl.conf")
 		if err := os.WriteFile(c.ConfFile, []byte(legacy), 0o644); err != nil {
@@ -405,7 +405,7 @@ func TestInAContainerTheFindingStaysAndTheFixDoesNot(t *testing.T) {
 	for _, want := range []string{"container", "host"} {
 		if !strings.Contains(strings.ToLower(got.HowToFix), want) {
 			t.Errorf("how-to-fix does not mention %q, so it does not say where the value "+
-				"actually has to be set:\n  %s", want, got.HowToFix)
+				"has to be set:\n  %s", want, got.HowToFix)
 		}
 	}
 	if got.Evidence["scanned_from"] == "" {
@@ -413,7 +413,7 @@ func TestInAContainerTheFindingStaysAndTheFixDoesNot(t *testing.T) {
 	}
 }
 
-// And on a host nothing changes, which is the whole point of the gate being a
+// And on a host nothing changes, which is why the gate is a
 // gate rather than a rewrite.
 func TestOnAHostTheFixIsStillOffered(t *testing.T) {
 	root := writeKeys(t, map[string]string{"kernel.yama.ptrace_scope": "0"})

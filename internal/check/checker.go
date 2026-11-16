@@ -39,9 +39,9 @@ type Checker interface {
 //
 // It is for *partial* coverage only. A checker that could not run at all
 // reports (false, reason) from Available (→ Skipped), and one whose work
-// failed outright returns an ordinary error (→ Error). Both leave the domain
+// failed completely returns an ordinary error (→ Error). Both leave the domain
 // out of scoring; a Degraded domain is still scored, so returning this when
-// nothing was actually covered would hand back a falsely perfect axis.
+// nothing was covered would hand back a falsely perfect axis.
 type PartialError struct {
 	Reason  string // plain-language explanation, shown in every UI
 	Covered int    // units successfully examined
@@ -116,7 +116,7 @@ func runOne(ctx context.Context, c Checker, env platform.Env, events chan<- mode
 	// A panic in one checker degrades only that domain. debug.Stack() is
 	// called right here, in the recover, rather than by whatever eventually
 	// reads Stack: a stack captured anywhere else would show that caller's
-	// frames instead of the ones that actually panicked.
+	// frames instead of the ones that panicked.
 	defer func() {
 		if r := recover(); r != nil {
 			res = Result{
@@ -135,7 +135,7 @@ func runOne(ctx context.Context, c Checker, env platform.Env, events chan<- mode
 
 	findings, err := c.Check(ctx, env)
 	// Checked before the plain error case: a PartialError carries findings
-	// worth keeping, so it must not be swallowed as an outright failure.
+	// worth keeping, so it must not be swallowed as a complete failure.
 	var partial *PartialError
 	if errors.As(err, &partial) {
 		res = Result{Source: src, State: model.ScanDegraded, Reason: partial.Error(), Findings: findings}

@@ -8,7 +8,7 @@ import (
 	"unicode/utf8"
 )
 
-// A failing command's stderr is what actually explains the failure ("permission
+// A failing command's stderr is what explains the failure ("permission
 // denied while trying to connect to the Docker daemon socket"). os/exec strands
 // it on the ExitError, leaving callers to report a bare "exit status 1", which
 // is what every UI would then show as the reason a domain failed.

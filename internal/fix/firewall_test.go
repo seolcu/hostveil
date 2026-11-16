@@ -51,7 +51,7 @@ func TestTheFirewallFixOpensSSHBeforeItClosesEverything(t *testing.T) {
 	}
 }
 
-// "I could not tell" must not quietly become 22. A host running sshd on 2222
+// "I could not tell" must not silently become 22. A host running sshd on 2222
 // whose port Hostveil failed to read would be locked out by a fix that
 // guessed, and the guess would look exactly like knowledge.
 func TestNoFirewallFixWithoutTheSSHPort(t *testing.T) {

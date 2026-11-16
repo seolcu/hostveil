@@ -13,10 +13,10 @@ import (
 //
 // The sitemap is built from the URLs the render loops compute, which is what
 // makes "a page that is rendered is in the sitemap" true by construction. This
-// checks the construction actually holds: it counts the HTML files sitegen
+// checks the construction holds: it counts the HTML files sitegen
 // wrote and requires one <loc> each, no more and no fewer.
 //
-// A sitemap that quietly lost a page would be indistinguishable from a
+// A sitemap that silently lost a page would be indistinguishable from a
 // complete one, which is the failure mode of every reference in this
 // repository, and the reason the generator derives rather than copies.
 func TestTheSitemapListsEveryRenderedPageExactlyOnce(t *testing.T) {
@@ -81,7 +81,7 @@ func TestTheSitemapListsEveryRenderedPageExactlyOnce(t *testing.T) {
 // TestTheSitemapCarriesNoTimestamp.
 //
 // <lastmod> is the obvious thing to add and the one thing that cannot be
-// added. Its honest sources are a file mtime or a build time, and either makes
+// added. Its accurate sources are a file mtime or a build time, and either makes
 // two runs of the same commit produce different bytes, which CI checks with
 // `git diff --exit-code site/`, and which the whole generator rests on. A
 // constant date would be a lie a crawler acts on.

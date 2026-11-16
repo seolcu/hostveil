@@ -94,8 +94,8 @@ func TestNoFindingProseCarriesAGoIdentifier(t *testing.T) {
 	}
 }
 
-// And the pattern has to actually match the thing it was written for. A
-// regular expression nobody has seen fail is a regular expression nobody
+// And the pattern has to match the thing it was written for. A
+// regular expression no one has seen fail is a regular expression no one
 // knows the behaviour of: this file's own subject.
 func TestTheLeakedSelectorPatternMatchesWhatItWasWrittenFor(t *testing.T) {
 	broken := []string{

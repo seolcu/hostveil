@@ -94,7 +94,7 @@ func (*Checker) Available(_ context.Context, env platform.Env) (bool, string) {
 }
 
 // Check reports on both halves of staying patched: that the mechanism is
-// enabled, and that it has actually caught up.
+// enabled, and that it has caught up.
 //
 // Having unattended-upgrades enabled was previously the whole test, which
 // meant a host with sixty pending security patches and a kernel update
@@ -219,7 +219,7 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 	// scripting interface.
 	//
 	// The stable alternative is `apt-get --just-print upgrade`, and it answers
-	// a different question: it lists what `upgrade` would actually install,
+	// a different question: it lists what `upgrade` would install,
 	// which excludes anything held back for needing new or removed packages.
 	// Security updates land in that category regularly. Counting from it
 	// would report fewer pending security updates than the host really has:
@@ -284,8 +284,8 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 	//
 	// So the unit is asked whether it exists first, the way the systemd
 	// domain does it: LoadState answers `loaded` only for a unit systemd
-	// actually read, and a command that cannot run at all answers nothing.
-	// A unit that is genuinely absent *is* the finding (dnf-automatic is
+	// read, and a command that cannot run at all answers nothing.
+	// A unit that is absent *is* the finding (dnf-automatic is
 	// not installed) and that is the one case where a non-zero exit is an
 	// answer rather than a silence.
 	//
@@ -343,7 +343,7 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 	// pending security updates went uncounted on every such host, while the
 	// domain reported only that a reboot could not be determined.
 
-	// `needs-restarting -r` exits non-zero precisely when a reboot IS
+	// `needs-restarting -r` exits non-zero when a reboot IS
 	// required, so the exit status cannot be read as success or failure here.
 	// Its stdout is unambiguous and is still captured on a non-zero exit, so
 	// the text is the signal, and a reply matching neither phrase means the
@@ -458,7 +458,7 @@ func classifyNeedsRestarting(out string) rebootState {
 //
 //	libssl3/jammy-security 3.0.2-0ubuntu1.18 amd64 [upgradable from: ...]
 //
-// Only security updates are counted. A host deliberately pinned behind on
+// Only security updates are counted. A host pinned behind on
 // feature updates is a maintenance choice; one behind on security patches is
 // running known-exploitable code.
 func countAptSecurityUpdates(out string) int {
@@ -589,7 +589,7 @@ func rebootFinding(howToFix string) model.Finding {
 
 // pendingFinding reports security updates that are available and not applied.
 // Severity scales with the count: a couple of pending patches is routine drift,
-// dozens means automatic updates are not actually working.
+// dozens means automatic updates are not working.
 func pendingFinding(n int, mechanism, howToFix string) model.Finding {
 	sev := model.SeverityMedium
 	if n >= 10 {

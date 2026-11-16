@@ -91,7 +91,7 @@ func AuditableOS() (bool, string) { return auditableOS(runtime.GOOS) }
 // so it can be tested for the platforms this build is not running on. The
 // exported wrapper reads runtime.GOOS directly rather than Env.OS, because a
 // checker that forgot to populate the field would then audit a Mac as Linux,
-// and the whole point of this is that the failure must not be silent.
+// and this exists so that the failure is not silent.
 func auditableOS(goos string) (bool, string) {
 	if goos == LinuxOS {
 		return true, ""
@@ -100,7 +100,7 @@ func auditableOS(goos string) (bool, string) {
 }
 
 // Detect probes the host once and returns its environment. It is
-// deliberately tolerant: unknown fields are left empty rather than
+// tolerant: unknown fields are left empty rather than
 // failing, since a single scan should degrade gracefully on an
 // unrecognized distro.
 func Detect(ctx context.Context, r CommandRunner) Env {

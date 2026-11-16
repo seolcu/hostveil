@@ -50,7 +50,7 @@ func TestSetKeepsEverythingItWasNotAskedToChange(t *testing.T) {
 	}
 
 	// Exactly one line differs. A fix that reflows a config the operator
-	// maintains is a fix whose diff nobody can review.
+	// maintains is a fix whose diff cannot be reviewed.
 	if n := changedLines(src, got); n != 1 {
 		t.Errorf("changed %d lines, want 1:\n%s", n, got)
 	}
@@ -89,7 +89,7 @@ func TestSetRewritesTheRightScalarKinds(t *testing.T) {
 			if err != nil {
 				// Single quotes and bare keys are JSON5 the locator
 				// understands but encoding/json cannot decode, so Load
-				// refuses them. That is the honest outcome: the checker
+				// refuses them. That is the accurate outcome: the checker
 				// could not read such a file either, so there is no
 				// finding for a fix to serve.
 				t.Skipf("not decodable, so not fixable: %v", err)
@@ -178,7 +178,7 @@ func TestNoEditsReturnsTheSourceUnchanged(t *testing.T) {
 }
 
 // FuzzJSON5Edit holds the package's central promise against arbitrary input:
-// an edit either fails outright or produces a document that decodes to the
+// an edit either fails completely or produces a document that decodes to the
 // original tree with exactly the one key changed. Silently changing anything
 // else is the failure this exists to catch, because the file being edited is
 // the operator's own and there is no re-encode to fall back to.

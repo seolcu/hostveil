@@ -19,14 +19,14 @@ import (
 // every finding Hostveil can report, and cmd/sitegen's TestDocumentedFixKinds
 // MatchTheRegistry already pins each documented row against the fix registry.
 // But it iterates the *documented* rows, so it can only check findings the
-// table already lists. A checker that starts emitting a new ID and nobody
+// table already lists. A checker that starts emitting a new ID and no one
 // adds a row stays invisible to every guard in the repo: the docs test never
 // looks at it, the fix registry never has to declare a position on it, and
 // the finding ships undocumented with whatever remediation the checker
 // happened to declare.
 //
 // This test closes that loop from the other end; it harvests the IDs the
-// checkers actually construct and requires each to be documented. Together
+// checkers construct and requires each to be documented. Together
 // the two make the chain complete: emitted → documented → registry position.
 
 // findingID matches a namespaced finding ID. The namespace must be one of
@@ -48,7 +48,7 @@ import (
 //
 // Deriving the pattern removes the failure instead of improving the message.
 // TestEveryDomainContributesAHarvestedID below covers the case that is
-// genuinely silent: a domain neither harvestable nor documented.
+// silent: a domain neither harvestable nor documented.
 var findingID = func() *regexp.Regexp {
 	names := make([]string, 0, len(model.AllSources()))
 	for _, s := range model.AllSources() {
@@ -83,7 +83,7 @@ func emittedFindingIDs(t *testing.T) []string {
 		// constructor as arg 0 (model.NewFinding), as arg 1 (ports'
 		// exposedFinding helper), through a local (agent's id, title, desc
 		// := …), and through a table field (agent's danger rules). The
-		// namespace prefix is what actually identifies a finding ID, and
+		// namespace prefix is what identifies a finding ID, and
 		// over-collecting only ever demands a doc row for something that
 		// looks like a finding: the safe direction to err in.
 		ast.Inspect(file, func(n ast.Node) bool {
@@ -159,7 +159,7 @@ func TestEveryEmittedFindingIsDocumented(t *testing.T) {
 // way: a row for a finding no checker constructs any more is a promise the
 // tool no longer keeps. It is a softer failure than the reverse, so it names
 // the retired ID rather than guessing whether the row or the checker is
-// wrong. It also keeps the harvest itself honest: the two tests together
+// wrong. It also keeps the harvest itself accurate: the two tests together
 // assert set equality, so a checker that starts building IDs in a shape the
 // walk cannot see fails here rather than silently shrinking coverage.
 func TestDocumentedFindingsAreStillEmitted(t *testing.T) {
@@ -176,9 +176,9 @@ func TestDocumentedFindingsAreStillEmitted(t *testing.T) {
 // the harvest, applied one domain at a time.
 //
 // The two tests above assert set equality between what is emitted and what
-// is documented, which keeps the walk honest for every domain it can already
+// is documented, which keeps the walk accurate for every domain it can already
 // see. What neither notices is a domain it cannot see at all: if a checker
-// builds its IDs in a shape the AST walk does not recognise *and* nobody
+// builds its IDs in a shape the AST walk does not recognise *and* no one
 // adds finding rows for it, the emitted set and the documented set are both
 // missing the same entries and agree perfectly. Every guard passes, and the
 // domain's findings ship undocumented.
@@ -187,7 +187,7 @@ func TestDocumentedFindingsAreStillEmitted(t *testing.T) {
 // NewFinding through a helper that prefixes them, so its IDs never appear as
 // namespaced literals, and composeRuleID exists solely to special-case them.
 // A twelfth domain adopting the same convention would need the same
-// treatment, and this is what says so instead of quietly policing ten.
+// treatment, and this is what says so instead of silently policing ten.
 func TestEveryDomainContributesAHarvestedID(t *testing.T) {
 	byDomain := map[string]int{}
 	for _, id := range emittedFindingIDs(t) {

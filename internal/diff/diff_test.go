@@ -15,7 +15,7 @@ import (
 // shows one it would not, hands the operator a false basis for consent. These
 // tests pin the exact rendered bytes rather than substring-matching, because
 // "the diff mentions PermitRootLogin somewhere" is not the property that
-// matters: "the diff is precisely the change" is.
+// matters: "the diff is the change" is.
 //
 // Note on the format: Unified emits ---/+++ file headers, then one @@ header
 // per hunk with three lines of surrounding context, eliding equal runs
@@ -32,7 +32,7 @@ func TestUnified(t *testing.T) {
 	}{
 		{
 			// The empty string is the contract core.previewMode leans on: previewMode
-			// exists precisely because a no-op edit renders as "" and callers
+			// exists because a no-op edit renders as "" and callers
 			// treat that as "nothing would change".
 			name: "identical inputs yield no diff",
 			a:    "PermitRootLogin yes\n",
@@ -341,7 +341,7 @@ func FuzzUnified(f *testing.F) {
 		}
 
 		// Now that equal runs are elided, the body no longer reconstructs the
-		// whole file, so the property checked is the one that actually makes
+		// whole file, so the property checked is the one that makes
 		// a hunk trustworthy: every hunk's own line numbers must locate it
 		// exactly, and its ' '/'-' lines must be the original's lines at that
 		// offset, its ' '/'+' lines the modification's. A hunk that renders
@@ -395,7 +395,7 @@ func FuzzUnified(f *testing.F) {
 			t.Fatalf("differing inputs produced no hunk:\n%s", got)
 		}
 		// A missing terminator must be stated whenever the line it belongs to
-		// is actually on screen, or the operator approves bytes the diff never
+		// is on screen, or the operator approves bytes the diff never
 		// showed. It must NOT be stated otherwise: when the change is far from
 		// the end of the file, the unterminated last line is elided as distant
 		// context and there is nothing for the marker to attach to.
@@ -518,7 +518,7 @@ func TestAWholeFileReflowDoesNotBuildAHugeTable(t *testing.T) {
 	}
 }
 
-// The cap must not change ordinary diffs, which is the whole point of
+// The cap must not change ordinary diffs, which is the reason for
 // setting it far above any real edit.
 func TestTheCapDoesNotAffectARealisticEdit(t *testing.T) {
 	lines := make([]string, 5000)

@@ -30,7 +30,7 @@ func TestNoCheckerMutatesTheHost(t *testing.T) {
 
 	walkGoFiles(t, filepath.Join(root, "internal", "check"), func(path string, file *ast.File) {
 		// checktest builds hosts for tests to scan; it is scaffolding, not a
-		// checker, and it writes fixtures on purpose.
+		// checker, and it writes fixtures.
 		if strings.Contains(path, filepath.Join("check", "checktest")) {
 			return
 		}

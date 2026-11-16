@@ -80,7 +80,7 @@ button:disabled { opacity: .45; cursor: default; }
 /* theme picker: wears the button's chrome so the action row stays one
    object. The options themselves are drawn by the OS, so they are given
    explicit colors rather than inheriting a transparent background. */
-/* The right padding is not symmetric on purpose: the browser draws the
+/* The right padding is not symmetric: the browser draws the
    dropdown arrow inside the control, and with uppercase + letter-spacing the
    longest name ("Catppuccin Mocha") ran right into it. */
 #theme, #sort {
@@ -143,7 +143,7 @@ button:disabled { opacity: .45; cursor: default; }
 .axis .meter { width: 92px; height: 8px; flex: 0 1 92px; min-width: 32px; }
 .axis-val { font-size: 11px; min-width: 30px; }
 /* The headroom: what the score becomes once every fix Hostveil offers is
-   applied. Slate and small on purpose: it is context for the number beside
+   applied. Slate and small: it is context for the number beside
    it, not a second number competing with it, and it is absent entirely on a
    row with nothing to fix. */
 .axis-after, .dom .after, .gauge-after { color: var(--slate); font-size: 11px; }
@@ -232,7 +232,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .finding .title .name { color: var(--bone); }
 .finding .title .rem { color: var(--slate); font-size: 11px; }
 /* Manual and Unavailable used to share this same slate; indistinguishable
-   from each other and from plain muted text. Both stay deliberately muted
+   from each other and from plain muted text. Both stay muted
    (neither is a heat: see internal/ui/theme's Palette doc comment), just no
    longer identical. */
 .finding .title .rem.rem-manual { color: var(--manual); }
@@ -372,7 +372,7 @@ pre.diff .ctx { color: var(--slate); }
    a pure white bar with color-scheme set and these rules present; measured,
    both ways, against a page carrying nothing else, and every screenshot this
    project has ever taken of the dashboard has a white stripe down the middle
-   of the findings column because of it. scrollbar-color fixes it outright.
+   of the findings column because of it. scrollbar-color fixes it completely.
    No new roles: --line-2 is the hairline that doubles as the selection ground,
    and is what the thumb was already drawn in.
    The corner is Chromium's other half of the same problem. Declaring any

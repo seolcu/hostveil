@@ -27,7 +27,7 @@ const siteFramePath = "testdata/site-frame.ans"
 // A PNG cannot be compared here: it comes out of scripts/ansi2png.py through
 // PIL and a font, and neither is pinned, so a byte comparison would fail on a
 // Pillow upgrade and say nothing about hostveil. What can be pinned is what
-// the terminal actually drew, which is the thing the picture is a picture of.
+// the terminal drew, which is the thing the picture is a picture of.
 // So the frame is committed, this re-renders it, and a difference fails the
 // build with instructions rather than leaving a stale image to be noticed by
 // a reader.

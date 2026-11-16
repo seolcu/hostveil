@@ -40,14 +40,14 @@ func contrast(fg, bg string) float64 {
 // them without being asked to, so they were never a bar a theme had to be
 // designed up to, only one it had to not fall below.
 //
-// Instrument is gone and the floors stay, which is the point of having
+// Instrument is gone and the floors stay, which is the reason for having
 // written them down: they are what the default has to clear, not what the
 // default happens to score. One Dark does not clear them as published
 // (its comment grey, its red and its Low grey all land short) and the entry
 // in theme.go lifts exactly those three rather than lowering the bar to
 // meet them.
 //
-// Low is the one exception, at 3.5:1. It is deliberately the quietest color
+// Low is the one exception, at 3.5:1. It is the quietest color
 // in the system: a Low finding that shouted would drown out a High one.
 // Anything below 3.5 stops being quiet and starts being unreadable; the
 // first drafts of Nord and Tokyo Night sat at 2.4 and 2.8, and One Dark's
@@ -57,7 +57,7 @@ func TestEveryThemeMeetsTheContrastFloor(t *testing.T) {
 		"bone": 4.5, "slate": 4.5,
 		"crit": 4.5, "high": 4.5, "med": 4.5, "safe": 4.5,
 		// Manual and Unavail share Low's exception and for the same reason:
-		// both are deliberately the quietest colors for their meaning, not a
+		// both are the quietest colors for their meaning, not a
 		// severity, and a host can legitimately carry many Manual findings at
 		// once without that reading as an emergency.
 		"low": 3.5, "manual": 3.5, "unavail": 3.5,
@@ -120,7 +120,7 @@ func TestChromeIsDistinguishable(t *testing.T) {
 // dropdown, scrollbars) and a light palette shipped under it would render
 // those against the wrong ground.
 //
-// The threshold is generous on purpose. Nord's ink (#22262e) is the lightest
+// The threshold is generous. Nord's ink (#22262e) is the lightest
 // page in the registry at 0.02, and anything a browser would sensibly call a
 // light scheme sits an order of magnitude above that.
 func TestEveryPaletteIsDark(t *testing.T) {

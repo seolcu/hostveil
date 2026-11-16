@@ -27,7 +27,7 @@ func (e *Engine) ApplyBatch(ctx context.Context, findings []model.Finding) model
 // accepting them no longer means running the tool once per finding.
 //
 // The batch still refuses anything the registry does not answer, so this can
-// never apply a fix nobody wrote.
+// never apply a fix that was not written.
 func (e *Engine) ApplyBatchWithReviewed(ctx context.Context, findings []model.Finding) model.BatchOutcome {
 	return e.applyBatch(ctx, findings, true)
 }
@@ -63,7 +63,7 @@ func (e *Engine) applyBatch(ctx context.Context, findings []model.Finding, revie
 		// what is left is the restart. The batch does not re-check, so this
 		// comes from the action's own TakesEffectOn, which is the whole
 		// reason that declaration lives on the fix rather than being derived
-		// from a re-check nobody runs here.
+		// from a re-check that does not run here.
 		if res.Pending {
 			out.Pending = append(out.Pending, f.ID)
 		}
@@ -102,7 +102,7 @@ func (e *Engine) applyOneLocked(ctx context.Context, f model.Finding, reviewed b
 	// not a property of the finding; a malformed registration, or
 	// evidence the checker did not write. Reporting it as Skipped made it
 	// indistinguishable from "there is no fix for this", which is the one
-	// reading that guarantees nobody ever looks.
+	// reading that guarantees the operator never looks.
 	if err != nil {
 		return model.FixOutcome{}, true, err
 	}
@@ -131,7 +131,7 @@ func (e *Engine) applyOneLocked(ctx context.Context, f model.Finding, reviewed b
 // exposed as one call. It exists for a caller that wants real per-item
 // progress over a set of findings (the web dashboard's "Fix all safe" /
 // "Fix selected" progress modal) without looping over ApplyFix, whose
-// verify step is deliberately reserved for the single-finding path a person
+// verify step is reserved for the single-finding path a person
 // is watching (see ApplyFix's doc comment) and would otherwise re-run a
 // checker (for compose, every container on the host; for cve, Trivy)
 // once per finding in what is supposed to be a batch.

@@ -108,7 +108,7 @@ func excludedOrigins(ctx context.Context, r platform.CommandRunner, upgradable, 
 		rel := rels[0]
 		if distroOwn(rel.Origin, distroIDName(distroID)) {
 			// The distribution's own pockets outside the default (Ubuntu's
-			// -updates, Debian's stable-updates) are left out on purpose by
+			// -updates, Debian's stable-updates) are left out by
 			// the distribution, and only security fixes are this domain's
 			// business; updates.pending-security counts those.
 			continue

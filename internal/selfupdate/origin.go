@@ -35,7 +35,7 @@ func DetectOrigin(ctx context.Context, r platform.CommandRunner, path string) Or
 		return OriginGoInstall
 	}
 	// The install script's destination. Anything else is a copy somebody put
-	// somewhere deliberately, and moving it is not this program's business.
+	// somewhere, and moving it is not this program's business.
 	if filepath.Clean(path) == "/usr/bin/hostveil" {
 		return OriginStandalone
 	}

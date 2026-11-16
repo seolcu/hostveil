@@ -111,10 +111,10 @@ func (s *reportState) unmarkFixed(cp history.Checkpoint) []string {
 			continue
 		}
 		f.Fixed = false
-		// Both flags, so the finding goes back to plainly standing. Rolling
+		// Both flags, so the finding goes back to standing. Rolling
 		// back a pending fix leaves the score where it was (it was already
 		// being charged) which is correct and is why Unfixed, not the score,
-		// is the honest signal that anything happened.
+		// is the accurate signal that anything happened.
 		f.Pending = false
 		unfixed = append(unfixed, f.ID)
 	}

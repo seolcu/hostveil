@@ -258,7 +258,7 @@ func TestWellConfiguredStandaloneContainerIsClean(t *testing.T) {
 	}
 }
 
-// The demotion has to fill the field the interfaces actually read. A
+// The demotion has to fill the field the interfaces read. A
 // `docker run` container's findings are Manual for a reason that is specific
 // to that container, not to the finding ID, so the registry cannot answer it
 // and the checker has to.

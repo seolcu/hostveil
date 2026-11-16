@@ -267,7 +267,7 @@ func (s *StringOrList) UnmarshalYAML(node *yaml.Node) error {
 // decides which service's failure is reported as the first one, so both
 // container checkers sorted, and both wrote out the same six lines to do it.
 // Only one of the two copies carried that sentence, which made the other the
-// one that could quietly stop sorting.
+// one that could silently stop sorting.
 func (p Project) ServiceNames() []string {
 	names := make([]string, 0, len(p.Services))
 	for name := range p.Services {

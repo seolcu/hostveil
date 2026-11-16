@@ -25,7 +25,7 @@ var skeletonHomes = map[string]bool{
 	"":             true,
 }
 
-// homes parses /etc/passwd for the accounts a person might actually log in as
+// homes parses /etc/passwd for the accounts a person might log in as
 // and run an agent under: root, plus the regular-user UID range. The nobody
 // UID (65534) and the service accounts below 1000 are excluded: an agent
 // runtime under those is not a configuration Hostveil should be guessing at.
@@ -122,7 +122,7 @@ func installs(hs []userHome, rts []Runtime) (found []install, unreadable []strin
 // negative; anything else is a blind spot the caller has to account for.
 //
 // A runtime found through one marker is installed regardless of what the
-// others say, so a positive wins outright. Otherwise any unanswerable marker
+// others say, so a positive wins completely. Otherwise any unanswerable marker
 // makes the whole answer unanswerable.
 func hasMarker(home string, rt Runtime) (bool, error) {
 	var blind error

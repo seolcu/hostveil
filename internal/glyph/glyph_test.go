@@ -20,7 +20,7 @@ import (
 func TestEverySymbolIsOneColumn(t *testing.T) {
 	// Under RUNEWIDTH_EASTASIAN the operator has said their terminal draws the
 	// ambiguous class wide, and ▣, · and the whole Private Use Area block are
-	// in it. The property below is genuinely false there, and it is also not
+	// in it. The property below is false there, and it is also not
 	// what keeps the layout right in that mode, because the renderers measure
 	// rather than assume: internal/ui/tui's markColumns is the marker column
 	// "measured rather than assumed to be two", and the alignment sweep and

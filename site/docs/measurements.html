@@ -31,12 +31,12 @@
       //
       // GitHub Pages serves files, not content negotiation, so the only place
       // this decision can be made is here, and the risk of making it here is
-      // trapping someone: a reader who deliberately clicked "English" must not
+      // trapping someone: a reader who clicked "English" must not
       // be bounced back on the next click. So the switcher records that choice
       // and this defers to it forever after.
       //
       // Only from the English page, only when the browser's own preference
-      // list actually leads with Korean, and never when a crawler is reading
+      // list leads with Korean, and never when a crawler is reading
       // (they do not run this): the hreflang links above are what they read.
       (function () {
         try {
@@ -317,7 +317,7 @@
 
             <h2 id="reproduce">Reproduce it</h2>
 
-            <p>Use a disposable VM from <code>scripts/measure/Vagrantfile</code>. The scripts weaken that host on purpose and then modify it. See the linked run record for the exact environment. Run the fixes experiment and the control on separate freshly seeded VMs.</p>
+            <p>Use a disposable VM from <code>scripts/measure/Vagrantfile</code>. The scripts weaken that host intentionally and then modify it. See the linked run record for the exact environment. Run the fixes experiment and the control on separate freshly seeded VMs.</p>
 
             <div class="code-block"><pre><code># Inside the first disposable VM, using the recorded source commit:
 sudo scripts/measure/seed.sh

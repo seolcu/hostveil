@@ -167,7 +167,7 @@ func TestAPiArchiveLeftOutOfUnattendedUpgradesIsReported(t *testing.T) {
 		t.Errorf("repositories = %q", repos)
 	}
 	// tzdata waits in Debian's own stable-updates, which the distribution
-	// leaves out on purpose; cifs-utils is in -security, which is allowed.
+	// leaves out; cifs-utils is in -security, which is allowed.
 	if strings.Contains(repos, "Debian") {
 		t.Errorf("the distribution's own pockets were reported: %q", repos)
 	}
@@ -257,7 +257,7 @@ func TestAGlobCrossesSlashesTheWayFnmatchDoes(t *testing.T) {
 }
 
 // A stock Ubuntu host with only -updates waiting: Ubuntu leaves that pocket
-// out of the default on purpose, so this is not news and must stay quiet.
+// out of the default, so this is not news and must stay quiet.
 func TestTheDistributionsOwnUpdatesPocketIsNotReported(t *testing.T) {
 	policy := `Package files:
  500 http://kr.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages
@@ -299,7 +299,7 @@ func TestLegacyAllowedOriginsAreHonoured(t *testing.T) {
 }
 
 // A key unattended-upgrades does not know fails its pattern; it does not
-// quietly allow everything.
+// silently allow everything.
 func TestAnUnknownKeyAllowsNothing(t *testing.T) {
 	if patternMatches([][2]string{{"o", "Tailscale"}, {"bogus", "x"}}, aptRelease{Origin: "Tailscale"}) {
 		t.Error("a pattern with an unknown key matched")

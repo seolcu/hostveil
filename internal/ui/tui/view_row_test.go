@@ -67,7 +67,7 @@ func TestTheCursorRowStillNamesItsService(t *testing.T) {
 // No row overruns the column it was budgeted into, whatever the service name
 // happens to be.
 //
-// The cursor row is padded to the full width on purpose (the selection bar
+// The cursor row is padded to the full width (the selection bar
 // has to span the column rather than stopping where the text does) so the
 // two are not the same length, and the invariant is the ceiling rather than
 // equality. The ceiling is the one that matters: a row wider than its column

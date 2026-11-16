@@ -223,7 +223,7 @@ func (m *appModel) topRow(right string) string {
 }
 
 // gaugeRow is "SECURITY ▊▊▊░░ 62/100" with a meter of the given width. The
-// literal SECURITY is deliberate and load-bearing: it is how both header
+// literal SECURITY is intentional and required: it is how both header
 // tiers stay recognisably the same instrument.
 func (m *appModel) gaugeRow(meterW int) string {
 	s := m.sty()
@@ -237,7 +237,7 @@ func (m *appModel) gaugeRow(meterW int) string {
 	row := s.dim.Render("SECURITY ") + s.meter(sc, meterW, s.band(sc)) +
 		s.bone.Render(fmt.Sprintf(" %d", sc)) + s.dim.Render("/100")
 	// The headroom, where there is any. A host whose remaining findings are
-	// all Manual sees nothing here, which is the point: an arrow to the
+	// all Manual sees nothing here, as intended: an arrow to the
 	// number it started from would say the fixes are worth nothing, and this
 	// line is the one place every arrangement shares.
 	if after := m.report.Score.AfterFixes; m.report.Score.Applicable && after > sc {
@@ -336,7 +336,7 @@ func (m *appModel) footerRows(hint string) []string {
 // three spaces, and inside an item the key is everything before the first
 // single space ("↑/↓ move", "enter roll back", "space select").
 //
-// The first word is only picked out when it is actually a key, which is not
+// The first word is only picked out when it is a key, which is not
 // the same thing. Two of these hints are sentences: "press any key to
 // continue" and "any other key cancel", and taking their first word offered
 // `press` and `any` as bindings, on screens where one of them is the
@@ -524,7 +524,7 @@ func centerRows(rs []string, n int) []string {
 	return out
 }
 
-// clipRows is fitRows for a body that may genuinely be longer than the frame.
+// clipRows is fitRows for a body that may be longer than the frame.
 // The last kept row becomes an ellipsis, because a body cut without a mark
 // reads as the end of the text rather than the end of the screen.
 func (m *appModel) clipRows(rs []string, n int) []string {

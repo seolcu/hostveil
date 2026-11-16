@@ -107,7 +107,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 // runtimeOnlyRules are the rules that mean the same thing for a container
 // the daemon describes as they do for a service a compose file describes.
 //
-// Two rules are deliberately absent, both because the daemon's record
+// Two rules are absent, both because the daemon's record
 // cannot support the claim the rule would make:
 //
 //   - dr005 (hardcoded secret in the environment); `docker inspect` reports
@@ -155,7 +155,7 @@ var runtimeOnlyRules = []rule{
 //
 // That was the intent from the start and only became the mechanism later:
 // classify used to hand a Manual finding straight back to the registry, and
-// what actually stopped the button appearing was the compose builders
+// what stopped the button appearing was the compose builders
 // failing to find a file path. Correct by accident, from the layer that was
 // not making the claim.
 func auditContainer(c compose.Container) []model.Finding {
@@ -205,7 +205,7 @@ type rule func(compose.Service) (model.Finding, bool)
 
 // rules is the ordered set of compose checks. Each returns a finding when
 // the service trips it. IDs preserve the v2 ds/dr naming for continuity.
-// userns_mode is parsed but deliberately has no rule: `userns_mode: host` is
+// userns_mode is parsed but has no rule: `userns_mode: host` is
 // a no-op unless the daemon enables userns-remap, which a static file audit
 // cannot see, so flagging it would accuse configs that change nothing.
 var rules = []rule{
@@ -253,7 +253,7 @@ func ruleDockerSocket(s compose.Service) (model.Finding, bool) {
 		if src == "/var/run/docker.sock" || src == "/run/docker.sock" {
 			return f("ds016", "Docker socket mounted into container", model.SeverityHigh, model.RemediationReview, s.Name,
 				model.WithDescription("Mounting the Docker socket lets the container create other containers and mount the host filesystem; it is equivalent to giving it root on the host, even read-only."),
-				model.WithHowToFix("Remove the docker.sock volume. If the container genuinely needs Docker access, put a socket-proxy in front of it that allows only the specific API calls it needs."),
+				model.WithHowToFix("Remove the docker.sock volume. If the container needs Docker access, put a socket-proxy in front of it that allows only the specific API calls it needs."),
 				model.WithEvidence("mount", v.Source),
 			), true
 		}
@@ -289,7 +289,7 @@ func ruleExposedAdminPanel(s compose.Service) (model.Finding, bool) {
 //
 // The two rules were written out twice and differed only in the set and the
 // prose, which left the one thing that is not prose in only one of the copies:
-// the port evidence below is load-bearing. buildBindLoopback needs the host
+// the port evidence below is required. buildBindLoopback needs the host
 // port, and without it the fix fails to build and classify silently demotes
 // the finding to Manual: a UI shows no button and nothing reports why. Stated
 // once now, for both.
@@ -327,7 +327,7 @@ func ruleHostPid(s compose.Service) (model.Finding, bool) {
 	}
 	return f("ds020", "Container shares the host PID namespace", model.SeverityHigh, model.RemediationReview, s.Name,
 		model.WithDescription("`pid: host` lets the container see and signal every process on the host. A compromised container can read other processes' command lines and environment (which often carry credentials) and kill arbitrary services."),
-		model.WithHowToFix("Remove `pid: host` unless the service is a monitoring agent that genuinely needs to observe host processes. If it only needs to see one other container, use `pid: \"service:NAME\"` instead."),
+		model.WithHowToFix("Remove `pid: host` unless the service is a monitoring agent that needs to observe host processes. If it only needs to see one other container, use `pid: \"service:NAME\"` instead."),
 	), true
 }
 
@@ -446,7 +446,7 @@ func ruleNoHealthcheck(s compose.Service) (model.Finding, bool) {
 		return model.Finding{}, false
 	}
 	return f("ds012", "No healthcheck defined", model.SeverityLow, model.RemediationManual, s.Name,
-		model.WithDescription("A healthcheck lets Docker detect a hung or broken container. Without one, a failed service can appear healthy while it is actually down."),
+		model.WithDescription("A healthcheck lets Docker detect a hung or broken container. Without one, a failed service can appear healthy while it is down."),
 		model.WithHowToFix("Add a `healthcheck:` appropriate to the service (it depends on what the app exposes, so this cannot be filled in automatically)."),
 	), true
 }

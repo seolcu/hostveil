@@ -62,7 +62,7 @@ func maybeElevate(cmd string) {
 	fmt.Fprintln(os.Stderr, "It only reads until you ask it to fix something. Set HOSTVEIL_NO_SUDO=1 to skip this (some checks will be skipped too).")
 
 	argv := append(elevatedArgv(exe, os.Args[1:], os.Getenv), os.Args[1:]...)
-	// os.Environ() unchanged, and deliberately not carrying a marker of our
+	// os.Environ() unchanged, and not carrying a marker of our
 	// own: sudo's env_reset drops everything it does not keep, so a variable
 	// set here would not reach the child. See alreadyElevated.
 	// G204: re-running Hostveil's own argv under sudo is what this function
@@ -92,10 +92,10 @@ func maybeElevate(cmd string) {
 //
 // The variables go across as `sudo NAME=value …` rather than through
 // --preserve-env, because the assignment form is what sudo has always had and
-// it says exactly what is being carried. Only variables that are actually set
+// it says exactly what is being carried. Only variables that are set
 // are passed, so a host where none is set builds the argv it built before.
 //
-// TERM, LANG and LC_* are absent on purpose: sudo's own env_keep carries
+// TERM, LANG and LC_* are absent: sudo's own env_keep carries
 // those already. HOSTVEIL_NO_SUDO is absent because reaching this line means
 // it was not set, and HOSTVEIL_ELEVATED because it is the marker whose
 // non-arrival is the whole reason SUDO_USER is the loop guard.
@@ -172,7 +172,7 @@ func elevatedArgv(exe string, _ []string, getenv func(string) string) []string {
 // unprivileged with SUDO_USER set and stops here.
 //
 // HOSTVEIL_ELEVATED is still honoured. It cannot arrive through sudo, but it
-// is documented, a wrapper script may set it deliberately, and reading one
+// is documented, a wrapper script may set it, and reading one
 // more variable costs nothing.
 //
 // A false positive here (SUDO_USER left in the environment by something other

@@ -43,7 +43,7 @@ func cmdUpdate(ctx context.Context, args []string) int {
 	)
 	fs.BoolVar(&check, "check", false, "report whether a newer version exists and exit without installing")
 	fs.BoolVar(&yes, "yes", false, "do not ask before installing")
-	// Parsed before elevating, and elevated only where root is actually
+	// Parsed before elevating, and elevated only where root is
 	// needed. This is the one command whose need for root depends on its
 	// flags: --check makes a single HTTP request and writes nothing, so
 	// asking for a password to run it is the same defect as asking for one

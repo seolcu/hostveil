@@ -43,7 +43,7 @@ func hasSource(r model.Report, src model.Source) (finding, domain, axis bool) {
 	return
 }
 
-// An opt-in domain nobody asked for leaves no trace: no findings, no domain
+// An opt-in domain the operator did not ask for leaves no trace: no findings, no domain
 // row, and no N/A axis. A domain that could not run keeps its N/A row; this
 // one was never going to run, and saying N/A on every scan is noise.
 func TestAnOptInDomainIsLeftOutUnlessAskedFor(t *testing.T) {

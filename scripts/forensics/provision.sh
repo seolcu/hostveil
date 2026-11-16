@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Base testbed: a distribution-default Ubuntu web server. Nothing here is
-# hardened or weakened on purpose; the point is to measure what a stock
+# hardened or weakened intentionally; the goal is to measure what a stock
 # install records.
 set -Eeuo pipefail
 export DEBIAN_FRONTEND=noninteractive

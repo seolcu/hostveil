@@ -17,7 +17,7 @@ func registerCompose(r *Registry) {
 	r.Register("compose.ds019", buildBindLoopback)
 	r.Register("compose.dr002", buildBindLoopback)
 	// Registered by exact ID, never as "cve.*": the glob would sweep up
-	// every per-CVE finding, which the registry declines on purpose.
+	// every per-CVE finding, which the registry declines.
 	r.Register("cve.outdated-image", buildRepullImage)
 }
 
@@ -101,7 +101,7 @@ func composeScalarTarget(f model.Finding) (string, error) {
 //
 // One file publishing it wide: that is the file, and on the common layout
 // (a base binding to loopback and an override republishing it) this is the
-// override, which is precisely the file the old code did not edit.
+// override, which is the file the old code did not edit.
 //
 // Several: Hostveil declines. It is the same answer persistSysctl gives when
 // the file it would write is outranked. A fix that cannot name the deciding
@@ -179,7 +179,7 @@ func buildAddRestart(f model.Finding) (Fix, error) {
 }
 
 // memLimits are the alternatives offered for ds010. Hostveil cannot know
-// what a service actually uses, so it offers defensible starting points and
+// what a service uses, so it offers defensible starting points and
 // lets the user pick rather than inventing a number.
 //
 // The typical container leads, because Actions[0] is the recommendation and

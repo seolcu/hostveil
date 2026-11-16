@@ -8,7 +8,7 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// lastDrawnFrame returns the final line Progress actually rendered, ignoring
+// lastDrawnFrame returns the final line Progress rendered, ignoring
 // the blank frame and trailing return it uses to clear the line on the way
 // out. Output is "\r<frame>\r<frame>…\r<blanks>\r", so splitting leaves an
 // empty first and last element and the clearing frame second from the end.
@@ -22,7 +22,7 @@ func lastDrawnFrame(out string) string {
 
 // The scan printed nothing until it was entirely finished, so a Trivy-enabled
 // host looked indistinguishable from a hang. Progress must name what is
-// actually still working.
+// still working.
 func TestProgressNamesRunningDomains(t *testing.T) {
 	events := make(chan model.ScanEvent, ProgressBufferSize)
 	events <- model.ScanEvent{Source: model.SourceCVE, State: model.ScanRunning}

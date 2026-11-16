@@ -44,7 +44,7 @@ func TestAuditableOS(t *testing.T) {
 	}
 }
 
-// The empty string is not auditable on purpose. It cannot arise in
+// The empty string is not auditable. It cannot arise in
 // production (runtime.GOOS is a compile-time constant and never empty) so
 // the only way to reach it is a caller passing something it did not detect,
 // and "I do not know what this host is" must not resolve to "Linux, carry on".
@@ -54,7 +54,7 @@ func TestAnUnknownOSIsNotAudited(t *testing.T) {
 	}
 }
 
-// The build Hostveil actually runs its tests on.
+// The build Hostveil runs its tests on.
 func TestThisBuildIsAuditable(t *testing.T) {
 	if ok, why := AuditableOS(); !ok {
 		t.Skipf("this build is not auditable (%s); the checker tests below it will skip too", why)

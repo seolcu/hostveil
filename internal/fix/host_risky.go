@@ -9,7 +9,7 @@ import (
 
 // registerHostRisky wires the host findings that were declined because their
 // remediation is an exec action with consequences a checker cannot weigh:
-// rebooting the host, disabling an account that might be load-bearing. Each
+// rebooting the host, disabling an account that something might depend on. Each
 // is Review because it is exec, and IndividualOnly because the consequence
 // is the operator's to accept, not a batch's.
 func registerHostRisky(r *Registry) {
@@ -32,7 +32,7 @@ func buildScheduleReboot(model.Finding) (Fix, error) {
 		Actions: []Action{{
 			Label: "Reboot in one minute (`shutdown -r " + rebootDelay + "`)",
 			Benefit: "The host starts running the patched kernel and libraries it already has on disk, " +
-				"which is the only way the vulnerabilities those updates fixed actually stop applying to it.",
+				"which is the only way the vulnerabilities those updates fixed stop applying to it.",
 			Warning: "Every service on this host goes down until the machine is back, and this session " +
 				"is disconnected. Services without a restart policy, and anything started by hand, stay " +
 				"down after the boot. If the new kernel fails to boot, getting the machine back needs " +
@@ -73,7 +73,7 @@ func buildDisableRogueRoot(f model.Finding) (Fix, error) {
 				Benefit: "The account can no longer log in by any route (password, SSH key or su) so a " +
 					"backdoor planted under it stops working, while the entry, its files and its history " +
 					"stay in place for you to investigate.",
-				Warning: "If something on this host deliberately logs in as " + account + "; a recovery " +
+				Warning: "If something on this host logs in as " + account + "; a recovery " +
 					"procedure, a monitoring agent, a second admin name for root; it stops working. " +
 					noCheckpoint + " To reverse it: `usermod --unlock --expiredate '' " + account + "`.",
 				Kind:     ActionExec,

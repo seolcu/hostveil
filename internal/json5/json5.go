@@ -8,7 +8,7 @@
 // finding was declined a fix: the only available editor would have deleted
 // the operator's own notes from a file it was asked to harden.
 //
-// The scope is deliberately one operation. Set replaces the value at a
+// The scope is one operation. Set replaces the value at a
 // dotted key path that ALREADY EXISTS, and there is no insert, no delete,
 // and no re-encode. Every finding this serves fired because the checker read
 // a bad value at that path, so the path is present by construction, and

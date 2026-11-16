@@ -74,7 +74,7 @@ func riskyAgentKey(warning, takesEffectOn string) Builder {
 	}
 }
 
-// agentBenefit and agentAltBenefit name what each config-key fix actually
+// agentBenefit and agentAltBenefit name what each config-key fix
 // buys, keyed by finding ID since buildAgentConfigKey is one generic builder
 // shared across all four. agentAltBenefit only needs an entry for
 // agent.exec-unrestricted, the one finding with a second alternative.
@@ -86,7 +86,7 @@ var agentBenefit = map[string]string{
 		"default, so a prompt-injected or misused tool call can't act with more authority than the " +
 		"task ever needed.",
 	"agent.control-ui-insecure": "Closes the agent's control UI to unauthenticated access, so reaching " +
-		"it requires being someone the operator actually let in.",
+		"it requires being someone the operator let in.",
 	"agent.ssrf-private-network": "Stops the agent's own tool calls reaching internal or private " +
 		"network addresses on the operator's behalf; closes the classic SSRF pivot from \"the agent " +
 		"fetched a URL\" to \"the agent probed the internal network.\"",
@@ -182,7 +182,7 @@ func agentEditAction(root, path, benefit string, as []assignment) Action {
 					// The key was there when the scan read it. That it is
 					// not there now means the file changed underneath, and
 					// writing anything on that basis would be a fix aimed at
-					// a config nobody has looked at.
+					// a config the operator has not seen.
 					return nil, fmt.Errorf("%s no longer sets %s; re-scan before fixing", path, a.key)
 				}
 				if err := doc.Set(a.key, a.value); err != nil {

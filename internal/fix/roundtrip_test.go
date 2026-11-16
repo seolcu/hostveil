@@ -21,7 +21,7 @@ import (
 // the *real* checker flags, apply the *real* registered fix, hand the result
 // back to the *same* checker, and require the finding to be gone.
 //
-// That gap is why "does this fix actually remediate the finding?" is a
+// That gap is why "does this fix remediate the finding?" is a
 // question the suite could not answer. TestEveryRegisteredFixIsValid checks
 // shape, so a Transform returning its input unchanged passes it.
 // internal/core/recheck_test.go exercises the verification machinery against a
@@ -37,11 +37,11 @@ import (
 // uses one oracle at both ends, so a fix that satisfies a checker which is
 // itself looking at the wrong file passes here. internal/check/updates is
 // exactly that shape (it reads one file out of apt.conf.d while apt reads the
-// whole directory, last assignment winning) and it is deliberately absent
+// whole directory, last assignment winning) and it is absent
 // from the table below rather than added to it green.
 //
 // SSH is where this starts because internal/fix/register.go names it as the
-// honest case: "the ssh checker reads sshd_config, which is the same artifact
+// accurate case: "the ssh checker reads sshd_config, which is the same artifact
 // the ssh fix edits." A domain that is supposed to be sound is the right place
 // to prove the instrument before pointing it at one that is not.
 
@@ -170,7 +170,7 @@ func TestAFixClearsItsOwnFindingAndNoOther(t *testing.T) {
 // transform over the file that action names, and writes the result back. It
 // returns the bytes before and after so a failure can print both.
 //
-// The first alternative deliberately: it is the one a batch applies, and the
+// The first alternative: it is the one a batch applies, and the
 // one every builder is supposed to put its primary remediation in.
 func applyFirstAlternative(t *testing.T, f model.Finding) (before, after []byte) {
 	t.Helper()

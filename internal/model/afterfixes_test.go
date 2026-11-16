@@ -16,7 +16,7 @@ func TestAfterFixesIsTheScoreWithEveryOfferedFixApplied(t *testing.T) {
 	}
 
 	// The SSH axis has one Review finding and nothing else, so fixing it
-	// clears the axis outright.
+	// clears the axis completely.
 	for _, ax := range b.Axes {
 		switch ax.Source {
 		case SourceSSH:
@@ -36,7 +36,7 @@ func TestAfterFixesIsTheScoreWithEveryOfferedFixApplied(t *testing.T) {
 }
 
 // A fix that is applied and waiting on a restart is charged in Overall (that
-// is the whole point of Pending) and it must still count as done in
+// is what Pending is for) and it must still count as done in
 // AfterFixes, which asks where the number lands once the fixes have done their
 // work.
 //
@@ -44,7 +44,7 @@ func TestAfterFixesIsTheScoreWithEveryOfferedFixApplied(t *testing.T) {
 // domains whose fixes are never immediate are the same domains this figure
 // matters most for: run `fix --all` on a container host and every compose fix
 // goes pending at once, so a headroom that dropped them would collapse onto
-// the score precisely when the operator has just done everything Hostveil
+// the score when the operator has just done everything Hostveil
 // asked and wants to know what it bought. Every UI hides the figure when it
 // equals the score, so the symptom is not a wrong number: it is the number
 // disappearing.

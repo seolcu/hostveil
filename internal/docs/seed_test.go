@@ -64,7 +64,7 @@ func writesAPath(line string) bool {
 //
 // Every dot-path a seeder installs under a home directory must be one the
 // agent runtime table names: a marker, a config, an env file, or a mode rule.
-// The reverse is deliberately not required: a fixture is allowed to seed less
+// The reverse is not required: a fixture is allowed to seed less
 // than the checker can read.
 func TestSeedersWriteWhereTheAgentCheckerLooks(t *testing.T) {
 	known := map[string]bool{}
@@ -148,7 +148,7 @@ func TestSeedScriptIsExecutableAndGuarded(t *testing.T) {
 	for _, want := range []string{"/.dockerenv", "systemd-detect-virt"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("seed.sh no longer tests for %s; the guard in front of an irreversible "+
-				"script is the one thing here that must not quietly weaken", want)
+				"script is the one thing here that must not silently weaken", want)
 		}
 	}
 }

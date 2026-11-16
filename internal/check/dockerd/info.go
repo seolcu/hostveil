@@ -29,7 +29,7 @@ type info struct {
 }
 
 // securityOptions renders the daemon's security options for evidence, sorted
-// so a repeat scan produces no delta nobody caused.
+// so a repeat scan produces no spurious delta.
 func (i info) securityOptions() string {
 	if len(i.opts) == 0 {
 		return "none reported"
@@ -51,7 +51,7 @@ type infoJSON struct {
 	} `json:"Swarm"`
 }
 
-// readInfo asks the daemon what it is actually doing.
+// readInfo asks the daemon what it is doing.
 //
 // The format is `{{json .}}` rather than the shorter `--format json`, which
 // only exists in Docker CLI 23 and later. A checker that fails on an older

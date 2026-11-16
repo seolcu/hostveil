@@ -511,7 +511,7 @@ func TestRescanStatusRequiresTheToken(t *testing.T) {
 
 // The dashboard's palette is generated from internal/ui/theme rather than
 // shipped in app.css, so that it and the TUI cannot drift. That only holds if
-// the two generated routes actually serve.
+// the two generated routes serve.
 func TestThemeAssets(t *testing.T) {
 	s, _ := testServer(t)
 	srv := httptest.NewServer(s.Handler())
@@ -590,7 +590,7 @@ func TestThemeAssetsAreGuarded(t *testing.T) {
 // was left behind, so both halves are pinned here.
 //
 // The refusals matter more than the acceptances, but the acceptances are what
-// keep a tightened check from quietly locking the operator out of their own
+// keep a tightened check from silently locking the operator out of their own
 // dashboard: http://[::1]/ sends a bracketed authority with no port at all.
 func TestHostAllowlistJudgesTheWholeAuthority(t *testing.T) {
 	for _, tc := range []struct {
@@ -656,7 +656,7 @@ func TestEveryCSSVariableIsDeclared(t *testing.T) {
 	}
 }
 
-// The page has to actually load the generated files. app.css deliberately no
+// The page has to load the generated files. app.css no
 // longer carries a palette, so an index.html that drops either link renders
 // the dashboard with no colors at all.
 func TestIndexLoadsTheGeneratedThemeAssets(t *testing.T) {
@@ -725,7 +725,7 @@ func TestRoutesRequireTheAccessToken(t *testing.T) {
 		if route == "/api/fix/all" {
 			method = http.MethodPost
 		}
-		req := httptest.NewRequest(method, route, nil) // deliberately no token
+		req := httptest.NewRequest(method, route, nil) // no token
 		req.Host = "127.0.0.1:8787"
 		s.Handler().ServeHTTP(rec, req)
 
@@ -955,7 +955,7 @@ func (c blockingChecker) Check(ctx context.Context, _ platform.Env) ([]model.Fin
 // whole first scan: minutes, on a host with many images. It now opens the
 // listener immediately and runs that scan the same tracked, backgrounded
 // way a rescan runs, and this pins the observable half of that: the server
-// answers, and says a scan is running, before the (deliberately blocked)
+// answers, and says a scan is running, before the (blocked)
 // first scan ever finishes.
 func TestListenAndServeIsReachableBeforeTheInitialScanFinishes(t *testing.T) {
 	unblock := make(chan struct{})

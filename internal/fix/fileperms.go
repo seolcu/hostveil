@@ -43,7 +43,7 @@ func registerFilePerms(r *Registry) {
 	}
 }
 
-// filePermsBenefit names what tightening each path actually buys, since
+// filePermsBenefit names what tightening each path buys, since
 // buildTightenMode is one generic builder shared by every ID above (and by
 // two agent-domain findings in agent.go): there is no per-finding closure
 // to hang a Benefit string on directly, so this is keyed by finding ID
@@ -94,7 +94,7 @@ var filePermsBenefit = map[string]string{
 // tighten returns the mode with every permission bit outside mask cleared,
 // and nothing else changed.
 //
-// It is subtractive on purpose. Assigning the rule's MaxMode outright would
+// It is subtractive. Assigning the rule's MaxMode directly would
 // *grant* access the file did not have: /etc/shadow at 0604 violates a 0640
 // rule, and setting it to 0640 would hand the shadow group a read bit it
 // never had. Masking gives 0600 instead. Only ever removing bits is what
@@ -190,7 +190,7 @@ func buildRestoreRootOwner(f model.Finding) (Fix, error) {
 			Label: "Set the owning user of each file to root, keeping its group",
 			Benefit: "The account that owned these files loses the access ownership gave it; every password hash, " +
 				"in /etc/shadow's case, and the permission bits mean what they appear to again.",
-			Warning: "If a service runs as that account and reads one of these files on purpose, it stops being " +
+			Warning: "If a service runs as that account and reads one of these files intentionally, it stops being " +
 				"able to. And if several files changed owner at once, something put them there: a restore run as " +
 				"the wrong user, an archive extracted with its own uids, and other files are likely affected too. " +
 				"The previous owner is checkpointed and a rollback restores it.",

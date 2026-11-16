@@ -448,11 +448,11 @@ func caddyAdminFinding(addr, where string, sev model.Severity, service, file str
 		desc += " The port is not published to the host, so reaching it takes a foothold in another container on the same network first, which is exactly what a compromised neighbour has."
 	}
 	fix := "Set the global option back to the default (`admin localhost:2019`), or `admin off` if nothing calls the API, then `systemctl reload caddy`. " +
-		"If something off the host genuinely manages Caddy, use the `remote` admin listener, which requires client certificates, rather than exposing this one."
+		"If something off the host manages Caddy, use the `remote` admin listener, which requires client certificates, rather than exposing this one."
 	if service != "" {
 		fix = "Keep the admin address on loopback: remove the non-loopback CADDY_ADMIN value or `admin` option (" + where + "), " +
 			"and do not publish port 2019. Recreate the container afterwards: Caddy reads this at start. " +
-			"If something outside the container genuinely manages Caddy, use the `remote` admin listener, which requires client certificates."
+			"If something outside the container manages Caddy, use the `remote` admin listener, which requires client certificates."
 	}
 	opts := []model.FindingOption{
 		model.WithDescription(desc),

@@ -13,7 +13,7 @@ import (
 // fixture. A Source absent from the states map reads as the zero-value
 // ScanPending, so the axis renders N/A, and with no matching DomainResult
 // there is no reason beside it. Both published pictures carried a domain in
-// that state, which is precisely the "I could not look, and I will not say
+// that state, which is the "I could not look, and I will not say
 // why" the rail was built to prevent.
 //
 // Walking AllSources rather than the fixture's own keys is what makes a new
@@ -52,7 +52,7 @@ func TestPublishedReportAccountsForEveryDomain(t *testing.T) {
 
 // A domain the fixture marks as not-done must still be one Hostveil has. An
 // exception left behind after a domain is renamed would sit in the map doing
-// nothing, and the screenshots would quietly lose the notice it was there to
+// nothing, and the screenshots would silently lose the notice it was there to
 // produce.
 func TestPublishedReportHasNoDomainsHostveilDoesNotHave(t *testing.T) {
 	known := map[model.Source]bool{}

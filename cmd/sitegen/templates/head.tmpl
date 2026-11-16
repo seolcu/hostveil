@@ -27,12 +27,12 @@
       //
       // GitHub Pages serves files, not content negotiation, so the only place
       // this decision can be made is here, and the risk of making it here is
-      // trapping someone: a reader who deliberately clicked "English" must not
+      // trapping someone: a reader who clicked "English" must not
       // be bounced back on the next click. So the switcher records that choice
       // and this defers to it forever after.
       //
       // Only from the English page, only when the browser's own preference
-      // list actually leads with Korean, and never when a crawler is reading
+      // list leads with Korean, and never when a crawler is reading
       // (they do not run this): the hreflang links above are what they read.
       (function () {
         try {

@@ -64,7 +64,7 @@ func TestSparklineSpansTheWholeRamp(t *testing.T) {
 	}
 }
 
-// A scan nobody could score is a gap, not a bar. It is not a zero: the
+// A scan that could not be scored is a gap, not a bar. It is not a zero: the
 // aggregate score already refuses to say so, and a chart must not say it
 // either.
 func TestSparklineDrawsAGapForAnUnscorableScan(t *testing.T) {

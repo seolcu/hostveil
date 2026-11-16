@@ -27,10 +27,10 @@ import (
 //
 // They carry the site's own repertoire (766 of Korean's 11,172 syllables,
 // which is what gets a serif weight to 112KB instead of megabytes) and that
-// is precisely the risk. Write one new Korean sentence containing one syllable
+// is the risk. Write one new Korean sentence containing one syllable
 // that was not on the site when the subset was built, and nothing breaks:
 // that single character falls back to a system font in the middle of a word,
-// in a different face at a size nobody chose, and every other character around
+// in a fallback face at an unchosen size, and every other character around
 // it is correct. It survives review, because a reviewer reads the diff of the
 // copy and not the cmap of a binary, and it survives testing on any machine
 // whose fallback happens to look close enough.
@@ -192,7 +192,7 @@ func TestEveryKoreanSyllableOnTheSiteHasAGlyph(t *testing.T) {
 	}
 	t.Errorf("%d Hangul codepoint(s) on the Korean site have no glyph in the shipped subset:%s\n\n"+
 		"  Each of these renders in the reader's system font, alone, in the middle of a\n"+
-		"  word; a different face at a size nobody chose, with correct characters on\n"+
+		"  word; a fallback face at an unchosen size, with correct characters on\n"+
 		"  either side of it.\n\n"+
 		"  Rebuild the fonts:  pip install fonttools brotli && python3 scripts/korean-subset.py\n"+
 		"  and commit site/assets/fonts/ along with the Korean copy that needed them.",

@@ -28,8 +28,8 @@ import (
 
 // appearanceDocs are the files that name these lists, source and generated.
 // The generated pages are included for the same reason the domain test
-// includes them: site/ is what the deploy actually serves, and a content
-// edit that was never regenerated reaches nobody.
+// includes them: site/ is what the deploy serves, and a content
+// edit that was never regenerated reaches no reader.
 func appearanceDocs(t *testing.T) map[string]string {
 	t.Helper()
 	paths := []string{

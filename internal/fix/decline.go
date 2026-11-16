@@ -16,7 +16,7 @@ import "strings"
 // names a finding the register declines. Neither may grow without the other.
 //
 // A glob entry (sysctl.*, systemd.*) covers a whole domain, and the register
-// uses one exactly where the reason is genuinely shared. Exact IDs win over
+// uses one exactly where the reason is shared. Exact IDs win over
 // globs, so a domain can state its shared reason and still say something
 // specific about one member.
 func WhyNoFix(id string) string {
@@ -42,7 +42,7 @@ func DeclinedIDs() []string {
 }
 
 // declineReasons is the register in Default()'s doc comment, one sentence at
-// a time. Each answers the question a user actually has looking at a finding
+// a time. Each answers the question a user has looking at a finding
 // with no button on it: not "what is wrong" (the finding already said that)
 // but "why is Hostveil not doing anything about it".
 //

@@ -15,7 +15,7 @@ type fakeExplainer struct {
 	text      string
 	err       error
 	called    bool
-	// gotSiteContext captures whatever Explain/Advise was actually called
+	// gotSiteContext captures whatever Explain/Advise was called
 	// with, so a test can assert Engine.Explain/Advise pass the saved
 	// context through rather than dropping it.
 	gotSiteContext string

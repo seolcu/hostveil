@@ -83,7 +83,7 @@ func buildNginxNoAutoindex(f model.Finding) (Fix, error) {
 		Benefit: "Directories without an index file stop listing what is in them, so a stray backup or .env " +
 			"beside the site is no longer one click away.",
 		Warning: "A directory somebody meant to be browsable (a download mirror, a shared folder) stops listing " +
-			"and answers 403 instead. Listing is sometimes on for one location on purpose; if so, put it back for " +
+			"and answers 403 instead. Listing is sometimes on for one location intentionally; if so, put it back for " +
 			"that location alone. " + proxyRevertNote,
 		Kind: ActionEdit, Path: p,
 		Transform: func(in []byte) ([]byte, error) {

@@ -27,7 +27,7 @@
                   <tr><td><code>Space</code></td><td>Mark an Auto finding for a batch. Only Auto rows can be marked, and a row already applied and waiting on a restart is not one of them.</td></tr>
                   <tr><td><code>a</code></td><td>Apply the marked findings, or every Auto one, if nothing is marked.</td></tr>
                   <tr><td><code>s</code></td><td>Cycle the minimum severity: High → Medium → Low → off.</td></tr>
-                  <tr><td><code>d</code></td><td>Cycle the domain filter through the domains this scan actually found something in.</td></tr>
+                  <tr><td><code>d</code></td><td>Cycle the domain filter through the domains this scan found something in.</td></tr>
                   <tr><td><code>x</code></td><td>Show only findings Hostveil can fix.</td></tr>
                   <tr><td><code>c</code></td><td>Clear every filter. <code>Esc</code> clears the batch marks.</td></tr>
                   <tr><td><code>h</code></td><td>Applied-fix history. Pick one and press <code>Enter</code> to see what rolling it back would restore, then confirm. If the file has changed since the fix wrote it, the rollback is declined and you are asked whether to overwrite anyway; only <code>y</code> does it, and it cannot be undone. The screen also carries a sparkline of the score across every saved scan, so the list of what was changed sits next to whether it helped.</td></tr>
@@ -60,7 +60,7 @@
             <p>The chips above the list filter by severity and domain with live counts, and the checkboxes select findings for one batch fix. Everything writes through the same engine as the CLI, so <code>hostveil history</code> in a terminal lists what you did in the browser.</p>
 
             <h3 id="delta">Since the last scan</h3>
-            <p>Hostveil saves each scan, so the next one can say what moved. When anything has, both UIs show a one-line summary above the findings. <em>✓ 12 resolved</em>, <em>+ 2 new</em>, <em>~ 1 changed</em>, which is the fastest way to answer "did that round of fixes actually help?". Nothing is shown on a first scan, because there is nothing to compare against.</p>
+            <p>Hostveil saves each scan, so the next one can say what moved. When anything has, both UIs show a one-line summary above the findings. <em>✓ 12 resolved</em>, <em>+ 2 new</em>, <em>~ 1 changed</em>, which is the fastest way to answer "did that round of fixes help?". Nothing is shown on a first scan, because there is nothing to compare against.</p>
             <p>Just under it, either UI names any domain that could not be fully checked. A score built from a partial scan keeps saying so for as long as it is on screen. See <a href="checks#coverage">when a domain can't be fully checked</a>.</p>
 
             <h2>CLI: scriptable</h2>

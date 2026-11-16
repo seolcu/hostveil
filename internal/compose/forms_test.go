@@ -47,7 +47,7 @@ func TestEnvironmentAcceptsBothComposeForms(t *testing.T) {
 		},
 		{
 			// `- NAME` with no value passes the variable through from the
-			// host's environment. The value is genuinely unknown here, and it
+			// host's environment. The value is unknown here, and it
 			// must come back empty rather than as the name: a secret rule
 			// that saw POSTGRES_PASSWORD=POSTGRES_PASSWORD would report a
 			// hardcoded secret on a compose file that hardcodes nothing.

@@ -48,7 +48,7 @@ func env(info, unitArgs string) platform.Env {
 	// Docker() scripts the daemon probe from platform's own argv rather than
 	// from a copy of it here: a probe that changed would otherwise leave this
 	// fixture answering "unreachable", which the checker cannot tell from a
-	// daemon that is genuinely down.
+	// daemon that is down.
 	r := checktest.New().Only("docker").Docker("27.0.0").Script(info, infoArgv...)
 	if unitArgs != "" {
 		r.Script("LoadState=loaded\n"+execStart(unitArgs), unitArgv...)
@@ -118,9 +118,9 @@ func write(t *testing.T, path, content string) {
 	}
 }
 
-// cleanGroup is a docker group nobody but root holds, so group-membership
+// cleanGroup is a docker group only root holds, so group-membership
 // findings stay out of tests about something else. %GID% is the gid that
-// actually owns the fixture socket; see host.
+// owns the fixture socket; see host.
 const cleanGroup = "root:x:0:\ndocker:x:%GID%:\n"
 const cleanPasswd = "root:x:0:0:root:/root:/bin/bash\n"
 
@@ -225,7 +225,7 @@ func TestTLSVerifiedFromExecStartIsClean(t *testing.T) {
 
 // TLS without client verification is encryption without authorization:
 // never clean, and never collapsed into the unauthenticated finding. Both
-// are High: the point of the test is that they stay two findings with two
+// are High: the test checks that they stay two findings with two
 // remediations rather than one.
 func TestTLSWithoutVerifyIsItsOwnFinding(t *testing.T) {
 	h := host(t, `{"hosts":["tcp://0.0.0.0:2376"],"tls":true,"tlscert":"/etc/docker/cert.pem"}`,
@@ -318,7 +318,7 @@ func TestDefaultSocketModeIsClean(t *testing.T) {
 }
 
 // Connecting to a unix socket requires write permission, so a world-readable
-// socket grants nobody anything and flagging it would be noise.
+// socket grants no one anything and flagging it would be noise.
 func TestWorldReadableSocketIsNotAFinding(t *testing.T) {
 	h := host(t, "", cleanGroup, cleanPasswd, 0o664)
 	mustNotFind(t, h.check(t, env(hardenedInfo, "-H fd://")), "dockerd.socket-world-writable")
@@ -350,8 +350,8 @@ func TestGroupMembersAreMediumForHumans(t *testing.T) {
 	}
 }
 
-// Nobody deliberately grants a CI runner the ability to become root, and a
-// credential that never logs in is one nobody is watching.
+// An administrator does not grant a CI runner the ability to become root, and a
+// credential that never logs in is unmonitored.
 func TestGroupMembersEscalateForServiceAccounts(t *testing.T) {
 	h := host(t, "", "root:x:0:\ndocker:x:%GID%:alice,ci_runner\n",
 		cleanPasswd+"alice:x:1000:2000::/home/alice:/bin/bash\nci_runner:x:997:997::/nonexistent:/usr/sbin/nologin\n", 0o660)
@@ -459,8 +459,8 @@ func TestRootlessDowngradesTheAPIFinding(t *testing.T) {
 // --- coverage -------------------------------------------------------------
 
 // Losing `docker info` costs the three default-hardening rules and leaves the
-// four socket and group rules genuinely answered, including two of the three
-// Criticals. Reporting that as an outright error would discard them.
+// four socket and group rules answered, including two of the three
+// Criticals. Reporting that as a complete error would discard them.
 func TestDockerInfoFailureIsPartialNotFatal(t *testing.T) {
 	h := host(t, `{"hosts":["tcp://0.0.0.0:2375"]}`, cleanGroup, cleanPasswd, 0o666)
 	e := env(hardenedInfo, "-H fd://")
@@ -541,7 +541,7 @@ func TestUnreadableGroupIsPartial(t *testing.T) {
 
 // A `docker` binary on PATH says nothing about whether this user may talk to
 // the socket, and a domain that accepted that would score a perfect axis on
-// exactly the host whose daemon nobody could examine.
+// exactly the host whose daemon could not be examined.
 func TestAvailableRequiresAReachableDaemon(t *testing.T) {
 	r := checktest.New().Only("docker") // no version output
 	ok, reason := New().Available(context.Background(), platform.Env{Runner: r})
@@ -599,7 +599,7 @@ func TestEveryFindingValidates(t *testing.T) {
 
 // Evidence assembled from a map iterates in a random order unless it is
 // sorted, and unstable evidence makes every repeat scan report a delta
-// nobody caused.
+// that the host did not cause.
 func TestEvidenceIsStableAcrossScans(t *testing.T) {
 	h := host(t, `{"hosts":["tcp://0.0.0.0:2375","tcp://10.0.0.5:2376"]}`,
 		"root:x:0:\ndocker:x:%GID%:zoe,alice,mallory\n",
@@ -727,12 +727,12 @@ func TestDaemonJSONDoesNotMakeUpForAnUnreadableUnit(t *testing.T) {
 // does not run systemd, the daemon's start-up flags live somewhere Hostveil
 // cannot read (/etc/conf.d/docker under OpenRC, a supervisor's config, a
 // hand-typed command line) and `docker info` does not report them. So the two
-// API rules are genuinely unanswered there.
+// API rules are unanswered there.
 //
 // This used to report clean. An Alpine or Gentoo host publishing
 // `-H tcp://0.0.0.0:2375` from its OpenRC conf got a perfect Docker-daemon
 // axis and no finding, which is the same shape as the non-root CVE scan that
-// scored 100 on a host nobody had looked at.
+// scored 100 on a host the scan never looked at.
 func TestANonSystemdHostCannotAuditTheAPISocket(t *testing.T) {
 	h := host(t, "", cleanGroup, cleanPasswd, 0o660)
 	e := env(hardenedInfo, "-H fd://")

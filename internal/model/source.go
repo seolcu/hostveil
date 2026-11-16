@@ -4,7 +4,7 @@ package model
 // also the finding-ID namespace prefix ("compose.ds016", "ssh.rootlogin")
 // and the key used to route findings to scoring axes.
 //
-// SourceUnset is the zero value on purpose: a finding built without an
+// SourceUnset is the zero value: a finding built without an
 // explicit source is invalid, never a silently-valid default. Routing by
 // this typed enum (not by string-prefixing the ID) is only safe because
 // the zero value means "unset" rather than a real domain.
@@ -38,7 +38,7 @@ const (
 // all maintained by hand: the const block, a String switch, a Label switch,
 // the upper bound of Valid, the AllSources slice, and axisDefs over in
 // score.go. Adding a domain meant finding all six, and the record shows
-// that nobody did. When the sysctl domain landed, the two display tables
+// that no one did. When the sysctl domain landed, the two display tables
 // that then lived in the UIs were missed, and the dashboard dropped a whole
 // domain's filter chip while announcing its failures as "10". Those were
 // pulled back here, and the dashboard immediately grew a *seventh* copy,
@@ -58,7 +58,7 @@ type sourceDef struct {
 	name string
 	// label is the short display name every interface shows: the filter
 	// chip in the dashboard, the filter line in the TUI. It is shorter
-	// than axisLabel on purpose: an axis names a subject in a table with
+	// than axisLabel: an axis names a subject in a table with
 	// room for it, a chip sits in a row of eleven and has to stay narrow.
 	label string
 	// axisID and axisLabel name the domain's scoring axis; cap is its
@@ -83,7 +83,7 @@ type sourceDef struct {
 // projection to add here, not a reason to keep two hand-maintained lists.
 //
 // A third copy of this order lives in cmd/hostveil/app.go, where the
-// checkers are registered; it is what actually orders Report.Domains, and
+// checkers are registered; it is what orders Report.Domains, and
 // TestCheckerRegistrationMatchesSourceOrder there holds it to this one.
 //
 // The Source is an explicit column and every lookup is keyed by it. Rows
@@ -127,9 +127,9 @@ func (s Source) String() string {
 // Label returns the short display name every interface shows for the
 // domain.
 //
-// There is no fallback for an unknown domain, which is the point: a domain
+// There is no fallback for an unknown domain, so that a domain
 // with no row here renders as "" and trips TestEverySourceConstHasATableRow
-// rather than drawing a bare integer somewhere nobody looks.
+// rather than drawing a bare integer somewhere no one looks.
 func (s Source) Label() string {
 	return sourceIndex[s].label
 }

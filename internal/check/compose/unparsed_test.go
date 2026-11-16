@@ -28,7 +28,7 @@ const goodStack = "services:\n  app:\n    image: myapp\n    privileged: true\n"
 // this scan says nothing about. It used to be dropped with a bare `continue`
 // and the domain reported ScanDone over the rest: the only place in the
 // tree that let "I couldn't look" pass for "nothing there", which is
-// precisely what scores a never-audited stack as clean.
+// what scores a never-audited stack as clean.
 func TestAnUnparseableProjectDegradesTheDomain(t *testing.T) {
 	dir := t.TempDir()
 	good := writeCompose(t, dir, "good.yml", goodStack)

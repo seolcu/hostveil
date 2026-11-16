@@ -17,12 +17,12 @@
 // is where that reasoning lives.
 //
 //   - `docker info` is the truth for effective daemon state. It reports what
-//     the daemon actually loaded, after the file and the flags were merged.
+//     the daemon loaded, after the file and the flags were merged.
 //     The three default-hardening rules (no-new-privileges, userns-remap,
 //     live-restore) read only from here. Reading daemon.json for them would
 //     report the operator's intention as though it were the machine's
 //     behaviour: the file may have been edited since the last restart, and a
-//     flag on the unit may be overriding it outright.
+//     flag on the unit may be overriding it completely.
 //
 //   - daemon.json and the service unit's ExecStart are the truth for what
 //     `docker info` does not report at all, and for where a human goes to
@@ -33,17 +33,17 @@
 //     either, and a checker that read only one would miss the other
 //     configuration style completely.
 //
-//   - `ss` is the truth for what is actually listening. It turns a socket
+//   - `ss` is the truth for what is listening. It turns a socket
 //     finding from a reading of intent into an observed fact and supplies the
 //     endpoint an operator can go and verify. It does not gate any finding:
 //     it can see the door but not the lock, so it can neither confirm nor
 //     deny the TLS half, and its absence is not lost ground.
 //
-// # What is deliberately not audited
+// # What is not audited
 //
 // The logging driver and its rotation options. It is the one candidate rule
 // that is availability rather than security (a full disk, not a way in) and
-// more decisively it cannot be answered honestly from here: `docker info`
+// more decisively it cannot be answered accurately from here: `docker info`
 // reports the driver but never its log-opts, so `json-file` with a max-size
 // is indistinguishable from `json-file` without one, and a per-service
 // `logging:` block in a compose file overrides both. A rule blind to two of
@@ -92,11 +92,11 @@ func New() *Checker {
 // Source identifies the dockerd domain.
 func (*Checker) Source() model.Source { return model.SourceDockerd }
 
-// Available requires a daemon that actually answers, not merely a `docker`
-// binary on PATH. The distinction is the whole point: a client that cannot
+// Available requires a daemon that answers, not merely a `docker`
+// binary on PATH. The distinction matters: a client that cannot
 // reach the socket reports no daemon configuration at all, and a domain that
-// accepted that would score a perfect Docker-daemon axis on precisely the
-// host whose daemon nobody could examine.
+// accepted that would score a perfect Docker-daemon axis on the
+// host whose daemon could not be examined.
 func (*Checker) Available(ctx context.Context, env platform.Env) (bool, string) {
 	if ok, reason := platform.DockerReachable(ctx, env.Runner); !ok {
 		return false, reason + "; the daemon's configuration cannot be read"
@@ -110,8 +110,8 @@ func (*Checker) Available(ctx context.Context, env platform.Env) (bool, string) 
 // Coverage is counted in rules, not in sources, because that is the unit a
 // user loses when something cannot be read: losing `docker info` costs the
 // three default-hardening rules and leaves the four socket and group rules
-// (including two of the three Criticals) genuinely answered. Reporting that
-// as an outright error would exclude the axis *and discard those findings*,
+// (including two of the three Criticals) answered. Reporting that
+// as a complete error would exclude the axis *and discard those findings*,
 // which is strictly worse than reporting it degraded.
 func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	f := c.gather(ctx, env)
@@ -308,7 +308,7 @@ func (f *facts) apiFindings() []model.Finding {
 	)}
 }
 
-// observed renders the endpoints `ss` confirms are actually listening. It is
+// observed renders the endpoints `ss` confirms are listening. It is
 // evidence only: a daemon that was configured for a socket it failed to
 // open is still misconfigured, so this never decides whether a finding
 // exists.
@@ -333,7 +333,7 @@ func (f *facts) observed(exposed []string) string {
 //
 // The trigger is the world-*write* bit and nothing else. Connecting to a unix
 // socket requires write permission on it, so a world-readable socket grants
-// nobody anything and flagging it would be noise on a host that is fine.
+// no one anything and flagging it would be noise on a host that is fine.
 func (f *facts) socketFindings() []model.Finding {
 	if !f.sockKnown || f.sock.perm&0o002 == 0 {
 		return nil
@@ -378,17 +378,17 @@ func (f *facts) groupFindings() []model.Finding {
 	// A human administrator in the docker group is the ordinary shape of a
 	// self-hosted server, and a High that fires on almost every correctly-run
 	// host teaches people to ignore the domain. It stays a finding because
-	// most operators genuinely do not know the membership is equivalent to
+	// most operators do not know the membership is equivalent to
 	// passwordless sudo that leaves no audit record, but the severity says
 	// "know this", not "you are breached".
 	//
-	// A service account is a different claim. Nobody deliberately grants a CI
+	// A service account is a different claim. An administrator does not grant a CI
 	// runner or a monitoring agent the ability to become root, and a
-	// credential that never logs in is one nobody is watching.
+	// credential that never logs in is unmonitored.
 	sev, extra := model.SeverityMedium, ""
 	if len(service) > 0 {
 		sev = model.SeverityHigh
-		extra = fmt.Sprintf(" Among them %s %s no interactive login, so %s a credential that can become root and that nobody is watching.",
+		extra = fmt.Sprintf(" Among them %s %s no interactive login, so %s a credential that can become root and that no one monitors.",
 			plural(len(service), "is", "are"), joinNames(service),
 			plural(len(service), "it is", "they are"))
 	}
@@ -419,7 +419,7 @@ func (f *facts) defaultsFindings() []model.Finding {
 			"Containers can gain privileges through setuid binaries",
 			model.SeverityMedium, model.SourceDockerd, model.RemediationReview,
 			model.WithDescription("The daemon does not apply no-new-privileges by default, so a process inside a container can still gain privileges by executing a setuid binary. That is the step that turns a foothold in an application container into root inside that container, and root inside a container is the starting point for every escape technique that follows."),
-			model.WithHowToFix("Add `\"no-new-privileges\": true` to /etc/docker/daemon.json and restart the daemon. It becomes the default for every container; a service that genuinely needs setuid escalation can still opt out with `security_opt: [\"no-new-privileges:false\"]`."),
+			model.WithHowToFix("Add `\"no-new-privileges\": true` to /etc/docker/daemon.json and restart the daemon. It becomes the default for every container; a service that needs setuid escalation can still opt out with `security_opt: [\"no-new-privileges:false\"]`."),
 			model.WithEvidence("security options", f.info.securityOptions()),
 			model.WithMetadata("daemon_json", f.cfg.path),
 		))

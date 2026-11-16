@@ -246,7 +246,7 @@ func TestEveryVerificationResultHasAMessage(t *testing.T) {
 // artifact the fix wrote is correct, and where that artifact is not what the
 // host is running from, that is all it has established.
 //
-// This is the case VerifyGone was quietly covering, in the dangerous
+// This is the case VerifyGone was silently covering, in the dangerous
 // direction: the compose checker reads the project file, the compose fix edits
 // that file, so the re-check finds nothing and the operator is told "the
 // finding is gone" while the container still publishes the port on every

@@ -54,7 +54,7 @@ func TestModeTableDescribesExactlyThePlan(t *testing.T) {
 		}
 	}
 	// One row per planned change and no more: a row for a path that is not
-	// in the plan is the checkpoint recording work nobody did.
+	// in the plan is the checkpoint recording work that never happened.
 	if got := len(strings.Split(strings.TrimRight(table, "\n"), "\n")); got != len(changes) {
 		t.Errorf("table has %d rows for %d planned changes:\n%s", got, len(changes), table)
 	}

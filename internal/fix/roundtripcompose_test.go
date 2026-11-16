@@ -16,7 +16,7 @@ import (
 // The compose round trip, on the layout internal/compose/discover.go calls
 // "the ordinary case, not an exotic one": a base file and an override.
 //
-// The checker resolves the merge by asking docker, which is the whole point of
+// The checker resolves the merge by asking docker, which is the reason for
 // effectiveProject; "a checker that re-implements somebody else's precedence
 // rules is a checker that will disagree with reality on the hosts that
 // matter." The fix layer does not. Parse labels the merged content with
@@ -147,7 +147,7 @@ func TestTheComposeFixDoesNotEditAFileThatDoesNotDecide(t *testing.T) {
 	}
 	if strings.Contains(string(rest), `"6379:6379"`) {
 		t.Errorf("the fix edited %s and reported success, but %s still publishes the port on every interface, "+
-			"so the merged project docker actually runs is unchanged:\n--- edited ---\n%s\n--- untouched ---\n%s",
+			"so the merged project docker runs is unchanged:\n--- edited ---\n%s\n--- untouched ---\n%s",
 			filepath.Base(a.Path), filepath.Base(other), out, rest)
 	}
 }
@@ -160,7 +160,7 @@ func idsOfFindings(fs []model.Finding) []string {
 	return out
 }
 
-// The layout discover.go's comment is actually about: a base binding redis to
+// The layout discover.go's comment is about: a base binding redis to
 // loopback and an override republishing it. Exactly one file publishes the
 // port on every interface, so exactly one file decides, and Hostveil edits it.
 //

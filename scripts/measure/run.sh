@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Measure what Hostveil actually changes, using instruments that are not
+# Measure what Hostveil changes, using instruments that are not
 # hostveil.
 #
 # The end-to-end test already proves the score goes up after `fix --all`. That
@@ -111,8 +111,8 @@ measure_all() {
 # untouched, and once after the services have been restarted into them.
 # Without the second, an instrument reading the running system reports that
 # nothing happened, which is true and reads as though the fixes did nothing.
-# Without the first, the report would quietly credit Hostveil with a restart
-# it does not perform and deliberately does not offer as an Auto fix.
+# Without the first, the report would silently credit Hostveil with a restart
+# it does not perform and does not offer as an Auto fix.
 restart_services() {
   # AUTO sysctl fixes intentionally persist reversible drop-ins without
   # mutating the running kernel. This phase is the explicit activation step
@@ -157,7 +157,7 @@ say "BEFORE"
 measure_all before
 
 # The control group. Everything below this branch is about Hostveil applying
-# fixes and undoing them, and a control run does none of it: the point is to
+# fixes and undoing them, and a control run does none of it: the goal is to
 # harden the host by somebody else's standard and ask whether Hostveil's score
 # notices. There is nothing to roll back because Hostveil changed nothing, and
 # control.sh does not undo itself, which is why it says to run it on
@@ -200,7 +200,7 @@ say "RESTARTED"
 measure_all restarted
 
 # Everything above measures `fix --all`, which applies Auto fixes only:
-# the unattended path, and deliberately the most conservative thing Hostveil
+# the unattended path, and the most conservative thing Hostveil
 # does. It is not the path an operator takes. They read a Review fix, decide,
 # and accept it, and the fixes that need that decision are the ones that
 # change the most: every SSH hardening option, because a bad sshd_config can
@@ -209,7 +209,7 @@ measure_all restarted
 # So there is a fifth phase for the reviewed path, and it runs the command a
 # user would run; `fix --all --review`, rather than a loop of its own. A
 # harness that drives the tool differently from the way it ships measures
-# something nobody will experience.
+# something no user will experience.
 #
 # It then counts how many of those fixes left a checkpoint, because that (not
 # a word in a preview) is what "reversible" means here: an exec fix writes

@@ -13,7 +13,7 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// fix.Default()'s doc comment is the register of findings deliberately left
+// fix.Default()'s doc comment is the register of findings left
 // without a fix: each one named, each with the reason it is Manual on
 // purpose. TestKnownUnregisteredFindings pins that register from one side:
 // it asserts nothing in the list has acquired a fix.
@@ -23,7 +23,7 @@ import (
 // accounts.emptypassword had no registered fix and no entry in the
 // register either. That is the state the register exists to make
 // impossible. Manual is a decision: "there is no action Hostveil can
-// safely take", and a finding that is Manual because nobody has looked at
+// safely take", and a finding that is Manual because no one has looked at
 // it is indistinguishable, in the interface, from one that is Manual
 // because a maintainer weighed the remediation and refused it.
 //
@@ -41,12 +41,12 @@ func TestEveryFindingIsEitherFixableOrDeclinedOnPurpose(t *testing.T) {
 			continue
 		}
 		// A source-wide entry (sysctl.*) covers its whole domain; the
-		// register uses one where the reason is genuinely shared.
+		// register uses one where the reason is shared.
 		if src, _, ok := strings.Cut(id, "."); ok && declined[src+".*"] {
 			continue
 		}
 		t.Errorf("%s has no registered fix and no entry in fix.Default()'s register of "+
-			"deliberately-unfixed findings; it is Manual by omission, which a user cannot "+
+			"intentionally unfixed findings; it is Manual by omission, which a user cannot "+
 			"tell from Manual by decision", id)
 	}
 }
@@ -74,7 +74,7 @@ func sourceNames() []string {
 // declinedInRegister reads the doc comment on fix.Default and returns every
 // finding ID it names.
 //
-// It reads the comment rather than a list kept here on purpose: the comment
+// It reads the comment rather than a list kept here intentionally: the comment
 // is the normative statement; it carries the reasons, and it is what a
 // maintainer edits when they change their mind. A copy in a test would be
 // one more thing to drift.
@@ -94,7 +94,7 @@ func declinedInRegister(t *testing.T) map[string]bool {
 		}
 	}
 	if doc == "" {
-		t.Fatal("fix.Default has no doc comment; the register of deliberately-unfixed findings is gone")
+		t.Fatal("fix.Default has no doc comment; the register of-unfixed findings is gone")
 	}
 
 	out := map[string]bool{}
@@ -117,7 +117,7 @@ func declinedInRegister(t *testing.T) map[string]bool {
 //
 // The checks table is the right source and the register is not. The register
 // names findings it *argues about*, which includes ones held up as
-// counter-examples: cve.outdated-image is in it precisely because it is the
+// counter-examples: cve.outdated-image is in it because it is the
 // one CVE finding that does have a fix, and agent.config-perms is in it as an
 // Auto fix that touches a home directory. Demanding a decline reason for
 // those would be demanding an explanation for something that never happens.
@@ -141,7 +141,7 @@ func unfixableInDocs(t *testing.T) map[string]bool {
 	}
 	// The floor guards the extraction, not the product: it only has to sit
 	// well above zero. It was 20 until the risky fixes were offered rather
-	// than declined, which took the honest count below it.
+	// than declined, which took the accurate count below it.
 	if len(out) < 8 {
 		t.Fatalf("only %d unfixable findings parsed from the checks table: extraction is broken, "+
 			"not the table", len(out))
@@ -159,7 +159,7 @@ func unfixableInDocs(t *testing.T) map[string]bool {
 // with no button on it.
 //
 // The reasons were always written down (the register is pages of them) in a
-// doc comment nobody outside this repository will ever read. fix.WhyNoFix is
+// doc comment that no user outside this repository will read. fix.WhyNoFix is
 // the same decision reaching the finding it is about, and this is what keeps
 // the two from parting.
 func TestEveryDeclinedFindingSaysWhy(t *testing.T) {
@@ -173,7 +173,7 @@ func TestEveryDeclinedFindingSaysWhy(t *testing.T) {
 	}
 
 	// And the other way: a reason for a finding that does have a fix would
-	// never be shown, so it is dead text nobody would notice going stale.
+	// never be shown, so it is dead text that would go stale unnoticed.
 	declined := declinedInRegister(t)
 	for _, id := range fix.DeclinedIDs() {
 		if strings.HasSuffix(id, ".*") {

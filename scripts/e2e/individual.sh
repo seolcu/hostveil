@@ -21,7 +21,7 @@
 #   scripts/e2e/individual.sh fedora-updates # Fedora (dnf5) with systemd; installs dnf-automatic
 #   scripts/e2e/individual.sh fedora-firewall # Fedora with firewalld; run through scripts/e2e/vm.sh
 #
-# Why it exists: these fixes are excluded from every batch on purpose, so
+# Why it exists: these fixes are excluded from every batch, so
 # `fix --all --review` (the E2E job's and the measurement harness's path)
 # never runs them. Before this, every one of them had been exercised against a
 # fake CommandRunner and nothing else.
@@ -72,7 +72,7 @@ step() { printf '\n== %s\n' "$*"; }
 
 # count ID [SERVICE]: how many open findings with this ID (and service) the
 # scan reports. scan exits non-zero when it finds High findings, which on a
-# seeded host is the point, so its status is not the test.
+# seeded host is the goal, so its status is not the test.
 count() {
     local id=$1 svc=${2:-}
     "$HV" scan --json 2>/dev/null >/tmp/hv-scan.json || true

@@ -245,7 +245,7 @@ func TestBinaryFromArchiveRejectsUnsafeShapes(t *testing.T) {
 	}
 }
 
-// gh missing is a note; gh saying no is a refusal. The asymmetry is the point:
+// gh missing is a note; gh saying no is a refusal. The asymmetry is intended:
 // "I could not check" and "I checked and it does not hold" are different
 // answers and only one of them is a reason to stop.
 func TestProvenanceFailureStopsAndAbsenceDoesNot(t *testing.T) {
@@ -293,7 +293,7 @@ func TestReplaceIsAtomicAndKeepsTheMode(t *testing.T) {
 	}
 }
 
-// The package asset names are the ones the release actually publishes. Getting
+// The package asset names are the ones the release publishes. Getting
 // this wrong means a 404 that reads like a network problem.
 func TestPackageAssetNamesMatchTheRelease(t *testing.T) {
 	deb, err := PackageAsset(OriginDeb, "3.17.0")
@@ -324,7 +324,7 @@ func TestTheStateNoteNamesTheDirectoryWithoutRemovingIt(t *testing.T) {
 	}
 }
 
-// The two sides of this comparison genuinely disagree about the leading v, and
+// The two sides of this comparison disagree about the leading v, and
 // getting it wrong is silent: `hostveil update` on a current host announces an
 // update and reinstalls the version it is already running.
 //

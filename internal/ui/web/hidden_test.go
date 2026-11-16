@@ -25,7 +25,7 @@ import (
 // band added later is covered the moment it is written.
 //
 // Not solved with a blanket `[hidden] { display: none !important }`:
-// .verdict and .rail deliberately stay hidden in the DOM and are un-hidden
+// .verdict and .rail stay hidden in the DOM and are un-hidden
 // per arrangement by the layout rules at the end of app.css, and an
 // !important would beat those and delete the rail from the two layouts built
 // around it.

@@ -228,7 +228,7 @@ func fixAll(ctx context.Context, yes, review bool) int {
 
 // printIndividual lists the fixes no batch applies, with the command that
 // applies each one. They are offered, and the operator has to ask for them by
-// name, because each can break a service that set something on purpose.
+// name, because each can break a service that set something intentionally.
 func printIndividual(fs []model.Finding) {
 	if len(fs) == 0 {
 		return

@@ -1,5 +1,5 @@
 // Package fixtest builds findings the fix registry can be exercised with,
-// so a caller can ask "what would a user actually be offered for this ID?"
+// so a caller can ask "what would a user be offered for this ID?"
 // without a live scan.
 //
 // It is exported for the same reason internal/check/checktest is: the answer
@@ -15,9 +15,9 @@ import "github.com/seolcu/hostveil/internal/model"
 //
 // One finding with every key rather than a per-domain table: a builder that
 // starts reading a new key fails loudly here (its Build errors) instead of
-// being quietly skipped, and no caller has to know which domain an ID
+// being silently skipped, and no caller has to know which domain an ID
 // belongs to. The source and severity are placeholders (no builder reads
-// either) and the declared remediation is deliberately Review, the value
+// either) and the declared remediation is Review, the value
 // that resolves against anything without hiding it.
 //
 // Several builders interpolate a value straight into the Action.Label or

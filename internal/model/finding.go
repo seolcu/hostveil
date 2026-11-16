@@ -44,7 +44,7 @@ type Finding struct {
 	// on findings that reach a UI with no fix to offer.
 	//
 	// "Manual" is a decision (someone weighed the remediation and refused it)
-	// but in an interface it is indistinguishable from a finding nobody has
+	// but in an interface it is indistinguishable from a finding no one has
 	// looked at. The reasons have been written down since the beginning, in
 	// the doc comment on fix.Default(), where a user never sees them; this is
 	// that register reaching the finding it is about.
@@ -64,7 +64,7 @@ type Finding struct {
 	// that motivated them: fast patches are attractive on a self-hosted box
 	// and risky on one that is stable today, and until now that reasoning
 	// lived only inside the preview's per-action Warning; never in a list
-	// or detail view, and never for a finding nobody had opened the preview
+	// or detail view, and never for a finding whose preview had not been opened
 	// screen for yet.
 	FixBenefit    string `json:"fix_benefit,omitempty"`
 	FixSideEffect string `json:"fix_side_effect,omitempty"`
@@ -175,7 +175,7 @@ func (f Finding) IsAutoFixable() bool {
 // nothing has been applied, or something has and it is not in force yet.
 //
 // It is the question the score, the SARIF results, the exit status, the delta
-// and every visible list are asking, and it is deliberately one named
+// and every visible list are asking, and it is one named
 // predicate rather than "!f.Fixed || f.Pending" written out at each of them.
 // A rule that lives in prose until one renderer forgets it is the drift
 // internal/docs/afterfixes_test.go exists to catch, and there is no reason to

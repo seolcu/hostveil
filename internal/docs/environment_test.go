@@ -53,7 +53,7 @@ func TestEveryVariableHostveilReadsIsDocumented(t *testing.T) {
 // built-in help said nothing about them.
 func TestEveryVariableHostveilReadsIsInTheBuiltInHelp(t *testing.T) {
 	help := readRepoFile(t, filepath.Join("cmd", "hostveil", "main.go"))
-	// Only the ones a person sets deliberately. The elevation guards and the
+	// Only the ones a person sets. The elevation guards and the
 	// debug switch are documented on the site; --help is a short page and
 	// listing every internal variable would bury the four that matter.
 	for _, name := range []string{"HOSTVEIL_THEME", "HOSTVEIL_GLYPHS", "HOSTVEIL_NO_SUDO"} {
@@ -75,7 +75,7 @@ func TestEveryVariableHostveilReadsIsInTheBuiltInHelp(t *testing.T) {
 // tried.
 //
 // Only HOSTVEIL_-prefixed names are checked in this direction: everything
-// else on the page is either read by a dependency or deliberately listed as
+// else on the page is either read by a dependency or listed as
 // *not* read (DOCKER_HOST, LANGUAGE), and this test cannot tell those apart.
 func TestNoHostveilVariableIsDocumentedButUnread(t *testing.T) {
 	page := readRepoFile(t, filepath.Join("cmd", "sitegen", "content", "en", "docs", "environment.html"))

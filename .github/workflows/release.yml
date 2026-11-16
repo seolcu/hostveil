@@ -78,7 +78,7 @@ jobs:
           # checkout gives us the triggering ref; main and the tag object are
           # fetched explicitly so this works for a tag push and for a manual
           # dispatch alike, and never silently compares against a ref that
-          # was not actually fetched.
+          # was not fetched.
           git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
           git fetch origin "refs/tags/${TAG}:refs/tags/${TAG}" || true
 

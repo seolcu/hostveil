@@ -23,7 +23,7 @@ import (
 // host that is written down instead of one somebody has to go and find.
 //
 // It replaces this repository's previous answer, which was to bring up the
-// Vagrant demo VM: twenty minutes, several gigabytes of deliberately
+// Vagrant demo VM: twenty minutes, several gigabytes of
 // outdated images, and a host whose findings drift with every image rebuild.
 // Nothing about the picture needed a real machine; it needed a real *page*.
 //
@@ -46,7 +46,7 @@ func TestScreenshotServe(t *testing.T) {
 	}
 
 	// Rebuilt on the defaults rather than reusing testServer's, which picks
-	// a non-default theme and arrangement precisely so the tests do not
+	// a non-default theme and arrangement so the tests do not
 	// silently pass on them. The published picture has to show what a person
 	// gets when they type `hostveil serve` and choose nothing.
 	//

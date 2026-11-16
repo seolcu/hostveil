@@ -83,7 +83,7 @@ func TestElevationIsUnchangedWhenNothingIsSet(t *testing.T) {
 // silent by construction: the variable simply stops working under sudo, on
 // the path most users take, with nothing to report.
 //
-// So this harvests what the binary actually reads and requires each name to
+// So this harvests what the binary reads and requires each name to
 // be either carried or excused with a reason. Excusing one is a sentence, not
 // a deletion.
 func TestEveryReadVariableIsCarriedOrExcusedOnPurpose(t *testing.T) {
@@ -104,7 +104,7 @@ func TestEveryReadVariableIsCarriedOrExcusedOnPurpose(t *testing.T) {
 	}
 }
 
-// notCarried are the variables read in cmd/hostveil that deliberately do not
+// notCarried are the variables read in cmd/hostveil that do not
 // cross the re-exec, each with the reason it must not.
 var notCarried = map[string]string{
 	"HOSTVEIL_NO_SUDO": "reaching the re-exec at all means this was unset",
@@ -196,7 +196,7 @@ func readEnvNames(t *testing.T) []string {
 				// read in this package is elevatedArgv's own loop over
 				// carriedThroughSudo, whose names are on the list by
 				// construction: erroring on it would make the list fail the
-				// test that exists to keep the list honest.
+				// test that exists to keep the list accurate.
 				if lit, ok := call.Args[0].(*ast.BasicLit); ok {
 					if str, ok := stringLit(lit); ok {
 						names = append(names, str)
@@ -240,7 +240,7 @@ func readEnvNames(t *testing.T) []string {
 
 	// Nothing-extracted guard. cmd/hostveil reads several; a harvest that
 	// stopped matching would pass this test vacuously while the list it
-	// checks quietly stopped being checked.
+	// checks silently stopped being checked.
 	if len(names) < 5 {
 		t.Fatalf("only %d environment reads harvested from cmd/hostveil (%v): the harvest is "+
 			"broken, not the list", len(names), names)

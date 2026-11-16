@@ -19,7 +19,7 @@ import "encoding/json"
 // through. That reason is gone: vulnerabilities are rolled up per image, so
 // what reaches a finding is one level for the whole image rather than a
 // rating per CVE, and outside the CVE domain four levels were asking a
-// question nobody can answer from a config file. "How bad is a container
+// question no config file can answer. "How bad is a container
 // running as root" has no number; it depends entirely on what the container
 // is. What a scanner *can* see is how much stands between an attacker and
 // this problem right now.
@@ -66,11 +66,11 @@ type severityDef struct {
 // tables in one package, one offset by a zero-value constant and one not,
 // is how an index-by-position habit turns into a silent off-by-one.
 //
-// The penalties are load-bearing: weight() divides them by topHalves, so
+// The penalties matter: weight() divides them by topHalves, so
 // 8/2/1 is what makes one High finding cost half of an axis's remaining
 // credit. cmd/sitegen pins the ratio against the prose on the website.
 //
-// The gap between 8 and 2 is the point of the taxonomy, and it is why this
+// The gap between 8 and 2 defines the taxonomy, and it is why this
 // is three levels wearing familiar names rather than the familiar four.
 // Under four levels the top two were 8 and 5, which said a thing you can
 // reach today and a thing you cannot are within a third of each other. They
@@ -112,7 +112,7 @@ func (s Severity) Abbr() string {
 // stay written out: a table lookup that fell back to the zero value would
 // return 0, and weight() would price an unrecognised severity at nothing.
 // A finding that costs a perfect score nothing is the same lie as scoring
-// a domain nobody could scan at 100.
+// a domain that could not be scanned at 100.
 func (s Severity) Penalty() int {
 	if d, ok := severityIndex[s]; ok {
 		return d.penalty

@@ -37,7 +37,7 @@ func TestScoreHistoryReturnsEveryScanOldestFirst(t *testing.T) {
 	store := history.NewStore(dir)
 	e := New(Config{Store: store})
 
-	// Deliberately saved out of order: the ids are timestamp-prefixed and
+	// Saved out of order: the ids are timestamp-prefixed and
 	// the listing sorts by them, so a store that returned directory order
 	// would produce a chart running backwards.
 	saveScan(t, store, "20260101-120000.000-c", 71, true)
@@ -64,7 +64,7 @@ func TestScoreHistoryReturnsEveryScanOldestFirst(t *testing.T) {
 // A scan where every domain was skipped or failed has no score at all:
 // ScoreBreakdown.Applicable is false and all three UIs render N/A. A trend
 // that flattened that to 0 would draw a cliff where the truth is that
-// nobody could look, which is the same lie the aggregate score already
+// the scan could not look, which is the same lie the aggregate score already
 // refuses to tell.
 func TestScoreHistoryCarriesTheNotApplicableFlag(t *testing.T) {
 	store := history.NewStore(t.TempDir())

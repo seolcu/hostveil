@@ -19,7 +19,7 @@
 //     Caddyfile is read through its bind mount. What is read from Caddy, and
 //     why, is in caddy.go.
 //
-// # What is deliberately not audited
+// # What is not audited
 //
 // **A proxy serving plain HTTP.** The obvious rule (listening on 80 with no
 // TLS anywhere) accuses two configurations that are completely correct: a
@@ -79,7 +79,7 @@ func (*Checker) Source() model.Source { return model.SourceProxy }
 // A host with no nginx or Caddy configuration and no reachable Docker daemon has
 // no proxy for this domain to have an opinion about, and the axis is
 // renormalized away rather than scored on an absence. That is the opposite of
-// the firewall domain, where absence *is* the finding: nobody is insecure for
+// the firewall domain, where absence *is* the finding: no host is insecure for
 // not running a reverse proxy.
 func (c *Checker) Available(ctx context.Context, env platform.Env) (bool, string) {
 	if ok, why := platform.AuditableOS(); !ok {
@@ -208,7 +208,7 @@ func auditCompose(projects []compose.Project) (out []model.Finding, listing, gap
 }
 
 // isTraefik decides from the image reference. The name is not enough (a
-// service may be called anything) and the image is what actually determines
+// service may be called anything) and the image is what determines
 // which program reads the flags below.
 func isTraefik(s compose.Service) bool {
 	return imageBase(s.Image) == "traefik"
@@ -229,7 +229,7 @@ func traefikInsecureAPI(s compose.Service) (string, bool) {
 		case a == "--api.insecure" || a == "--api.insecure=true":
 			return "command: " + strings.TrimSpace(arg), true
 		case strings.HasPrefix(a, "--api.insecure="):
-			// Anything but true is an explicit off, which is the point of
+			// Anything but true is an explicit off, which is the reason for
 			// writing it out.
 			if strings.TrimPrefix(a, "--api.insecure=") == "true" {
 				return "command: " + strings.TrimSpace(arg), true

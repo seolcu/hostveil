@@ -31,12 +31,12 @@
       //
       // GitHub Pages serves files, not content negotiation, so the only place
       // this decision can be made is here, and the risk of making it here is
-      // trapping someone: a reader who deliberately clicked "English" must not
+      // trapping someone: a reader who clicked "English" must not
       // be bounced back on the next click. So the switcher records that choice
       // and this defers to it forever after.
       //
       // Only from the English page, only when the browser's own preference
-      // list actually leads with Korean, and never when a crawler is reading
+      // list leads with Korean, and never when a crawler is reading
       // (they do not run this): the hreflang links above are what they read.
       (function () {
         try {
@@ -156,7 +156,7 @@
             <h2 id="vs-lynis">How is this different from Lynis or a CIS benchmark?</h2>
             <p>They audit. Hostveil audits and then offers to fix, with a preview, a backup, and one-command rollback. If you just want the server running well, that is the whole difference. A report that tells someone running Jellyfin, or a self-hosted AI agent like OpenClaw, that their SSH configuration is weak has only moved the problem.</p>
             <p>Lynis is broader and deeper than Hostveil and will stay that way: it runs hundreds of tests across territory Hostveil does not cover, and it is the better tool if what you want is a thorough audit you will read yourself. A CIS benchmark is a standard: a document to be complied with, usually in an organisation that has someone to do it.</p>
-            <p><strong>You can check the claim.</strong> Hostveil&rsquo;s own score going up after Hostveil&rsquo;s own fixes proves nothing, so the repository carries a harness that measures a host weakened on purpose with Lynis, Docker&rsquo;s CIS benchmark, a TCP scan from off the host, and the kernel&rsquo;s own socket table: before the fixes, after them, after the services restart, after the Review fixes are accepted, and after everything is rolled back. Every figure is committed as JSON and every number on the page is pinned to it. <a href="measurements">The results, including what did not improve</a>, are published in full.</p>
+            <p><strong>You can check the claim.</strong> Hostveil&rsquo;s own score going up after Hostveil&rsquo;s own fixes proves nothing, so the repository carries a harness that measures a host weakened intentionally with Lynis, Docker&rsquo;s CIS benchmark, a TCP scan from off the host, and the kernel&rsquo;s own socket table: before the fixes, after them, after the services restart, after the Review fixes are accepted, and after everything is rolled back. Every figure is committed as JSON and every number on the page is pinned to it. <a href="measurements">The results, including what did not improve</a>, are published in full.</p>
 
             <h2>Which platforms are supported?</h2>
             <p><strong>Hostveil audits Linux hosts.</strong> Prebuilt binaries target Linux and macOS on <code>amd64</code> and <code>arm64</code>, and the macOS build runs, but every detection rule in it is about Linux. On a Mac ten of the twelve domains report N/A, two run (SSH and file permissions), and the score is an average over a fifth of the weight. <a href="installation#macos">Running it on macOS</a> is the detail.</p>

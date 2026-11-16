@@ -30,7 +30,7 @@ import (
 // Every compose fix runs on it. The sentence was written before it existed.
 //
 // The other half of that reason still holds for all six registered here (a
-// service that deliberately escalates, or that needs one of these narrow
+// service that escalates, or that needs one of these narrow
 // capabilities, stops coming back) so every one is Review, declared by the
 // checker. The action in each case is one edit, which is Auto's shape;
 // resolvedKind takes the more cautious of the two.
@@ -69,7 +69,7 @@ var riskySystemdDirectives = []riskyDirective{
 		"A service that uses hardware (GPU transcoding, a USB or serial device, a TUN interface for a VPN) loses it after the restart."},
 	{"systemd.protect-kernel-tunables", "ProtectKernelTunables", "yes",
 		"Makes /proc/sys and /sys read-only for the service, so a compromise of it cannot change kernel networking or security settings.",
-		"A service that manages kernel settings on purpose (a VPN enabling IP forwarding, a network manager, a container runtime) cannot after the restart."},
+		"A service that manages kernel settings intentionally (a VPN enabling IP forwarding, a network manager, a container runtime) cannot after the restart."},
 	{"systemd.protect-control-groups", "ProtectControlGroups", "yes",
 		"Makes the cgroup tree read-only for the service, so a compromise of it cannot loosen the limits that isolate other workloads.",
 		"Container runtimes and anything that creates or manages cgroups itself (Docker, containerd, Kubernetes, LXC) stop working after the restart."},
@@ -112,14 +112,14 @@ func buildSystemdNoNewPrivileges(f model.Finding) (Fix, error) {
 		"Closes the setuid escalation path out of this unit: a compromised process cannot gain "+
 			"more privilege than the service already had, the same protection compose.ds006 gives a "+
 			"container.",
-		"Closes the setuid path out of this service. A service that deliberately "+
+		"Closes the setuid path out of this service. A service that "+
 			"escalates (anything calling a setuid helper) stops working, and it "+
 			"stops at the next restart rather than now.")
 }
 
 // Five of the remaining thirteen protections registered below, alongside
 // no-new-privileges: chosen because the failure mode is narrow enough for an
-// operator reading the finding to actually assess it, the way ssh.passwordauth
+// operator reading the finding to assess it, the way ssh.passwordauth
 // asks "do I have SSH keys set up" rather than "does something on this host
 // depend on an invisible property of the unit". The other eight collide with
 // workloads this project's own audience runs (container runtimes needing

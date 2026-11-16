@@ -28,7 +28,7 @@ type Client interface {
 // the same reason: a draft release is not "Latest", so a release whose
 // pipeline failed and was demoted to a draft never reaches anybody.
 //
-// It deliberately does not use the API. The redirect needs no token, is not
+// It does not use the API. The redirect needs no token, is not
 // rate-limited the way api.github.com is for unauthenticated callers, and
 // answers the only question being asked.
 func Latest(ctx context.Context, c Client) (Release, error) {

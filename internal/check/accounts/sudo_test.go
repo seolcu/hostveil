@@ -108,7 +108,7 @@ func TestStackedTagsStillReachTheCommand(t *testing.T) {
 // Defaults !authenticate turns the password off for every rule on the host,
 // and the privilege lines below it carry no tag saying so. A checker reading
 // only the tags calls this host clean while it is the most passwordless
-// arrangement sudoers can express: a false negative about something plainly
+// arrangement sudoers can express: a false negative about something
 // visible, which is the failure this domain exists to avoid.
 func TestGlobalNoAuthenticateIsFound(t *testing.T) {
 	c := sudoChecker(t)
@@ -148,7 +148,7 @@ func TestRootIsNotReportedAsItsOwnRisk(t *testing.T) {
 // `sudo -l -U alice` exits non-zero both for an account with no sudo rights
 // (the ordinary case) and for "a non-root user cannot use -U". Without the
 // control run the second reads as the first, and a non-root scan reports that
-// nobody on the host can become root without a password, having never been
+// no account on the host can become root without a password, having never been
 // allowed to ask. That is "I couldn't look" scoring as "nothing there", which
 // is the same lie that once produced a perfect CVE score on an unscanned host.
 func TestNonRootScanReportsAGapRatherThanAClean(t *testing.T) {

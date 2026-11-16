@@ -18,7 +18,7 @@ import (
 // findings: verifying an SSH fix would delete every container finding from
 // the report the operator is looking at.
 //
-// The runner is the uncached one, deliberately. e.runner is what fixes use,
+// The runner is the uncached one. e.runner is what fixes use,
 // because a cached answer would report the state of the host before the fix
 // rather than after it, which is the entire question being asked.
 func (e *Engine) verifyFix(ctx context.Context, f model.Finding) (model.FixVerification, string) {

@@ -3,7 +3,7 @@
 // Not a cluster manager. The homelab pattern this is for is one box running
 // one node, and the question is the one every other domain asks (what on
 // this host would let someone in, or let a foothold become more) scoped to
-// what a single-host audit can actually see: the credentials the
+// what a single-host audit can see: the credentials the
 // distribution writes to disk, and the flags it starts the API server and
 // kubelet with. What runs inside the cluster (RBAC, pod security, network
 // policy) is the cluster's own business and needs a different tool.
@@ -17,7 +17,7 @@
 // miss `curl -sfL https://get.k3s.io | K3S_KUBECONFIG_MODE=644 sh -`, the
 // line nearly every tutorial copies, so the command line is read the way the
 // dockerd domain reads its daemon's: through `systemctl show`, trusting it
-// only when LoadState says the unit was actually loaded.
+// only when LoadState says the unit was loaded.
 package kube
 
 import (
@@ -448,9 +448,9 @@ func (c *Checker) auditK0s(_ context.Context, _ platform.Env, cov *check.Coverag
 // readableCredential reports a credential file anyone on the host can read.
 //
 // World-readable only. A group bit is how k3s's write-kubeconfig-group and
-// k0s's own 0640 hand the file to an administrators' group on purpose, the
+// k0s's own 0640 hand the file to an administrators' group intentionally, the
 // same trade the docker group is; reading everyone else in is not a choice
-// anybody makes on purpose. Lstat, so a symlink is judged as the link it is
+// anybody makes. Lstat, so a symlink is judged as the link it is
 // rather than as whatever it points at.
 func (c *Checker) readableCredential(p string, build func(os.FileMode) model.Finding) (*model.Finding, string) {
 	fi, err := os.Lstat(c.path(p))
