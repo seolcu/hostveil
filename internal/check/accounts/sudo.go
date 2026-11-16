@@ -16,7 +16,7 @@ import (
 // this domain is exactly where that goes wrong. sudoers is a layered
 // configuration with an owner: it has User_Alias, Cmnd_Alias and Runas_Alias
 // indirection, group specs (%sudo, %wheel) that resolve through nsswitch and
-// can come from LDAP rather than /etc/group, netgroups, #includedir ordering,
+// can come from LDAP, netgroups, #includedir ordering,
 // and per-file skip rules for names containing a dot. Re-deriving the
 // effective answer through all of that is the mistake internal/compose.Discover
 // exists to demonstrate: ask the tool that owns the configuration, and take
@@ -38,7 +38,7 @@ func sudoListArgv(user string) []string {
 // password and must not be flagged.
 //
 // The list is sudoers' own vocabulary, and it is not translated, which is the
-// reason this reads tags rather than the sentence around them. sudo's prose is
+// reason this reads tags. sudo's prose is
 // gettext-translated in dozens of locales; platform.DefaultRunner pins LC_ALL=C
 // so the prose would hold, but a parser that does not depend on it cannot be
 // broken by a host that reaches this code another way.
@@ -115,7 +115,7 @@ func commandsAreUnrestricted(spec string, nopasswd bool) bool {
 func isSudoTag(s string) bool { return slices.Contains(sudoTags, s) }
 
 // errNoSudo and errNotRoot are the two ways this half of the domain goes
-// unexamined. They are values rather than strings because Check turns each
+// unexamined. They are values because Check turns each
 // into a different coverage reason, and a checker that could not tell them
 // apart would have to write one sentence covering both.
 var (
@@ -135,7 +135,7 @@ func askSudo(ctx context.Context, r platform.CommandRunner, user string) ([]byte
 // root is skipped: it is already root, so a rule letting it run anything
 // without a password grants nothing it did not have, and reporting it would put
 // a finding on every host that has sudo installed. An account that is root
-// under another name is accounts.uid0's finding, not this one.
+// under another name is accounts.uid0's finding.
 //
 // The control run is the whole design of this function. `sudo -l -U someone`
 // exits non-zero both for an account with no sudo rights (the ordinary case,
@@ -143,7 +143,7 @@ func askSudo(ctx context.Context, r platform.CommandRunner, user string) ([]byte
 // nothing in the status distinguishes them. Reading the message instead would
 // mean parsing translated prose. So root is asked first, where the answer is
 // known: on a host where Hostveil can use -U at all, root can run anything.
-// A failure there means the question was refused rather than answered, and
+// A failure there means the question was refused, and
 // every later failure would have been the same refusal, which is the
 // difference between "no account has passwordless sudo" and "I never got to
 // look", the two this domain exists to keep apart.

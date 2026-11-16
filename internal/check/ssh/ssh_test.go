@@ -14,7 +14,7 @@ import (
 )
 
 // parseConfig parses a config from bytes with no Include resolution. The
-// rule tests below care about which directives win, not about file layout;
+// rule tests below care about which directives win;
 // the Include tests use parseConfigFile against a real directory tree.
 func parseConfig(data []byte) sshdConfig {
 	p := &includeParser{
@@ -300,7 +300,7 @@ func TestIncludeHandlesCyclesAndMissingGlobs(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(gaps.unread) != 0 {
-		t.Errorf("a glob matching nothing is normal, not unread: %v", gaps.unread)
+		t.Errorf("a glob matching nothing is normal: %v", gaps.unread)
 	}
 	if effective(cfg, "PermitEmptyPasswords", "no") != "yes" {
 		t.Error("directives after a cyclic Include should still be parsed")
@@ -308,8 +308,7 @@ func TestIncludeHandlesCyclesAndMissingGlobs(t *testing.T) {
 }
 
 // TestUnreadableIncludeIsPartial: a file we cannot read may contain a
-// directive that overrides anything we did read, so the domain is Degraded
-// rather than reported as a complete audit.
+// directive that overrides anything we did read, so the domain is Degraded.
 func TestUnreadableIncludeIsPartial(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root can read mode-000 files")
@@ -333,7 +332,7 @@ func TestUnreadableIncludeIsPartial(t *testing.T) {
 	if partial.Covered >= partial.Total {
 		t.Errorf("coverage %d/%d does not report a gap", partial.Covered, partial.Total)
 	}
-	// Findings are kept: PartialError means incomplete, not failed.
+	// Findings are kept: PartialError means incomplete.
 	if _, ok := idsOf(fs)["ssh.rootlogin"]; !ok {
 		t.Error("a partial audit should still return the findings it did derive")
 	}
@@ -347,7 +346,7 @@ func TestUnreadableIncludeIsPartial(t *testing.T) {
 // describe the host the way a global one does. What was wrong is that it
 // stopped in silence. `Match Address 0.0.0.0/0` matches every connection there
 // is, so the config below permits password authentication for everybody, and
-// the domain reported clean, not degraded, with a finding set that says
+// the domain reported clean with a finding set that says
 // passwords are off.
 func TestAMatchBlockIsReportedAsAGapRatherThanScannedPast(t *testing.T) {
 	dir := t.TempDir()
@@ -368,7 +367,7 @@ func TestAMatchBlockIsReportedAsAGapRatherThanScannedPast(t *testing.T) {
 	// The findings derived before the Match are real and are kept, exactly as
 	// they are for an include that could not be read.
 	if _, ok := idsOf(fs)["ssh.passwordauth"]; ok {
-		t.Error("the global section disables password auth; the finding should come from the audit, not the gap")
+		t.Error("the global section disables password auth; the finding should come from the audit")
 	}
 }
 
@@ -378,8 +377,7 @@ func TestAMatchBlockIsReportedAsAGapRatherThanScannedPast(t *testing.T) {
 // deciding at the point a gap is discovered is how one gets kept and the other
 // discarded, and both container checkers did exactly that before Coverage. A
 // host with an unreadable include AND a Match block must hear about both, and
-// the counters must describe what was covered rather than crediting a file
-// only half of which was read.
+// the counters must describe what was covered.
 func TestBothSSHGapsAreReportedTogether(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root can read mode-000 files")

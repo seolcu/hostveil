@@ -174,7 +174,7 @@ func TestNonRootScanReportsAGapRatherThanAClean(t *testing.T) {
 
 // An account with no sudo rights at all is the ordinary case and must not
 // degrade anything: the control run succeeded, so the failure below it is an
-// answer rather than a refusal.
+// answer.
 func TestAccountWithNoSudoRightsIsCleanNotDegraded(t *testing.T) {
 	c := sudoChecker(t)
 	env := checktest.New().
@@ -191,10 +191,10 @@ func TestAccountWithNoSudoRightsIsCleanNotDegraded(t *testing.T) {
 	}
 }
 
-// A host with no sudo binary has an answer, not a gap: no sudo rule can be
+// A host with no sudo binary has an answer: no sudo rule can be
 // granting anyone anything. Calling it a gap would mark every sudo-less host
 // Degraded: the direction dockerd's config merge got wrong, where an absent
-// file was treated as a blind spot rather than as a complete answer about
+// file was treated as a blind spot when it was a complete answer about
 // that file.
 func TestNoSudoInstalledIsAnAnswerNotAGap(t *testing.T) {
 	c := sudoChecker(t)
@@ -232,7 +232,7 @@ func TestBothGapsAreReportedTogether(t *testing.T) {
 	}
 	if partial.Covered != 1 || partial.Total != 3 {
 		t.Errorf("coverage = %d/%d, want 1/3; the counters have to say how much went "+
-			"unexamined, not just that something did", partial.Covered, partial.Total)
+			"unexamined", partial.Covered, partial.Total)
 	}
 }
 
@@ -244,7 +244,7 @@ func TestNonLoginAccountsAreNotAsked(t *testing.T) {
 	// daemon is in cleanPasswd with /usr/sbin/nologin. Only root and alice are
 	// scripted, so an ask about daemon would fall through to the fake's
 	// unscripted-command error and simply return no finding, which is why the
-	// assertion is on the finding for daemon, not on the error.
+	// assertion is on the finding for daemon.
 	fs, err := c.Check(context.Background(), withSudo(map[string]string{
 		"root":   rootMayRunAnything,
 		"alice":  "User alice may run the following commands on host:\n    (ALL) ALL\n",

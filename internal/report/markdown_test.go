@@ -48,9 +48,9 @@ func TestMarkdownFindingsCarryPlainLanguageContent(t *testing.T) {
 		t.Error("a fixed finding must be excluded from the export")
 	}
 
-	// The Manual finding with no fix explains why, not how.
+	// The Manual finding with no fix explains why.
 	if !strings.Contains(got, "Why Hostveil won't do this for you.") {
-		t.Error("Manual finding should render WhyNoFix, not a fix section")
+		t.Error("Manual finding should render WhyNoFix")
 	}
 	if !strings.Contains(got, "Removing the mount would break the container's intended function") {
 		t.Error("WhyNoFix text missing verbatim")
@@ -79,7 +79,7 @@ func TestMarkdownFindingsCarryTheFixTradeOff(t *testing.T) {
 func TestMarkdownCallsOutASkippedDomain(t *testing.T) {
 	got := markdownOf(t)
 	if !strings.Contains(got, "trivy is not installed") {
-		t.Error("a skipped domain's reason must be visible, not silently dropped")
+		t.Error("a skipped domain's reason must be visible")
 	}
 	if !strings.Contains(got, "Domains scanned") {
 		t.Error("missing the domains-scanned section")

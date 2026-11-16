@@ -122,7 +122,7 @@ func severityLegendSection() Section {
 
 // findingsSections groups active findings by severity, matching the order
 // model.SortFindings already uses everywhere else in Hostveil (severity,
-// then source, then ID) rather than inventing a second order for the report.
+// then source, then ID).
 func findingsSections(findings []model.Finding) []Section {
 	var active []model.Finding
 	for _, f := range findings {

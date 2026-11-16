@@ -95,8 +95,7 @@ type hunkRange struct{ start, end int }
 
 // hunks groups changed ops into hunks, each padded by contextLines of
 // surrounding equal lines. Ranges that would touch or overlap are merged,
-// so two edits three lines apart render as one hunk rather than two that
-// repeat the same context.
+// so two edits three lines apart render as one hunk.
 func hunks(ops []op) []hunkRange {
 	var out []hunkRange
 	for i := 0; i < len(ops); {
@@ -241,7 +240,7 @@ func lcsDiff(a, b []string) []op {
 // roughly 80 MiB: well past any real diff, and well short of the 784 MiB
 // that OOMs the 1 GB VPS this tool is aimed at.
 //
-// Past the cap the diff degrades to whole-file replace rather than failing:
+// Past the cap the diff degrades to whole-file replace:
 // a fix must not be blocked because its preview is expensive to render, and
 // "every line changed" is an accurate description of a reflowed file.
 const maxCoreCells = 10_000_000
