@@ -11,7 +11,7 @@ name: Release
 # release-please was cutting the tag, and why its release pull request could
 # never satisfy the branch ruleset's required checks, so every release had to
 # go through an admin bypass. Removing release-please removes that whole
-# problem rather than working around it.
+# problem.
 #
 # workflow_dispatch is the manual re-run: if the tag push does not start a run
 # for any reason, or goreleaser fails on something transient, this rebuilds
@@ -60,7 +60,7 @@ jobs:
   # failure that produced v3.0.0: a release published from a commit that was
   # never on main, pointing every install.sh user at abandoned code. The tag
   # ruleset does not prevent this: it only forbids updating and deleting a v*
-  # tag, not creating one on the wrong commit.
+  # tag. Creating one on the wrong commit is allowed.
   verify-on-main:
     needs: resolve
     runs-on: ubuntu-latest
@@ -100,7 +100,7 @@ jobs:
       attestations: write
     runs-on: ubuntu-latest
     steps:
-      # Check out the tag by name rather than whatever main points at now, so
+      # Check out the tag by name, so
       # the artifacts match the tag even if main has since moved.
       - uses: actions/checkout@v7
         with:

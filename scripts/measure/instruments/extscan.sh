@@ -8,12 +8,12 @@
 # nothing bound to loopback, which is the distinction the whole exercise is
 # about.
 #
-# A container rather than a second machine because it needs no fixture and
+# A container because it needs no fixture and
 # no credentials, and because the bridge address is off-host by every
 # definition that matters here: a different network namespace, arriving on an
 # interface, subject to the host firewall.
 #
-# Three outcomes, not two. A port that answers, a port that refuses, and a
+# Three outcomes. A port that answers, a port that refuses, and a
 # port whose packets vanish are three different states, and collapsing the
 # last two into "closed" would erase the difference between "the service
 # stopped listening" and "the firewall now drops it", which is the

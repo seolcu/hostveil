@@ -10,7 +10,7 @@
 #
 # Every change below is traceable to the CIS Benchmarks or to Lynis's own
 # suggestions, and none of them was read off Hostveil's fix registry. The
-# overlap that results is part of the finding, not a flaw in the method: two
+# overlap that results is part of the finding: two
 # independent standards agreeing about PermitRootLogin is what agreement
 # between standards looks like.
 #
@@ -24,8 +24,7 @@ set -euo pipefail
 
 say() { printf '==> %s\n' "$*" >&2; }
 
-# CIS Debian 5.2 (SSH server configuration). A drop-in rather than an edit to
-# sshd_config, which is how Debian's own package expects operators to layer
+# CIS Debian 5.2 (SSH server configuration). A drop-in, which is how Debian's own package expects operators to layer
 # their settings.
 say "sshd: CIS 5.2 baseline"
 mkdir -p /etc/ssh/sshd_config.d
@@ -41,7 +40,7 @@ LoginGraceTime 60
 EOF
 
 # The seeded host carries a weak drop-in. Leaving it in place
-# would mean testing precedence rather than hardening: a later file wins, and
+# would mean testing precedence: a later file wins, and
 # 00- sorts before 99-, so this one already loses to nothing. Remove it so the
 # control host is hardened.
 rm -f /etc/ssh/sshd_config.d/00-hostveil-demo.conf

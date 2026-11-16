@@ -1,6 +1,6 @@
 version: 2
 
-# Grouped, so a week's updates arrive as one pull request rather than six.
+# Grouped, so a week's updates arrive as one pull request.
 # Hostveil has few direct dependencies and a hand-cut release process, so a
 # stream of individual pull requests would be most of the repository's
 # traffic while telling a maintainer nothing they could not read in one

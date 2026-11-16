@@ -15,7 +15,7 @@ REPO="seolcu/hostveil"
 # Colors mean one thing across all of hostveil: risk and success/failure,
 # never structure. This matches internal/clirender/text.go, the only other
 # place in the codebase that colors raw sequential terminal output: plain
-# 16-color ANSI rather than truecolor, since a shell script can't assume
+# 16-color ANSI, since a shell script can't assume
 # 24-bit support, and gated the same way `colorEnabled()` gates the CLI.
 if [[ -t 1 && -z "${NO_COLOR+x}" ]]; then
   BOLD=$'\033[1m'; DIM=$'\033[2m'; RESET=$'\033[0m'
@@ -148,7 +148,7 @@ fi
 # is root-only administration with no sudo, and every `docker run … | bash` is
 # the same shape.
 #
-# An array rather than a string so that the empty case expands to nothing at
+# An array so that the empty case expands to nothing at
 # all, instead of to an empty argument that `install` would read as a filename.
 SUDO=()
 if [[ ${EUID} -ne 0 ]]; then
@@ -424,7 +424,7 @@ echo "  ${GREEN}✓${RESET} checksum verified"
 
 # The checksums file comes from the same GitHub release as the tarball, so
 # matching it proves the download was not corrupted or partially swapped in
-# transit, not that the release itself is genuine. The release workflow
+# transit. It does not prove the release itself is genuine. The release workflow
 # mints a signed build provenance attestation tying the archive to the
 # workflow run and commit that produced it, and that is the claim worth
 # checking. Verified when the tooling is present; silently skipped when it

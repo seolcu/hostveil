@@ -5,7 +5,7 @@
 #   scripts/gate.sh            # every step
 #   scripts/gate.sh -fast      # skip the race detector and cross-compile
 #
-# Why this exists rather than the `a && b && c` line AGENTS.md used to give:
+# Why this exists in place of the `a && b && c` line AGENTS.md used to give:
 # a chain stops at the first failure and prints nothing about it. `gofmt -l .`
 # exits 0 whether or not it lists files, so the chain needed `test -z
 # "$(gofmt -l .)"`, and when that test failed every later step (including

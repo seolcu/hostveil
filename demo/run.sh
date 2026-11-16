@@ -39,7 +39,7 @@ fi
 # nothing that led there and no way out. The forwarded port and the NAT the
 # Vagrantfile assumes are system-connection features besides.
 #
-# Set here rather than written down in the README, because neither message
+# Set here, because neither message
 # describes what went wrong and every command below shells out to vagrant. An
 # explicit LIBVIRT_DEFAULT_URI wins, so a session setup somebody has made to
 # work is left alone.
@@ -95,8 +95,7 @@ clear_stale_forward() {
   [ -n "$pids" ] || return 0
 
   echo "==> stopping stale demo port forward on localhost:8787…"
-  # Each PID came from an exact command-line match above, not from a port-wide
-  # kill. Split on newlines/spaces; kill accepts the resulting
+  # Each PID came from an exact command-line match above. Split on newlines/spaces; kill accepts the resulting
   # PID list as separate arguments.
   # shellcheck disable=SC2086
   kill $pids
@@ -132,7 +131,7 @@ EOF
 # creation that did not finish: a host suspend, a Ctrl-C, or the session-URI
 # trap above before it was closed. Vagrant's own words for it are "already
 # taken", which reads as a name collision and sends you looking for the wrong
-# thing. Reported rather than removed: it is a virtual machine, and deleting
+# thing. Reported only: it is a virtual machine, and deleting
 # one is not a thing to guess at on somebody's behalf.
 warn_orphan_domain() {
   [ -f .vagrant/machines/default/libvirt/id ] && return 0
@@ -194,7 +193,7 @@ rebuild() {
 
   # A build that cannot find its compiler usually means provision.sh never
   # reached the end: the first `up` timed out installing something, which on
-  # a host running Docker is the norm rather than the exception (see
+  # a host running Docker is the norm (see
   # Troubleshooting in README.md). Vagrant records the VM as provisioned
   # anyway, so the next `up` skips straight past it and this build is the
   # first thing to notice, in words about Go. Costs an extra round trip only
@@ -203,7 +202,7 @@ rebuild() {
   cat >&2 <<'EOF'
 
 There is no Go toolchain in the VM, so provisioning never finished: this is
-a half-built machine, not a build failure. Finish it:
+a half-built machine. Finish it:
 
   vagrant provision
 

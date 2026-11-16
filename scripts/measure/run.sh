@@ -32,7 +32,7 @@
 # "control".
 #
 # Requires root. Lynis and docker-bench-security are optional: a missing one
-# is recorded as absent rather than passed over silently.
+# is recorded as absent.
 #
 # -c exits non-zero when either of Hostveil's two promises breaks. Nothing
 # else here is asserted, because everything else is an observation: an
@@ -42,8 +42,7 @@
 #
 # The order below is the whole design. Rollback fidelity is judged against
 # hashes taken *before* the fixes ran, on paths Hostveil's own scan named, so
-# "restored" means the filesystem came back, not that Hostveil agrees with
-# its own checkpoints.
+# "restored" means the filesystem came back.
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -58,7 +57,7 @@ while getopts ":cCp:" opt; do
     *) echo "usage: $0 [-c] [-C] [-p profile] [output.json]" >&2; exit 2 ;;
   esac
 done
-# The default names the experiment rather than the host, because that is what
+# The default names the experiment, because that is what
 # distinguishes the two runs in docs/measurements/ and what the docs tests
 # select on: the published pages describe the seeded run, and a control run
 # that landed under the same profile would be read as the newest of them.
@@ -91,7 +90,7 @@ instrument() {
 }
 
 # Each phase runs every instrument and lands one file apiece. A failing
-# instrument records its failure in place rather than dropping the phase: a
+# instrument records its failure in place: a
 # missing number and a number that did not move are different results, and
 # the report must never let one read as the other.
 measure_all() {
@@ -207,18 +206,16 @@ measure_all restarted
 # lock the operator out, and Hostveil will not do that unattended.
 #
 # So there is a fifth phase for the reviewed path, and it runs the command a
-# user would run; `fix --all --review`, rather than a loop of its own. A
+# user would run: `fix --all --review`. A
 # harness that drives the tool differently from the way it ships measures
 # something no user will experience.
 #
 # It then counts how many of those fixes left a checkpoint, because that (not
 # a word in a preview) is what "reversible" means here: an exec fix writes
 # none, so the rollback phase below cannot put it back, and the report has to
-# say how many of those there were rather than let "restored" read as a full
-# undo.
+# say how many of those there were.
 #
-# Counted rather than avoided, and counted from the checkpoint log rather
-# than from the preview text. The first version of this read the preview and
+# Counted, and counted from the checkpoint log. The first version of this read the preview and
 # grepped it for "These commands will run:", which is the *TUI's* wording;
 # the CLI says "The following commands will run:", so it matched nothing and
 # skipped nothing while reporting that it had. A harness that tells you what

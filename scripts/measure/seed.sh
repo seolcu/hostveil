@@ -15,7 +15,7 @@
 # two. internal/docs/seed_test.go now holds every path here against the checker.
 #
 # The fixtures are demo/seed/ and demo/stacks/, shared with the Vagrant demo, so
-# there is one description of this host rather than two that disagree.
+# there is one description of this host.
 #
 # IT EDITS THE HOST IT RUNS ON, destructively and without a way back: it opens
 # an SSH drop-in, adds a second UID 0 account, world-reads /etc/shadow, and
@@ -54,8 +54,7 @@ say() { printf '\n==> %s\n' "$*"; }
 # comes back is then higher for a reason that has nothing to do with hostveil.
 #
 # That is the same failure this whole project is built against (an absence
-# read as an all-clear) so it is recorded rather than left to be inferred from
-# a score. Every weakness declares itself as it is seeded, the manifest goes
+# read as an all-clear) so it is recorded. Every weakness declares itself as it is seeded, the manifest goes
 # where run.sh can put it in the measurement JSON, and a `require` that does
 # not arrive stops the script instead of producing a host that cannot be interpreted.
 MANIFEST=${SEED_MANIFEST:-/var/lib/hostveil-measure/seeded.json}
@@ -75,8 +74,8 @@ unseedable() {
 }
 
 # require fails the run. Reserved for the weaknesses every supported
-# distribution can express: if one of those is missing, the host is broken
-# rather than different, and measuring it would report Hostveil finding
+# distribution can express: if one of those is missing, the host is broken,
+# and measuring it would report Hostveil finding
 # nothing on a host that was never made bad.
 require() {
   local what=$1 && shift
@@ -89,7 +88,7 @@ require() {
 }
 
 # The weaknesses, each named once and testable on its own. They are functions
-# rather than inline `sh -c` strings so that what is being asserted reads as a
+# so that what is being asserted reads as a
 # sentence and shellcheck can see it.
 have_docker()      { command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; }
 have_weak_ssh()    { grep -qiE '^[[:space:]]*PermitRootLogin[[:space:]]+yes' /etc/ssh/sshd_config.d/00-hostveil-demo.conf 2>/dev/null; }
@@ -154,7 +153,7 @@ esac
 
 # Alpine runs OpenRC, which is not a smaller systemd: it has no unit files, so
 # Hostveil's systemd domain skips there and the axis is renormalised away. That
-# is the behaviour worth measuring on it, not a gap in the fixture.
+# is the behaviour worth measuring on it.
 case "$PKG" in
   apt|dnf) INIT=systemd ;;
   apk) INIT=openrc ;;
@@ -233,8 +232,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 SEED_HOME=$(getent passwd "$SEED_USER" 2>/dev/null | cut -d: -f6)
 # busybox getent is absent on a minimal Alpine; the passwd file is the same
-# file Hostveil's own agent checker reads, so fall back to it rather than to a
-# guess at /root.
+# file Hostveil's own agent checker reads, so fall back to it.
 [ -n "$SEED_HOME" ] || SEED_HOME=$(awk -F: -v u="$SEED_USER" '$1 == u { print $6 }' /etc/passwd)
 [ -n "$SEED_HOME" ] || { echo "seed: no such user: $SEED_USER" >&2; exit 1; }
 
@@ -242,7 +240,7 @@ say "base packages ($DISTRO_ID, $PKG, $INIT)"
 pkg_refresh
 # ufw is Debian's; Fedora ships firewalld and Alpine neither. Hostveil probes
 # ufw, firewall-cmd, nft and iptables in that order, so what matters is that
-# *a* firewall exists to be found switched off, not which one.
+# *a* firewall exists to be found switched off.
 case "$PKG" in
   apt) pkg_install ca-certificates curl git ufw "$SSHD_PKG" sudo iproute2 systemd-sysv python3 jq || true ;;
   dnf) pkg_install ca-certificates curl git firewalld "$SSHD_PKG" sudo iproute python3 jq || true ;;
@@ -268,14 +266,13 @@ say "weak SSH: a drop-in that outranks the image's own"
 # Ubuntu's sshd_config includes sshd_config.d/*.conf at the top and sshd keeps
 # the FIRST value it obtains for each keyword, so the cloud image's own
 # drop-ins beat anything appended to the main file. The 00- prefix sorts ahead
-# of them. This also makes the fixture exercise the checker's Include handling
-# rather than only its main-file parsing.
+# of them. This also makes the fixture exercise the checker's Include handling.
 install -d -m 0755 /etc/ssh/sshd_config.d
 install -m 0644 "$DEMO/seed/sshd_hostveil.conf" /etc/ssh/sshd_config.d/00-hostveil-demo.conf
 # Not every sshd_config includes the drop-in directory. Ubuntu's does at the
 # top of the file, which is what makes the 00- prefix win; Alpine's and
 # Fedora's may not, and a drop-in nothing reads seeds nothing. Append the
-# Include when it is absent rather than assuming the distribution's default.
+# Include when it is absent.
 if ! grep -qE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/' /etc/ssh/sshd_config 2>/dev/null; then
   printf '\nInclude /etc/ssh/sshd_config.d/*.conf\n' >> /etc/ssh/sshd_config
 fi
@@ -332,7 +329,7 @@ EOF
     # Alpine ships no unattended-upgrade mechanism at all, so there is nothing
     # to install and switch off. The domain has no weakness to find here, and
     # that raises the score for a reason that is about Alpine and not about
-    # Hostveil, which is why it is recorded rather than inferred.
+    # Hostveil, which is why it is recorded.
     unseedable updates-off "Alpine ships no unattended-upgrade mechanism"
     ;;
 esac
@@ -352,7 +349,7 @@ if [ -f "$REDIS_CONF" ]; then
   svc_restart "$REDIS_SVC" \
     || redis-server "$REDIS_CONF" --daemonize yes >/dev/null 2>&1 || true
 fi
-# The listener is the weakness, not the package. This is the exposure a Compose
+# The listener is the weakness. This is the exposure a Compose
 # audit can never see, and it is the one Hostveil reports and declines to fix
 # because the config path differs per datastore, so a run without it is
 # missing the finding that argues for that decline.
@@ -379,7 +376,7 @@ say "sysctl overrides that fight the distribution's own defaults"
 # "gdb: Operation not permitted" and "perf: Permission denied" troubleshooting
 # guides; an operator running a game server or profiling a stuck daemon
 # applies both and drops them in sysctl.d to survive a reboot. This is an
-# operator undoing a hardened default, not merely leaving one alone; most of
+# operator undoing a hardened default; most of
 # the sysctl domain's other rules already match what these distributions ship
 # and would need a far less plausible edit to trip.
 cat > /etc/sysctl.d/98-local.conf <<'EOF'
@@ -429,8 +426,7 @@ say "AI agent runtime configs (OpenClaw + Hermes) under $SEED_HOME"
 # The paths matter and are pinned by internal/docs/seed_test.go
 # against internal/check/agent's own runtime table. A fixture that writes
 # somewhere the checker does not look produces "no agent runtime found" on a
-# host seeded to have two, and reads as a clean domain rather than a broken
-# fixture.
+# host seeded to have two, and reads as a clean domain.
 install -d -m 0700 -o "$SEED_USER" -g "$SEED_USER" "$SEED_HOME/.openclaw"
 install -d -m 0755 -o "$SEED_USER" -g "$SEED_USER" "$SEED_HOME/.openclaw/credentials"
 install -d -m 0700 -o "$SEED_USER" -g "$SEED_USER" "$SEED_HOME/.openclaw/state"
@@ -459,10 +455,10 @@ require compose-stacks have_stacks
 
 if [ "$INSTRUMENTS" = 1 ]; then
   say "the instruments the harness reports through"
-  # Absent ones are recorded as absent rather than passed over, so this is a
+  # Absent ones are recorded as absent, so this is a
   # convenience, but a run missing one is a run missing a whole column, and
   # the CVE domain being absent also *raises* the score, because an excluded
-  # axis leaves the denominator rather than scoring zero.
+  # axis leaves the denominator.
   pkg_install lynis || echo "  lynis: install failed (no packaged lynis on $DISTRO_ID)"
   if [ ! -x /opt/docker-bench-security/docker-bench-security.sh ]; then
     if git init -q /opt/docker-bench-security &&
@@ -501,5 +497,5 @@ Next:
 run.sh applies every fix and then rolls them all back, so it leaves this host
 roughly as this script left it: roughly, because enabling a firewall and
 installing unattended-upgrades are not file edits and have no checkpoint. Seed
-again rather than measuring twice on one host.
+again before measuring a second time.
 NEXT
