@@ -2,6 +2,16 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.37.1](https://github.com/seolcu/hostveil/compare/v3.37.0...v3.37.1) (2026-11-17)
+
+### Bug Fixes
+
+* **site:** the website header, the README banners and the social card
+  spell the name "Hostveil", as prose does. The issue templates, the
+  package description, the installer's messages and the demo scripts do
+  too. Commands, file names and the `hostveil` theme stay lowercase
+  ([#893](https://github.com/seolcu/hostveil/pull/893)).
+
 ## [3.37.0](https://github.com/seolcu/hostveil/compare/v3.36.0...v3.37.0) (2026-11-17)
 
 ### Features
