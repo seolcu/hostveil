@@ -51,6 +51,13 @@ That's it — the same `Vagrantfile` picks libvirt or VirtualBox automatically.
 >
 > An existing VM keeps the disk it was built with. `./run.sh destroy` then
 > `./run.sh up` to pick up the new size.
+>
+> **On memory.** The VM gets 2GB. If a scan reports `CVEs partial: ... signal:
+> killed`, Trivy ran out of memory next to the stacks. Put
+> `HOSTVEIL_DEMO_MEMORY=4096` in `demo/.env` before the VM is first created. On a
+> libvirt VM that already exists, set it with `virsh setmaxmem demo_default 4G
+> --config` and `virsh setmem demo_default 4G --config` while the VM is off, then
+> `./run.sh up`.
 
 > **Apple Silicon (M1–M4) Macs**: VirtualBox/amd64 boxes don't run there.
 > Use a VM tool with an arm64 Ubuntu box (e.g. UTM/qemu or `vagrant` with the
