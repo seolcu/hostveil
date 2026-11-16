@@ -514,7 +514,7 @@ func TestRollbackFlowThroughEngine(t *testing.T) {
 	if data, _ := os.ReadFile(path); string(data) != orig {
 		t.Errorf("rollback did not restore the original bytes:\nwant:\n%s\ngot:\n%s", orig, data)
 	}
-	// The whole point: the finding is back, so the TUI stops claiming a fix
+	// The finding is back, so the TUI stops claiming a fix
 	// that has been undone.
 	var back bool
 	for _, f := range am.active {

@@ -51,7 +51,7 @@ func createEngine(t *testing.T, path string) *Engine {
 	return New(Config{Fixes: r, Store: history.NewStore(t.TempDir())})
 }
 
-// The whole point: a fix creates a file that was not there, and rolling it
+// A fix creates a file that was not there, and rolling it
 // back leaves the host as it found it, with no file at all. An empty
 // drop-in would look configured while configuring nothing.
 func TestCreateThenRollbackRemovesTheFile(t *testing.T) {

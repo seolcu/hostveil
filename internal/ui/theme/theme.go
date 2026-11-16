@@ -60,7 +60,7 @@ import (
 // Unavail is a muted cool (dusty violet) tone so it never gets mistaken for
 // Accent's blue or for the neutral greys (Slate, Low). Before this pair
 // existed, Manual and Unavailable were drawn identically: the two kinds a
-// finding can be that Hostveil will never offer a button for, on purpose,
+// finding can be that Hostveil will never offer a button for,
 // looked like one undifferentiated "nothing to do here" in every UI.
 type Palette struct {
 	Ink     string

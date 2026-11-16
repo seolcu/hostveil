@@ -34,7 +34,7 @@ var countedCell = regexp.MustCompile(`<[^<>]*data-counted="([^"]+)"[^<>]*>([^<]*
 
 // counts derives every publishable quantity from the code that owns it.
 //
-// Nothing here is a literal. The whole point is that adding a checker, or
+// Nothing here is a literal, so that adding a checker, or
 // registering a fix for a finding that did not have one, moves these numbers
 // and fails the build until the pages move with them, which is the mechanism
 // that has caught the domain table, the axis labels and the fuzz matrix

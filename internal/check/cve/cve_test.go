@@ -473,7 +473,7 @@ func TestParseTrivyFixedAndUnfixed(t *testing.T) {
 	}
 }
 
-// The whole point of aggregating: no finding may be named after a single
+// Aggregating means no finding may be named after a single
 // vulnerability, because there is no remediation at that granularity.
 func TestNoPerCVEFindings(t *testing.T) {
 	out := `{"Results":[{"Vulnerabilities":[

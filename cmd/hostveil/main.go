@@ -70,7 +70,7 @@ func notifyContext(parent context.Context) (context.Context, func()) {
 func run(ctx context.Context, args []string) (code int) {
 	// The recover of last resort. check.runOne catches a panic in one
 	// checker, internal/core/contain.go catches one in a fix: both scoped
-	// on purpose, so the rest of a scan or a batch keeps going. This is
+	// so the rest of a scan or a batch keeps going. This is
 	// everything else: a bug in flag parsing, in the TUI's rendering, in
 	// dispatch itself. Without it, that bug printed a raw Go stack straight
 	// to a terminal that then scrolled it away, which is exactly the "bug
