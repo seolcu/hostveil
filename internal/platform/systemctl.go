@@ -4,7 +4,7 @@ import "strings"
 
 // ShowProperty reads one Key=Value line out of `systemctl show` output.
 // Records are keyed by name because systemd prints the properties in an order
-// of its own, not the order they were asked for.
+// of its own.
 func ShowProperty(out, key string) string {
 	for _, line := range strings.Split(out, "\n") {
 		if k, v, ok := strings.Cut(line, "="); ok && k == key {

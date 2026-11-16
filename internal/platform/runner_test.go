@@ -149,7 +149,7 @@ func TestCancelledCommandSaysSo(t *testing.T) {
 	}
 }
 
-// Every parser in internal/check that matches a word rather than a number is
+// Every parser in internal/check that matches a word is
 // reading translated text unless the command is told not to translate. The
 // runner inherited the operator's environment, and `sudo` keeps LANG and LC_*
 // by default, so `hostveil scan` on a German or Japanese host asked apt in
@@ -160,7 +160,7 @@ func TestCancelledCommandSaysSo(t *testing.T) {
 // exact English text. On such a host the pending-security-updates count came
 // out zero however many were waiting: a clean report on an unpatched machine.
 //
-// LC_ALL rather than LANG, and this is the part worth remembering: gettext
+// LC_ALL, and this is the part to remember: gettext
 // honours LANGUAGE over LANG, so setting LANG alone leaves a GNOME desktop's
 // `LANGUAGE=de:en` in charge. LANGUAGE is ignored when the locale is C, which
 // is why this one variable is enough: verified against real apt, where

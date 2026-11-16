@@ -17,7 +17,7 @@ import (
 // inspect output alone reaching megabytes on a busy host. The ports checker
 // separately re-probed the firewall the firewall checker had just probed.
 //
-// Deduplicating at the runner rather than in the checkers is what keeps that
+// Deduplicating at the runner is what keeps that
 // from becoming an inventory object every checker has to be taught about:
 // nothing in check/ changes, and a future checker gets the sharing for free.
 //
@@ -41,7 +41,7 @@ type ScanCache struct {
 }
 
 // cachedCall is one command's result, or its in-flight execution. done is
-// closed when out/err are final; readers wait on it rather than re-running.
+// closed when out/err are final; readers wait on it.
 type cachedCall struct {
 	done chan struct{}
 	out  []byte

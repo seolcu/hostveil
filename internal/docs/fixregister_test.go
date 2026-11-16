@@ -54,7 +54,7 @@ func TestEveryFindingIsEitherFixableOrDeclinedOnPurpose(t *testing.T) {
 // registerID matches an ID as the register writes it, including the
 // source-wide glob form.
 //
-// The domain alternation is built from model.AllSources rather than typed out.
+// The domain alternation is built from model.AllSources.
 // It was a literal list, and a literal list of the twelve domains is exactly
 // the thing this repository keeps having to fix: a thirteenth domain's entries
 // in the register were invisible to this pattern, so every one of its findings
@@ -74,7 +74,7 @@ func sourceNames() []string {
 // declinedInRegister reads the doc comment on fix.Default and returns every
 // finding ID it names.
 //
-// It reads the comment rather than a list kept here intentionally: the comment
+// It reads the comment: the comment
 // is the normative statement; it carries the reasons, and it is what a
 // maintainer edits when they change their mind. A copy in a test would be
 // one more thing to drift.
@@ -104,9 +104,9 @@ func declinedInRegister(t *testing.T) map[string]bool {
 	// Nothing-extracted guard. The register names well over a dozen
 	// findings; a regexp that stopped matching would otherwise make this
 	// test demand a fix for every Manual finding in the tree, which reads
-	// as a code failure rather than as the test failure it is.
+	// as a code failure when it is a test failure.
 	if len(out) < 10 {
-		t.Fatalf("only %d finding IDs extracted from the register (%v): extraction is broken, not the register",
+		t.Fatalf("only %d finding IDs extracted from the register (%v): extraction is broken",
 			len(out), out)
 	}
 	return out
@@ -139,7 +139,7 @@ func unfixableInDocs(t *testing.T) map[string]bool {
 			out[r[1]] = true
 		}
 	}
-	// The floor guards the extraction, not the product: it only has to sit
+	// The floor guards the extraction: it only has to sit
 	// well above zero. It was 20 until the risky fixes were offered rather
 	// than declined, which took the accurate count below it.
 	if len(out) < 8 {

@@ -27,8 +27,7 @@ import (
 func ReadFileNoFollow(path string, limit int64) ([]byte, error) {
 	// G304: the variable path is intended, and this function is the
 	// hardened way to open one; O_NOFOLLOW refuses a symlink, O_NONBLOCK
-	// refuses to hang on a FIFO, and the checks below run on the descriptor
-	// rather than on the name. Flagging the safe opener while the plain
+	// refuses to hang on a FIFO, and the checks below run on the descriptor. Flagging the safe opener while the plain
 	// os.ReadFile calls it replaces go unflagged is the finding backwards.
 	//nolint:gosec // G304: this is the guarded open the callers were given
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
@@ -93,13 +92,11 @@ func readLimited(r io.Reader, path string, limit int64) ([]byte, error) {
 // ChmodNoFollow changes a file's or directory's permission bits without ever
 // following a symlink: the path is opened with O_NOFOLLOW and the mode is
 // applied through the descriptor, so the bits land on the inode that was
-// opened and nothing else. A symlink at path fails with ELOOP rather than
-// chmod'ing its target.
+// opened and nothing else. A symlink at path fails with ELOOP.
 func ChmodNoFollow(path string, mode os.FileMode) error {
 	// G304: the variable path is intended, and this function is the
 	// hardened way to open one; O_NOFOLLOW refuses a symlink, O_NONBLOCK
-	// refuses to hang on a FIFO, and the checks below run on the descriptor
-	// rather than on the name. Flagging the safe opener while the plain
+	// refuses to hang on a FIFO, and the checks below run on the descriptor. Flagging the safe opener while the plain
 	// os.ReadFile calls it replaces go unflagged is the finding backwards.
 	//nolint:gosec // G304: this is the guarded open the callers were given
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)

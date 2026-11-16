@@ -40,10 +40,10 @@ func WriteFileAtomic(path string, data []byte, mode os.FileMode) error {
 		return err
 	}
 	// A rename replaces the inode, so the new file carries the temporary's
-	// ownership rather than the original's. Hostveil runs as root, so without
+	// ownership. Hostveil runs as root, so without
 	// this a fix to a compose file owned by the operator's own account would
 	// hand it to root and lock them out of editing their own file. Failing to
-	// preserve ownership is an error, not something to do silently.
+	// preserve ownership is an error.
 	if err := preserveOwner(tmp, path); err != nil {
 		_ = tmp.Close()
 		return err

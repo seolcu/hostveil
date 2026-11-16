@@ -18,7 +18,7 @@ import (
 //
 // So the sentence answers to the pipeline. If a page says SBOM, .goreleaser
 // must produce one; if it says provenance, release.yml must mint one; and the
-// verify command a page prints has to name this repository, not an example.
+// verify command a page prints has to name this repository.
 func TestEveryPublishedSupplyChainClaimMatchesTheReleasePipeline(t *testing.T) {
 	goreleaser := readRepoFile(t, ".goreleaser.yaml")
 	release := readRepoFile(t, filepath.Join(".github", "workflows", "release.yml"))

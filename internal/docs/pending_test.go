@@ -38,7 +38,7 @@ var fixedIsTheRightQuestion = map[string]string{
 }
 
 // TestNoRendererDecidesForItselfWhetherAPendingFindingCounts reads the source
-// rather than the behaviour, for the same reason TestTheOSGateIsWhereItHasTo
+// for the same reason TestTheOSGateIsWhereItHasTo
 // Be does: on a report where nothing has been applied the two predicates agree
 // exactly, so every test in this repo that builds its own findings passes
 // either way. The disagreement only appears after a real apply, which is the
@@ -91,8 +91,7 @@ func TestNoRendererDecidesForItselfWhetherAPendingFindingCounts(t *testing.T) {
 	}
 }
 
-// fixedInACondition returns the source lines where a .Fixed selector is read
-// rather than assigned to.
+// fixedInACondition returns the source lines where a .Fixed selector is read.
 //
 // Assignment targets are how the flag legitimately gets written (markFixed
 // sets it, unmarkFixed and the AfterFixes pass clear it) and a write decides

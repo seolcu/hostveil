@@ -163,7 +163,7 @@ func TestReadmeLocalReferencesExist(t *testing.T) {
 		// The same nothing-extracted guard as the AGENTS.md tests: each README
 		// links at least its license, module file, and two screenshots today.
 		if len(refs) < 3 {
-			t.Fatalf("only %d local references extracted from %s (%v); extraction is broken, not the doc", len(refs), path, refs)
+			t.Fatalf("only %d local references extracted from %s (%v); extraction is broken", len(refs), path, refs)
 		}
 		for _, ref := range refs {
 			if _, err := os.Stat(filepath.Join(root, ref)); err != nil {
@@ -190,7 +190,7 @@ func TestReadmeLocalReferencesExist(t *testing.T) {
 // What cannot be checked here is whether the topics on GitHub match.
 // Applying them needs a token with repo scope, and a workflow holding one
 // permanently to automate a change made about once a year is a worse trade
-// than doing it by hand. The gap is stated rather than papered over.
+// than doing it by hand. The gap is stated here.
 func TestCitationKeywordsAreTopicShaped(t *testing.T) {
 	var keywords []string
 	inList := false
@@ -205,7 +205,7 @@ func TestCitationKeywordsAreTopicShaped(t *testing.T) {
 		}
 	}
 	if len(keywords) < 5 {
-		t.Fatalf("parsed %d keywords out of CITATION.cff; the extraction is broken, not the file", len(keywords))
+		t.Fatalf("parsed %d keywords out of CITATION.cff; the extraction is broken", len(keywords))
 	}
 
 	ok := regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,48}[a-z0-9]$`)

@@ -12,7 +12,7 @@ import (
 )
 
 // CI compiles every release target on the pull request so that a break is
-// caught there rather than during a release, where it demotes the release to a
+// caught there. During a release it demotes the release to a
 // draft. The step's own comment says so. What it cannot say is which targets
 // those are: the list is written out in the workflow, and the set it is meant
 // to mirror lives in .goreleaser.yaml.
@@ -21,11 +21,10 @@ import (
 // compiling the three it has always compiled, goreleaser starts building four,
 // and the first compile of the new one happens during a release, which is the
 // exact failure this step was added to prevent, reintroduced by the step going
-// stale rather than by anyone removing it.
+// stale.
 //
 // linux/amd64 is absent from the workflow's loop: the ordinary
-// Build step is that target, so it is added back here rather than compiled
-// twice there.
+// Build step is that target, so it is added back here.
 const ciNativeTarget = "linux/amd64"
 
 var ciCrossCompileLoop = regexp.MustCompile(`for target in ([^;]+);`)
@@ -100,7 +99,7 @@ func TestCICompilesEveryTargetGoreleaserBuilds(t *testing.T) {
 }
 
 // The native target is the one claim above that the workflow does not spell
-// out, so it is checked rather than assumed: if the Build step stops being
+// out, so it is checked: if the Build step stops being
 // linux/amd64, adding it back to the compiled set silently hides a real gap.
 func TestTheGateBuildsOnTheTargetItAssumes(t *testing.T) {
 	ci := readRepoFile(t, filepath.Join(".github", "workflows", "ci.yml"))

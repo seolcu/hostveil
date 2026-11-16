@@ -31,9 +31,9 @@ func TestIsNonLoginShell(t *testing.T) {
 		{"/usr/bin/zsh", false, ""},
 		{"/usr/bin/fish", false, ""},
 		// Names that merely contain a keyword are not it.
-		{"/bin/falsehood", false, "substring, not the program"},
-		{"/usr/bin/nologind", false, "substring, not the program"},
-		{"/opt/truecrypt/bin/truecrypt", false, "substring, not the program"},
+		{"/bin/falsehood", false, "substring only"},
+		{"/usr/bin/nologind", false, "substring only"},
+		{"/opt/truecrypt/bin/truecrypt", false, "substring only"},
 	} {
 		if got := IsNonLoginShell(tc.shell); got != tc.want {
 			t.Errorf("IsNonLoginShell(%q) = %v, want %v (%s)", tc.shell, got, tc.want, tc.why)

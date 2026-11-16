@@ -15,8 +15,7 @@ import (
 // read as the absence of a firewall. Every Mac got a top-severity
 // `firewall.inactive` for a host whose packet filter is pf.
 //
-// This is the rule that stops it. It is tested by argument rather than by
-// runtime.GOOS because the case that matters is the platform CI never runs.
+// This is the rule that stops it. It is tested by argument because the case that matters is the platform CI never runs.
 func TestAuditableOS(t *testing.T) {
 	for _, tc := range []struct {
 		goos string

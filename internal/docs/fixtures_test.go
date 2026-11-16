@@ -27,8 +27,8 @@ import (
 // more were in the every-mode fixture. They had been there since the fixture
 // was written, through every release, and nothing could see them:
 // TestSiteFrameIsCurrent re-renders the frame and compares it byte for byte,
-// so it pins that the picture matches the code that drew it, not that what
-// the picture says is true. TestSiteFrameShowsWhatTheCaptionPromises reads the
+// so it pins that the picture matches the code that drew it. It does not
+// check that what the picture says is true. TestSiteFrameShowsWhatTheCaptionPromises reads the
 // caption. No test read an ID.
 //
 // That is the same defect as a stale figure on the measurements page, in the
@@ -80,7 +80,7 @@ var fixtureIDPattern = func() *regexp.Regexp {
 //
 // `docker-compose.yml` is all over the compose fixtures, and `compose` is a
 // Source, so the pattern above matches `compose.yml`. The list is extensions
-// rather than whole names because the collision is structural (any file the
+// because the collision is structural (any file the
 // fixtures name could have a domain's word in front of the dot) and it is
 // short because a finding ID never ends in one of these.
 func notAFindingID(id string) bool {
@@ -102,7 +102,7 @@ var fixtureRoots = []string{
 // fixtureFindingIDs collects every finding ID named anywhere under those
 // trees, including testdata.
 //
-// Whole directories, not a list of files. A list is a thing to forget to add
+// Whole directories. A list is a thing to forget to add
 // to, and the cost of over-collecting is only ever that a genuine ID has to be
 // a genuine ID, which is the rule anyway. Production UI code does not name
 // findings: it renders whatever the engine hands it.

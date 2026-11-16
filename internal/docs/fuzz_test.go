@@ -21,8 +21,8 @@ import (
 // scripts, and as the E2E selection that matched no domain: a claim living
 // outside Go, where the compiler cannot hold it to anything. So the set is
 // derived from the source and compared, in both directions: a target listed
-// but absent would fail the nightly run loudly, but it would fail it at 5 AM
-// rather than here.
+// but absent would fail the nightly run loudly, at 5 AM. This catches it
+// earlier.
 var (
 	fuzzMatrixTarget  = regexp.MustCompile(`(?m)^\s*-?\s*target:\s*(\w+)\s*$`)
 	fuzzMatrixPackage = regexp.MustCompile(`(?m)^\s*-?\s*package:\s*(\S+)\s*$`)
@@ -126,7 +126,7 @@ func TestEveryFuzzTargetIsFuzzedNightly(t *testing.T) {
 // isFuzzTarget reports whether fn has the one signature `go test -fuzz` will
 // accept: a single *testing.F parameter and no results. Without this a helper
 // named FuzzSomethingHelper would be demanded of the workflow, and the error
-// would be about a workflow rather than about the helper's name.
+// would be about a workflow and miss the helper's name.
 func isFuzzTarget(fn *ast.FuncDecl) bool {
 	if fn.Type.Results != nil || fn.Type.Params == nil || len(fn.Type.Params.List) != 1 {
 		return false

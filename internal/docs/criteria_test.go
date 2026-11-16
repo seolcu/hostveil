@@ -12,7 +12,7 @@ import (
 
 // The published criteria pages restate constants that live in code. A number
 // copied into prose is a number that drifts, and this repository's answer to
-// that is to pin the copy rather than to stop making it: a user who cannot
+// that is to pin the copy: a user who cannot
 // find the rule cannot check Hostveil's work, and "read the source" is not an
 // answer for a tool that asks to be trusted with root.
 //
@@ -33,8 +33,7 @@ func criteriaPages(t *testing.T, slug string) map[string]string {
 // Hostveil High lands in code scanning's *critical* band, which looks like a
 // bug until you read why.
 func TestTheCLIPagePublishesTheSARIFMapping(t *testing.T) {
-	// Read the mapping out of a real export rather than out of a list written
-	// here. A table that agrees with a second copy of the same numbers agrees
+	// Read the mapping out of a real export. A table that agrees with a second copy of the same numbers agrees
 	// with nothing.
 	// The security-severity rides on the *rule*, and rules are deduplicated by
 	// finding ID, so each severity needs an ID of its own.
@@ -83,7 +82,7 @@ func TestTheCLIPagePublishesTheSARIFMapping(t *testing.T) {
 	for _, res := range doc.Runs[0].Results {
 		want := []string{"<code>" + res.Level + "</code>"}
 		if sev := sevOf[res.RuleID]; sev != "" {
-			// In a cell, not anywhere on the page: the prose beside the table
+			// In a cell: the prose beside the table
 			// names GitHub's own bucket thresholds (9.0, 7.0, 4.0), so a bare
 			// substring cannot tell Hostveil's value from the one it is being
 			// compared against.
