@@ -39,6 +39,7 @@ func buildEngineWithAI(useAI bool) *core.Engine {
 		Fixes:    fix.Default(),
 		Runner:   debugRunner(),
 		Version:  version,
+		OptIn:    withDomains,
 	}
 	if useAI {
 		cfg.AI = ai.FromEnv()

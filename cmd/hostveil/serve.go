@@ -15,6 +15,7 @@ func cmdServe(ctx context.Context, args []string) int {
 	var addr string
 	fs.StringVar(&addr, "addr", "127.0.0.1:8787", "address to bind the dashboard to")
 	themeID := fs.String("theme", "", "color theme ("+themeList()+")")
+	addWithFlag(fs)
 	if code := parseAndElevate(fs, args); code >= 0 {
 		return code
 	}

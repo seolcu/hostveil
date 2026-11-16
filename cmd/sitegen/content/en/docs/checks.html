@@ -21,7 +21,7 @@
                   <tr><td>Reverse proxy</td><td><code>proxy.</code></td><td>nginx, Caddy or Docker</td></tr>
                   <tr><td>Proxmox VE host</td><td><code>proxmox.</code></td><td>a Proxmox VE host</td></tr>
                   <tr><td>Single-node Kubernetes</td><td><code>kube.</code></td><td>k3s or k0s</td></tr>
-                  <tr><td>Forensic readiness</td><td><code>forensic.</code></td><td>—</td></tr>
+                  <tr><td>Forensic readiness <em>(opt-in)</em></td><td><code>forensic.</code></td><td><code>--with forensic</code></td></tr>
                   <tr><td>Image CVEs <em>(optional)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
                 </tbody>
               </table>
@@ -300,6 +300,7 @@
 
             <h2 id="forensic">Forensic readiness <code>forensic.</code></h2>
             <p>Every other domain asks whether someone can get in. This one asks whether, if someone did, this host will be able to show it. A self-hosted server usually cannot, because the evidence was never written: the journal is lost at the reboot people reach for first, nothing records what the web server&rsquo;s account executed, and the access log keeps a week and does not say how big a request was. None of these is a way in, so every finding here is <span class="sev low">LOW</span>; the cost is the ability to tell an attempt from a compromise afterwards. Retention is measured against ninety days, the window in which most intrusions are noticed by someone other than the intruder.</p>
+            <p>This domain is off by default, because a home server owner has little reason to keep ninety days of evidence and its findings would lower their score. Add <code>--with forensic</code> to <code>scan</code>, <code>tui</code>, <code>serve</code>, <code>fix</code>, <code>explain</code> or <code>export</code> to include it, and its findings then count at the weight above. <code>hostveil triage</code> runs it either way.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>

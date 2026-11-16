@@ -117,10 +117,18 @@ func declaredFlags(t *testing.T) map[string][]string {
 
 // flagNameOf returns the flag registered by a `fs.Bool("name", …)` or
 // `fs.StringVar(&v, "name", …)` call, or "" for anything else.
+// sharedFlagHelpers maps each helper that registers a flag on the FlagSet it
+// is handed to the flag it registers.
+var sharedFlagHelpers = map[string]string{"addWithFlag": "with"}
+
 func flagNameOf(n ast.Node) string {
 	call, ok := n.(*ast.CallExpr)
 	if !ok {
 		return ""
+	}
+	// A flag shared by several commands is registered through a helper.
+	if id, ok := call.Fun.(*ast.Ident); ok {
+		return sharedFlagHelpers[id.Name]
 	}
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {

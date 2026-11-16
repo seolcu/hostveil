@@ -14,6 +14,7 @@ func cmdTUI(ctx context.Context, args []string) int {
 	fs := flag.NewFlagSet("tui", flag.ContinueOnError)
 	themeID := fs.String("theme", "", "color theme ("+themeList()+")")
 	glyphSet := fs.String("glyphs", "", "symbol set ("+glyphList()+")")
+	addWithFlag(fs)
 	if code := parseAndElevate(fs, args); code >= 0 {
 		return code
 	}
