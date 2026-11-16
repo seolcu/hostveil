@@ -52,10 +52,9 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 }
 
 // Check parses sshd_config and applies the hardening rules. Include files
-// that exist but cannot be read make the audit partial, not wrong: the
+// that exist but cannot be read make the audit partial: the
 // findings we did derive are real, but a directive in the unread file could
-// override any of them, so the domain is reported Degraded rather than
-// clean.
+// override any of them, so the domain is reported Degraded.
 func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, error) {
 	cfg, gaps, err := parseConfigFile(c.ConfigPath)
 	if err != nil {
@@ -63,7 +62,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 	}
 	findings := auditConfig(cfg, c.ConfigPath)
 
-	// A ledger rather than a return-on-first-gap, because this domain now has
+	// A ledger, because this domain now has
 	// two ways to fall short and a config can hit both at once: an include
 	// that could not be read, and a Match block the parse stopped at. Deciding
 	// at the point a gap is found is how a checker keeps one and discards the
@@ -94,8 +93,7 @@ type coverageGaps struct {
 
 // sshdConfig is the effective configuration: the first value seen for each
 // keyword, plus the file that value came from. The origin matters as much
-// as the value: a fix has to edit the file that wins, not the
-// top-level sshd_config, or it writes a directive that stays overridden.
+// as the value: a fix has to edit the file that wins, or it writes a directive that stays overridden.
 type sshdConfig struct {
 	values    map[string]string
 	origin    map[string]string
@@ -177,7 +175,7 @@ func (p *includeParser) parse(data []byte, path string, depth int) {
 		if sc.Err() != nil {
 			// The caller counted this file as read before handing it over;
 			// take that back, so Covered/Total describes what was
-			// covered rather than crediting a file we only half-parsed.
+			// covered and never credits a file we only half-parsed.
 			p.cfg.filesRead--
 			p.unread = append(p.unread, path)
 		}
@@ -378,8 +376,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 
 	// Keep these aligned with sshd's effective defaults and with the controls
 	// Lynis evaluates from `sshd -T`. Defaults are supplied explicitly here so
-	// the checker reports behavior, not whether somebody happened to spell the
-	// directive out in a file.
+	// the checker reports behavior even where nobody spelled the directive out.
 	type hardeningRule struct {
 		id, key, want, def, title, desc string
 		severity                        model.Severity
@@ -440,7 +437,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 // parseSSHDuration parses sshd's time format: a bare number is seconds, and
 // qualified values chain quantity[unit] pairs ("90", "2m", "1h30m"). It
 // returns false for anything else, and a false parse produces no finding:
-// sshd -t is the authority on validity, not this checker.
+// sshd -t is the authority on validity.
 func parseSSHDuration(s string) (seconds int, ok bool) {
 	s = strings.TrimSpace(strings.ToLower(s))
 	if s == "" {

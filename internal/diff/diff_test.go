@@ -11,16 +11,16 @@ import (
 
 // This diff is the last thing an operator reads before authorizing Hostveil to
 // write to files like /etc/ssh/sshd_config, so its output is a security
-// surface, not cosmetics: a preview that omits a line the apply would write, or
+// surface: a preview that omits a line the apply would write, or
 // shows one it would not, hands the operator a false basis for consent. These
-// tests pin the exact rendered bytes rather than substring-matching, because
+// tests pin the exact rendered bytes, because
 // "the diff mentions PermitRootLogin somewhere" is not the property that
 // matters: "the diff is the change" is.
 //
 // Note on the format: Unified emits ---/+++ file headers, then one @@ header
 // per hunk with three lines of surrounding context, eliding equal runs
 // between hunks. An unterminated final line is marked. Both were once
-// missing, and both were correctness problems rather than cosmetic ones: the
+// missing, and both were correctness problems: the
 // unmarked newline made a real change invisible to the operator approving
 // it, and echoing every line buried a one-line edit in the file it lived in.
 
@@ -61,7 +61,7 @@ func TestUnified(t *testing.T) {
 			// A replaced line is a delete followed by an add, in that order:
 			// lcsDiff breaks the LCS tie toward deletion (dp[i+1][j] >=
 			// dp[i][j+1]). Order matters for readability: the operator reads
-			// "was X, now Y", not the reverse, so it is pinned.
+			// "was X, now Y", so it is pinned.
 			name: "replacement renders as delete then add",
 			a:    "PermitRootLogin yes\n",
 			b:    "PermitRootLogin no\n",
@@ -123,7 +123,7 @@ func TestUnified(t *testing.T) {
 		},
 		{
 			// Repeated lines are where a naive diff drifts: the LCS must match
-			// through the common run rather than deleting and re-adding it.
+			// through the common run.
 			// Equality is tested before the LCS tie-break, so the walk consumes
 			// matches greedily and the deletion lands at the end of the run.
 			name: "repeated lines match through the common run",
@@ -194,7 +194,7 @@ func TestUnifiedNewlineOnlyChangeIsVisible(t *testing.T) {
 
 // TestUnifiedElidesDistantContext is the other half of the preview being
 // readable: a one-line edit to a long file must show the edit and its
-// neighbourhood, not the whole file. Before hunking, authorizing a single
+// neighbourhood. Before hunking, authorizing a single
 // change to a several-hundred-line compose file meant reading the entire
 // file back with one line marked.
 func TestUnifiedElidesDistantContext(t *testing.T) {
@@ -267,7 +267,7 @@ func TestUnifiedLargeInput(t *testing.T) {
 // The LCS table is O(len(a)·len(b)) in time and memory. Without the trim
 // this input would build a 4·10^10-cell table: hundreds of gigabytes, so
 // the test does not fail slowly, it dies. With it, the quadratic core sees
-// the one changed line and the cost tracks the edit rather than the file.
+// the one changed line and the cost tracks the edit.
 // A one-line change to a 10,000-line compose file allocated 784 MiB before
 // this and 0.7 MiB after.
 func TestUnifiedCostIsBoundedByTheChange(t *testing.T) {
@@ -301,8 +301,7 @@ func TestUnifiedCostIsBoundedByTheChange(t *testing.T) {
 // lines rebuild the modification.
 //
 // The one documented lossiness is the trailing newline: splitLines strips it,
-// so reconstruction is compared against splitLines' output rather than against
-// the raw strings. That weaker form is still the meaningful invariant: it
+// so reconstruction is compared against splitLines' output. That weaker form is still the meaningful invariant: it
 // catches any line that is dropped, duplicated, reordered, or attributed to the
 // wrong side, which is the whole class of "the preview lied" failures.
 func FuzzUnified(f *testing.F) {

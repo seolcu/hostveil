@@ -218,7 +218,7 @@ func TestAnUnreadableGlobDirectoryDegradesTheDomain(t *testing.T) {
 }
 
 // The same distinction one level down: a file that exists but cannot be
-// statted is a rule that did not run, not a rule that passed.
+// statted is a rule that did not run.
 func TestAnUnstattableFileDegradesTheDomain(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root stats every file, so the permission gap cannot be staged")
@@ -236,7 +236,7 @@ func TestAnUnstattableFileDegradesTheDomain(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 
-	// The premise: the error is a denial, not an absence.
+	// The premise: the error is a denial.
 	if _, err := os.Stat(path); err == nil || os.IsNotExist(err) {
 		t.Fatalf("premise broken; stat returned %v", err)
 	}
@@ -266,7 +266,7 @@ func TestAbsentFilesAreStillClean(t *testing.T) {
 			Sev: model.SeverityHigh, ID: "fileperms.hostkey", Title: "h", Desc: "d"},
 	}}).Check(context.Background(), platform.Env{})
 	if err != nil {
-		t.Errorf("a host missing these files is clean, not degraded: %v", err)
+		t.Errorf("a host missing these files is clean: %v", err)
 	}
 }
 

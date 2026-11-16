@@ -21,9 +21,8 @@ func TestEverySymbolIsOneColumn(t *testing.T) {
 	// Under RUNEWIDTH_EASTASIAN the operator has said their terminal draws the
 	// ambiguous class wide, and ▣, · and the whole Private Use Area block are
 	// in it. The property below is false there, and it is also not
-	// what keeps the layout right in that mode, because the renderers measure
-	// rather than assume: internal/ui/tui's markColumns is the marker column
-	// "measured rather than assumed to be two", and the alignment sweep and
+	// what keeps the layout right in that mode, because the renderers measure:
+	// internal/ui/tui's markColumns is the marker column that is measured, and the alignment sweep and
 	// TestNoRowOverrunsItsColumn both hold every row to its budget with
 	// lipgloss.Width. Those run in this mode; this assertion is about the
 	// condition Hostveil pins by default.
@@ -40,8 +39,8 @@ func TestEverySymbolIsOneColumn(t *testing.T) {
 }
 
 // A symbol declared without a row answers "?" from every renderer that asks
-// for it, which is a question mark in the middle of the header rather than
-// a compile error. Walking the const range is the only way to see that:
+// for it, which is a question mark in the middle of the header and no
+// compile error. Walking the const range is the only way to see that:
 // iterating the table itself passes vacuously for exactly the symbol that
 // is missing from it.
 func TestEverySymbolConstHasARow(t *testing.T) {
@@ -140,8 +139,8 @@ func TestLookupAndString(t *testing.T) {
 }
 
 // Precedence, and which layers are allowed to fail. Only the flag was typed
-// just now; a stale environment variable falls back rather than refusing to
-// start over a font.
+// just now; a stale environment variable falls back, so a font never stops
+// the start.
 func TestResolvePrecedence(t *testing.T) {
 	for _, tc := range []struct {
 		name, flag, env string

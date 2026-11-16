@@ -133,7 +133,7 @@ func TestOwnerFindingIsActionable(t *testing.T) {
 }
 
 // A missing file is not a finding, here as everywhere else in this checker:
-// no SSH server means no host keys, not a problem with the host keys.
+// no SSH server means no host keys.
 func TestAMissingFileHasNoOwner(t *testing.T) {
 	c := &Checker{OwnerUID: os.Geteuid() + 1, Rules: []Rule{{
 		Path: filepath.Join(t.TempDir(), "absent"), MaxMode: 0o600,

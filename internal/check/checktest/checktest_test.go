@@ -23,7 +23,7 @@ func TestOnlyAndWithoutAreOppositeDefaults(t *testing.T) {
 		t.Errorf("Only(ufw) must leave ufw: %v", err)
 	}
 	// A host with no tooling at all, which several checkers read as a
-	// confident "absent" rather than as "could not look".
+	// confident "absent".
 	if _, err := New().Only().LookPath("ufw"); err == nil {
 		t.Error("Only() with no names is a host with no binaries")
 	}
@@ -38,7 +38,7 @@ func TestOnlyAndWithoutAreOppositeDefaults(t *testing.T) {
 	}
 }
 
-// An unscripted command errors rather than returning empty output. The
+// An unscripted command errors. The
 // distinction is the whole reason the checkers have a Degraded state: empty
 // output is an answer, and a command that would not run is not.
 func TestUnscriptedCommandErrors(t *testing.T) {
@@ -48,7 +48,7 @@ func TestUnscriptedCommandErrors(t *testing.T) {
 		t.Fatalf("scripted command: %q, %v", out, err)
 	}
 	if _, err := r.Run(context.Background(), "echo", "goodbye"); err == nil {
-		t.Error("an unscripted command must error, not return nothing")
+		t.Error("an unscripted command must error")
 	}
 	if _, err := r.Unscript("echo", "hello").Run(context.Background(), "echo", "hello"); err == nil {
 		t.Error("Unscript must put the command back to erroring")
@@ -83,7 +83,7 @@ func TestScriptedProbesUsePlatformsArgv(t *testing.T) {
 		t.Errorf("parsed %d listeners, want 1", len(ls))
 	}
 	if _, err := platform.Listeners(context.Background(), New()); err == nil {
-		t.Error("an unscripted ss must surface as an error, not as no listeners")
+		t.Error("an unscripted ss must surface as an error")
 	}
 }
 

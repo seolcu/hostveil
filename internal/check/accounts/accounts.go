@@ -1,7 +1,7 @@
 // Package accounts implements a native host account-hygiene checker. Its
 // question is who can become root and what stands in their way, and it asks it
 // three times: a second account carrying root's UID, a login account with no
-// password at all, and (through sudo itself rather than by reading sudoers)
+// password at all, and (through sudo itself)
 // an account that can run anything as root without being asked for one.
 //
 // The first two come out of /etc/passwd and /etc/shadow. The third does not,
@@ -47,7 +47,7 @@ func (*Checker) Source() model.Source { return model.SourceAccounts }
 // Available requires a Linux host with a readable /etc/passwd. /etc/shadow
 // may still be unreadable without root; Check handles that by running the
 // passwd-only checks and reporting the domain Degraded, so the unchecked half
-// is visible rather than scored as clean.
+// is visible and never scored as clean.
 //
 // The OS gate is not belt-and-braces around the file check, because the file
 // is there on macOS. It is a stub (the account database is Open Directory)
@@ -77,7 +77,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	// Three questions, and each can go unanswered on its own: the UID-0 scan
 	// needs only /etc/passwd, the empty-password scan needs /etc/shadow, and
 	// the sudo scan needs sudo installed and Hostveil running as root. A
-	// ledger rather than an early return, because a non-root scan misses two
+	// ledger, because a non-root scan misses two
 	// of the three and reporting only the first would under-state what went
 	// unexamined: see check.Coverage.
 	var cov check.Coverage
@@ -113,9 +113,9 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		}
 	}
 
-	// Read here rather than where the empty-password scan reads it, because
+	// Read here, because
 	// the UID-0 question needs it too: an account locked and expired can no
-	// longer authenticate by any route (not a password, not a key, since
+	// longer authenticate by any route (password or key, since
 	// sshd and PAM both refuse an expired account) so it is a UID-0 entry,
 	// not a second root anyone can use. That is the state the uid0 fix leaves
 	// behind, and a finding that survived it would say the fix did nothing.
@@ -249,7 +249,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	// hit: a NOPASSWD rule turns "holds this account's SSH key" into "is root",
 	// with nothing in between.
 	//
-	// A host with no sudo at all is covered rather than missed. That is the
+	// A host with no sudo at all is covered. That is the
 	// direction dockerd's config merge got wrong: an absent file is a complete
 	// answer about that file, and no sudo binary means no sudo rule can be
 	// granting anyone anything. Calling it a gap would mark every sudo-less

@@ -86,15 +86,14 @@ func (r Rule) paths() ([]string, error) {
 // wants to see. Ownership is the other half, and every file in this table
 // belongs to root on every distribution.
 //
-// One finding for all of them rather than one per path: the remediation is
+// One finding for all of them: the remediation is
 // the same `chown root:root` in every case, and a host where this has gone
 // wrong has usually had it go wrong to several files at once (a restore from
 // a backup taken as the wrong user, an extracted archive).
 const ownerFindingID = "fileperms.owner"
 
 // rootUID is the owner every file in the rule table must have on a real
-// host. These are paths whose ownership is fixed by the system, not by
-// preference: Checker.OwnerUID exists only so a test can assert both
+// host. These are paths whose ownership is fixed by the system: Checker.OwnerUID exists only so a test can assert both
 // directions without caring which account runs the suite.
 const rootUID = 0
 
@@ -174,8 +173,7 @@ func (*Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 // Check stats each rule's file(s) and flags any over-permissive mode, and any
 // file not owned by root.
 //
-// A rule it could not evaluate is recorded as a coverage gap rather than
-// passed over. "This file is not here" and "I was not allowed to look at it"
+// A rule it could not evaluate is recorded as a coverage gap. "This file is not here" and "I was not allowed to look at it"
 // both used to arrive as a non-nil error from Stat and both were skipped, so
 // a rule that could not run reported exactly like a rule that passed, on a
 // domain whose whole job is noticing that a sensitive file is readable by the
@@ -252,7 +250,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 			// The machine-readable twin of "files": the fix needs the paths
 			// alone, and parsing them back out of "/etc/shadow (0644), …"
 			// breaks on any path containing ", " or " (". The separator is
-			// PathListSeparator rather than EvidenceSeparator for the second
+			// PathListSeparator for the second
 			// half of that reason: ", " is legal inside a path too.
 			model.WithEvidence("paths", strings.Join(badPaths, model.PathListSeparator)),
 			model.WithEvidence("expected", fmt.Sprintf("%#o", rule.MaxMode)),
@@ -278,7 +276,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 // ok is false where the stat result carries no Unix owner. That reads as
 // "could not tell", and the caller flags nothing: the same rule the rest of
 // this tool follows, because an unowned-looking file is a gap in what we can
-// see rather than evidence about the host.
+// see.
 func fileUID(fi os.FileInfo) (int, bool) {
 	st, ok := fi.Sys().(*syscall.Stat_t)
 	if !ok {

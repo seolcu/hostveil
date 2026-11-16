@@ -13,8 +13,7 @@
 // a tool that did not answer: the same value a broken host
 // produces. So a test written to cover the working case goes on passing while
 // silently covering the opposite one. Script through Docker or Listeners
-// below, or through platform's exported argv, rather than by writing the
-// command out again.
+// below, or through platform's exported argv.
 //
 // A Runner is safe to share between goroutines once built: the CVE checker
 // scans images in parallel and platform.ScanCache calls it concurrently, and
@@ -39,7 +38,7 @@ import (
 // the tool exists but the test has not said what it prints.
 type Runner struct {
 	// only, when non-nil, is the complete set of binaries that exist. It and
-	// absent are kept apart rather than folded into one map because the two
+	// absent are kept apart because the two
 	// defaults answer different questions: Only says "this host has just
 	// these", Without says "this host has everything but these", and a test
 	// that means one and gets the other still runs.
@@ -78,7 +77,7 @@ func (r *Runner) Without(names ...string) *Runner {
 
 // Script makes argv print out. The argv is the command as the caller runs it,
 // not a string to be split, so a scripted command that stops matching is a
-// compile-time or an obvious runtime mismatch rather than a silent one.
+// compile-time or an obvious runtime mismatch.
 func (r *Runner) Script(out string, argv ...string) *Runner {
 	r.outputs[key(argv[0], argv[1:])] = out
 	return r
@@ -146,8 +145,7 @@ func (r *Runner) LookPath(name string) (string, error) {
 
 // Run answers from the script. An unscripted command is an error naming
 // itself, so a test that mis-spells an argv reads the mismatch in the failure
-// rather than having to infer it from a checker reporting an unreachable
-// tool.
+// directly.
 func (r *Runner) Run(_ context.Context, name string, args ...string) ([]byte, error) {
 	k := key(name, args)
 	if err, ok := r.errs[k]; ok {
@@ -164,7 +162,7 @@ func key(name string, args []string) string {
 }
 
 // Also adds binaries to a host built with Only, for a test that layers one
-// more tool onto a shared fixture rather than restating the whole set.
+// more tool onto a shared fixture.
 func (r *Runner) Also(names ...string) *Runner {
 	if r.only == nil {
 		r.only = map[string]bool{}
