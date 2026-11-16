@@ -135,6 +135,19 @@
 
             <p>각 버전의 릴리스 아카이브, 체크섬, SBOM, 서명된 빌드 프로버넌스는 <a href="https://github.com/seolcu/hostveil/releases">릴리스 페이지</a>에 있습니다. 업그레이드는 <code>hostveil update</code>로 합니다.</p>
 
+          <h2 id="v3.37.0"><a href="https://github.com/seolcu/hostveil/compare/v3.36.0...v3.37.0">3.37.0</a> <span class="changelog-date">2026-11-17</span></h2>
+          <h3>새 기능</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>web:</strong> 대시보드를 한국어로 볼 수 있습니다. 브라우저의 언어로 열리고, 테마 선택기 옆의 선택기로 바꾸면 그 브라우저에서 기억합니다. 모든 발견 항목의 제목, 설명, 고치는 방법과 모든 수정 문구, 라벨을 번역했습니다. 번역한 항목은 "원문 (영어)" 아래에 영어 원문을 둡니다. 원문에는 호스트의 이름, 경로, 개수가 그대로 들어 있습니다. TUI와 CLI는 영어로만 나옵니다 (<a href="https://github.com/seolcu/hostveil/pull/891">#891</a>).</p>
+            </li>
+          </ul>
+          <h3>버그 수정</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>fix:</strong> Compose 수정마다 붙는 안내가 이제 "The running container changes only after <code>docker compose up -d &lt;service&gt;</code>."입니다. 이전 문구는 문장이 성립하지 않았습니다 (<a href="https://github.com/seolcu/hostveil/pull/891">#891</a>).</p>
+            </li>
+          </ul>
           <h2 id="v3.36.0"><a href="https://github.com/seolcu/hostveil/compare/v3.35.0...v3.36.0">3.36.0</a> <span class="changelog-date">2026-11-17</span></h2>
           <p>이번 릴리스는 보안이 본업이 아닌 홈서버 운영자를 위한 변경이 중심입니다. 대시보드는 수정마다 쉬운 문장으로 설명하고, 접속을 끊을 수 있는 수정 앞에서는 먼저 확인할 것을 묻습니다. 모든 수정을 적용한 뒤에도 남는 점수가 어디에 있는지도 보여 줍니다. 그 밖에 포렌식 준비도 영역과 <code>hostveil triage</code>가 생겼고, 호스트 패키지의 미패치 취약점을 스캔하며, 제품과 웹사이트와 저장소의 디자인을 하나로 맞췄습니다.</p>
           <p><strong>제거된 기능.</strong> 다음 네 가지가 없어졌습니다. 이를 쓰는 스크립트는 고쳐야 합니다.</p>
