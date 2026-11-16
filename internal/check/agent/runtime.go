@@ -23,7 +23,7 @@ const (
 // flagged when perm &^ Max != 0: the same test fileperms.Rule uses.
 //
 // Secret marks a path that holds raw credentials. It changes which finding is
-// emitted (agent.secret-exposed rather than agent.config-perms) and, for
+// emitted (agent.secret-exposed in place of agent.config-perms) and, for
 // files, requires that the contents look like credentials before the
 // finding fires.
 type ModeRule struct {
@@ -38,11 +38,11 @@ type ModeRule struct {
 // both string enums ("full") and booleans ("true").
 //
 // Several rules may share an ID: two different keys can describe the same
-// weakening, and the operator should see one finding, not two.
+// weakening, and the operator should see one finding.
 //
 // Good names the safe values this key may be set to, most-preferred first,
-// and it is what makes the finding fixable. An empty Good is a deliberate
-// statement rather than an omission: it means Hostveil knows the value is
+// and it is what makes the finding fixable. An empty Good is an intended
+// statement: it means Hostveil knows the value is
 // dangerous and does not know which value is right, so the finding stays
 // Manual. agents.defaults.sandbox.mode used to be the case, until OpenClaw's
 // sandbox reference documented the values: "non-main" sandboxes every session
@@ -83,7 +83,7 @@ type GatewayDesc struct {
 	// BindDefault is the documented bind when BindKey is absent. Leave it
 	// empty when the default is unknown: an empty resolved bind
 	// means "we cannot tell from config", and the checker falls back to the
-	// observed listener rather than guessing a finding into existence.
+	// observed listener.
 	BindDefault string
 
 	// LoopbackOnly are bind values that mean "not reachable from the network".
@@ -102,15 +102,15 @@ type GatewayDesc struct {
 	// ListenerOnly is for a gateway whose bind is not in any file Hostveil
 	// reads: Goose's web UI takes it from a command-line flag. With no
 	// config to judge, the observed listener is the whole answer, so it must
-	// be attributed by process name rather than by port: port 3000 is
+	// be attributed by process name: port 3000 is
 	// Grafana's as often as anybody's. That is only sound because every name
-	// in ProcNames is the runtime's own binary, not an interpreter; see
+	// in ProcNames is the runtime's own binary; see
 	// matchListener for why node and python3 could never be used this way.
 	ListenerOnly bool
 }
 
 // Runtime describes one self-hosted AI agent runtime entirely as data.
-// Adding a third runtime should be an entry in defaultRuntimes, not new code.
+// Adding a third runtime should be an entry in defaultRuntimes.
 type Runtime struct {
 	Name    string // short lowercase name, used in Service; never in a finding ID
 	Display string

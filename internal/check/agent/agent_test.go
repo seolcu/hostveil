@@ -18,7 +18,7 @@ import (
 )
 
 // A host with no firewall front-end at all, which Probe reads as a definite
-// StatusInactive rather than "could not look". The tool list comes from the
+// StatusInactive. The tool list comes from the
 // firewall package, so adding a probe there cannot silently turn these
 // fixtures into "unreadable" and change what the tests assert.
 func envNoFirewall(ss string) platform.Env {
@@ -198,7 +198,7 @@ func TestAvailableSaysSoWhenAHomeCannotBeRead(t *testing.T) {
 
 // The same blind spot on the other side of the fence: one runtime is visible,
 // so the domain runs, and the account it could not look at has to show up as
-// a coverage gap rather than as a clean result.
+// a coverage gap.
 func TestAnUnreadableHomeDegradesAScanThatOtherwiseRan(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root can read every home, so the permission gap cannot be staged")
@@ -258,7 +258,7 @@ func TestJSON5ConfigWithCommentsAndTrailingCommasParses(t *testing.T) {
 	}
 }
 
-// An unparseable config is our blind spot, not the operator's defect, so it
+// An unparseable config is our blind spot, so it
 // costs coverage without inventing a finding to explain itself.
 func TestUnparseableConfigDegradesWithoutInventingAFinding(t *testing.T) {
 	h := newHost(t, "alice")
@@ -279,8 +279,7 @@ func TestUnparseableConfigDegradesWithoutInventingAFinding(t *testing.T) {
 	}
 }
 
-// An install with no config file at all is a normal state, not partial
-// coverage: there is nothing we failed to read.
+// An install with no config file at all is a normal state: there is nothing we failed to read.
 func TestInstalledButUnconfiguredDoesNotDegrade(t *testing.T) {
 	h := newHost(t, "alice")
 	h.mkdir("alice", ".openclaw", 0o700)
@@ -408,8 +407,8 @@ func TestLoopbackListenerIsNotExposure(t *testing.T) {
 	}
 }
 
-// `ss` is a corroborator, not a source of coverage. Losing it costs sharper
-// severity, not ground, so it must not degrade the domain.
+// `ss` is a corroborator. Losing it costs sharper severity and no
+// ground, so it must not degrade the domain.
 func TestMissingSsDoesNotDegrade(t *testing.T) {
 	h := newHost(t, "alice")
 	h.write("alice", ".openclaw/openclaw.json", `{"gateway":{"bind":"lan","auth":{"mode":"token","token":"a-long-random-token"}}}`, 0o600)
@@ -678,7 +677,7 @@ func TestLooseCredentialsDirectoryIsReported(t *testing.T) {
 	}
 }
 
-// Hermes keeping API keys in ~/.hermes/.env is the design, not a defect. The
+// Hermes keeping API keys in ~/.hermes/.env is the design. The
 // actionable claim is that the file is readable by other accounts.
 func TestSecretEnvIsOnlyAFindingWhenReadable(t *testing.T) {
 	const env = "OPENAI_API_KEY=sk-notarealkeybutlongenough\nLOG_LEVEL=debug\n"
@@ -923,7 +922,7 @@ func TestTheAgentDomainDoesNotProbeTheFirewall(t *testing.T) {
 // The bind is rewritten only where the config says it. A config that sets
 // "lan" carries the loopback assignment for the fix; a gateway seen listening
 // while the config leaves the bind at its default has no line to change, and
-// says so rather than going without a reason.
+// says so.
 func TestTheGatewayIsFixableOnlyWhereTheConfigSetsTheBind(t *testing.T) {
 	h := newHost(t, "alice")
 	h.write("alice", ".openclaw/openclaw.json", `{"gateway":{"bind":"lan"}}`, 0o600)

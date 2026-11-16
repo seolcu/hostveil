@@ -69,11 +69,11 @@ func yamlSecretKeys(path string) []string {
 //     here knows what turns OpenClaw's sandbox on, and writing a guessed enum
 //     into somebody's config is worse than leaving the finding to them;
 //   - a key with two safe values makes it Review, because deny and ask are a
-//     choice about how the operator wants to work, not a sequence;
+//     choice about how the operator wants to work;
 //   - otherwise Auto: one mechanical value, in a file edit, that cannot cut
 //     anyone off from the host.
 //
-// The values travel as evidence rather than being re-derived by the fix,
+// The values travel as evidence,
 // because internal/fix cannot import this package and a second copy of this
 // table is a second answer to what "safe" means. Each is a JSON literal, so
 // `false` and `"deny"` stay distinguishable through the string.

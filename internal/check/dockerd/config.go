@@ -86,7 +86,7 @@ func (c config) exposedEndpoints() []string {
 
 // splitEndpoint parses a Docker host string such as "tcp://0.0.0.0:2375".
 // Anything that is not TCP is not an endpoint this domain judges, and is
-// rejected rather than guessed at.
+// rejected.
 func splitEndpoint(h string) (host string, port int, ok bool) {
 	rest, found := strings.CutPrefix(strings.TrimSpace(h), "tcp://")
 	if !found {
@@ -113,7 +113,7 @@ func splitEndpoint(h string) (host string, port int, ok bool) {
 // setting, and the checker cannot know in advance which.
 //
 // It reports not-known only when neither source could be consulted. An absent
-// daemon.json is a complete answer, not a failed read: it means no options
+// daemon.json is a complete answer: it means no options
 // are set there, which is the default state of most hosts.
 func (c *Checker) readConfig(ctx context.Context, env platform.Env) (config, bool, string) {
 	var cfg config
@@ -176,7 +176,7 @@ func (c *Checker) readConfig(ctx context.Context, env platform.Env) (config, boo
 }
 
 // daemonJSON is the narrow view of daemon.json this domain needs. Docker
-// accepts dozens of keys; decoding into a struct rather than a map means an
+// accepts dozens of keys; decoding into a struct means an
 // unrelated key added by a future Docker release cannot change what is read.
 type daemonJSON struct {
 	Hosts     []string `json:"hosts"`
@@ -228,7 +228,7 @@ func readDaemonJSON(path string) (config, error) {
 // of those, a TCP socket on the real unit was invisible while this domain
 // reported its API rules fully audited.
 //
-// The reason is returned rather than a bool so readConfig can say *which*
+// The reason is returned so readConfig can say *which*
 // source it lost; a host with no systemd at all and a host whose systemctl
 // refused are both gaps, but not the same one to an operator.
 func (c *Checker) readUnit(ctx context.Context, env platform.Env) (hosts []string, tls, verify bool, argvs []string, reason string) {

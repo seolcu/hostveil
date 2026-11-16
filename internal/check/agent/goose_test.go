@@ -61,7 +61,7 @@ func TestGooseModeUnsetIsTheDefaultAuto(t *testing.T) {
 				t.Fatal("an unset GOOSE_MODE is auto and must be reported")
 			}
 			if !strings.Contains(f.Evidence["unset"], "GOOSE_MODE") {
-				t.Errorf("the finding must say the value is a default, not a setting: %v", f.Evidence)
+				t.Errorf("the finding must say the value is a default: %v", f.Evidence)
 			}
 		})
 	}
@@ -97,7 +97,7 @@ func TestGooseUnreadableConfigDegradesWithoutAFinding(t *testing.T) {
 	}
 }
 
-// Goose writes its keyring fallback as YAML, not KEY=value; reading it with
+// Goose writes its keyring fallback as YAML; reading it with
 // the env parser would see no keys and pass a world-readable file of API
 // keys as empty.
 func TestGooseSecretsYAMLIsReadAsYAML(t *testing.T) {

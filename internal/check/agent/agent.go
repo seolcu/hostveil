@@ -42,19 +42,17 @@ func New() *Checker {
 // Source identifies the agent domain.
 func (*Checker) Source() model.Source { return model.SourceAgent }
 
-// Available probes for an actual agent installation, not merely for the
-// ability to look.
+// Available probes for an agent installation. The ability to look is
+// not enough.
 //
 // The failure modes are kept distinct. An unreadable /etc/passwd
 // means we could not look, a home we cannot enter means we could not look
 // *there*, and a host with no runtime installed means there was nothing to
 // find. All three skip the domain, but conflating them would let "I couldn't
-// look" pass for "nothing there". The domain is skipped rather than reported
-// clean because a host that has never installed an agent should not collect a
+// look" pass for "nothing there". The domain is skipped because a host that has never installed an agent should not collect a
 // free perfect score for a domain that never applied.
 //
-// The middle one is why the unreadable list is read here rather than
-// discarded. On a multi-user host scanned without root, every other account's
+// The middle one is why the unreadable list is read here. On a multi-user host scanned without root, every other account's
 // home denies entry, so reporting absence would tell an operator there is no
 // agent runtime while one runs behind a wide-open gateway two accounts over,
 // and would say nothing about sudo, the one thing that would show it.
@@ -118,7 +116,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 
 	var findings []model.Finding
 	var reasons []string
-	// Coverage counts configs we needed to read, not installs. An install
+	// Coverage counts configs we needed to read. An install
 	// that has no config file yet is not ground we failed to cover, and
 	// counting it would understate the fraction for no reason.
 	covered, total := 0, 0
@@ -151,8 +149,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			total++
 			cfg, derr := decodeConfig(b, in.rt.Format)
 			if derr != nil {
-				// An unparseable config is our blind spot, not the operator's
-				// defect, so it degrades coverage without inventing a finding.
+				// An unparseable config is our blind spot, so it degrades coverage without inventing a finding.
 				reasons = append(reasons, fmt.Sprintf("cannot parse %s config for %s", in.rt.Display, in.user.Name))
 			} else {
 				s.cfg, s.cfgKnown = cfg, true
@@ -189,7 +186,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 // user point their "config file" at /etc/passwd, collect a finding about its
 // 0644 mode, and have root tighten it for them, which on /etc/passwd is a
 // host-wide denial of service. A symlink or any other non-regular file is not
-// the layout the registry describes, so it is skipped, not judged.
+// the layout the registry describes, so it is skipped.
 func modeFindings(s scan) []model.Finding {
 	var out []model.Finding
 	for _, rule := range s.in.rt.Modes {
@@ -211,7 +208,7 @@ func modeFindings(s scan) []model.Finding {
 
 		var keys []string
 		if rule.Secret && !rule.Dir {
-			// "Secrets live in a secrets file" is the design, not a defect.
+			// "Secrets live in a secrets file" is the design.
 			// The finding is only meaningful once we know real credentials are
 			// in there *and* the file is readable beyond its owner.
 			keys = secretKeysIn(s, path)
@@ -303,8 +300,7 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 
 	// Resolve the bind: config first, then the documented default, then any
 	// environment override. An empty result means "we cannot tell", which is
-	// different from "loopback": we fall back to the listener rather than
-	// assuming either way.
+	// different from "loopback": we fall back to the listener.
 	bind := ""
 	if s.cfgKnown {
 		if bind = lookupString(s.cfg, gw.BindKey); bind == "" {
@@ -338,7 +334,7 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 	// and so, on the urgency scale, is a gateway bound to a routable address
 	// with a firewall in front of it that the operator may have opened. Both
 	// are High; what the firewall status changes is the confidence, which
-	// rides in the evidence rather than in the level.
+	// rides in the evidence.
 	sev := model.SeverityHigh
 
 	// The bind can be rewritten only where Hostveil can edit it: a JSON5
@@ -488,7 +484,7 @@ func matchListener(listeners []platform.Listener, port int, procs []string) (pla
 
 // dangerFindings applies the runtime's danger-key table. Rules sharing an ID
 // are collapsed into one finding listing every key that tripped it, so an
-// operator sees one problem rather than the same problem twice.
+// operator sees one problem once.
 func dangerFindings(s scan) []model.Finding {
 	type hit struct {
 		rules []DangerRule

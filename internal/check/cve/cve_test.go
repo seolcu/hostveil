@@ -109,8 +109,7 @@ type scriptRunner struct {
 	psIDs string
 	// inspectJSON is the output of `docker inspect <ids...>`.
 	inspectJSON string
-	// psErr makes container enumeration fail, which is a partial result
-	// rather than an image scan failure.
+	// psErr makes container enumeration fail, which is a partial result.
 	psErr    bool
 	trivy    map[string]string // image → JSON output
 	trivyErr map[string]bool   // image → fail
@@ -235,7 +234,7 @@ const oneVuln = `{"Results":[{"Vulnerabilities":[{"VulnerabilityID":"CVE-2021-12
 // wrong in the flattering direction, because an image that could not be
 // scanned contributes no vulnerabilities.
 //
-// Order is asserted, not just presence. A DB download that happens somewhere
+// Order is asserted along with presence. A DB download that happens somewhere
 // in the middle of the fan-out prevents nothing.
 func TestConcurrentScansDoNotShareOneTrivyCache(t *testing.T) {
 	r := composeProject(t)
@@ -400,7 +399,7 @@ func TestCVECleanScanIsNotDegraded(t *testing.T) {
 }
 
 // A host with no containers has no image vulnerabilities, that is a
-// clean Done, not a degraded or failed scan.
+// clean Done.
 func TestCVENoImagesIsClean(t *testing.T) {
 	r := composeProject(t)
 	r.lsJSON = `[]`
@@ -442,7 +441,7 @@ func TestParseTrivyFixedAndUnfixed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// One finding per remediation class, not per CVE.
+	// One finding per remediation class.
 	if len(fs) != 2 {
 		t.Fatalf("expected 2 findings, got %d", len(fs))
 	}
@@ -458,7 +457,7 @@ func TestParseTrivyFixedAndUnfixed(t *testing.T) {
 	if fixed.Remediation != model.RemediationReview {
 		t.Errorf("fixable group should be Review, got %v", fixed.Remediation)
 	}
-	// High, from its own group, not the Critical sitting in the other one.
+	// High, from its own group.
 	if fixed.Severity != model.SeverityHigh {
 		t.Errorf("severity = %v, want high", fixed.Severity)
 	}
@@ -564,7 +563,7 @@ func TestWorstListIsDeterministic(t *testing.T) {
 	// clirender's wrap splits on whitespace, so the separator must contain a
 	// space or the list becomes one unbreakable word.
 	if strings.Contains(first[0].Evidence["cves"], ",CVE") {
-		t.Error("CVE list must be separated by comma+space, not comma alone")
+		t.Error("CVE list must be separated by comma+space")
 	}
 }
 
@@ -606,8 +605,7 @@ func rollupOf(t *testing.T, fs []model.Finding) model.Finding {
 	return found[0]
 }
 
-// The rollup's severity comes from the worst *fixable* CVE, not the worst
-// overall. An unfixable Critical must not inflate a finding whose only
+// The rollup's severity comes from the worst *fixable* CVE. An unfixable Critical must not inflate a finding whose only
 // remediation cannot touch it.
 func TestRollupSeverityIgnoresUnfixableCVEs(t *testing.T) {
 	out := `{"Results":[{"Vulnerabilities":[
@@ -620,7 +618,7 @@ func TestRollupSeverityIgnoresUnfixableCVEs(t *testing.T) {
 	}
 	r := rollupOf(t, fs)
 	if r.Severity != model.SeverityMedium {
-		t.Errorf("severity = %v, want medium (the worst fixable), not the unfixable critical", r.Severity)
+		t.Errorf("severity = %v, want medium (the worst fixable); the unfixable critical must not count", r.Severity)
 	}
 	if r.Evidence["count"] != "1" {
 		t.Errorf("count = %q, want 1", r.Evidence["count"])
@@ -700,7 +698,7 @@ func TestRollupCarriesComposeFilePath(t *testing.T) {
 	}
 }
 
-// One rollup per image, not per CVE and not per service.
+// One rollup per image.
 func TestOneRollupPerImage(t *testing.T) {
 	r := composeProject(t)
 	r.trivy["redis:7"] = oneVuln
@@ -749,7 +747,7 @@ func FuzzParseTrivy(f *testing.F) {
 //
 // The fix is that neither place enumerates the scale any more. This test
 // exists so that a future change to the scale cannot reintroduce a copy of
-// it: it counts occurrences rather than comparing a fixed string, so it
+// it: it counts occurrences, so it
 // holds whatever the levels are called.
 func TestSummaryNamesEachSeverityOnce(t *testing.T) {
 	out := `{"Results":[{"Vulnerabilities":[

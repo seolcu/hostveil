@@ -28,7 +28,7 @@ import (
 // days while `updates.pending-security` counted one, because its count only
 // reads suites ending in -security and the Pi archive has no such suite.
 //
-// The rule is unattended-upgrades' own, reproduced rather than approximated:
+// The rule is unattended-upgrades' own, reproduced exactly:
 // a pattern is a comma-separated list of key=value tests on the release
 // record apt keeps for each source, every test must pass, values are
 // fnmatch globs after ${distro_id} and ${distro_codename} are substituted,
@@ -252,7 +252,7 @@ func anyAllowed(rels []aptRelease, patterns [][][2]string) bool {
 
 // patternMatches applies one pattern to one release: every test must pass.
 // A key unattended-upgrades does not know makes it reject the whole config,
-// so it is treated here as a test that fails rather than one that passes.
+// so it is treated here as a test that fails.
 func patternMatches(tests [][2]string, rel aptRelease) bool {
 	for _, t := range tests {
 		var field string
@@ -419,7 +419,7 @@ func candidateSources(out string) map[string][]string {
 		case t == "Version table:":
 		case strings.HasPrefix(line, "        "):
 			// A source row, indented eight: "<priority> <URL or path>". Told
-			// apart from a version row by its indent rather than its shape,
+			// apart from a version row by its indent,
 			// because a version can be all digits (20260626) and read as a
 			// priority.
 			if !inCandidate || pkg == "" || candidate == "" || candidate == "(none)" || candidate == installed {

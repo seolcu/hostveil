@@ -53,8 +53,7 @@ type infoJSON struct {
 
 // readInfo asks the daemon what it is doing.
 //
-// The format is `{{json .}}` rather than the shorter `--format json`, which
-// only exists in Docker CLI 23 and later. A checker that fails on an older
+// The format is `{{json .}}`. The shorter `--format json` only exists in Docker CLI 23 and later. A checker that fails on an older
 // CLI reports a degraded domain on a host that is merely not new, and the
 // difference costs nothing to avoid.
 func readInfo(ctx context.Context, r platform.CommandRunner) (info, bool, string) {
@@ -74,7 +73,7 @@ func readInfo(ctx context.Context, r platform.CommandRunner) (info, bool, string
 	}
 	// SecurityOptions is a list of "name=value" entries where the presence of
 	// the name is the signal: the daemon lists a feature only when it is in
-	// force, so absence means off rather than unknown.
+	// force, so absence means off.
 	for _, o := range d.SecurityOptions {
 		switch name, _, _ := strings.Cut(o, ","); name {
 		case "name=no-new-privileges":

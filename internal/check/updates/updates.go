@@ -1,7 +1,7 @@
 // Package updates implements a native checker for automatic security
 // updates. It verifies that the host is set up to apply security patches
 // on its own (unattended-upgrades on apt systems, dnf-automatic on dnf
-// systems) rather than relying on the operator to remember.
+// systems).
 package updates
 
 import (
@@ -77,8 +77,7 @@ func New() *Checker {
 func (*Checker) Source() model.Source { return model.SourceUpdates }
 
 // Available requires a package manager whose auto-update mechanism this
-// checker knows how to verify. Anywhere else it reports a skip rather than
-// running: apk and pacman have no standard unattended-upgrade daemon to
+// checker knows how to verify. Anywhere else it reports a skip: apk and pacman have no standard unattended-upgrade daemon to
 // look for, so "found nothing" would be indistinguishable from "did not
 // look", and the two score identically while meaning opposite things.
 // A skip excludes the axis as N/A instead of awarding it full marks.
@@ -116,8 +115,7 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 	var findings []model.Finding
 	var reasons []string
 	// apt reads every fragment in apt.conf.d and the last assignment wins, so
-	// the question is what apt resolves the option to, not what one file
-	// says. Reading 20auto-upgrades alone reported "disabled" as "enabled" on
+	// the question is what apt resolves the option to. Reading 20auto-upgrades alone reported "disabled" as "enabled" on
 	// any host carrying 99-disable-auto-upgrades, which cloud images and
 	// several hardening guides ship, and the fix then wrote into the file
 	// that loses. See aptorigin.go.
@@ -155,7 +153,7 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 	}
 	// apt's packages create this file from their postinst when an installed
 	// update cannot take effect until the machine restarts; a new kernel,
-	// glibc, or libssl. Absence is a definite answer, not a guess.
+	// glibc, or libssl. Absence is a definite answer.
 	if _, err := os.Stat(c.RebootRequiredPath); err == nil {
 		findings = append(findings, rebootFinding("sudo reboot"))
 	}
@@ -252,7 +250,7 @@ func (c *Checker) auditApt(ctx context.Context, env platform.Env) ([]model.Findi
 
 	// Whether automatic updates are configured, and whether anything is
 	// waiting, and, when both hold, whether it will ever be installed. Every
-	// gap is reported, rather than the first standing for the domain.
+	// gap is reported.
 	if len(reasons) > 0 {
 		return findings, &check.PartialError{
 			Reason:  strings.Join(reasons, "; "),
@@ -287,9 +285,9 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 	// read, and a command that cannot run at all answers nothing.
 	// A unit that is absent *is* the finding (dnf-automatic is
 	// not installed) and that is the one case where a non-zero exit is an
-	// answer rather than a silence.
+	// answer.
 	//
-	// UnitFileState rather than `systemctl is-enabled`: on dnf5 (Fedora 41
+	// UnitFileState: on dnf5 (Fedora 41
 	// and later) dnf-automatic.timer is an alias of dnf5-automatic.timer, and
 	// is-enabled answers "alias" for it whether the timer is on or not. So the
 	// finding outlived its own fix on every such host: found on a real
@@ -335,7 +333,7 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 		}
 	}
 
-	// Reasons accumulate rather than returning at the first one. Both probes
+	// Reasons accumulate. Both probes
 	// below are independent questions about this domain, and answering only
 	// the first used to mean the second was never asked: on a stock minimal
 	// Fedora or Rocky there is no needs-restarting (it ships in dnf-utils),
@@ -376,7 +374,7 @@ func (c *Checker) auditDnf(ctx context.Context, env platform.Env) ([]model.Findi
 		}
 	}
 
-	// `--security`, not the positional `security`. dnf4 read the bare word as
+	// `--security` with the dashes. dnf4 read the bare word as
 	// a filter; dnf5 reads it as the name of an advisory, finds none called
 	// that, exits 0 and lists nothing. A real Fedora 44 with eighty pending
 	// security packages, openssl among them, was reported as fully patched.
@@ -438,8 +436,8 @@ const (
 	rebootUnknown
 )
 
-// classifyNeedsRestarting reads dnf's answer from its text rather than its
-// exit status, which is inverted: it exits non-zero when a reboot IS needed.
+// classifyNeedsRestarting reads dnf's answer from its text. The exit status
+// is inverted: it exits non-zero when a reboot IS needed.
 func classifyNeedsRestarting(out string) rebootState {
 	lower := strings.ToLower(out)
 	switch {
@@ -498,7 +496,7 @@ func countDnfSecurityAdvisories(out string) int {
 }
 
 // systemdProps reads `systemctl show --property=...` output into a map.
-// systemd prints properties in its own order, not the order asked for.
+// systemd prints properties in its own order.
 func systemdProps(out string) map[string]string {
 	props := map[string]string{}
 	for _, line := range strings.Split(out, "\n") {

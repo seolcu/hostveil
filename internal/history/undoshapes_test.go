@@ -89,7 +89,7 @@ func TestRollingBackACreationDeletesTheFile(t *testing.T) {
 }
 
 // An operator who deleted the drop-in by hand and then rolled back should get
-// success, not a failure describing the thing they already did.
+// success.
 func TestRollingBackACreationThatIsAlreadyGoneSucceeds(t *testing.T) {
 	s, _ := creationStore(t)
 	target := filepath.Join(t.TempDir(), "gone.conf")
@@ -109,7 +109,7 @@ func TestRollingBackACreationThatIsAlreadyGoneSucceeds(t *testing.T) {
 }
 
 // The one that matters. rollback()'s comment says a created file the operator
-// has since edited "declines here rather than being deleted out from under
+// has since edited "declines here and is never deleted out from under
 // them", and that rests on apply.go recording AppliedSHA256 *before* calling
 // SaveCreations and on SaveCreations preserving it. Both are true and neither
 // was checked, on the single code path in this repository whose undo is a

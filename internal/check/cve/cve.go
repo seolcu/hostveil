@@ -1,6 +1,6 @@
 // Package cve implements the optional CVE checker backed by Trivy. It is
 // the one domain that may be absent: when Trivy is not installed the
-// checker skips cleanly (a first-class Skipped state, not an error), and
+// checker skips cleanly (a first-class Skipped state), and
 // scoring renormalizes so the host is neither penalized nor given a false
 // perfect vulnerability score.
 package cve
@@ -44,7 +44,7 @@ func (*Checker) Available(_ context.Context, env platform.Env) (bool, string) {
 // Check scans the host's packages and every compose and standalone image
 // with Trivy.
 //
-// Failures are counted rather than swallowed, because "no vulnerabilities
+// Failures are counted, because "no vulnerabilities
 // found" and "nothing could be examined" score identically but mean opposite
 // things. Some targets unscannable is Degraded; all of them is a complete
 // error, which drops the axis from scoring entirely.
@@ -57,7 +57,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		cov.Covered(1)
 	}
 
-	// The daemon is probed, not merely looked up on PATH: an unreachable
+	// The daemon is probed: an unreachable
 	// socket would otherwise let the image scan proceed, fail on every
 	// image, and report zero image vulnerabilities. A host with no docker at
 	// all has no images, which is a complete answer.
@@ -98,8 +98,8 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	}
 
 	// Images belonging to containers no compose file describes. Without
-	// these, a hand-started container's vulnerabilities were not merely
-	// unreported: the axis scored as though the image were not on the host.
+	// these, a hand-started container's vulnerabilities went unreported, and
+	// the axis scored as though the image were not on the host.
 	// A failure to enumerate these is tracked apart from a failure to scan an
 	// image. Folding it into the image counters would make "3 of 4 images
 	// scanned" mean two different things, and could make a host whose only
@@ -124,7 +124,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		return nil, fmt.Errorf("no image could be scanned: %w", firstErr)
 	}
 
-	// Each blind spot is recorded rather than returned, so hitting two of
+	// Each blind spot is recorded, so hitting two of
 	// them reports two. Returning at the first is how an unparsed compose
 	// file used to disappear from a scan that also had an image fail.
 	cov.Covered(attempted - failed)
@@ -164,9 +164,9 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 // without complaint, and is wrong in the two fields an operator uses to find
 // the thing.
 //
-// internal/ui/tui's Opts already states this rule for itself; "one struct
-// rather than three parameters because the third would have been the one that
-// tipped the signature into being read wrong at a call site." This is the same
+// internal/ui/tui's Opts already states this rule for itself: one struct,
+// because a third parameter would tip the signature into being read wrong
+// at a call site. This is the same
 // rule, one argument later.
 type target struct {
 	image      string
@@ -221,7 +221,7 @@ const dbTimeout = 5 * time.Minute
 //	shared cache   3 of 4 succeed   one exits on the lock
 //	this commit    4 of 4
 //
-// because the contention is over the lock rather than over the contents.
+// because the contention is over the lock.
 var memoryCache = []string{"--cache-backend", "memory"}
 
 // warmCache downloads the vulnerability DB before the fan-out, and reports
@@ -257,7 +257,7 @@ func warmCache(ctx context.Context, r platform.CommandRunner) error {
 // scanAll scans every target with bounded concurrency and returns the merged
 // findings, how many failed, and the first failure in target order.
 //
-// Results are collected by index rather than appended as they arrive, so the
+// Results are collected by index, so the
 // findings and the reported error do not depend on which Trivy process
 // happened to finish first. A scan that reordered its own output between runs
 // would show up as a spurious delta on the next re-scan.
@@ -272,8 +272,7 @@ func scanAll(ctx context.Context, r platform.CommandRunner, targets []target) (f
 	// it populates is the one a later scan of the same image will reuse.
 	//
 	// For more than one, the fast path has to be earned. Where Trivy will not
-	// give both halves of it, the scans go one at a time rather than four at
-	// a time into a lock they cannot share: slower than this domain was
+	// give both halves of it, the scans go one at a time: slower than this domain was
 	// yesterday, and the first version of it that reports what it
 	// examined.
 	cacheArgs, parallelism := []string(nil), 1
@@ -344,7 +343,7 @@ type trivyVuln struct {
 
 // hostSkipDirs keeps the host scan to the operating system's own package
 // databases. Container storage is scanned image by image above, and the rest
-// is data, not installed packages.
+// is data.
 var hostSkipDirs = []string{"/proc", "/sys", "/dev", "/run", "/tmp", "/var/tmp", "/var/lib/docker",
 	"/var/lib/containerd", "/var/lib/rancher", "/var/log", "/home", "/root", "/srv", "/mnt", "/media", "/snap"}
 
@@ -546,8 +545,7 @@ func (g *group) worst() model.Severity { return g.sevOf[g.sorted()[0]] }
 
 // summary renders "12 high, 108 medium" for the severities present.
 //
-// It walks model.AllSeverities rather than a list written out here. The list
-// written out here was the four-level scale, and when Critical and High
+// It walks model.AllSeverities. A list written out here was the four-level scale, and when Critical and High
 // merged into one constant both rows stayed, so the same constant was read
 // twice and a group of two top-severity vulnerabilities rendered as
 // "2 high, 2 high". The scale is the model's to enumerate, and a copy of it
@@ -576,7 +574,7 @@ func (g *group) worstList() string {
 }
 
 // evidence attaches the machine-readable detail. The CVE list is joined with
-// ", " rather than "," on purpose: clirender's wrap splits on whitespace, so
+// ", ": clirender's wrap splits on whitespace, so
 // a comma-only list would be one unbreakable word that overflows a terminal
 // the day anything starts rendering evidence.
 func (g *group) evidence() []model.FindingOption {

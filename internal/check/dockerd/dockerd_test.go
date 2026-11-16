@@ -17,8 +17,7 @@ import (
 	"github.com/seolcu/hostveil/internal/platform"
 )
 
-// The two commands this domain's fixtures script, as argv rather than as a
-// joined string: a fake whose scripted spelling drifts from the caller's does
+// The two commands this domain's fixtures script, as argv: a fake whose scripted spelling drifts from the caller's does
 // not fail, it answers "that command errored", which the checker reads as a
 // daemon or a unit that would not talk.
 var (
@@ -35,8 +34,7 @@ const hardenedInfo = `{"SecurityOptions":["name=seccomp,profile=builtin","name=n
 const bareInfo = `{"SecurityOptions":["name=seccomp,profile=builtin"],"LiveRestoreEnabled":false}`
 
 // execStart renders `systemctl show` output the way systemd really does,
-// so the parser is exercised against the real shape rather than a
-// convenient one.
+// so the parser is exercised against the real shape.
 func execStart(args string) string {
 	return "ExecStart={ path=/usr/bin/dockerd ; argv[]=/usr/bin/dockerd " + args +
 		" ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n"
@@ -45,8 +43,7 @@ func execStart(args string) string {
 // env builds a scan environment whose daemon answers with the given info
 // document and whose unit carries the given dockerd flags.
 func env(info, unitArgs string) platform.Env {
-	// Docker() scripts the daemon probe from platform's own argv rather than
-	// from a copy of it here: a probe that changed would otherwise leave this
+	// Docker() scripts the daemon probe from platform's own argv: a probe that changed would otherwise leave this
 	// fixture answering "unreachable", which the checker cannot tell from a
 	// daemon that is down.
 	r := checktest.New().Only("docker").Docker("27.0.0").Script(info, infoArgv...)
@@ -59,7 +56,7 @@ func env(info, unitArgs string) platform.Env {
 // host writes a fixture host: a daemon.json (skipped when empty), a group
 // file, a passwd file, and a real unix socket at the requested mode.
 //
-// The socket lives in os.MkdirTemp rather than t.TempDir because a unix
+// The socket lives in os.MkdirTemp because a unix
 // socket path is bounded by sun_path (~104 bytes) and darwin's per-test
 // temp directories are long enough to overflow it.
 type fixture struct {
@@ -226,7 +223,7 @@ func TestTLSVerifiedFromExecStartIsClean(t *testing.T) {
 // TLS without client verification is encryption without authorization:
 // never clean, and never collapsed into the unauthenticated finding. Both
 // are High: the test checks that they stay two findings with two
-// remediations rather than one.
+// remediations.
 func TestTLSWithoutVerifyIsItsOwnFinding(t *testing.T) {
 	h := host(t, `{"hosts":["tcp://0.0.0.0:2376"],"tls":true,"tlscert":"/etc/docker/cert.pem"}`,
 		cleanGroup, cleanPasswd, 0o660)
@@ -250,7 +247,7 @@ func TestCertificateWithoutTLSFlagStillCountsAsTLS(t *testing.T) {
 	mustNotFind(t, fs, "dockerd.api-unauthenticated")
 }
 
-// An explicit --tlsverify=false is an opt-out, not a setting.
+// An explicit --tlsverify=false is an opt-out.
 func TestExplicitTLSVerifyFalseIsNotVerified(t *testing.T) {
 	h := host(t, "", cleanGroup, cleanPasswd, 0o660)
 	fs := h.check(t, env(hardenedInfo, "-H tcp://0.0.0.0:2375 --tlsverify=false"))
@@ -437,7 +434,7 @@ func TestSwarmSuppressesLiveRestore(t *testing.T) {
 }
 
 // Rootless already gives every container a remapped uid, and its socket
-// confers only that user's own containers rather than host root.
+// confers only that user's own containers.
 func TestRootlessSuppressesUsernsAndGroup(t *testing.T) {
 	const rootless = `{"SecurityOptions":["name=rootless","name=no-new-privileges"],"LiveRestoreEnabled":true}`
 	h := host(t, "", "root:x:0:\ndocker:x:%GID%:alice\n",
@@ -682,8 +679,7 @@ func TestAUnitThatIsNotFoundIsNotAnInspectedUnit(t *testing.T) {
 
 // With no daemon.json and no readable unit, Hostveil has consulted neither
 // source of the socket and TLS settings, and the default state of most hosts
-// is no daemon.json at all, so this is the ordinary shape of the failure
-// rather than an exotic one.
+// is no daemon.json at all, so this is the ordinary shape of the failure.
 //
 // The old condition demanded that *both* sources fail, counting an absent
 // daemon.json as a success. It is a complete answer about that file ("no
@@ -747,7 +743,7 @@ func TestANonSystemdHostCannotAuditTheAPISocket(t *testing.T) {
 		t.Errorf("the reason should say why the flags are unreadable: %q", partial.Reason)
 	}
 	// The rules that do not depend on the unit are still answered; partial
-	// means incomplete, not failed.
+	// means incomplete.
 	if len(fs) == 0 && partial.Covered == 0 {
 		t.Error("the daemon defaults and the socket mode were still readable")
 	}
