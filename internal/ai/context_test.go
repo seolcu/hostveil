@@ -55,8 +55,8 @@ func TestContextSaveRefusesOverLength(t *testing.T) {
 	}
 }
 
-// A missing directory or file must read as "no context set" rather than an
-// error a caller has to handle before it can build a prompt.
+// A missing directory or file must read as "no context set", so a caller
+// never handles an error before it can build a prompt.
 func TestContextLoadTolerant(t *testing.T) {
 	if got := LoadContext(""); got != "" {
 		t.Errorf("LoadContext(\"\") = %q, want empty", got)

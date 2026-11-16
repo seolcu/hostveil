@@ -1,6 +1,6 @@
 // Package secretkey holds the shared heuristic for deciding that a
 // configuration key names a credential, and that its value looks like a real
-// one rather than a placeholder.
+// one.
 //
 // It is name-based. Hostveil has to judge a value sensitive
 // without ever recording the value itself: findings are rendered by every UI
@@ -32,7 +32,7 @@ func Matches(key string) bool {
 }
 
 // LooksLiteral reports whether a value for a credential-named key looks like
-// a real secret rather than a reference to one.
+// a real secret.
 //
 // Interpolation references ("${DB_PASSWORD}", "$$escaped") are how a config
 // is *supposed* to name a secret it does not contain, so flagging them would

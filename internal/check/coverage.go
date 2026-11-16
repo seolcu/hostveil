@@ -56,7 +56,7 @@ func (c *Coverage) Missed(n int, reason string) {
 // the order they were recorded, so a checker controls its own emphasis by
 // recording the more fundamental gap first.
 //
-// It keys on the reasons, not the counters: a gap whose reason was suppressed
+// It keys on the reasons: a gap whose reason was suppressed
 // as a duplicate is one another entry already reports, so it cannot be the
 // only thing standing between a domain and a clean result.
 func (c *Coverage) Err() error {

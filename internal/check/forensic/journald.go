@@ -14,7 +14,7 @@ import (
 
 // journaldCatConfigArgv prints journald's configuration with every drop-in,
 // in the order systemd applies them, each file under a "# <path>" header.
-// It is asked of systemd rather than reconstructed here, so the precedence
+// It is asked of systemd, so the precedence
 // rules are systemd's own.
 var journaldCatConfigArgv = []string{"systemd-analyze", "cat-config", "systemd/journald.conf"}
 
@@ -159,7 +159,7 @@ func humanDays(d time.Duration) string {
 
 // parseTimespan reads a systemd time span ("2week", "30d", "1month 2d",
 // or bare seconds). ok is false for anything it does not understand, which
-// callers treat as "no finding" rather than guessing.
+// callers treat as "no finding".
 func parseTimespan(s string) (time.Duration, bool) {
 	s = strings.TrimSpace(s)
 	if s == "" {

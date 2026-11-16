@@ -19,8 +19,7 @@
 // **SSH root login.** PVE clusters use root SSH between nodes, so the ssh
 // domain's rule is already the right one and its fix is already Review.
 //
-// **Guests.** A VM's config says what it is allowed to do, not what runs
-// inside it, and auditing that is a different tool.
+// **Guests.** A VM's config says what it is allowed to do, and auditing that is a different tool.
 package proxmox
 
 import (
@@ -60,7 +59,7 @@ func (c *Checker) path(p string) string {
 // Available requires /etc/pve, the cluster filesystem every PVE node mounts.
 //
 // A host without it is not a hypervisor this domain has an opinion about, and
-// the axis is renormalized away rather than scored on an absence. It is not
+// the axis is renormalized away. It is not
 // gated on platform.AuditableOS: nothing on macOS mounts /etc/pve, so the
 // ordinary answer is already the right one there.
 func (c *Checker) Available(context.Context, platform.Env) (bool, string) {
@@ -213,7 +212,7 @@ func (e tfaEntry) on() bool { return e.Enable == nil || *e.Enable }
 
 // tfaUser holds the factor lists proxmox-tfa's TfaUserData serializes. The
 // recovery codes are left out: they are a way back in when the
-// factor is lost, not a factor, and a root with only those still logs in with
+// factor is lost, and a root with only those still logs in with
 // a password alone.
 type tfaUser struct {
 	TOTP     []tfaEntry `json:"totp"`
@@ -237,7 +236,7 @@ func (u tfaUser) factors() int {
 // auditRootTFA reports root@pam logging in with a password alone.
 //
 // The file lives under /etc/pve/priv, which only root can read, so a non-root
-// scan records a gap here rather than guessing: "could not look" and "no
+// scan records a gap here: "could not look" and "no
 // second factor" would otherwise score the same.
 func (c *Checker) auditRootTFA() ([]model.Finding, string) {
 	b, err := platform.ReadFileBounded(c.path(tfaConfig), 4<<20)

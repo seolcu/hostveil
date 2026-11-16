@@ -16,7 +16,7 @@ import "github.com/seolcu/hostveil/internal/model"
 
 // PublishedReport is the scan the website's screenshots show.
 //
-// It is a mixed host rather than a wrecked one. Every claim the
+// It is a mixed host. Every claim the
 // pages make beside these pictures has to be visible in them: three severity
 // levels, a domain that ran but covered only part of its ground, a domain that
 // did not run at all and reads N/A instead of a free 100, findings at every
@@ -46,7 +46,7 @@ func PublishedReport() model.Report {
 		model.NewFinding("compose.ds010", "No memory limit set", model.SeverityLow, model.SourceCompose, model.RemediationReview, model.WithService("media/jellyfin")),
 		model.NewFinding("ssh.maxauthtries", "MaxAuthTries is higher than necessary", model.SeverityLow, model.SourceSSH, model.RemediationAuto),
 	}
-	// Built from AllSources rather than listed, because a hand-written table
+	// Built from AllSources, because a hand-written table
 	// keyed by Source is a copy waiting to go stale, and this one already
 	// had. SourceDockerd appeared in neither the states nor the domains, so
 	// the axis read as zero-value ScanPending: N/A with no DomainResult
@@ -55,8 +55,7 @@ func PublishedReport() model.Report {
 	// both pictures published on the website.
 	//
 	// Only the exceptions are spelled out now. A thirteenth domain lands as
-	// ScanDone and shows up in the screenshots rather than vanishing from
-	// them.
+	// ScanDone and shows up in the screenshots.
 	//
 	// The exceptions also have to describe a host that could exist. Dockerd
 	// was briefly marked unreachable here, which cannot be true of a host

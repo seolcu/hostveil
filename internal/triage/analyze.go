@@ -127,9 +127,9 @@ func Analyze(dir string) (*Result, *Manifest, error) {
 }
 
 // IDPrefix namespaces every indicator. An indicator is not a finding (it
-// is a conclusion about the past, not a setting to fix) so no indicator ID
+// is a conclusion about the past) so no indicator ID
 // may read as one: none starts with, or contains, a detection domain's name
-// followed by a dot (login.*, not ssh.*), which internal/docs enforces.
+// followed by a dot (login.* is fine), which internal/docs enforces.
 const IDPrefix = "triage."
 
 func (an *analysis) add(in Indicator) {
@@ -371,8 +371,7 @@ func (an *analysis) ssh() {
 }
 
 // proxiedMinFailures is how many failures a host must see before one
-// internal address carrying nearly all of them reads as a proxy rather than
-// a colleague mistyping a password.
+// internal address carrying nearly all of them reads as a proxy.
 const proxiedMinFailures = 50
 
 var cgnat = &net.IPNet{IP: net.IPv4(100, 64, 0, 0), Mask: net.CIDRMask(10, 32)}

@@ -21,7 +21,7 @@ var (
 // they say nothing about the host they came from), and the account name
 // embedded in a home directory path.
 //
-// It is a heuristic pass over free-form text, not a guarantee, that is what
+// It is a heuristic pass over free-form text with no guarantee. That is what
 // --unredacted's own warning in cmd/hostveil/diagnostics.go says, and what
 // keeps this from being sold as more than it is.
 func Redact(s string) string {

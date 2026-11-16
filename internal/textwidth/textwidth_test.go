@@ -149,8 +149,7 @@ func TestWrapHasAMinimumWidth(t *testing.T) {
 	}
 }
 
-// The locale trap, pinned at the rule rather than through the process
-// environment.
+// The locale trap, pinned at the rule.
 //
 // runewidth picks its default condition from LANG and LC_ALL at init, so its
 // package-level StringWidth reports two columns for the ambiguous class under
@@ -161,7 +160,7 @@ func TestWrapHasAMinimumWidth(t *testing.T) {
 //
 // RUNEWIDTH_EASTASIAN is a different thing and is honoured: it is the operator
 // saying their terminal draws that class wide, which is a fact about the
-// terminal rather than about their language. This is the distinction the
+// terminal. This is the distinction the
 // package doc argues for, and it is checked here directly: the seam exists
 // (eastAsianEnv, eastAsianWidth) so a test does not have to mutate a
 // process-wide setting that was read at init.
@@ -181,8 +180,8 @@ func TestOnlyTheVariableTurnsOnEastAsianWidth(t *testing.T) {
 }
 
 // And what Of does with the ambiguous class, in whichever mode this process is
-// running in. Written against the rule rather than a constant, so it asserts
-// something real under RUNEWIDTH_EASTASIAN=1 instead of being skipped there,
+// running in. Written against the rule, so it asserts something real under
+// RUNEWIDTH_EASTASIAN=1,
 // which is how a whole class of layout defect stayed invisible until #711.
 func TestAmbiguousWidthFollowsTheVariable(t *testing.T) {
 	want := 1
@@ -199,8 +198,7 @@ func TestAmbiguousWidthFollowsTheVariable(t *testing.T) {
 	}
 	// And these are not, which is worth pinning because they look like they
 	// should be. ✓ ⚠ ▚ are one column in both modes, and so is ░, while █ is
-	// two, which is why internal/ui/tui builds a meter in columns rather than
-	// dividing by one cell size. A change here would move that layout.
+	// two, which is why internal/ui/tui builds a meter in columns. A change here would move that layout.
 	for _, s := range []string{"✓", "⚠", "▚", "░"} {
 		if got := Of(s); got != 1 {
 			t.Errorf("Of(%q) = %d, want 1 in both modes", s, got)

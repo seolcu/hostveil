@@ -16,7 +16,7 @@ import (
 // that state, which is the "I could not look, and I will not say
 // why" the rail was built to prevent.
 //
-// Walking AllSources rather than the fixture's own keys is what makes a new
+// Walking AllSources is what makes a new
 // domain loud instead of silent.
 func TestPublishedReportAccountsForEveryDomain(t *testing.T) {
 	rep := PublishedReport()

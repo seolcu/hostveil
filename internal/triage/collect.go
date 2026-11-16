@@ -33,7 +33,7 @@ type Options struct {
 }
 
 // maxFileCopy bounds one copied file. A log larger than this is recorded
-// with an error rather than truncated: a partial log presented as a whole
+// with an error: a partial log presented as a whole
 // one would be worse than a missing one.
 const maxFileCopy = 512 << 20
 
@@ -498,7 +498,7 @@ func (c *collector) packageOwners(ctx context.Context, phase int, paths []string
 		seen[p] = true
 		owner := ask(p)
 		// On a merged-/usr system dpkg still records many files under the
-		// path the package shipped them at, /bin rather than /usr/bin.
+		// path the package shipped them at, such as /bin.
 		if alias := unmergedPath(p); owner == "-" && alias != "" {
 			owner = ask(alias)
 		}

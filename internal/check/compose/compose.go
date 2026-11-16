@@ -25,7 +25,7 @@ func New() *Checker { return &Checker{} }
 func (*Checker) Source() model.Source { return model.SourceCompose }
 
 // Available requires a reachable Docker daemon; without one there is nothing
-// to audit. Probing the daemon rather than just the CLI turns an
+// to audit. Probing the daemon turns an
 // unreachable socket into a clean skip with an actionable reason, instead of
 // a domain error reading "exit status 1".
 func (*Checker) Available(ctx context.Context, env platform.Env) (bool, string) {
@@ -83,7 +83,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 	standalone, err := compose.DiscoverContainers(ctx, env.Runner)
 	if err != nil {
 		// The compose half of the domain was covered, so this is a partial
-		// result, not a failure. Returning an ordinary error would discard
+		// result. Returning an ordinary error would discard
 		// findings already gathered and exclude the axis entirely. The
 		// containers it would have counted are the ones it cannot list, so
 		// the gap has no unit count of its own.
@@ -170,7 +170,7 @@ func auditContainer(c compose.Container) []model.Finding {
 		// interfaces have a place built for exactly this question and it was
 		// coming up empty here. fix.WhyNoFix answers from the declined list,
 		// and every one of these IDs *is* registered (it is the container
-		// that cannot be fixed, not the finding) so nothing filled it in.
+		// that cannot be fixed) so nothing filled it in.
 		f.WhyNoFix = "This container was started with `docker run`, so there is no Compose file for Hostveil to edit."
 		f.HowToFix = "This container was started with `docker run`, so there is no Compose file to edit. " +
 			"Recreate it with the corrected flag, or move it into a compose file where Hostveil can fix it for you. " + f.HowToFix

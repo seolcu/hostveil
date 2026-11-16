@@ -120,8 +120,8 @@ func TestOrdinaryErrorStaysError(t *testing.T) {
 	}
 }
 
-// Degraded counts as having run, so its axis is scored rather than excluded.
-// This is the contract ScoreReport relies on to flag rather than drop it.
+// Degraded counts as having run, so its axis is scored.
+// This is the contract ScoreReport relies on to flag it.
 func TestDegradedCountsAsRan(t *testing.T) {
 	if !model.ScanDegraded.Ran() {
 		t.Error("ScanDegraded must count as having run")

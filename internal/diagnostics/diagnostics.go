@@ -45,7 +45,7 @@ type CrashRecord struct {
 //
 // stack must be captured by the caller, with debug.Stack() called directly
 // inside the recover (not passed through another function first) so it
-// names the frames that panicked rather than this one.
+// names the frames that panicked.
 func NewRecord(version, command, where string, panicValue any, stack []byte) CrashRecord {
 	return CrashRecord{
 		At:      time.Now(),
