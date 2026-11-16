@@ -113,9 +113,8 @@ type publishedPort struct {
 }
 
 // publishedPorts lists container ports mapped to a non-loopback host address.
-// A docker that cannot be listed is treated as nothing published rather than
-// as an error: DockerReachable already gated this, so a failure here is a
-// daemon that went away mid-scan, not a blind spot worth a finding.
+// A docker that cannot be listed is treated as nothing published: DockerReachable already gated this, so a failure here is a
+// daemon that went away mid-scan.
 func publishedPorts(ctx context.Context, r platform.CommandRunner) ([]publishedPort, error) {
 	out, err := r.Run(ctx, "docker", "ps", "--format", "{{.Names}}\t{{.Ports}}")
 	if err != nil {

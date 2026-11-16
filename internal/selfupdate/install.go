@@ -88,13 +88,12 @@ func BinaryFromArchive(archive []byte) ([]byte, error) {
 //
 // Beside the target and then renamed, for two reasons that are each sufficient.
 // A running executable cannot be opened for writing at all (the kernel
-// answers ETXTBSY) so writing through the path is not merely unwise here, it
-// does not work. And a rename either happens or does not: a truncate-then-write
+// answers ETXTBSY) so writing through the path does not work here. And a rename either happens or does not: a truncate-then-write
 // that is interrupted leaves a host with a zero-length Hostveil, which is the
 // state in which the tool that would tell you something is wrong is the thing
 // that is wrong.
 //
-// The mode is taken from the file being replaced rather than assumed, so a
+// The mode is taken from the file being replaced, so a
 // deployment that tightened it keeps its choice.
 func Replace(path string, binary []byte) error {
 	info, err := os.Stat(path)

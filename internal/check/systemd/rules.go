@@ -33,7 +33,7 @@ import (
 // registered in internal/fix/systemd.go as Review fixes, via
 // Action.TakesEffectOn (a drop-in plus `systemctl daemon-reload && systemctl
 // restart <unit>` is a fix that writes the artifact now and names what has
-// to happen for it to take effect, not two alternatives, so it does not
+// to happen for it to take effect, so it does not
 // need to be Review for the "independent alternatives" reason: it is
 // Review because a service that escalates, or needs one of
 // these capabilities, stops coming back, and that is not a thing to do
@@ -52,7 +52,7 @@ type rule struct {
 	directive string
 	flagged   func(u unit) bool
 	// remediation is how much human judgement this rule needs, and it is
-	// per-rule rather than per-domain because the four differ.
+	// per-rule because the four differ.
 	//
 	// Three of them break something the unit does not show (a service that
 	// hands another files through /tmp, one whose data lives in a home
@@ -61,7 +61,7 @@ type rule struct {
 	// carries no such blind spot: it closes the setuid path and nothing
 	// about the unit hides whether that matters.
 	//
-	// Review rather than Auto because a service that escalates
+	// Review because a service that escalates
 	// stops coming back, and that is not a thing to do on an unattended
 	// watching. The registry's fix is one action, which is Auto's shape;
 	// resolvedKind takes the more cautious of the two, so this is what the
@@ -84,8 +84,8 @@ func known(v string) bool { return v != "" }
 //
 // ProtectSystem and ProtectHome are not booleans (systemd prints
 // no/yes/full/strict for the first and no/yes/read-only/tmpfs for the second)
-// so the test is against the one value that means "not protected" rather than
-// against `!on(v)`, which would flag "full" and "read-only" as failures.
+// so the test is against the one value that means "not protected".
+// `!on(v)` would flag "full" and "read-only" as failures.
 //
 // Only "no", and not also "off": systemd normalizes every
 // spelling of disabled to "no" in `show` output, and a second arm for a value
@@ -166,8 +166,7 @@ func (r rule) severityFor(u unit) model.Severity {
 // dropInPath is where the operator's own override for a unit belongs. Under
 // /etc, so it outranks the unit file and any drop-in a package ships, and
 // numbered so a later file of the operator's own still wins.
-// dropInPath is where the fix writes, and the name is chosen rather than
-// fixed.
+// dropInPath is where the fix writes, and the name is chosen.
 //
 // systemd.unit(5): "Multiple drop-in files with different names are applied in
 // lexicographic order, regardless of which of the directories they reside in."
@@ -184,8 +183,7 @@ func (r rule) severityFor(u unit) model.Severity {
 // systemd has already answered. 50- stays the name on the ordinary host,
 // because that is what the docs and the finding's own instructions say.
 //
-// "" means no name wins, and the fix refuses rather than writing one that
-// cannot work.
+// "" means no name wins, and the fix refuses.
 func dropInPath(unitID, loaded string) string {
 	dir := "/etc/systemd/system/" + unitID + ".d/"
 	last := ""

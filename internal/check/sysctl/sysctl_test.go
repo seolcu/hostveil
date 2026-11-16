@@ -38,8 +38,8 @@ func writeKeys(t *testing.T, keys map[string]string) string {
 // reads /.dockerenv and /proc/1 on whatever is running the test, so every
 // assertion below about a Review remediation would invert the day these tests
 // ran inside a container, which is a normal thing for a CI job to do, and
-// would read as the sysctl domain having broken rather than as the test
-// having asked the wrong question.
+// would read as the sysctl domain having broken when the test asked the
+// wrong question.
 func checkerFor(root string) *Checker {
 	c := New()
 	c.Root = root
@@ -148,7 +148,7 @@ func TestHardenedHostIsClean(t *testing.T) {
 	fs, err := checkerFor(writeKeys(t, map[string]string{
 		"kernel.kptr_restrict":               "1",
 		"kernel.dmesg_restrict":              "1",
-		"kernel.sysrq":                       "176", // restricted bitmask, not fully enabled
+		"kernel.sysrq":                       "176", // restricted bitmask
 		"kernel.yama.ptrace_scope":           "1",
 		"net.ipv4.tcp_syncookies":            "1",
 		"net.ipv4.conf.all.accept_redirects": "0",
@@ -299,7 +299,7 @@ func TestParseAssignment(t *testing.T) {
 		{"kernel.dmesg_restrict=0", "kernel.dmesg_restrict", 0, true},
 		{"  kernel.dmesg_restrict  =  1  ", "kernel.dmesg_restrict", 1, true},
 		// systemd's "apply, but do not complain if it fails" marker is part
-		// of the syntax, not of the key.
+		// of the syntax.
 		{"-kernel.dmesg_restrict = 1", "kernel.dmesg_restrict", 1, true},
 		// sysctl.d permits slashes for the same parameter as dots, and a rule
 		// keyed on dots would otherwise miss it.
@@ -322,8 +322,7 @@ func TestParseAssignment(t *testing.T) {
 	}
 }
 
-// An earlier directory masks a same-named file in a later one rather than
-// overriding it: that is how a distribution drop-in is disabled from /etc.
+// An earlier directory masks a same-named file in a later one: that is how a distribution drop-in is disabled from /etc.
 func TestEarlierDirectoryMasksTheSameFileName(t *testing.T) {
 	etc, lib := t.TempDir(), t.TempDir()
 	for dir, body := range map[string]string{
@@ -351,7 +350,7 @@ func TestAvailability(t *testing.T) {
 	}
 }
 
-// A non-integer value is unreadable ground, not a guess.
+// A non-integer value is unreadable ground.
 func TestGarbageValueIsPartialNotGuessed(t *testing.T) {
 	root := writeKeys(t, map[string]string{"kernel.kptr_restrict": "banana"})
 	fs, err := checkerFor(root).Check(context.Background(), platform.Env{})
@@ -414,7 +413,7 @@ func TestInAContainerTheFindingStaysAndTheFixDoesNot(t *testing.T) {
 }
 
 // And on a host nothing changes, which is why the gate is a
-// gate rather than a rewrite.
+// gate.
 func TestOnAHostTheFixIsStillOffered(t *testing.T) {
 	root := writeKeys(t, map[string]string{"kernel.yama.ptrace_scope": "0"})
 	fs, err := checkerFor(root).Check(context.Background(), platform.Env{})

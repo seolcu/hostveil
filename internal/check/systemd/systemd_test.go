@@ -16,8 +16,7 @@ import (
 var showArgv = []string{"systemctl", "show", "*.service", "--property=" + strings.Join(showProperties, ",")}
 
 // unitRecord renders one record the way `systemctl show` really prints it:
-// Key=Value one per line, in an order of systemd's choosing rather than the
-// order they were asked for.
+// Key=Value one per line, in an order of systemd's choosing.
 func unitRecord(props map[string]string) string {
 	// Not the request order; the parser must key by name.
 	order := []string{"FragmentPath", "DropInPaths", "User", "PrivateTmp", "ProtectHome", "Id", "ProtectSystem", "LoadState", "NoNewPrivileges"}
@@ -86,8 +85,8 @@ func find(fs []model.Finding, id, service string) (model.Finding, bool) {
 func TestUnhardenedOperatorUnitIsFlagged(t *testing.T) {
 	fs := scan(t, operatorUnit("gitea.service", nil))
 
-	// Three of the four are Manual and one is not, and the split is the
-	// point rather than an inconsistency. protect-system, protect-home and
+	// Three of the four are Manual and one is not, and the split is
+	// intended. protect-system, protect-home and
 	// private-tmp each break something the unit does not show (a service
 	// that hands another files through /tmp, one whose data lives in a home
 	// directory, one that writes under /usr) so Hostveil cannot tell a safe
@@ -121,7 +120,7 @@ func TestUnhardenedOperatorUnitIsFlagged(t *testing.T) {
 			t.Errorf("%s: remediation = %v, want %v", want, f.Remediation, kind)
 		}
 		// The fix layer cannot import this package, so the path it writes
-		// travels with the finding rather than being recomputed there.
+		// travels with the finding.
 		if got := f.Metadata["dropin"]; got != "/etc/systemd/system/gitea.service.d/50-hostveil.conf" {
 			t.Errorf("%s: metadata[dropin] = %q", want, got)
 		}
@@ -226,7 +225,7 @@ func TestSeverityFollowsTheAccount(t *testing.T) {
 }
 
 // Several units in one batched call, separated by blank lines, is the whole
-// reason the checker makes one call rather than one per unit.
+// reason the checker makes one call.
 func TestSeveralUnitsInOneCall(t *testing.T) {
 	show := operatorUnit("a.service", map[string]string{"NoNewPrivileges": "yes", "ProtectSystem": "full", "ProtectHome": "yes", "PrivateTmp": "yes"}) +
 		"\n" + operatorUnit("b.service", map[string]string{"ProtectSystem": "full", "ProtectHome": "yes", "PrivateTmp": "yes"}) +
@@ -280,8 +279,7 @@ func TestAvailability(t *testing.T) {
 	}
 }
 
-// A failure to enumerate is an error, not an empty result: the axis is then
-// excluded rather than scored a perfect 100 on evidence the scan never obtained.
+// A failure to enumerate is an error: the axis is then excluded.
 func TestEnumerationFailureIsAnError(t *testing.T) {
 	_, err := New().Check(context.Background(), platform.Env{
 		ServiceManager: platform.SMSystemd, Runner: checktest.New(),

@@ -24,8 +24,7 @@ import (
 //
 // This closes that. It asks the same question of the two managed
 // front-ends that the other two already had to answer, and (like every
-// other probe here) reports "cannot tell" rather than guessing when the
-// query fails.
+// other probe here) reports "cannot tell" when the query fails.
 
 // inboundPolicy is what the active front-end does with a packet no rule
 // matched.
@@ -175,16 +174,16 @@ func parseFirewalldTarget(out string) inboundPolicy {
 //
 // It carries the same level as firewall.inactive, because it is the same
 // posture: the difference is only that this one looks fixed. The level says
-// the backstop is missing, not that an exposure is confirmed: the host may
+// the backstop is missing. No exposure is confirmed: the host may
 // well be behind a router or a cloud security group, which is why the
-// description says so rather than the severity pretending to know.
+// description says so.
 //
 // The fix carries the same reason firewall.inactive's does, and the same
 // resolution: with the port sshd is listening on in evidence, it
 // can allow that port first and only then flip the default policy, as two
 // commands of one action. It stays Review: the change cannot be rolled back
 // and it takes every other inbound port with it, which an operator should
-// decide rather than discover. It is buildable for ufw and for firewalld,
+// decide in advance. It is buildable for ufw and for firewalld,
 // whose fix flips the default zone's target.
 func defaultAllowFinding(which string) model.Finding {
 	how := "Run `ufw default deny incoming`, then `ufw reload`. Make sure your SSH port is allowed first (`ufw allow OpenSSH`): the deny policy takes effect immediately and an unallowed session is the one you are using."

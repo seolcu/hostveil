@@ -72,7 +72,7 @@ func Latest(ctx context.Context, c Client) (Release, error) {
 // archive only if the two agree.
 //
 // The checksum is not advisory. An archive that is not listed, or listed with
-// a different hash, is discarded rather than installed with a warning: this
+// a different hash, is discarded: this
 // runs as root, and "the download looked wrong but I went ahead" is not a
 // sentence this program gets to say about a binary it is about to become.
 func Download(ctx context.Context, c Client, rel Release) ([]byte, error) {

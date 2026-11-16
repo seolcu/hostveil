@@ -29,16 +29,15 @@ import (
 // fix edits that file instead of writing one that cannot win.
 //
 // procps' `sysctl --system` orders differently (whole directories in a fixed
-// sequence rather than one filename-sorted merge) but agrees on the case
+// sequence) but agrees on the case
 // that matters, reading /etc/sysctl.conf last. The model below follows
 // systemd and then puts /etc/sysctl.conf last unconditionally, which is the
 // conservative direction: naming a real assignment of the observed value is
 // never worse advice than naming none.
 
 // defaultConfDirs is systemd-sysctl's search path, most authoritative first.
-// A file in an earlier directory *masks* a same-named file in a later one
-// rather than overriding it, which is how a distribution's drop-in is
-// disabled by placing an empty file of the same name in /etc.
+// A file in an earlier directory *masks* a same-named file in a later one,
+// which is how a distribution's drop-in is disabled by placing an empty file of the same name in /etc.
 func defaultConfDirs() []string {
 	return []string{
 		"/etc/sysctl.d",
@@ -69,7 +68,7 @@ func (a assignment) String() string { return a.Path + ":" + strconv.Itoa(a.Line)
 // origins resolves, for every key any configuration file assigns, the
 // assignment that decides it.
 //
-// Unreadable files are skipped rather than reported. A missing origin costs
+// Unreadable files are skipped. A missing origin costs
 // only the sharper remediation (the fix falls back to the drop-in it wrote
 // before) whereas treating it as a coverage gap would degrade the whole
 // domain over a file that has nothing to do with the parameters audited.
@@ -147,7 +146,7 @@ func parseConf(path string, rank int, out map[string]assignment) {
 // parseAssignment splits one configuration line.
 //
 // The leading "-" is systemd's "apply this but do not complain if it fails"
-// marker; it is part of the syntax, not of the key. Slashes are accepted as
+// marker; it is part of the syntax. Slashes are accepted as
 // separators because sysctl.d permits kernel/dmesg_restrict for the same
 // parameter as kernel.dmesg_restrict, and a rule keyed on dots would miss it.
 func parseAssignment(line string) (key string, value int64, ok bool) {
