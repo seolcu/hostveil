@@ -96,7 +96,7 @@
                 </tbody>
               </table>
             </div>
-            <p><code>sudo</code>'s <code>secure_path</code> replaces <code>PATH</code> outright in the elevated child on Debian and Ubuntu, so a re-executed Hostveil can resolve a different set of binaries than the process that started it would have.</p>
+            <p><code>sudo</code>'s <code>secure_path</code> replaces <code>PATH</code> entirely in the elevated child on Debian and Ubuntu, so a re-executed Hostveil can resolve a different set of binaries than the process that started it would have.</p>
             <div class="callout warn">
               <span class="callout-label">A host with no HOME</span>
               <p>If <code>HOME</code> cannot be resolved (a bare systemd unit, some container entrypoints) the state directory falls back to <code>$TMPDIR/hostveil</code>, i.e. <code>/tmp/hostveil</code> on a normal host. Checkpoints written there do not survive a reboot, so "a fix is always reversible" stops being true, and nothing in the output says so. Give the unit a <code>HOME</code>, or run as root and get <code>/var/lib/hostveil</code>.</p>
@@ -143,7 +143,7 @@
             <p>This exists because of a specific failure. Hostveil inherits the operator's environment and <code>sudo</code> keeps <code>LANG</code> and <code>LC_*</code> by default, so on a German host Hostveil asked <code>apt</code> in German and then looked for English. The string <code>[upgradable from: %s]</code> is translated in twenty-one locales, and the counter skipped every line that did not contain that exact English text: <strong>zero pending security updates on an unpatched machine</strong>, which is the failure class the whole tool refuses. A clean report you cannot trust is worse than no report.</p>
             <p>The variable pinned is <code>LC_ALL</code>, because gettext honours <code>LANGUAGE</code> over <code>LANG</code>, so pinning <code>LANG</code> alone would leave a desktop's <code>LANGUAGE=de:en</code> in charge. <code>LANGUAGE</code> is ignored when the locale is <code>C</code>, which is why this one variable is enough.</p>
 
-            <h3 id="locale">The locale does not change the layout, on purpose</h3>
+            <h3 id="locale">Locale and layout</h3>
             <p>The width library Hostveil links reads these at startup and sets a global that Hostveil then does not use. Hostveil builds its own measurement with East Asian width switched off. The obvious assumption is the opposite one, so it is worth stating positively: none of these four changes how a screen is laid out.</p>
             <div class="docs-table-wrap">
               <table>

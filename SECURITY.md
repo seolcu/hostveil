@@ -7,7 +7,7 @@ Please report security issues **privately** through GitHub's
 rather than opening a public issue.
 
 Include whatever you have: what you did, what happened, and what you expected.
-A proof of concept helps but is not required — a clear description of the flaw
+A proof of concept helps but is not required. A clear description of the flaw
 is enough to start.
 
 You should get an acknowledgement within a week. Hostveil is maintained by a
@@ -49,8 +49,8 @@ questions are about what it does with that privilege:
 ## What is not in scope
 
 - **Findings Hostveil misses, or reports wrongly.** Detection gaps and false
-  positives are real bugs and we want them — but as public issues, not private
-  advisories. They do not put anyone at risk by being discussed openly.
+  positives are real bugs. Report them as public issues, since they do not need
+  a private advisory. They do not put anyone at risk by being discussed openly.
 - **The severity or score assigned to a finding.** That is a judgement call.
   Argue with it in an issue.
 - **Vulnerabilities in the software Hostveil audits.** If Docker or OpenSSH has

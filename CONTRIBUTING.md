@@ -18,14 +18,14 @@ Go 1.26. No other tooling is required to build or test.
 
 The binary compiles and tests everywhere, but only *does* anything on Linux
 with docker, ssh, and a firewall present. **Do not run it against your own
-machine** — it applies changes to system files. Use the Vagrant demo VM, which
+machine**: it applies changes to system files. Use the Vagrant demo VM, which
 rsyncs your working tree in and rebuilds:
 
 ```bash
 cd demo && ./run.sh up      # then: ./run.sh scan | web | shell | reset | halt
 ```
 
-The VM is deliberately misconfigured, so it has something to find.
+The VM is misconfigured on purpose, so it has something to find.
 `./run.sh reset` puts it back.
 
 ## Before you open a pull request
@@ -41,15 +41,15 @@ names each step that fails.
 
 **Pull request titles matter.** Merges are squashed and the title becomes the
 commit subject, which drives the version bump and the changelog. It must be
-conventional — `fix(check): ...`, `feat(ui): ...` — and the scope comes from a
+conventional (`fix(check): ...`, `feat(ui): ...`), and the scope comes from a
 closed allowlist enforced by CI. Put the component in the *scope*, never the
 type. `AGENTS.md` has the full list and the reasoning.
 
 ## What makes a change likely to be merged
 
-Hostveil's only real claim is that **its score is honest**. Most of the
+Hostveil's main claim is that **its score is accurate**. Most of the
 project's rules exist to protect that, and they are documented as invariants in
-`AGENTS.md` — worth reading before a first change. The two that come up most:
+`AGENTS.md`. Read it before a first change. The two that come up most:
 
 - **"I couldn't look" must never score the same as "nothing there."** A checker
   that cannot examine its ground reports `Available() = false` (skipped, axis
@@ -67,10 +67,10 @@ trigger it alongside the case that must.
 
 ## Reporting things
 
-- **A finding Hostveil misses, or reports wrongly** — open an issue. Include
+- **A finding Hostveil misses, or reports wrongly**: open an issue. Include
   the relevant config and what you expected. These are the most useful reports
   the project gets.
-- **A security vulnerability in Hostveil itself** — see `SECURITY.md`; report
+- **A security vulnerability in Hostveil itself**: see `SECURITY.md`; report
   it privately rather than in an issue.
 
 ## License

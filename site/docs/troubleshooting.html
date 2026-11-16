@@ -14,7 +14,7 @@
     <meta property="og:image" content="https://hostveil.seolcu.com/assets/social-preview.png">
     <meta property="og:image:width" content="1280">
     <meta property="og:image:height" content="640">
-    <meta property="og:image:alt" content="The Hostveil mark and name above the line: Quiet security for the servers you run.">
+    <meta property="og:image:alt" content="The Hostveil mark and name above the line: Security hardening for self-hosted Linux servers.">
     <meta property="og:site_name" content="Hostveil">
     <meta name="twitter:card" content="summary_large_image">
     <link rel="canonical" href="https://hostveil.seolcu.com/docs/troubleshooting">
@@ -136,7 +136,7 @@
             <h2 id="degraded">A domain says “Degraded”</h2>
             <p>The checker ran and covered <em>part</em> of its ground. The findings it reported are real and are scored; what it could not examine is named in the reason. Common causes: a <code>Match</code> block in <code>sshd_config</code>, an <code>Include</code>d sshd config it cannot read, a compose file it cannot parse, images Trivy could not pull, or containers it could not enumerate.</p>
             <p><strong>A <code>Match</code> block is the newest of those and the one most hosts hit.</strong> Hostveil stops reading <code>sshd_config</code> at the first <code>Match</code>, because sshd applies what follows only to connections that match. A directive there does not describe the host the way a global one does. So <code>Match User git</code> or <code>Match Address</code> sends the SSH domain to Degraded, and the reason names the file. The findings above the block are real and are scored; what is inside it was not read. This is deliberate: <code>Match Address 0.0.0.0/0</code> followed by <code>PasswordAuthentication yes</code> re-enables passwords for every connection there is, and a scan that reported that host as fully audited would be saying something it had not checked.</p>
-            <p>Degraded is kept apart from <strong>Skipped</strong> (a dependency is absent, and the domain is excluded from scoring entirely) and from <strong>Error</strong> (the checker failed outright).</p>
+            <p>Degraded is kept apart from <strong>Skipped</strong> (a dependency is absent, and the domain is excluded from scoring entirely) and from <strong>Error</strong> (the checker failed completely).</p>
 
             <h2 id="score-did-not-move">I applied fixes and the score did not move</h2>
             <p>On a host with containers this is the expected outcome of <code>fix --all</code>.</p>
@@ -152,7 +152,7 @@
             <p>Almost always the state directory. Hostveil stores checkpoints in <code>/var/lib/hostveil</code> when running as root and <code>~/.local/share/hostveil</code> otherwise, so a fix applied under <code>sudo</code> is invisible to an unprivileged <code>hostveil history</code>. Re-run with <code>sudo</code>. This most often bites when <code>HOSTVEIL_NO_SUDO=1</code> is set, or on a host with no <code>sudo</code> installed.</p>
 
             <h2 id="exit-codes">A scheduled scan exits 3</h2>
-            <p>A detection domain failed outright, so the scan covered less of the host than it should have. The result may look clean, and it cannot be trusted. An unreachable Docker socket is the usual cause. A domain merely <em>skipped</em> for a missing dependency, or <em>degraded</em> to partial coverage, does not produce this. See <a href="cli#exit-codes">exit codes</a>.</p>
+            <p>A detection domain failed completely, so the scan covered less of the host than it should have. The result may look clean, and it cannot be trusted. An unreachable Docker socket is the usual cause. A domain merely <em>skipped</em> for a missing dependency, or <em>degraded</em> to partial coverage, does not produce this. See <a href="cli#exit-codes">exit codes</a>.</p>
 
             <h2 id="timeouts">A check reports that a command “did not respond”</h2>
             <p>Hostveil bounds every command it runs, so a daemon that accepts a connection and never answers (a wedged Docker is the everyday case) fails that check and the scan moves on. The affected domain is reported as unchecked. Check the daemon named in the message; <code>HOSTVEIL_DEBUG=1</code> shows exactly which call stalled.</p>

@@ -38,7 +38,7 @@
             <p>파이프를 통해 옵션을 전달하려면 <code>bash -s --</code>를 사용하세요. 예:</p>
             <div class="code-block"><pre><code>curl -fsSL https://hostveil.seolcu.com/install.sh | bash -s -- --no-trivy</code></pre></div>
 
-            <h2>권한 상승은 자동입니다</h2>
+            <h2>자동 권한 상승</h2>
             <div class="callout">
               <span class="callout-label">참고</span>
               <p>SSH와 방화벽 점검은 <code>sshd_config</code> 같은 root 소유 파일을 읽어야 하고, 수정을 적용하려면 보호된 경로에 써야 합니다. 그래서 <code>hostveil</code>은 <code>sudo</code> 아래에서 자동으로 자신을 다시 실행합니다. <code>sudo hostveil</code>과 동일한 sudo 비밀번호 프롬프트가 표시되며, 인증 후 같은 터미널에서 계속 진행됩니다. <code>version</code>과 <code>help</code>는 절대 프롬프트를 띄우지 않습니다. 권한 없이(스크립트·CI에서) 실행하려면 <code>HOSTVEIL_NO_SUDO=1</code>을 설정하세요. 그러면 root 소유 영역은 명확한 메시지와 함께 건너뛰어지고, 점수는 오해를 부르는 완벽한 결과를 주지 않도록 재정규화됩니다.</p>

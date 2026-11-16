@@ -35,7 +35,7 @@ for each finding on this axis:
 
 score   = round(100 × remaining)
 penalty = round(cap × (1 - remaining))</code></pre></div>
-            <p>The weight comes from severity, and only severity. See <a href="#unavailable">Findings with no fix weigh the same as anything else</a> for why an unpatched vulnerability gets no special treatment:</p>
+            <p>The weight comes from severity, and only severity. See <a href="#unavailable">Weight of findings with no fix</a> for why an unpatched vulnerability gets no special treatment:</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>Severity</th><th>What it claims about your host</th><th>Takes</th><th>Decimal</th></tr></thead>
@@ -54,7 +54,7 @@ penalty = round(cap × (1 - remaining))</code></pre></div>
             <p><strong>Order does not matter.</strong> Multiplication commutes, so the order findings arrive in cannot change the product. The damping for repeats would put that at risk on its own: one ID can carry two severities, and whichever instance was seen first would pay full price. So within an ID the heaviest instance is sorted to the front and pays it. The factors are then the same sequence whatever order the findings came in, which also makes the arithmetic bit-identical: the severity weights are dyadic fractions (1/2, 1/8, 1/16) and exact in binary, while the divisors for repeats (1/3, 1/6, …) are not, and a fixed order is what stops that difference from being visible.</p>
             <p><strong>An axis can never read 100 once anything lands on it.</strong> The smallest weight in the model is 1/64, so even a lone unpatchable Low finding puts an untouched axis at <code>round(98.4375)</code> = 98.</p>
 
-            <h3 id="score-vs-penalty">Score and penalty are two different numbers</h3>
+            <h3 id="score-vs-penalty">Axis score and penalty</h3>
             <p>Each axis reports both, and they are rounded independently from the same <code>remaining</code>. The <strong>score</strong> is the axis on its own terms, 0–100. The <strong>penalty</strong> is what that axis contributed to the headline number, expressed in the axis&rsquo;s own cap.</p>
             <p>The score is <code>round(100 × remaining)</code>, for resolution: a cap-6 axis has only seven possible integer penalties, so deriving the score from the penalty would give that axis seven distinct scores. Drawing from <code>remaining</code> gives every axis the full range no matter how small its cap.</p>
             <p>The visible consequence is that <strong>the displayed penalties do not have to add up to <code>100 - overall</code></strong>, and this is not a bug. With all sixteen domains running and exactly one Low finding on File permissions (cap 5), one on Kernel hardening (cap 5), and one on Service hardening (cap 6):</p>
@@ -192,7 +192,7 @@ overall   = 100 - round(57.246554 × 100 / 84)
             <p>Additive overall: <code>100 - round(75 × 100 / 84)</code> = <strong>11</strong>, against the real <strong>32</strong>. Seven of the ten applicable axes read exactly 0, including Kernel hardening, which has one Medium finding and four Low findings and scores 68 on its own. A host where seven axes are all &ldquo;0&rdquo; has no next step to offer you.</p>
             <p>The container axis is the cleanest statement of the point. It carries 52 findings: 8 High, 16 Medium, 28 Low. Additively, the sum passes the cap after two of them and the other 50 are free. Multiplicatively, <code>remaining</code> is 7.5698 × 10⁻⁵, which <em>displays</em> as 0 but is not 0: every one of the 52 findings moved it, and removing any single one moves it back.</p>
 
-            <h2 id="caps">A cap is a weight</h2>
+            <h2 id="caps">What a cap means</h2>
             <p>Each axis carries a cap, and the sixteen caps sum to exactly 100. The sum is a readability decision: renormalization would work with any total, but a total of 100 is what makes an axis&rsquo;s penalty readable as points off the headline, and makes the overall exactly <code>100 &minus; round(total)</code> on a host where every domain ran.</p>
             <p>A cap is <strong>the axis&rsquo;s share of the overall score and nothing else</strong>. It is purely how much this domain matters. In particular:</p>
             <p><strong>The cap is not a budget of damage the axis can absorb before it fails.</strong> It does not appear in the per-axis score at all. Every axis is scored 0–100 on its own terms, by the same erosion. A cap-5 axis and a cap-14 axis with identical findings show the identical axis score.</p>
@@ -226,7 +226,7 @@ overall   = 100 - round(57.246554 × 100 / 84)
               </table>
             </div>
 
-            <h3 id="funding">Six new axes, paid for out of the old ones</h3>
+            <h3 id="funding">Funding six new axes</h3>
             <p>The total has to stay 100, so adding a domain always means taking points from the others. Each recent axis was funded by naming who gave and why. This is the part of the table with the most argument in it, because a transfer has to be defended twice: once for the receiver and once for each giver.</p>
             <p><strong>Docker daemon (7), from six axes:</strong></p>
             <div class="docs-table-wrap">
@@ -338,7 +338,7 @@ overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
               <p>If every domain was skipped or failed there is no denominator, and renormalizing over zero caps would fall out at a clean <strong>100</strong>, reporting a host Hostveil could not look at as flawless. Hostveil refuses the computation: a separate <em>applicable</em> flag is false when no axis ran, and all three UIs render <strong>N/A</strong>. The value left behind is 0 and it means nothing; do not read it. An overall of 0 is either a truly bad host or this placeholder, and the flag is the only thing that tells them apart.</p>
             </div>
 
-            <h2 id="unavailable">Findings with no fix weigh the same as anything else</h2>
+            <h2 id="unavailable">Weight of findings with no fix</h2>
             <p>A finding marked <strong>Unavailable</strong> (a vulnerability nobody has published a patch for) takes exactly the share its severity says, with no adjustment:</p>
             <div class="docs-table-wrap">
               <table>

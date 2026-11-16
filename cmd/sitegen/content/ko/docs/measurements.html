@@ -4,7 +4,7 @@
 
             <p class="lead">2026년 9월 11일 재실행 결과입니다. Hostveil 점수와 함께 Lynis, CIS Docker 벤치마크, Docker 브리지에서 실행한 TCP 스캔, 커널의 수신 소켓을 비교했습니다. 개선된 수치와 함께 남은 위험, 롤백으로 돌아오지 않은 상태도 공개합니다.</p>
 
-            <h2 id="why">무엇을 확인한 실험인가요?</h2>
+            <h2 id="why">실험 목적</h2>
 
             <p>Hostveil이 고친 뒤 자체 점수가 오르는 것만으로는 실제 개선을 입증할 수 없습니다. 다른 도구로도 같은 호스트를 측정해 변화를 확인했습니다. 폐기 가능한 VM에 취약한 설정을 심은 실험이며, 운영 서버 전체를 대표하거나 보안을 보장하는 결과는 아닙니다.</p>
 
@@ -119,7 +119,7 @@
 
             <p>SSH 영역은 Review까지 적용한 뒤에야 만점에 도달했습니다. 컨테이너에는 Docker 소켓 마운트, 호스트 네트워킹, 환경 변수 속 비밀값 등의 위험이 남았습니다. 이번 실행에서는 CVE 점수가 개선되지 않았습니다. 최신 이미지 태그를 받더라도 취약점이 없다고 보장할 수는 없습니다. 에이전트 영역도 점수는 올랐지만 발견 항목이 남았습니다. 이는 측정한 커밋의 결과이며 현재 수정 레지스트리의 지원 범위와는 구분해야 합니다.</p>
 
-            <h2 id="control">다른 기준으로 하드닝해도 점수가 오르나요?</h2>
+            <h2 id="control">독립적인 하드닝과 점수 변화</h2>
 
             <p>별도로 새 VM을 만든 뒤 <code>scripts/measure/run.sh -C</code>를 실행했습니다. <code>control.sh</code>가 CIS 기준과 Lynis 제안에 따라 하드닝하고, Hostveil은 점검만 했습니다. 대조군 운영체제는 <code data-measured-run="2026-09-11-cisc-w2026-control-raw.json" data-measured="host.pretty_name">Ubuntu 24.04.4 LTS</code>이며 측정 시각은 <code data-measured-run="2026-09-11-cisc-w2026-control-raw.json" data-measured="measured_at">2026-09-11T05:07:49+00:00</code>입니다.</p>
 

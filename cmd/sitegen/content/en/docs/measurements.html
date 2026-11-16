@@ -119,7 +119,7 @@
 
             <p>SSH reaches full marks only after Review. The container axis remains low with risks such as mounted Docker sockets, host networking and secrets in environment variables. CVEs do not improve in this run; pulling a current image tag does not guarantee it is vulnerability-free. The agent axis improves but retains findings. These results describe the measured commit. The fix registry has grown since.</p>
 
-            <h2 id="control">Does the score respond to independent hardening?</h2>
+            <h2 id="control">Score response to independent hardening</h2>
 
             <p>A separate fresh VM ran <code>scripts/measure/run.sh -C</code>, which applies <code>control.sh</code> using CIS guidance and Lynis suggestions. Hostveil only scanned. This control used <code data-measured-run="2026-09-11-cisc-w2026-control-raw.json" data-measured="host.pretty_name">Ubuntu 24.04.4 LTS</code> and was measured at <code data-measured-run="2026-09-11-cisc-w2026-control-raw.json" data-measured="measured_at">2026-09-11T05:07:49+00:00</code>.</p>
 

@@ -143,7 +143,7 @@
             <p>이것은 실제로 있었던 실패 때문에 존재합니다. Hostveil은 운영자의 환경을 물려받고 <code>sudo</code>는 <code>LANG</code>과 <code>LC_*</code>를 기본으로 남기므로, 독일어 호스트에서 Hostveil은 <code>apt</code>에게 독일어로 묻고는 영어를 찾았습니다. <code>[upgradable from: %s]</code>라는 문자열은 21개 로케일로 번역되어 있고, 개수를 세는 코드는 그 영어 문장이 정확히 들어 있지 않은 줄을 전부 건너뛰었습니다. 그 결과가 <strong>패치되지 않은 기계에서 대기 중인 보안 업데이트 0건</strong>이었습니다. 이 도구 전체가 거부하는 바로 그 종류의 실패입니다. 믿을 수 없는 깨끗한 보고서는 보고서가 없는 것보다 나쁩니다.</p>
             <p>고정하는 변수는 <code>LC_ALL</code>입니다. gettext는 <code>LANG</code>보다 <code>LANGUAGE</code>를 우선하므로 <code>LANG</code>만 고정해서는 데스크톱의 <code>LANGUAGE=de:en</code>이 그대로 주도권을 쥡니다. 로케일이 <code>C</code>이면 <code>LANGUAGE</code>는 무시되고, 그래서 이 변수 하나로 충분합니다.</p>
 
-            <h3 id="locale">로케일은 레이아웃을 바꾸지 않습니다. 일부러 그렇습니다</h3>
+            <h3 id="locale">로케일과 화면 배치</h3>
             <p>Hostveil이 링크하는 문자 폭 라이브러리는 시작할 때 이 값들을 읽어 전역 설정을 만들지만, Hostveil은 그 전역을 쓰지 않고, 동아시아 폭 처리를 끈 자체 측정 방식을 따로 만들어 씁니다. 흔히 반대로 짐작하는 부분입니다. 아래 네 변수 중 어느 것도 화면 배치를 바꾸지 않습니다.</p>
             <div class="docs-table-wrap">
               <table>

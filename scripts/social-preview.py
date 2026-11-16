@@ -45,10 +45,10 @@ DARK = dict(bg=(0x0B, 0x0B, 0x0C), text=(0xF5, 0xF5, 0xF7), muted=(0x98, 0x98, 0
 LIGHT = dict(bg=(0xFB, 0xFB, 0xFD), text=(0x1D, 0x1D, 0x1F), muted=(0x6E, 0x6E, 0x73),
              bone=(0x1D, 0x1D, 0x1F), safe=(0x1F, 0x8F, 0x4E))
 
-SLOGAN_EN = "Quiet security for the servers you run."
-SLOGAN_KO = "서버 보안. 조용하게, 단단하게."
+SLOGAN_EN = "Security hardening for self-hosted Linux servers"
+SLOGAN_KO = "셀프호스팅 서버 보안 강화 도구"
 SUMMARY = ("Finds the security mistakes on a self-hosted Linux server, "
-           "explains them plainly, and fixes them with a preview, a backup "
+           "explains them in plain language, and fixes them with a preview, a backup "
            "and rollback.")
 
 SS = 2  # drawn at twice the size and scaled down, for smooth curves
