@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail on the two claims in a measurement that are promises, not observations.
+"""Fail on the two claims in a measurement that are promises.
 
 Everything else the harness records is an observation: Lynis publishes a new
 release, a distribution changes a default, an image gets a new base, and the
@@ -26,7 +26,7 @@ A control run has neither promise to make about rollback, because hostveil
 changed nothing to roll back. It keeps exactly one, and it is the sharper of
 the two: the score has to move when the host is hardened by somebody else's
 standard. A score that only responds to hostveil's own fixes is measuring
-hostveil, not the host, and that is the failure the control group exists to
+hostveil alone, and that is the failure the control group exists to
 detect.
 
 Usage: check.py <measurement.json>
@@ -65,7 +65,7 @@ def main():
     # Which phase the score is read from is the whole difference between the
     # two runs. "after" is the host with Hostveil's own fixes on disk;
     # "controlled" is the host somebody else hardened. Keyed off the phase
-    # that exists rather than off the profile string, so a run mislabelled
+    # that exists, so a run mislabelled
     # with -p cannot be checked against the wrong claim.
     control = "controlled" in phases
     later = "controlled" if control else "after"

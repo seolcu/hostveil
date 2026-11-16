@@ -10,16 +10,16 @@
 
     python3 scripts/social-preview.py
 
-They are drawn rather than photographed, because each is rendered at a
+They are drawn, because each is rendered at a
 fraction of its size: the name, the mark and one sentence have to survive
 being shrunk, and nothing else is allowed on the card to compete with them.
 
 Nothing here is invented. The palette is site/styles.css's two schemes (the
 dark one is the dashboard's default theme), the mark is the geometry of
-internal/ui/web/assets/mark.svg scaled rather than a second drawing of it,
+internal/ui/web/assets/mark.svg scaled,
 and the sentence is the site's own headline.
 
-Fonts are looked up with fc-match rather than named by path, so this runs on
+Fonts are looked up with fc-match, so this runs on
 any machine that has them: Inter for Latin (the closest open face to the
 system fonts the site is set in), and Noto Sans KR for the Korean banners.
 HOSTVEIL_FONT_SANS, HOSTVEIL_FONT_SANS_MEDIUM and HOSTVEIL_FONT_KO take a file

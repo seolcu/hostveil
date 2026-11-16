@@ -6,8 +6,7 @@ on:
   pull_request:
     branches: [main]
   # Callable so the release workflow can run this exact gate against the
-  # commit being tagged, rather than trusting that some earlier run of it
-  # passed. Adding this does not change when CI runs on its own.
+  # commit being tagged. An earlier run passing is not enough. Adding this does not change when CI runs on its own.
   workflow_call:
 
 permissions:
@@ -26,7 +25,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     # The gate takes about two minutes. Ten is a ceiling, set
-    # past which the job is stuck rather than slow, and a stuck job holds the
+    # past which the job is stuck, and a stuck job holds the
     # pull request until somebody notices.
     timeout-minutes: 15
     steps:
@@ -73,8 +72,7 @@ jobs:
 
       # A tool that reports other people's vulnerabilities should not ship
       # its own. govulncheck reports only vulnerabilities in code paths this
-      # binary reaches, so a finding here is real rather than a
-      # dependency-graph coincidence, which is why it gates the build
+      # binary reaches, so a finding here is real, which is why it gates the build
       # instead of merely warning.
       - name: Check dependencies for known vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
@@ -124,8 +122,8 @@ jobs:
 
       # goreleaser builds linux and darwin on amd64 and arm64, and until this
       # existed the first compile of three of those four targets happened
-      # during a release, where a failure demotes the release to a draft
-      # rather than being caught on the pull request that caused it.
+      # during a release, where a failure demotes the release to a draft.
+      # This catches it on the pull request that caused it.
       # Compiling is enough: the tests only pass meaningfully on the platform
       # they run on, and a build break is what escapes review.
       # Concurrently, and without linux/amd64: the Build step above is that
@@ -149,7 +147,7 @@ jobs:
       # login and adds a second UID 0 account, and is published beside an
       # invitation to run it. The runner ships shellcheck.
       #
-      # Every script, found rather than listed. The list used to name those
+      # Every script, found automatically. The list used to name those
       # two, and the eleven it left out were no less privileged: measure/run.sh
       # is root and edits the host it measures, and instruments/rollback.sh
       # computes the rollback-fidelity claim check.py fails the run over. All
@@ -175,14 +173,13 @@ jobs:
       # every release that has had a meter in it.
       #
       # Only the packages that lay anything out, and without -race: this is a
-      # second pass over the same code for a different environment, not a
-      # second search for data races.
+      # second pass over the same code for a different environment.
       - name: Test in a double-width terminal
         env:
           RUNEWIDTH_EASTASIAN: "1"
         run: go test -count=1 ./internal/ui/... ./internal/textwidth/ ./internal/clirender/ ./internal/glyph/ ./internal/model/
 
-      # Reported, not gated. A threshold on a repository this size mostly
+      # Reported only. A threshold on a repository this size mostly
       # teaches people to write tests that move the number, and the useful
       # signal is which package dropped, which is visible right here in the
       # job summary next to the diff that caused it.

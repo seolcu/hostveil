@@ -27,7 +27,7 @@ systemctl enable --now docker
 usermod -aG docker vagrant || true   # so `docker ps` works without sudo in the demo
 
 # --- hostveil demo: a dangerous Docker daemon -----------------
-# This is the real thing, not a mock: an unauthenticated Docker API on 2375
+# This is real: an unauthenticated Docker API on 2375
 # is root on this VM for anyone who can reach the port, and a 0666 socket is
 # root for any local account. It is acceptable here only because the
 # Vagrantfile NATs this VM and forwards nothing to 2375: check that before
@@ -37,10 +37,10 @@ usermod -aG docker vagrant || true   # so `docker ps` works without sudo in the 
 # bounce them.
 
 # dockerd.api-unauthenticated (High). The drop-in is generated from the
-# CURRENT ExecStart rather than hardcoded, so it survives Docker changing its
+# CURRENT ExecStart, so it survives Docker changing its
 # packaged flags. The bare `ExecStart=` line is mandatory: without it systemd
 # rejects a second ExecStart on a Type=notify service. And the socket goes
-# here rather than into daemon.json's "hosts": dockerd refuses to start when
+# here: dockerd refuses to start when
 # that key and -H are both set, and -H fd:// is already on the shipped unit.
 install -d /etc/systemd/system/docker.service.d
 CURRENT_EXECSTART=$(systemctl show docker.service -p ExecStart --value \
@@ -49,8 +49,7 @@ printf '[Service]\nExecStart=\nExecStart=%s -H tcp://0.0.0.0:2375\n' \
   "${CURRENT_EXECSTART:-/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock}" \
   > /etc/systemd/system/docker.service.d/10-hostveil-demo.conf
 
-# dockerd.socket-world-writable (High). Set on the socket unit, not with
-# chmod: dockerd recreates the socket from this unit at every start, so a
+# dockerd.socket-world-writable (High). Set on the socket unit: dockerd recreates the socket from this unit at every start, so a
 # chmod would be gone by the time Hostveil looked, and the unit drop-in is
 # the misconfiguration people make.
 install -d /etc/systemd/system/docker.socket.d
@@ -92,7 +91,7 @@ fi
 trivy image --download-db-only 2>/dev/null || echo "   (trivy DB download skipped: CVE scan will fetch on first run)"
 
 echo "==> [5/10] weak SSH config (a drop-in that outranks the image's own)"
-# The seed goes in sshd_config.d, not at the end of the main file, because
+# The seed goes in sshd_config.d, because
 # the main file loses. Ubuntu's sshd_config puts `Include
 # sshd_config.d/*.conf` at the top and sshd keeps the first value it
 # obtains for each keyword, so the cloud image's 50-cloud-init.conf and
@@ -101,8 +100,7 @@ echo "==> [5/10] weak SSH config (a drop-in that outranks the image's own)"
 # and it left ssh.passwordauth silently unreproducible.
 #
 # The 00- prefix sorts ahead of the image's drop-ins, so these win. That
-# also makes the demo exercise the checker's Include handling rather than
-# only its main-file parsing.
+# also makes the demo exercise the checker's Include handling.
 install -m 0644 "$DEMO/seed/sshd_hostveil.conf" /etc/ssh/sshd_config.d/00-hostveil-demo.conf
 
 # Converge VMs provisioned by the older version of this script, which
@@ -124,7 +122,7 @@ ufw --force disable || true
 echo "==> [7/10] host-level weaknesses (native exposed service, weak accounts, loose file perms, sysctl, systemd)"
 # A NON-Docker datastore bound to every interface → ports.exposed-datastore.
 # This is exactly the kind of exposure a Compose-file audit can never see,
-# because it is a native service, not a container.
+# because it is a native service.
 apt-get install -y redis-server
 sed -i 's/^bind .*/bind 0.0.0.0/' /etc/redis/redis.conf || true
 sed -i 's/^protected-mode .*/protected-mode no/' /etc/redis/redis.conf || true
@@ -132,7 +130,7 @@ systemctl enable --now redis-server || true
 systemctl restart redis-server || true
 
 # A second account with root's UID (0) → accounts.uid0 (a classic backdoor).
-# Named "breakglass": a real, common mistake, not a hacker's; an emergency
+# Named "breakglass": a real, common mistake; an emergency
 # admin account an ops team makes root-equivalent for out-of-band access and
 # then never locks back down.
 id breakglass >/dev/null 2>&1 || useradd -o -u 0 -g 0 -M -s /bin/bash breakglass
@@ -147,8 +145,7 @@ passwd -d contractor || true
 # World-readable /etc/shadow → fileperms.shadow (every password hash exposed).
 chmod 0644 /etc/shadow || true
 
-# Two sysctl overrides that fight Ubuntu's own hardened defaults, not two
-# that were merely left alone. ptrace_scope=0 and perf_event_paranoid<2 are
+# Two sysctl overrides that fight Ubuntu's own hardened defaults. ptrace_scope=0 and perf_event_paranoid<2 are
 # among the most-copied lines in "gdb: Operation not permitted" and
 # "perf: Permission denied" troubleshooting guides; self-hosters running a
 # game server, profiling a stuck daemon, or following a flamegraph tutorial
@@ -200,16 +197,14 @@ systemctl start stacks-backup.service || true
 
 echo "==> [8/10] self-hosted AI agent runtime configs (OpenClaw + Hermes)"
 # NOTE: neither project is packaged for apt, and neither ships a daemon we
-# could accurately run here, so this seeds their *configuration* rather than
-# installing them. That is enough for the agent domain: Hostveil detects a
+# could accurately run here, so this seeds their *configuration* only. That is enough for the agent domain: Hostveil detects a
 # runtime by its home-directory layout and judges the config and file modes,
 # which is exactly the ground these fixtures cover.
 #
 # The one thing it cannot show is the listener cross-check. The finding is
 # High either way (the firewall and the listener decide the confidence, not
 # the level, and both ride in the evidence) but with nothing bound to
-# :18789 the evidence says the binding came from the config rather than from
-# an observed socket. To see the other case in the demo, run something on
+# :18789 the evidence says the binding came from the config. To see the other case in the demo, run something on
 # the port first:  python3 -m http.server 18789 --bind 0.0.0.0 &
 install -d -m 0700 -o vagrant -g vagrant /home/vagrant/.openclaw
 install -d -m 0755 -o vagrant -g vagrant /home/vagrant/.openclaw/credentials  # too open → agent.secret-exposed

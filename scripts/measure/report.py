@@ -2,8 +2,7 @@
 """Assemble one measurement run into the JSON that gets committed.
 
 run.sh leaves every phase and every hash table in a working directory; this
-turns that pile into a document. It is a separate file rather than a heredoc
-because the rollback comparison is the part of the harness most easily got
+turns that pile into a document. It is a separate file because the rollback comparison is the part of the harness most easily got
 subtly wrong, and a heredoc cannot be read on its own or tested.
 
 Usage: report.py <workdir> <profile>
@@ -18,7 +17,7 @@ ABSENT = "ABSENT"
 
 
 def read_json(path):
-    """A phase file that is missing or unparseable is reported, not dropped."""
+    """A phase file that is missing or unparseable is reported."""
     try:
         with open(path) as fh:
             return json.load(fh)
@@ -144,7 +143,7 @@ def rollback_verdict(work):
 #
 # "restored" sorts last even though a control run never reaches it:
 # every delta is measured against "before", so this list is about reading
-# order rather than arithmetic.
+# order.
 PHASE_ORDER = ("before", "controlled", "after", "restarted", "reviewed", "restored")
 
 SETS = [
@@ -195,7 +194,7 @@ def deltas(phases):
 def fix_phase(work):
     """What `fix --all --yes` said it did.
 
-    Read out of the CLI's own output rather than counted from checkpoints,
+    Read out of the CLI's own output,
     because a fix that failed leaves no checkpoint and would otherwise not
     appear anywhere in the report at all.
     """
@@ -238,11 +237,10 @@ def seeded_manifest():
 
     Publishing the score without saying so would be the same mistake the
     scanner itself is built against (an absence read as an all-clear) so the
-    manifest travels with the numbers rather than living in somebody's memory
-    of how the host was built.
+    manifest travels with the numbers.
 
     A run on a host seeded by an older copy of seed.sh has no manifest, and
-    that is reported as absent rather than as an empty one: "nothing was
+    that is reported as absent: "nothing was
     recorded" and "nothing was missing" are the two readings this whole
     harness exists to keep apart.
     """
@@ -263,7 +261,7 @@ def main():
         # a hostveil run has five, and reading a fixed list would put an
         # {"error": "No such file"} object under every phase the other kind of
         # run does not have; a report that looks like five failed
-        # measurements rather than like two that were never asked for.
+        # measurements.
         if not os.path.exists(os.path.join(work, phase + ".hostveil.json")):
             continue
         phases[phase] = {
@@ -285,7 +283,7 @@ def main():
         "phases": phases,
         "deltas": deltas(phases),
     }
-    # The hostveil-driven keys are omitted rather than zeroed when nothing
+    # The hostveil-driven keys are omitted when nothing
     # applied a fix. "attempted: 0, failed: []" is a claim that Hostveil tried
     # nothing and succeeded, which is not what a control run means; it means
     # Hostveil was never asked.

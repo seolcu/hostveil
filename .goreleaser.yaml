@@ -63,9 +63,8 @@ nfpms:
     license: GPL-3.0
     section: admin
     bindir: /usr/bin
-    # Every one of these is optional and each unlocks a domain rather than
-    # being required to run: no Docker means the container and CVE domains
-    # report N/A, not that Hostveil fails. Recommends, never Depends:
+    # Every one of these is optional and each unlocks a domain: no Docker means the container and CVE domains
+    # report N/A and Hostveil still runs. Recommends, never Depends:
     # pulling Docker onto a host as a side effect of installing a scanner
     # would be indefensible.
     recommends:

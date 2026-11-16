@@ -56,10 +56,10 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 KO_HTML = ROOT / "site" / "ko"
 OUT = ROOT / "site" / "assets" / "fonts"
 
-# Pinned to a commit rather than to main: this has to fetch the same bytes in a
+# Pinned to a commit: this has to fetch the same bytes in a
 # year's time, and google/fonts rebuilds these files in place. The digest is
-# checked as well, so a URL that starts answering with something else is loud
-# rather than silently baked into the next subset.
+# checked as well, so a URL that starts answering with something else fails
+# loudly.
 UPSTREAM = "https://raw.githubusercontent.com/google/fonts/e1118da94a8cb00cf6d06cdac9ef13eb1e5c6ab7"
 
 SOURCES = [
@@ -77,8 +77,7 @@ SOURCES = [
 
 # The blocks site/korean.css declares as the unicode-range. Syllables are what
 # modern Korean is written in; the jamo blocks are here so that a
-# stray ㄱ or a decomposed syllable is covered rather than being the one
-# character on the page in another face.
+# stray ㄱ or a decomposed syllable is covered.
 HANGUL_BLOCKS = [
     (0x1100, 0x11FF),  # Hangul Jamo
     (0x3130, 0x318F),  # Hangul Compatibility Jamo
@@ -96,7 +95,7 @@ def in_hangul(ch: str) -> bool:
 def site_hangul() -> list[str]:
     """Every Hangul codepoint the generated Korean site contains.
 
-    The whole file is read, not just the text nodes: an aria-label and a title
+    The whole file is read, attributes included: an aria-label and a title
     attribute are read aloud and shown in a tooltip, so a syllable there needs
     a glyph as much as one in a paragraph does.
     """

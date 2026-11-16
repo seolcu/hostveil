@@ -206,7 +206,7 @@ def resolve_font() -> str:
     host that keeps its fonts somewhere none of the candidates name. It is
     not a default: rendering the site's screenshot in a different typeface
     is a change to how the website looks, and it should be something
-    somebody asked for rather than something a missing package chose.
+    somebody asked for.
     """
     override = os.environ.get("HOSTVEIL_ANSI2PNG_FONT")
     if override:

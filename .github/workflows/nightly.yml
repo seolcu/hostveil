@@ -1,6 +1,6 @@
 name: Nightly
 
-# The checks that are worth running against time rather than against a diff.
+# The checks that are worth running on a schedule.
 #
 # govulncheck gates every pull request, but a new advisory against a
 # dependency lands on a schedule outside this repository, so with PR-only triggers a
@@ -67,7 +67,7 @@ jobs:
       # A crash is only useful if the input that caused it survives the
       # runner. Go writes it under testdata/fuzz/<Target>/, which is exactly
       # where it belongs in the repo, so the artifact is a file someone can
-      # commit as a regression seed, not a log line to reconstruct from.
+      # commit as a regression seed.
       - name: Upload crash corpus
         if: failure()
         uses: actions/upload-artifact@v7
@@ -79,7 +79,7 @@ jobs:
 
   # The installer is the first thing a new user runs, and it is the one
   # component CI cannot exercise from source: it downloads a published
-  # release. So it is checked here rather than on a pull request, against
+  # release. So it is checked here, against
   # whatever is currently `latest`, which is also what catches a release
   # that published badly, independent of the code in this branch.
   installer:

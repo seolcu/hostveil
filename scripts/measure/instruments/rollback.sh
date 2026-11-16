@@ -23,8 +23,7 @@ set -euo pipefail
 
 MARK=${MEASURE_MARK:-/tmp/hostveil-measure-mark}
 
-# Directories listed entry by entry rather than only where a finding names a
-# file inside them. A fix that *creates* a file is invisible in the
+# Directories listed entry by entry. A fix that *creates* a file is invisible in the
 # before-state (nothing points at a path that does not exist yet) so its
 # absence has to be recorded some other way, and enumerating the directory is
 # that way. sysctl is the case that needs it: persistSysctl writes a new
