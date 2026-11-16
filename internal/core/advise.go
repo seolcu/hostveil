@@ -11,7 +11,7 @@ import (
 // fixableActive is what Advise judges: active findings with a real
 // Benefit/SideEffect to weigh. Manual and Unavailable findings have
 // nothing to apply (WhyNoFix already explains those), so they're excluded
-// here rather than sent to a model with nothing to say about them.
+// here, since a model would have nothing to say about them.
 func fixableActive(findings []model.Finding) []model.Finding {
 	var out []model.Finding
 	for _, f := range findings {
@@ -53,7 +53,7 @@ func plainAdvice(findings []model.Finding) string {
 // Advise judges a whole set of findings at once: "which of these fixes
 // make sense here, and which don't": against the operator's own saved
 // description of this host (AIContext). findings is caller-supplied,
-// mirroring ApplyBatch's shape, rather than read from e.Current(): the
+// mirroring ApplyBatch's shape: the
 // caller (a fresh scan in the CLI, the live report in the TUI/web) already
 // knows which report it means.
 func (e *Engine) Advise(ctx context.Context, findings []model.Finding, useAI bool) model.Advice {

@@ -26,7 +26,7 @@ func (e *Engine) ListCheckpoints() ([]model.Checkpoint, error) {
 }
 
 // IsIncompleteHistory reports whether an error from ListCheckpoints means
-// "some checkpoints are unreadable" rather than "the list failed".
+// "some checkpoints are unreadable" while the list itself succeeded.
 //
 // It exists for the same reason IsExternalEdit does: the layering tests
 // forbid internal/ui/* from importing internal/history, so a UI has no access

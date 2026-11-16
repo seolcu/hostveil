@@ -8,7 +8,7 @@ import (
 	"github.com/seolcu/hostveil/internal/fix"
 )
 
-// A crash inside a fix ends that fix, not the process.
+// A crash inside a fix ends that fix and leaves the process running.
 //
 // internal/check.runOne has said since the beginning that a panic in one
 // checker degrades only that domain. The fix path said nothing, and it takes
@@ -23,7 +23,7 @@ import (
 // host-supplied bytes meet a hand-written parser: compose YAML surgery, JSON5
 // editing, sshd_config rewriting. Two of those already carry fuzz targets,
 // which is an admission that hostile input reaches them. And a Transform sees
-// bytes read at apply time, not at scan time, so they can differ from the ones
+// bytes read at apply time, so they can differ from the ones
 // a checker parsed successfully minutes earlier.
 //
 // Turning the panic into an ordinary error puts a crashing fix on the same

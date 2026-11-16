@@ -20,7 +20,7 @@ import (
 // shaped Auto, and classify taking the stricter of the two is the only thing
 // standing between `fix --all` and `apt-get install`.
 //
-// That is a convention, not a guard. One checker declaring Auto for a finding
+// That is only a convention. One checker declaring Auto for a finding
 // whose fix happens to be exec is all it takes, and the failure is silent: a
 // package installed and a service enabled on the operator's host, unattended,
 // with no checkpoint and no rollback.
@@ -58,7 +58,7 @@ func TestAnExecFixIsNeverClassifiedAuto(t *testing.T) {
 	}
 
 	// And the batch must decline it, which is the consequence that
-	// matters rather than the label.
+	// matters.
 	out := e.ApplyBatch(context.Background(), findings)
 	if len(out.Applied) != 0 {
 		t.Errorf("`fix --all` applied an exec fix: %v", out.Applied)

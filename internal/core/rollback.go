@@ -11,8 +11,7 @@ import (
 
 // Rollback restores a checkpoint's files, then un-marks the finding the
 // checkpoint fixed and rescores: the exact inverse of ApplyFix's
-// mark-fixed→rescore tail. Doing it here rather than leaving it to a
-// re-scan is what makes rollback correct in a long-lived TUI or web
+// mark-fixed→rescore tail. Doing it here is what makes rollback correct in a long-lived TUI or web
 // session, where the in-memory report would otherwise keep reporting a
 // finding as fixed after its fix had been undone.
 func (e *Engine) Rollback(id string) (model.RollbackOutcome, error) {
@@ -20,14 +19,14 @@ func (e *Engine) Rollback(id string) (model.RollbackOutcome, error) {
 }
 
 // IsExternalEdit reports whether a rollback was declined because the file
-// changed after the fix wrote it, rather than having failed.
+// changed after the fix wrote it. Such a rollback did not fail.
 //
 // It exists because the UIs cannot answer this themselves: the layering
 // tests forbid internal/ui/* from importing internal/history, so they have
 // no access to the error type. Without this they would be left matching on
 // the message text, which silently stops working the day the wording is
 // improved. The distinction matters: a declined rollback is a question for
-// the user, not an error to report.
+// the user.
 func IsExternalEdit(err error) bool {
 	var e *history.ExternalEditError
 	return errors.As(err, &e)

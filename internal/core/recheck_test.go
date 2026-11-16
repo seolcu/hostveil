@@ -204,7 +204,7 @@ func TestBatchDoesNotVerifyEachFix(t *testing.T) {
 }
 
 // A domain with no registered checker cannot be re-checked, and that is
-// "unavailable" rather than a claim in either direction.
+// "unavailable", which claims nothing in either direction.
 func TestVerifyWithNoCheckerForTheDomain(t *testing.T) {
 	e := recheckEngine(t, &stubChecker{src: model.SourceSSH}) // a different domain
 

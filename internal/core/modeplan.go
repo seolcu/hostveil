@@ -26,15 +26,15 @@ type modeChange struct {
 // only the paths that would change, so a fix cannot claim credit
 // for files that were already compliant.
 //
-// A stat failure aborts the whole plan rather than skipping the file: a fix
+// A stat failure aborts the whole plan: a fix
 // that silently tightened three of four files would report success while
 // leaving the fourth exposed.
 //
 // Lstat plus a type check, never Stat. Mode fixes reach into user homes
 // (agent.config-perms), where the path is the account's to shape: a symlink
 // left where the config file was would send root's chmod to whatever the
-// link points at. Refusing loudly rather than skipping keeps the no-silent-
-// partial-success rule above.
+// link points at. Refusing loudly keeps the no-silent-partial-success
+// rule above.
 func planModes(a fix.Action) ([]modeChange, error) {
 	var changes []modeChange
 	for _, p := range a.Paths {

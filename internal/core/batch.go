@@ -38,11 +38,10 @@ func (e *Engine) applyBatch(ctx context.Context, findings []model.Finding, revie
 
 	out := model.BatchOutcome{Failed: map[string]string{}}
 	for _, f := range findings {
-		// Between fixes, not during one. A fix is backup→write→checkpoint and
+		// Between fixes. A fix is backup→write→checkpoint and
 		// must finish what it started; the safe place to stop is the gap
 		// before the next one. Everything after the interruption lands in
-		// Skipped, and Interrupted says those were never reached rather than
-		// judged ineligible: otherwise a batch cut short reads exactly like
+		// Skipped, and Interrupted says those were never reached: otherwise a batch cut short reads exactly like
 		// one that ran to completion.
 		if ctx.Err() != nil {
 			out.Interrupted = true
@@ -59,18 +58,17 @@ func (e *Engine) applyBatch(ctx context.Context, findings []model.Finding, revie
 			continue
 		}
 		out.Applied = append(out.Applied, f.ID)
-		// A subset of Applied, not a fourth bucket: the fix was applied, and
+		// A subset of Applied: the fix was applied, and
 		// what is left is the restart. The batch does not re-check, so this
 		// comes from the action's own TakesEffectOn, which is the whole
-		// reason that declaration lives on the fix rather than being derived
-		// from a re-check that does not run here.
+		// reason that declaration lives on the fix: no re-check runs here.
 		if res.Pending {
 			out.Pending = append(out.Pending, f.ID)
 		}
 	}
 	out.NewScore = e.state.rescore()
 	// Rendered here, after the score, so every interface reports the same
-	// outcome rather than four descriptions of it.
+	// outcome in the same words.
 	out.Message = out.Summary()
 	return out
 }
@@ -86,7 +84,7 @@ func (e *Engine) applyBatch(ctx context.Context, findings []model.Finding, revie
 // eligible is false for a finding the batch would report as Skipped
 // (already fixed, not Auto/reviewed-Review, unregistered, or a
 // shape-mismatched fix); err is non-nil only for a finding the batch would
-// report as Failed: a defect in Hostveil, not a property of the finding.
+// report as Failed: a defect in Hostveil.
 func (e *Engine) applyOneLocked(ctx context.Context, f model.Finding, reviewed bool) (res model.FixOutcome, eligible bool, err error) {
 	eligible = f.Remediation == model.RemediationAuto ||
 		(reviewed && f.Remediation == model.RemediationReview)
@@ -109,7 +107,7 @@ func (e *Engine) applyOneLocked(ctx context.Context, f model.Finding, reviewed b
 	if !ok || len(fx.Actions) == 0 {
 		return model.FixOutcome{}, false, nil
 	}
-	// Asked of the fix rather than the finding: the finding's copy is set by
+	// Asked of the fix: the finding's copy is set by
 	// classify, and a caller handing in a finding it built itself would skip
 	// the check the batch exists to make.
 	if fx.IndividualOnly {

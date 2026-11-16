@@ -45,7 +45,7 @@ func (e *Engine) ApplyFix(ctx context.Context, f model.Finding, actionIdx int) (
 	// artifact the fix wrote is correct, and where that artifact is not what
 	// the host is running from, that is all it has established. See
 	// fix.Action.TakesEffectOn. applyFix has already read that declaration
-	// into out.Pending, so this needs the sentence, not a second Build.
+	// into out.Pending, so this needs only the sentence.
 	if out.Verified == model.VerifyGone && out.Pending {
 		out.Verified, out.VerifyNote = model.VerifyPending, out.TakesEffectOn
 	}
@@ -103,7 +103,7 @@ func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (
 	// not what the host reads, so writing it changed nothing an attacker can
 	// see, and the score below must not pretend otherwise.
 	//
-	// Read from the fix's own declaration rather than from a re-check so that
+	// Read from the fix's own declaration so that
 	// it is the same answer on both paths: ApplyBatch does not verify, and a
 	// rule that needed verification would have made the batch the optimistic
 	// one, scoring a host higher for having fixed it in bulk.
@@ -131,8 +131,7 @@ func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (
 // the first thing to notice was applyEdit calling a nil Transform. There is
 // no recover on that path.
 //
-// A registered fix whose shape contradicts its kind is therefore an error
-// rather than a fix. Reporting it as "registered, but broken" is what lets
+// A registered fix whose shape contradicts its kind is therefore an error. Reporting it as "registered, but broken" is what lets
 // classify demote the finding to Manual, which is the same answer it
 // already gives when no fix is registered and the same promise the rest of
 // the engine makes: a UI never offers a button that leads nowhere.
@@ -140,7 +139,7 @@ func (e *Engine) buildFix(f model.Finding) (built fix.Fix, ok bool, err error) {
 	if e.fixes == nil {
 		return fix.Fix{}, false, nil
 	}
-	// The whole body, not just Build: Validate reads the shape a builder
+	// The whole body, Build included: Validate reads the shape a builder
 	// returned, and a builder that half-built one is exactly the case where
 	// both can go wrong. See contain.go.
 	defer func() {
@@ -186,8 +185,8 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		RestartService: f.Service,
 		// Record what this fix is about to write, so a later rollback can
 		// tell "still exactly as Hostveil left it" from "the operator has
-		// edited this since" and decline rather than silently discard their
-		// work. Computed before the write so the checkpoint is complete
+		// edited this since" and decline, so their work is never silently
+		// discarded. Computed before the write so the checkpoint is complete
 		// before anything on the host changes.
 		AppliedSHA256: map[string]string{a.Path: history.SHA256Hex(next)},
 		AfterRestore:  afterRestore(a),
@@ -196,7 +195,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		cp.SafeRoots = map[string]string{a.Path: a.SafeRoot}
 	}
 	// A file that did not exist has nothing to back up, and the checkpoint
-	// has to say so rather than record an empty backup: restoring an empty
+	// has to say so: restoring an empty
 	// file is not the same as restoring its absence, and a host left with a
 	// zero-byte drop-in would look configured while configuring nothing.
 	save := func() (history.Checkpoint, error) {
@@ -227,7 +226,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	// unnoticed until a systemd drop-in: /etc/systemd/system/<unit>.d/ is
 	// created by whoever first overrides that unit, and usually no one does.
 	// WriteFileAtomic stages its temp file beside the target, so a missing
-	// directory fails there rather than at the rename, after the checkpoint
+	// directory fails there, before the rename and before the checkpoint
 	// is already written.
 	//
 	// Rollback deletes the file and leaves the directory. By then it may hold
@@ -359,8 +358,7 @@ func (s *stoppedAt) Unwrap() error { return s.err }
 // checkpoint then describes a change that is no longer on the host, so it is
 // discarded the way a failed write's is.
 //
-// Every way this can go further wrong is named in the error rather than
-// hidden, because the state it describes is one the operator has to act on.
+// Every way this can go further wrong is named in the error, because the state it describes is one the operator has to act on.
 func (e *Engine) undoAfterFailedFollowUp(ctx context.Context, a fix.Action, id string, cause error) error {
 	if _, err := e.store.Rollback(id); err != nil {
 		return fmt.Errorf("%w, and restoring the original %s failed too (%v); checkpoint %s still holds it, "+
@@ -387,9 +385,9 @@ func (e *Engine) undoAfterFailedFollowUp(ctx context.Context, a fix.Action, id s
 // makes this usable at all: `sshd -t` needs to read the host keys, so on a
 // host where it cannot, it fails on every config including the one already
 // in service. Without the control, a fix would be blocked by the checker's
-// own inability to run rather than by anything wrong with the file.
+// own inability to run, with nothing wrong in the file.
 //
-// Checking before the write rather than after means there is nothing to undo
+// Checking before the write means there is nothing to undo
 // when it fails: the live file was never touched.
 func (e *Engine) runEditValidator(ctx context.Context, a fix.Action, orig, next []byte) error {
 	if len(a.VerifyCmd) == 0 {
@@ -448,7 +446,7 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 		return model.FixOutcome{}, fmt.Errorf("permissions on %v are already as strict as required", a.Paths)
 	}
 
-	// From the plan already in hand, not a second one: the summary must
+	// From the plan already in hand: the summary must
 	// describe the changes this call is about to make.
 	summary := modeTable(changes)
 
@@ -480,7 +478,7 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 	}
 
 	for i, c := range changes {
-		// Through the descriptor, not the path: planModes vetted the type,
+		// Through the descriptor: planModes vetted the type,
 		// but the file can be swapped for a symlink between the plan and this
 		// line, and os.Chmod would follow it.
 		var chmodErr error
@@ -583,7 +581,7 @@ func countCommands(cmds [][]string) int {
 // takesEffectOn is gone. It built the fix a second time purely to re-read
 // Action.TakesEffectOn out of an action applyFix already held in a local, and
 // once that value decides the score as well as the message, the second build
-// is not only wasted work but a second opinion: a registry that answered
+// is wasted work and also a second opinion: a registry that answered
 // differently between the two calls would mark a finding pending and score it
 // as though it were not. applyFix reads the action once and puts both the flag
 // and the sentence on the outcome.

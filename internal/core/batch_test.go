@@ -22,7 +22,7 @@ import (
 // those fixes were unrollbackable the instant they were applied, and nothing
 // told the operator. Two Auto compose rules (no-new-privileges, and a missing
 // restart policy) fire on nearly every stock service, so this is a host with
-// enough containers, not a pathological one.
+// enough containers.
 //
 // The batch size is not tied to the store's cap: the claim is
 // that everything applied stays reversible, whatever the cap happens to be.
@@ -77,7 +77,7 @@ func TestALargeBatchLeavesEveryFixRollbackable(t *testing.T) {
 			"%d fixes cannot be undone", services, len(cps), services-len(cps))
 	}
 
-	// Not just present: usable. List is newest-first, so the last entry is the
+	// Present and usable. List is newest-first, so the last entry is the
 	// batch's first fix: the one pruning destroyed, and the one whose
 	// checkpoint has to still restore the file it backed up.
 	oldest := cps[len(cps)-1]

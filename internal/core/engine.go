@@ -100,10 +100,10 @@ func (o ScanOptions) Partial() bool { return len(o.Only) > 0 }
 // A progress display needs a denominator and the event stream cannot supply
 // one: a checker reports when it starts and when it finishes, so a reader can
 // count what has happened and never what is left. model.AllSources() is the
-// wrong answer: it is the domains that exist, not the ones this engine was
-// built with, and it ignores Only entirely.
+// wrong answer: it is the domains that exist, including ones this engine
+// was not built with, and it ignores Only entirely.
 //
-// The selection is shared with ScanWith rather than restated. A plan that
+// The selection is shared with ScanWith. A plan that
 // disagrees with the run is worse than no plan: a bar that reaches eleven of
 // twelve and stops there reads as a hang, which is the one thing a progress
 // display exists to rule out.
@@ -199,8 +199,7 @@ func (e *Engine) ScanWith(ctx context.Context, progress chan<- model.ScanEvent, 
 
 	// A cancelled scan describes nothing. Every exec'd checker dies the
 	// instant the context is cancelled, so what is left is a report whose
-	// domains are empty because they were killed, not because the host is
-	// clean, and installing it would replace a good report with that, in
+	// domains are empty because they were killed, and installing it would replace a good report with that, in
 	// memory and on disk. Worse, it becomes the baseline: the next scan diffs
 	// against it and reports every finding on the host as newly appeared.
 	//
@@ -268,7 +267,7 @@ func (e *Engine) persist(r model.Report) {
 
 // Current returns the last stored report and whether a scan has run.
 //
-// The findings are copied, not shared. Report is a struct but Findings is a
+// The findings are copied. Report is a struct but Findings is a
 // slice, so returning it by value hands the caller the same backing array
 // the engine keeps mutating: markFixed writes Fixed on those elements
 // under the lock while the caller reads them outside it. The web dashboard
@@ -287,7 +286,7 @@ func (e *Engine) Current() (model.Report, bool) { return e.state.snapshot() }
 // The checker decides how much human judgment applying it needs, and the
 // registry cannot talk it down. A registered fix is shaped Auto when it
 // has a single mechanical action, which is a statement about the fix's
-// *form*, not about whether it is safe to run unattended in a batch. Where
+// *form*. It says nothing about whether it is safe to run unattended in a batch. Where
 // the checker asked for Review, Review wins: see the standard in
 // internal/fix/register.go for what each kind means.
 //
@@ -301,7 +300,7 @@ func (e *Engine) classify(findings []model.Finding) {
 		if e.fixes != nil {
 			// Through buildFix, so a fix whose shape contradicts its kind is
 			// treated exactly like one that failed to build: demoted here
-			// rather than offered and discovered at apply.
+			// before it can be offered and fail at apply.
 			if fx, ok, err := e.buildFix(findings[i]); ok && err == nil && fx.Kind.IsFixable() {
 				findings[i].Remediation = resolvedKind(findings[i].Remediation, fx)
 				// Actions[0] is the recommendation; the same one
@@ -341,8 +340,7 @@ func (e *Engine) classify(findings []model.Finding) {
 // opinion is the least cautious thing on the scale and defers to the
 // registry.
 //
-// The unfixable end is why this is a plain max rather than the special case
-// it used to be. That case returned the registry's kind whenever the checker
+// The unfixable end is why this is a plain max. It used to be a special case. That case returned the registry's kind whenever the checker
 // declared Manual or Unavailable, which is the exact inverse of the rule
 // stated everywhere else in the repo: the checker saying "there is nothing
 // safe to automate here" was overruled by a fix builder that happens to match
@@ -382,9 +380,8 @@ func validFindings(in []model.Finding) []model.Finding {
 // interface showed "since last scan" and nothing longer, which answers
 // "did that round of fixes help?" but not "is this host improving?".
 //
-// A snapshot that will not unmarshal is skipped rather than failing the
-// call, and an unscorable scan keeps Applicable false rather than being
-// flattened to zero: a run where every domain was skipped has no score, and
+// A snapshot that will not unmarshal is skipped, and an unscorable scan
+// keeps Applicable false: a run where every domain was skipped has no score, and
 // drawing it as 0 would invent a cliff.
 func (e *Engine) ScoreHistory() ([]model.ScorePoint, error) {
 	snaps, err := e.store.ListReports()

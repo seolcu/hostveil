@@ -22,7 +22,7 @@ import (
 // applyEdit calling a nil Transform, and there is no recover on that path.
 //
 // These tests build fixes that are broken in each of the ways Validate
-// knows about and require the engine to demote rather than offer.
+// knows about and require the engine to demote them.
 
 type shapeChecker struct{ findings []model.Finding }
 
@@ -101,7 +101,7 @@ func TestMalformedFixIsDemotedNotOffered(t *testing.T) {
 				t.Error("a malformed fix must not present the finding as fixable")
 			}
 
-			// And the direct route refuses in words rather than panicking.
+			// And the direct route refuses with an error.
 			if _, err := e.PreviewFix(shapeFinding()); err == nil {
 				t.Error("PreviewFix accepted a malformed fix")
 			}

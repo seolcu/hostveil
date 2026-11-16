@@ -58,7 +58,7 @@ func crashFinding(id, path string) model.Finding {
 		model.SourceCompose, model.RemediationAuto, model.WithMetadata("file", path))
 }
 
-// A crash inside a fix must end that fix, not the process.
+// A crash inside a fix must end that fix and leave the process running.
 //
 // check.runOne has said since the beginning that a panic in one checker
 // degrades only that domain. The fix path had no such rule, and it takes more
@@ -117,8 +117,7 @@ func TestACrashingBuilderIsAnErrorNotAnExit(t *testing.T) {
 }
 
 // A panic in a fix must also leave something for `hostveil diagnostics` to
-// find afterward, not just an error message on whichever terminal happened
-// to be watching. crashError (internal/core/contain.go) is the one place
+// find afterward, beyond the error message on the terminal. crashError (internal/core/contain.go) is the one place
 // that writes it, so this is the same crash the two tests above already
 // exercise, read back from disk instead of from the returned error.
 func TestACrashingFixLeavesARecordForDiagnostics(t *testing.T) {

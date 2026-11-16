@@ -61,7 +61,7 @@ func (s *reportState) replace(r model.Report, d model.Delta) {
 // in force yet.
 //
 // pending is the caller's answer to "has the host changed", and it is passed
-// in rather than derived here because only the apply path knows: it holds the
+// in because only the apply path knows: it holds the
 // action, and Action.TakesEffectOn is where a fix declares that its artifact
 // is not what the host is running from. See model.Finding.Pending.
 //
@@ -75,7 +75,7 @@ func (s *reportState) replace(r model.Report, d model.Delta) {
 // that list to the UIs as `also_fixed`. Nothing ever populated it and no
 // interface ever read it, so the field promised a behaviour the engine did
 // not have; both are gone. If a cascade is ever built, it should be built
-// with the thing that reports it, not ahead of it.
+// together with the thing that reports it.
 func (s *reportState) markFixed(target model.Finding, pending bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -113,8 +113,8 @@ func (s *reportState) unmarkFixed(cp history.Checkpoint) []string {
 		f.Fixed = false
 		// Both flags, so the finding goes back to standing. Rolling
 		// back a pending fix leaves the score where it was (it was already
-		// being charged) which is correct and is why Unfixed, not the score,
-		// is the accurate signal that anything happened.
+		// being charged) which is correct and is why Unfixed is the accurate
+		// signal that anything happened.
 		f.Pending = false
 		unfixed = append(unfixed, f.ID)
 	}

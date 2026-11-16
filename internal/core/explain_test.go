@@ -17,7 +17,7 @@ type fakeExplainer struct {
 	called    bool
 	// gotSiteContext captures whatever Explain/Advise was called
 	// with, so a test can assert Engine.Explain/Advise pass the saved
-	// context through rather than dropping it.
+	// context through.
 	gotSiteContext string
 }
 
@@ -115,8 +115,7 @@ func TestAIContextRoundTrip(t *testing.T) {
 	}
 }
 
-// Explain must pass the saved context through to the provider, not just
-// keep it sitting in the state directory unused.
+// Explain must pass the saved context through to the provider.
 func TestExplainPassesTheSavedSiteContext(t *testing.T) {
 	fake := &fakeExplainer{available: true, text: "ok"}
 	e := New(Config{AI: fake, Store: history.NewStore(t.TempDir())})
