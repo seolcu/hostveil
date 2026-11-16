@@ -35,7 +35,7 @@ matter most, gives you a single 0–100 score, describes each problem without
 jargon, and offers to fix it: preview first, backup, then apply, with rollback
 for file changes.
 
-## Does it actually work?
+## Measured results
 
 The September 11, 2026 rerun measured an Ubuntu VM weakened on purpose
 with Lynis, Docker's CIS benchmark, a TCP scan from a container on the Docker
@@ -80,7 +80,7 @@ Full results and limitations are on the
 check allows residue from irreversible Review actions and does not mean every
 file was restored.
 
-## How it compares
+## Comparison with other tools
 
 Most server-hardening tools are auditors: they write a report and leave the
 fixing to you. Hostveil closes that loop and applies the fix itself.
@@ -140,7 +140,7 @@ in [`internal/fix/register.go`](internal/fix/register.go) with the reason
 Hostveil will not touch it, and a test fails the build when a Manual finding
 has no reason written down.
 
-## How it's tested
+## Testing
 
 Hostveil runs as root and edits configuration files on servers people depend
 on. That is a lot to ask, so this is what stands behind it.
@@ -217,7 +217,7 @@ re-runs itself under `sudo` when it has to, with the same password prompt as
 `HOSTVEIL_NO_SUDO=1`; the root-only domains are skipped with a message saying
 so.
 
-### Using it as a CI or cron gate
+### CI and cron gates
 
 `hostveil scan` reports what it found in its exit status, so a scheduled check
 does not have to parse any output.
@@ -226,7 +226,7 @@ does not have to parse any output.
 | --- | --- |
 | `0` | The scan ran and found nothing High. |
 | `1` | At least one unfixed High finding. |
-| `3` | A detection domain failed outright, so the scan covered less of the host than it should have. |
+| `3` | A detection domain failed completely, so the scan covered less of the host than it should have. |
 
 ```bash
 HOSTVEIL_NO_SUDO=1 hostveil scan --json > report.json || echo "action needed"
@@ -241,7 +241,7 @@ full flag set and the SARIF field mapping.
 
 Other commands exit 0 on success, 1 on failure and 2 on a usage error.
 
-### When something looks wrong
+### Troubleshooting
 
 `HOSTVEIL_DEBUG=1` traces every command Hostveil runs against the host to
 stderr: what ran, how long it took, and whether it failed. Command *output*
@@ -256,7 +256,7 @@ HOSTVEIL_DEBUG=1 hostveil scan
 See [Troubleshooting](https://hostveil.seolcu.com/docs/troubleshooting) for what
 Degraded, a declined rollback, an empty history and exit code 3 mean.
 
-## How fixing works
+## Fixing
 
 Every finding is classified, so the tool never changes anything blindly:
 
@@ -291,7 +291,7 @@ file up to a checkpoint, and only then applies it. `hostveil rollback` restores
 that backup. All three interfaces run on one engine, so a fix applied in any of
 them can be undone from any of them.
 
-## How the score works
+## Scoring
 
 The score is one number between 0 and 100, built so it cannot flatter a host.
 Each detection domain is an axis with a fixed share of the 100; a domain that

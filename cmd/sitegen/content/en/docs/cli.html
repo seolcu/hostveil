@@ -24,7 +24,7 @@
                 </tbody>
               </table>
             </div>
-            <p>Exit code: <code>1</code> if any unfixed finding is High, <code>3</code> if a detection domain failed outright, otherwise <code>0</code>. See <a href="#exit-codes">exit codes</a>. Color is emitted only to a terminal and is suppressed when <code>NO_COLOR</code> is set.</p>
+            <p>Exit code: <code>1</code> if any unfixed finding is High, <code>3</code> if a detection domain failed completely, otherwise <code>0</code>. See <a href="#exit-codes">exit codes</a>. Color is emitted only to a terminal and is suppressed when <code>NO_COLOR</code> is set.</p>
 
             <h3 id="json-shape">What <code>--json</code> looks like</h3>
             <p>Every enumerated field is a lowercase name:</p>
@@ -232,7 +232,7 @@ hostveil ai-context --clear       # remove it</code></pre></div>
                   <tr><td><code>0</code></td><td>Success (and, for <code>scan</code>, no unfixed High findings).</td></tr>
                   <tr><td><code>1</code></td><td><code>scan</code> found unfixed High findings, or a command failed.</td></tr>
                   <tr><td><code>2</code></td><td>Usage error: unknown command or missing required argument.</td></tr>
-                  <tr><td><code>3</code></td><td><code>scan</code> had a detection domain fail outright, so it covered less of the host than it should have. A domain skipped for a missing dependency, or degraded to partial coverage, does <em>not</em> produce this. Both are reported in the output.</td></tr>
+                  <tr><td><code>3</code></td><td><code>scan</code> had a detection domain fail completely, so it covered less of the host than it should have. A domain skipped for a missing dependency, or degraded to partial coverage, does <em>not</em> produce this. Both are reported in the output.</td></tr>
                 </tbody>
               </table>
             </div>

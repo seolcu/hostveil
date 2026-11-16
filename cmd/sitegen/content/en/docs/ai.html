@@ -41,7 +41,7 @@ hostveil explain ssh.rootlogin --ai</code></pre></div>
             <div class="code-block"><pre><code>HOSTVEIL_OLLAMA_MODEL=llama3.1 hostveil explain ssh.rootlogin --ai</code></pre></div>
 
             <h3>An external API, when the machine can't run a local model</h3>
-            <p>A demo host or a small VPS is often not powerful enough to run even a small local model well. Point Hostveil at the Claude API instead:</p>
+            <p>A demo host or a small VPS often lacks the memory and CPU to run even a small local model well. Point Hostveil at the Claude API instead:</p>
             <div class="code-block"><pre><code>HOSTVEIL_AI_PROVIDER=anthropic ANTHROPIC_API_KEY=sk-... \
   hostveil explain ssh.rootlogin --ai</code></pre></div>
             <p>Or at any OpenAI-compatible vendor. This example uses OpenRouter:</p>
