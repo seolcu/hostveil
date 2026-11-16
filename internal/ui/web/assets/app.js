@@ -42,7 +42,124 @@ const REM = M.remediations || {};
 const SCAN = M.scanStates || {};
 const BANDS = M.bands || [];
 
-function srcLabel(s) { return (SRC[s] && SRC[s].label) || String(s); }
+// ── language ───────────────────────────────────────────────────────────
+// The dashboard is the one interface translated: the TUI and the CLI stay in
+// English. The English text stays where it is written (this file, and the Go
+// code that builds findings and fixes), and a catalog per language maps it:
+//
+//   messages  text this file writes, for t(). A {name} is filled from vars.
+//   server    text the server sends, for tr(): labels, fix sentences,
+//             reasons. A {name} in a key matches any run of text, and the
+//             same {name} in the translation receives it, so one key
+//             "Set X for {svc}" covers every service.
+//   findings  finding ID → {title, description, how_to_fix}.
+//
+// The two text tables are kept apart because a t() key such as "{n} new"
+// would match far too much server text as a pattern.
+//
+// Anything the catalog does not know renders in English.
+// internal/docs/i18n_test.go checks every key this file asks for, every
+// finding ID, and every string the fix registry can build.
+const LANGS = [{ id: "en", name: "English" }, { id: "ko", name: "한국어" }];
+const CAT = { messages: {}, server: {}, findings: {} };
+let LANG = pickLang();
+let PATTERNS = [];
+
+function pickLang() {
+  let saved = null;
+  try { saved = localStorage.getItem("hostveil.lang"); } catch (e) { /* private mode */ }
+  if (LANGS.some((l) => l.id === saved)) return saved;
+  const wanted = (navigator.languages || [navigator.language || ""]).map((l) => String(l).slice(0, 2));
+  return wanted.find((l) => LANGS.some((x) => x.id === l)) || "en";
+}
+
+async function loadCatalog() {
+  if (LANG !== "en") {
+    try {
+      Object.assign(CAT, await api(`/i18n/${LANG}.json`));
+    } catch (e) {
+      LANG = "en";
+    }
+  }
+  // Most literal text first, so a specific key wins over a general one
+  // that would also match.
+  const literal = (k) => k.replace(/\{\w+\}/g, "").length;
+  PATTERNS = Object.entries(CAT.server)
+    .filter(([k, v]) => k.includes("{") && v)
+    .sort(([a], [b]) => literal(b) - literal(a))
+    .map(([k, v]) => ({ re: patternFor(k), out: v }));
+  document.documentElement.lang = LANG;
+  translateStatic();
+}
+
+// patternFor turns a catalog key into a whole-string match: the text is
+// literal and each {name} captures what stands there.
+function patternFor(key) {
+  const src = key.split(/(\{\w+\})/).map((part) => {
+    const m = /^\{(\w+)\}$/.exec(part);
+    return m ? `(?<${m[1]}>.+?)` : part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }).join("");
+  return new RegExp("^" + src + "$", "s");
+}
+
+function fill(s, vars) {
+  return s.replace(/\{(\w+)\}/g, (m, k) => (vars && k in vars ? String(vars[k]) : m));
+}
+
+// t is for text this file writes. The key is the English.
+function t(key, vars) {
+  const s = CAT.messages[key];
+  return fill(s === undefined || s === "" ? key : s, vars);
+}
+
+// tr is for text the server sent: a label, a fix's benefit, a reason.
+function tr(s) {
+  if (!s || LANG === "en") return s;
+  const hit = CAT.server[s];
+  if (hit) return hit;
+  for (const p of PATTERNS) {
+    const m = p.re.exec(s);
+    if (m) return fill(p.out, m.groups);
+  }
+  return s;
+}
+
+// ft is a finding's own text in the reader's language, or the English.
+function ft(f, field) {
+  const e = CAT.findings[f.id];
+  return (e && e[field]) || f[field];
+}
+function translated(f) { return LANG !== "en" && !!CAT.findings[f.id]; }
+
+// translateStatic covers index.html: every element marked data-i18n has its
+// English text as the key, and data-i18n-aria does the same for its English
+// aria-label.
+function translateStatic() {
+  document.querySelectorAll("[data-i18n]").forEach((n) => {
+    if (!n.dataset.en) n.dataset.en = n.textContent.trim();
+    n.textContent = t(n.dataset.en);
+  });
+  document.querySelectorAll("[data-i18n-aria]").forEach((n) => {
+    if (!n.dataset.enAria) n.dataset.enAria = n.getAttribute("aria-label") || "";
+    n.setAttribute("aria-label", t(n.dataset.enAria));
+  });
+}
+
+function initLangPicker() {
+  const sel = document.getElementById("lang");
+  if (!sel) return;
+  sel.replaceChildren(...LANGS.map((l) => {
+    const o = el("option", { value: l.id }, l.name);
+    if (l.id === LANG) o.selected = true;
+    return o;
+  }));
+  sel.onchange = () => {
+    try { localStorage.setItem("hostveil.lang", sel.value); } catch (e) { /* private mode */ }
+    location.reload();
+  };
+}
+
+function srcLabel(s) { return tr((SRC[s] && SRC[s].label) || String(s)); }
 
 // Enum values arrive as names now, so anything that needs the
 // model's ordering asks for it. rank is the row's position in the table the
@@ -110,7 +227,7 @@ function el(tag, attrs = {}, ...kids) {
 function sevName(f) { return (SEV[f.severity] && SEV[f.severity].name) || "unknown"; }
 
 function sevAbbr(f) { return (SEV[f.severity] && SEV[f.severity].abbr) || "?"; }
-function remLabel(r) { return (REM[r] && REM[r].label) || "Unclassified"; }
+function remLabel(r) { return tr((REM[r] && REM[r].label) || "Unclassified"); }
 function isFixable(f) { return !!(REM[f.remediation] && REM[f.remediation].fixable); }
 // isAuto asks whether "fix all safe" would apply this row now, so a pending
 // row answers false: its fix has been applied and what is left is the
@@ -216,9 +333,9 @@ function renderFilterbar(all) {
   });
 
   // Fixable-only toggle + clear.
-  kids.push(chip("Fixable", filters.fixable, () => { filters.fixable = !filters.fixable; render(); }));
+  kids.push(chip(t("Fixable"), filters.fixable, () => { filters.fixable = !filters.fixable; render(); }));
   if (filterActive()) {
-    kids.push(chip("Clear", false, () => {
+    kids.push(chip(t("Clear"), false, () => {
       filters.sev.clear(); filters.domain.clear(); filters.fixable = false; render();
     }));
   }
@@ -229,7 +346,7 @@ function renderFilterbar(all) {
 function checkbox(f) {
   const box = Object.assign(document.createElement("input"), { type: "checkbox", checked: marked.has(fkey(f)) });
   box.className = "pick";
-  box.setAttribute("aria-label", "Select for batch fix");
+  box.setAttribute("aria-label", t("Select for batch fix"));
   box.onclick = (e) => e.stopPropagation();
   box.onchange = () => {
     box.checked ? marked.add(fkey(f)) : marked.delete(fkey(f));
@@ -243,9 +360,9 @@ function renderBatchbar() {
   if (marked.size === 0) { bar.hidden = true; bar.replaceChildren(); return; }
   bar.hidden = false;
   bar.replaceChildren(
-    el("button", { class: "primary", onclick: applyBatch }, `Fix selected (${marked.size})`),
-    el("button", { onclick: selectAllAuto }, "Select all auto"),
-    el("button", { onclick: clearMarked }, "Clear")
+    el("button", { class: "primary", onclick: applyBatch }, t("Fix selected ({n})", { n: marked.size })),
+    el("button", { onclick: selectAllAuto }, t("Select all auto")),
+    el("button", { onclick: clearMarked }, t("Clear"))
   );
 }
 
@@ -259,8 +376,8 @@ function clearMarked() { marked.clear(); render(); }
 function applyBatch() {
   const findings = active(report.findings)
     .filter((f) => marked.has(fkey(f)))
-    .map((f) => ({ id: f.id, service: f.service || "", title: f.title }));
-  return applyMany(findings, "Fixing");
+    .map((f) => ({ id: f.id, service: f.service || "", title: ft(f, "title") }));
+  return applyMany(findings, t("Fixing"));
 }
 
 // applyMany drives a per-item progress modal over `findings`, calling
@@ -271,13 +388,13 @@ function applyBatch() {
 // item instead of zero times. See internal/core.ApplyOne's doc comment.
 async function applyMany(findings, verb) {
   if (!findings.length) return;
-  const body = el("div", {}, el("p", {}, `${verb} 1 of ${findings.length}…`));
+  const body = el("div", {}, el("p", {}, t("{verb} {i} of {n}…", { verb, i: 1, n: findings.length })));
   openModal(el("div", {}, el("h3", {}, verb + "…"), body), { blocking: true });
 
   let applied = 0, skipped = 0, failed = 0;
   for (let i = 0; i < findings.length; i++) {
     const f = findings[i];
-    body.replaceChildren(el("p", {}, `${verb} ${i + 1} of ${findings.length}: ${f.title || f.id}`));
+    body.replaceChildren(el("p", {}, t("{verb} {i} of {n}: {title}", { verb, i: i + 1, n: findings.length, title: f.title || f.id })));
     try {
       const o = await api("/api/fix/one", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -290,10 +407,10 @@ async function applyMany(findings, verb) {
   }
 
   document.getElementById("modal").removeAttribute("data-busy");
-  const done = el("button", { class: "primary" }, "Done");
+  const done = el("button", { class: "primary" }, t("Done"));
   done.onclick = closeModal;
   body.replaceChildren(
-    el("p", {}, `Applied ${applied} · skipped ${skipped} · failed ${failed}.`),
+    el("p", {}, t("Applied {applied} · skipped {skipped} · failed {failed}.", { applied, skipped, failed })),
     el("div", { class: "row" }, done)
   );
   marked.clear();
@@ -320,10 +437,10 @@ function renderDelta() {
     box.replaceChildren();
     return;
   }
-  const parts = [el("span", { class: "delta-label" }, "Since last scan")];
-  if (resolved) parts.push(el("span", { class: "delta-good" }, `✓ ${resolved} resolved`));
-  if (added) parts.push(el("span", { class: "delta-new" }, `+ ${added} new`));
-  if (changed) parts.push(el("span", { class: "delta-chg" }, `~ ${changed} changed`));
+  const parts = [el("span", { class: "delta-label" }, t("Since last scan"))];
+  if (resolved) parts.push(el("span", { class: "delta-good" }, "✓ " + t("{n} resolved", { n: resolved })));
+  if (added) parts.push(el("span", { class: "delta-new" }, "+ " + t("{n} new", { n: added })));
+  if (changed) parts.push(el("span", { class: "delta-chg" }, "~ " + t("{n} changed", { n: changed })));
   box.hidden = false;
   box.replaceChildren(...parts);
 }
@@ -351,7 +468,7 @@ function renderTrend() {
 
   box.hidden = false;
   box.replaceChildren(
-    el("span", { class: "delta-label" }, "Score over " + pts.length + " scans"),
+    el("span", { class: "delta-label" }, t("Score over {n} scans", { n: pts.length })),
     el("span", { class: "spark-end" }, score(pts[0])),
     spark,
     el("span", { class: "spark-end" }, score(last)));
@@ -376,10 +493,11 @@ function renderDomainNotice() {
   box.replaceChildren(...bad.map((d) => {
     const name = srcLabel(d.source);
     const state = (SCAN[d.state] && SCAN[d.state].name) || "";
-    if (state === "error") return el("span", { class: "dom-err" }, `! ${name} failed: ${d.reason || "unknown error"}`);
-    if (state === "degraded") return el("span", {}, `~ ${name} partial: ${d.reason || ""}`);
-    if (state === "skipped") return el("span", { class: "dom-skip" }, `· ${name} skipped: ${d.reason || ""}`);
-    return el("span", { class: "dom-skip" }, `· ${name} did not run`);
+    const reason = tr(d.reason || "");
+    if (state === "error") return el("span", { class: "dom-err" }, "! " + t("{name} failed: {reason}", { name, reason: reason || t("unknown error") }));
+    if (state === "degraded") return el("span", {}, "~ " + t("{name} partial: {reason}", { name, reason }));
+    if (state === "skipped") return el("span", { class: "dom-skip" }, "· " + t("{name} skipped: {reason}", { name, reason }));
+    return el("span", { class: "dom-skip" }, "· " + t("{name} did not run", { name }));
   }));
 }
 
@@ -409,7 +527,7 @@ function renderRail(all) {
     );
 
     if (!ax.applicable) {
-      row.append(el("span", { class: "c" }, `${state}; ${dom.reason || "did not run"}`));
+      row.append(el("span", { class: "c" }, `${scanStateWord(state)}; ${tr(dom.reason) || t("did not run")}`));
     } else {
       const mix = el("span", { class: "c" });
       const counts = {};
@@ -418,7 +536,7 @@ function renderRail(all) {
       for (const [i, sev] of Object.entries(SEV)) {
         if (counts[i]) parts.push(el("span", { class: sev.name }, `${counts[i]} ${sev.abbr}`));
       }
-      if (!parts.length) parts.push(el("span", {}, "clean"));
+      if (!parts.length) parts.push(el("span", {}, t("clean")));
       parts.forEach((pnode, i) => { if (i) mix.append(" · "); mix.append(pnode); });
       row.append(mix);
     }
@@ -433,7 +551,7 @@ function renderRail(all) {
     return row;
   });
 
-  rail.replaceChildren(el("div", { class: "rail-head" }, `Domains · ${all.length} findings`), ...rows);
+  rail.replaceChildren(el("div", { class: "rail-head" }, t("Domains · {n} findings", { n: all.length })), ...rows);
 }
 
 // ── main render ────────────────────────────────────────────────────────
@@ -446,13 +564,13 @@ function render() {
   // arbitrary, and an empty meter next to a digit reads as "terrible host"
   // when the truth is "nothing was examined".
   document.getElementById("gauge").replaceChildren(
-    el("span", { class: "gauge-label" }, "Security"),
+    el("span", { class: "gauge-label" }, t("Security")),
     ...(score.applicable === false
-      ? [el("span", { class: "gauge-na" }, "N/A; nothing could be scanned")]
+      ? [el("span", { class: "gauge-na" }, t("N/A; nothing could be scanned"))]
       : [meter(score.overall, band(score.overall)),
          el("span", { class: "gauge-score", html: `${score.overall}<small>/100</small>` }),
          ...afterFixesNote(score.applicable, score.overall, score.after_fixes,
-                           (n) => el("span", { class: "gauge-after" }, `${n} after fixes`))])
+                           (n) => el("span", { class: "gauge-after" }, t("{n} after fixes", { n })))])
   );
 
   // Per-axis bars. The short domain label: the column
@@ -488,7 +606,7 @@ function render() {
   renderFilterbar(all);
   const items = applyFilters(all).sort(sortComparators[sortBy] || sortComparators.severity);
   document.getElementById("findings-title-text").textContent =
-    filterActive() ? `Findings · ${items.length}/${all.length}` : `Findings · ${all.length}`;
+    filterActive() ? t("Findings · {shown}/{n}", { shown: items.length, n: all.length }) : t("Findings · {n}", { n: all.length });
 
   if (all.length === 0) {
     marked.clear();
@@ -501,14 +619,14 @@ function render() {
     const missing = incompleteDomains().length;
     list.replaceChildren(missing > 0
       ? el("li", { class: "clean muted" },
-        `No problems found in the domains that ran, but ${missing} did not complete.`)
-      : el("li", { class: "clean" }, "No problems found. Clean."));
-    document.getElementById("detail").replaceChildren(el("p", { class: "empty" }, "Nothing to fix."));
+        t("No problems found in the domains that ran, but {n} did not complete.", { n: missing }))
+      : el("li", { class: "clean" }, t("No problems found. Clean.")));
+    document.getElementById("detail").replaceChildren(el("p", { class: "empty" }, t("Nothing to fix.")));
     return;
   }
   if (items.length === 0) {
     renderBatchbar();
-    list.replaceChildren(el("li", { class: "clean muted" }, "No findings match the filter."));
+    list.replaceChildren(el("li", { class: "clean muted" }, t("No findings match the filter.")));
     return;
   }
 
@@ -518,9 +636,9 @@ function render() {
       isAuto(f) ? checkbox(f) : el("span", { class: "pick-spacer" }),
       el("span", { class: "sev" }, sevAbbr(f)),
       el("div", { class: "title" },
-        el("div", { class: "name" }, f.title),
+        el("div", { class: "name" }, ft(f, "title")),
         el("div", { class: "rem rem-" + f.remediation }, f.id + "  ·  " +
-          (isPending(f) ? "Applied, waiting to take effect" : remLabel(f.remediation)))
+          (isPending(f) ? t("Applied, waiting to take effect") : remLabel(f.remediation)))
       ),
       f.service ? el("span", { class: "svc" }, f.service) : ""
     );
@@ -555,10 +673,11 @@ function renderOverview(all, visible, rows) {
   // and "wide open" is the number-shaped version of the lie the gauge's
   // N/A already refuses to tell.
   box.append(el("h3", {}, report.score.applicable === false
-    ? "This host could not be scanned."
-    : `This host is ${bandFor(report.score.overall).verdict}.`));
-  box.append(el("p", { class: "over-lead" },
-    `${all.length} unresolved finding${all.length === 1 ? "" : "s"} across the domains that ran.`));
+    ? t("This host could not be scanned.")
+    : t("This host is {verdict}.", { verdict: tr(bandFor(report.score.overall).verdict) })));
+  box.append(el("p", { class: "over-lead" }, all.length === 1
+    ? t("{n} unresolved finding across the domains that ran.", { n: all.length })
+    : t("{n} unresolved findings across the domains that ran.", { n: all.length })));
 
   // Severity chips, only for severities present. Ordered by the
   // model's table, which is most-severe-first.
@@ -566,18 +685,19 @@ function renderOverview(all, visible, rows) {
   for (const [i, sev] of Object.entries(SEV)) {
     const n = counts[i] || 0;
     if (n > 0) chips.append(el("span", { class: "over-chip sev-" + sev.name },
-      `${n} ${sev.name.charAt(0).toUpperCase() + sev.name.slice(1)}`));
+      t("{n} {severity}", { n, severity: tr(sev.name.charAt(0).toUpperCase() + sev.name.slice(1)) })));
   }
   box.append(chips);
 
   // The one action that needs no per-finding decision.
   if (autos > 0) {
-    const btn = el("button", { class: "primary over-fixall" },
-      `Fix all ${autos} safe finding${autos === 1 ? "" : "s"}`);
+    const btn = el("button", { class: "primary over-fixall" }, autos === 1
+      ? t("Fix all {n} safe finding", { n: autos })
+      : t("Fix all {n} safe findings", { n: autos }));
     btn.onclick = () => document.getElementById("fixall").click();
     box.append(btn);
     box.append(el("p", { class: "over-note" },
-      "Each is previewed and backed up first, and reversible from History."));
+      t("Each is previewed and backed up first, and reversible from History.")));
   }
 
   // Where the points between the score and 100 are, by what it takes to
@@ -585,20 +705,22 @@ function renderOverview(all, visible, rows) {
   // reads as a list of reasons. The parts come from the model
   // (ScoreBreakdown.Left), so every interface states the same numbers.
   const left = report.score.left || {};
-  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
-const pts = (n) => plural(n, "pt", "pts");
+  const pts = (n) => (n === 1 ? t("{n} pt", { n }) : t("{n} pts", { n }));
   const leftRows = [];
   if (left.pending > 0)
-    leftRows.push(["+" + pts(left.pending),
-      `when ${plural(left.pending_count, "applied fix takes", "applied fixes take")} effect. Restart the services they name.`]);
+    leftRows.push(["+" + pts(left.pending), left.pending_count === 1
+      ? t("when {n} applied fix takes effect. Restart the services they name.", { n: 1 })
+      : t("when {n} applied fixes take effect. Restart the services they name.", { n: left.pending_count })]);
   if (left.manual > 0)
-    leftRows.push([pts(left.manual),
-      `held by ${plural(left.manual_count, "finding", "findings")} Hostveil leaves to you. Each one says why and how to fix it by hand.`]);
+    leftRows.push([pts(left.manual), left.manual_count === 1
+      ? t("held by {n} finding Hostveil leaves to you. Each one says why and how to fix it by hand.", { n: 1 })
+      : t("held by {n} findings Hostveil leaves to you. Each one says why and how to fix it by hand.", { n: left.manual_count })]);
   if (left.unavailable > 0)
-    leftRows.push([pts(left.unavailable),
-      `held by ${plural(left.unavailable_count, "finding", "findings")} with no fix published yet. They clear when the vendor ships a patch.`]);
+    leftRows.push([pts(left.unavailable), left.unavailable_count === 1
+      ? t("held by {n} finding with no fix published yet. They clear when the vendor ships a patch.", { n: 1 })
+      : t("held by {n} findings with no fix published yet. They clear when the vendor ships a patch.", { n: left.unavailable_count })]);
   if (report.score.applicable !== false && leftRows.length) {
-    box.append(el("div", { class: "over-head" }, "Points left"));
+    box.append(el("div", { class: "over-head" }, t("Points left")));
     const ul = el("ul", { class: "over-left" });
     for (const [pts, text] of leftRows)
       ul.append(el("li", {}, el("span", { class: "pts" }, pts), el("span", {}, text)));
@@ -609,12 +731,12 @@ const pts = (n) => plural(n, "pt", "pts");
   // away.
   const top = visible.slice(0, 6);
   if (top.length) {
-    box.append(el("div", { class: "over-head" }, "Most severe"));
+    box.append(el("div", { class: "over-head" }, t("Most severe")));
     const ul = el("ul", { class: "over-jump" });
     for (const f of top) {
       const li = el("li", { class: "over-jump-row" },
         el("span", { class: "sev " + sevName(f) }, sevAbbr(f)),
-        el("span", { class: "over-jump-title" }, f.title),
+        el("span", { class: "over-jump-title" }, ft(f, "title")),
         f.service ? el("span", { class: "svc" }, f.service) : ""
       );
       li.onclick = () => {
@@ -633,19 +755,27 @@ function selectFinding(f, li) {
   selected = { id: f.id, service: f.service };
   document.querySelectorAll(".finding").forEach((n) => n.classList.remove("active"));
   if (li) li.classList.add("active");
-  const meta = [f.id, sevName(f), remLabel(f.remediation)];
-  if (f.service) meta.push("service: " + f.service);
+  const meta = [f.id, tr(sevName(f)), remLabel(f.remediation)];
+  if (f.service) meta.push(t("service: {svc}", { svc: f.service }));
   const d = document.getElementById("detail");
   d.replaceChildren(
-    el("h3", {}, f.title),
+    el("h3", {}, ft(f, "title")),
     el("div", { class: "meta" }, meta.join("  ·  ")),
-    f.description ? el("p", {}, f.description) : "",
-    f.how_to_fix ? el("div", { class: "howto" }, "How to fix") : "",
-    f.how_to_fix ? el("p", {}, f.how_to_fix) : "",
+    f.description ? el("p", {}, ft(f, "description")) : "",
+    f.how_to_fix ? el("div", { class: "howto" }, t("How to fix")) : "",
+    f.how_to_fix ? el("p", {}, ft(f, "how_to_fix")) : "",
     // Under the instructions: this answers the question a
     // reader asks second, and it is absent entirely on anything fixable.
-    f.why_no_fix ? el("div", { class: "howto" }, "Why there is no fix button") : "",
-    f.why_no_fix ? el("p", { class: "whynofix" }, f.why_no_fix) : ""
+    f.why_no_fix ? el("div", { class: "howto" }, t("Why there is no fix button")) : "",
+    f.why_no_fix ? el("p", { class: "whynofix" }, tr(f.why_no_fix)) : "",
+    // The translation is written per finding ID, so it cannot carry the
+    // names, paths and counts the English was built with. The English is
+    // one click away for those.
+    translated(f) ? el("details", { class: "original" },
+      el("summary", {}, t("Original text (English)")),
+      el("p", {}, el("b", {}, f.title)),
+      f.description ? el("p", {}, f.description) : "",
+      f.how_to_fix ? el("p", {}, f.how_to_fix) : "") : ""
   );
   // Shown immediately: there is
   // nothing to decide before seeing it, and gating it behind a button meant
@@ -653,8 +783,8 @@ function selectFinding(f, li) {
   // nothing ever removed the one already there.
   if (isFixable(f)) {
     const box = el("div", { class: "fixbox" },
-      el("div", { class: "fixbox-head" }, "Fix preview"),
-      el("div", { class: "fixbox-body" }, el("p", { class: "meta" }, "Loading fix preview…")));
+      el("div", { class: "fixbox-head" }, t("Fix preview")),
+      el("div", { class: "fixbox-body" }, el("p", { class: "meta" }, t("Loading fix preview…"))));
     d.append(box);
     loadPreview(f, box);
   }
@@ -662,7 +792,7 @@ function selectFinding(f, li) {
   // wrapper neither had any margin of its own, so whichever came right
   // before (a paragraph, or the fixbox) butted straight up against
   // "Explain with AI" with no breathing room at all.
-  const explainBtn = el("button", { onclick: (ev) => explainAI(f, ev.target) }, "Explain with AI");
+  const explainBtn = el("button", { onclick: (ev) => explainAI(f, ev.target) }, t("Explain with AI"));
   d.append(el("div", { class: "detail-actions" }, explainBtn));
 }
 
@@ -673,17 +803,17 @@ async function explainAI(f, btn) {
   const d = document.getElementById("detail");
   const old = d.querySelector(".aibox");
   if (old) old.remove();
-  const box = el("div", { class: "aibox" }, el("div", { class: "meta" }, "Asking the local AI model…"));
+  const box = el("div", { class: "aibox" }, el("div", { class: "meta" }, t("Asking the local AI model…")));
   d.append(box);
   if (btn) btn.disabled = true;
   try {
     const ex = await api(`/api/explain?id=${encodeURIComponent(f.id)}&service=${encodeURIComponent(f.service || "")}`);
     box.replaceChildren(
-      el("div", { class: "howto" }, "AI explanation (advisory)"),
-      ex.ai ? el("p", {}, ex.ai) : el("p", { class: "meta" }, ex.ai_error || "The AI provider returned nothing.")
+      el("div", { class: "howto" }, t("AI explanation (advisory)")),
+      ex.ai ? el("p", {}, ex.ai) : el("p", { class: "meta" }, tr(ex.ai_error) || t("The AI provider returned nothing."))
     );
   } catch (e) {
-    box.replaceChildren(el("p", { class: "meta" }, "AI explanation failed: " + e.message));
+    box.replaceChildren(el("p", { class: "meta" }, t("AI explanation failed: {err}", { err: e.message })));
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -697,7 +827,7 @@ async function loadPreview(f, box) {
     const p = await api(`/api/preview?id=${encodeURIComponent(f.id)}&service=${encodeURIComponent(f.service || "")}`);
     drawPreviewInto(box, f, p);
   } catch (e) {
-    box.querySelector(".fixbox-body").replaceChildren(el("p", { class: "meta" }, "Preview failed: " + e.message));
+    box.querySelector(".fixbox-body").replaceChildren(el("p", { class: "meta" }, t("Preview failed: {err}", { err: e.message })));
   }
 }
 
@@ -710,8 +840,8 @@ function drawPreviewInto(box, f, p) {
   const body = box.querySelector(".fixbox-body");
   const draw = () => {
     const a = p.actions[chosen];
-    head.textContent = p.label;
-    const apply = el("button", { class: "primary", onclick: () => applyFix(f, chosen) }, "Apply");
+    head.textContent = tr(p.label);
+    const apply = el("button", { class: "primary", onclick: () => applyFix(f, chosen) }, t("Apply"));
     // A fix that names something to check first keeps Apply off until the
     // reader says they checked it. The sentence is written for someone who
     // has not read an sshd_config before (internal/fix/checkfirst.go).
@@ -721,19 +851,19 @@ function drawPreviewInto(box, f, p) {
       const tick = Object.assign(document.createElement("input"), { type: "checkbox" });
       tick.onchange = () => { apply.disabled = !tick.checked; };
       confirm = el("div", { class: "checkfirst" },
-        el("div", { class: "howto" }, "Before you apply"),
-        el("label", {}, tick, " " + a.check_first));
+        el("div", { class: "howto" }, t("Before you apply")),
+        el("label", {}, tick, " " + tr(a.check_first)));
     }
     body.replaceChildren(
       p.actions.length > 1 ? altPicker(p, chosen, (i) => { chosen = i; draw(); }) : "",
-      a.benefit ? el("div", { class: "benefit" }, "✓  " + a.benefit) : "",
-      a.warning ? el("div", { class: "warn" }, "⚠  " + a.warning) : "",
+      a.benefit ? el("div", { class: "benefit" }, "✓  " + tr(a.benefit)) : "",
+      a.warning ? el("div", { class: "warn" }, "⚠  " + tr(a.warning)) : "",
       el("ul", { class: "fixfacts" }, ...fixFacts(a).map((t) => el("li", {}, t))),
       confirm,
       // The exact change is one click away. The sentences above are what a
       // first-time reader decides on; the diff is for whoever wants proof.
       el("details", { class: "change" },
-        el("summary", {}, a.type === "exec" ? "Show the commands" : "Show the exact change"),
+        el("summary", {}, a.type === "exec" ? t("Show the commands") : t("Show the exact change")),
         actionBody(a)),
       el("div", { class: "row" }, apply)
     );
@@ -745,10 +875,10 @@ function drawPreviewInto(box, f, p) {
 // it reaches the host, in the order a reader asks.
 function fixFacts(a) {
   const out = [];
-  if (a.type === "exec") out.push("Runs a command. Hostveil cannot undo it from History.");
-  else if (a.irreversible) out.push("Recorded in History, but it cannot be rolled back.");
-  else out.push("Backed up first. You can undo it from History.");
-  if (a.takes_effect_on) out.push("Takes effect after " + a.takes_effect_on + ".");
+  if (a.type === "exec") out.push(t("Runs a command. Hostveil cannot undo it from History."));
+  else if (a.irreversible) out.push(t("Recorded in History, but it cannot be rolled back."));
+  else out.push(t("Backed up first. You can undo it from History."));
+  if (a.takes_effect_on) out.push(t("Takes effect after {when}.", { when: tr(a.takes_effect_on) }));
   return out;
 }
 
@@ -758,7 +888,7 @@ function altPicker(p, chosen, onpick) {
       const input = Object.assign(document.createElement("input"),
         { type: "radio", name: "alt", checked: i === chosen });
       input.onchange = () => onpick(i);
-      return el("label", {}, input, " " + a.label + (i === 0 ? " (recommended)" : ""));
+      return el("label", {}, input, " " + tr(a.label) + (i === 0 ? " " + t("(recommended)") : ""));
     })
   );
 }
@@ -769,10 +899,10 @@ function actionBody(a) {
   // An edit that restarts something afterwards shows both halves: the diff
   // is what changes, the commands are what puts it in force.
   if (a.type === "edit" && a.commands && a.commands.length)
-    return el("div", {}, diffPre(a.diff), el("p", { class: "muted" }, "Then these commands run:"), cmdList(a.commands));
+    return el("div", {}, diffPre(a.diff), el("p", { class: "muted" }, t("Then these commands run:")), cmdList(a.commands));
   if (a.type === "edit" || a.type === "mode") return diffPre(a.diff);
   if (a.type === "exec") return cmdList(a.commands);
-  return el("pre", { class: "diff" }, `(no preview available for action type ${a.type})`);
+  return el("pre", { class: "diff" }, t("(no preview available for action type {type})", { type: a.type }));
 }
 
 function diffPre(diff) {
@@ -804,9 +934,9 @@ async function applyFix(f, action) {
     // always said so. verify_message is rendered by the engine: the difference between "re-checked and gone" and "applied but
     // not yet in force" is subtle enough that three interfaces phrasing it
     // themselves would make three different claims.
-    showOutcomeModal("Fix applied", o);
+    showOutcomeModal(t("Fix applied"), o);
     await refresh();
-  } catch (e) { flash("Fix failed: " + e.message, true); }
+  } catch (e) { flash(t("Fix failed: {err}", { err: e.message }), true); }
 }
 
 // ── history + rollback ─────────────────────────────────────────────────
@@ -817,24 +947,26 @@ async function showHistory() {
   let res;
   try {
     res = await api("/api/history");
-  } catch (e) { flash("Could not load history: " + e.message, true); return; }
+  } catch (e) { flash(t("Could not load history: {err}", { err: e.message }), true); return; }
 
   const cps = res.checkpoints || [];
   selected = null;
   document.querySelectorAll(".finding").forEach((n) => n.classList.remove("active"));
   const d = document.getElementById("detail");
   d.replaceChildren(
-    el("h3", {}, "Applied fixes"),
-    el("div", { class: "meta" }, `${cps.length} checkpoint${cps.length === 1 ? "" : "s"}  ·  newest first`)
+    el("h3", {}, t("Applied fixes")),
+    el("div", { class: "meta" }, cps.length === 1
+      ? t("{n} checkpoint  ·  newest first", { n: 1 })
+      : t("{n} checkpoints  ·  newest first", { n: cps.length }))
   );
   // Some checkpoints on disk could not be read. The list below is still
   // usable; what is missing from it cannot be rolled back at all, which is
   // exactly the thing an operator must not discover only when they try.
   if (res.warning) {
-    d.append(el("div", { class: "warn" }, `⚠  ${res.warning}`));
+    d.append(el("div", { class: "warn" }, "⚠  " + tr(res.warning)));
   }
   if (!cps.length) {
-    d.append(el("p", { class: "empty" }, "No fixes have been applied yet."));
+    d.append(el("p", { class: "empty" }, t("No fixes have been applied yet.")));
     return;
   }
   cps.forEach((cp) => d.append(checkpointBox(cp)));
@@ -850,42 +982,42 @@ async function showAdvise() {
   selected = null;
   document.querySelectorAll(".finding").forEach((n) => n.classList.remove("active"));
   const d = document.getElementById("detail");
-  d.replaceChildren(el("h3", {}, "Should these fixes be applied here?"));
+  d.replaceChildren(el("h3", {}, t("Should these fixes be applied here?")));
 
   let ctx = "";
   try {
     ctx = (await api("/api/ai-context")).text || "";
-  } catch (e) { flash("Could not load the host description: " + e.message, true); }
+  } catch (e) { flash(t("Could not load the host description: {err}", { err: e.message }), true); }
 
   const textarea = Object.assign(document.createElement("textarea"), {
     className: "ctxinput", value: ctx,
-    placeholder: "Describe this host in one line; its purpose, and whether it favors staying current or staying stable.",
+    placeholder: t("Describe this host in one line; its purpose, and whether it favors staying current or staying stable."),
   });
-  const saveBtn = el("button", {}, "Save");
+  const saveBtn = el("button", {}, t("Save"));
   d.append(el("div", { class: "fixbox ctxbox" },
-    el("div", { class: "fixbox-head" }, "This host"),
+    el("div", { class: "fixbox-head" }, t("This host")),
     el("div", { class: "fixbox-body" }, textarea, el("div", { class: "row" }, saveBtn))));
 
-  const resultBody = el("div", { class: "fixbox-body" }, el("p", { class: "meta" }, "Judging every fixable finding…"));
+  const resultBody = el("div", { class: "fixbox-body" }, el("p", { class: "meta" }, t("Judging every fixable finding…")));
   d.append(el("div", { class: "fixbox" }, resultBody));
 
   const loadAdvice = async () => {
-    resultBody.replaceChildren(el("p", { class: "meta" }, "Judging every fixable finding…"));
+    resultBody.replaceChildren(el("p", { class: "meta" }, t("Judging every fixable finding…")));
     try {
       const adv = await api("/api/advise");
       resultBody.replaceChildren(
         el("pre", { class: "advise-plain" }, adv.plain),
         adv.ai ? el("div", { class: "aibox" },
-          el("div", { class: "howto" }, "AI verdict (advisory)"), el("p", {}, adv.ai)) : "",
+          el("div", { class: "howto" }, t("AI verdict (advisory)")), el("p", {}, adv.ai)) : "",
         !adv.ai && adv.ai_error ? el("div", { class: "aibox" },
-          el("div", { class: "howto" }, "AI verdict (advisory)"), el("p", { class: "meta" }, adv.ai_error)) : ""
+          el("div", { class: "howto" }, t("AI verdict (advisory)")), el("p", { class: "meta" }, tr(adv.ai_error))) : ""
       );
     } catch (e) {
-      resultBody.replaceChildren(el("p", { class: "meta" }, "Advise failed: " + e.message));
+      resultBody.replaceChildren(el("p", { class: "meta" }, t("Advise failed: {err}", { err: e.message })));
     }
   };
 
-  saveBtn.onclick = () => whileBusy(saveBtn, "Saving…", async () => {
+  saveBtn.onclick = () => whileBusy(saveBtn, t("Saving…"), async () => {
     await api("/api/ai-context", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: textarea.value }),
@@ -904,27 +1036,27 @@ function checkpointBox(cp) {
     if (cp.diff) body.append(diffPre(cp.diff));
     if (cp.restart_service) {
       body.append(el("div", { class: "warn" },
-        `⚠  Rolling back may require restarting '${cp.restart_service}'.`));
+        "⚠  " + t("Rolling back may require restarting '{svc}'.", { svc: cp.restart_service })));
     }
     body.append(el("div", { class: "row" },
-      el("button", { onclick: () => rollback(cp) }, "Roll back")));
+      el("button", { onclick: () => rollback(cp) }, t("Roll back"))));
   } else {
     // Exec fixes back up no files, so there is nothing to restore. Show
     // what ran instead of a button that would lead nowhere.
     if (cp.commands) body.append(cmdList(cp.commands));
     body.append(el("p", { class: "empty" },
-      "This fix ran a command and edited no file, so there is nothing to restore automatically. Undo it by hand if you need to."));
+      t("This fix ran a command and edited no file, so there is nothing to restore automatically. Undo it by hand if you need to.")));
   }
 
   return el("div", { class: "fixbox" },
-    el("div", { class: "fixbox-head" }, `${when}  ·  ${cp.finding_id}  ·  ${cp.label}`),
+    el("div", { class: "fixbox-head" }, `${when}  ·  ${cp.finding_id}  ·  ${tr(cp.label)}`),
     body);
 }
 
 async function rollback(cp, force = false) {
   if (!force) {
-    const ok = await confirmModal(`Roll back "${cp.label}"?`,
-      "This restores the original file as it was before the fix was applied.", "Roll back");
+    const ok = await confirmModal(t("Roll back \"{label}\"?", { label: tr(cp.label) }),
+      t("This restores the original file as it was before the fix was applied."), t("Roll back"));
     if (!ok) return;
   }
   try {
@@ -933,10 +1065,10 @@ async function rollback(cp, force = false) {
       body: JSON.stringify({ checkpoint_id: cp.id, force }),
     });
     const n = o.restored_files ? o.restored_files.length : 0;
-    showOutcomeModal("Rolled back", {
+    showOutcomeModal(t("Rolled back"), {
       new_score: o.new_score,
       restart_hint: o.restart_service,
-      verify_message: `Restored ${n} file${n === 1 ? "" : "s"}.`,
+      verify_message: n === 1 ? t("Restored {n} file.", { n }) : t("Restored {n} files.", { n }),
     });
     await refresh();
     await showHistory();
@@ -946,13 +1078,13 @@ async function rollback(cp, force = false) {
     // was done in between. Rollback keeps no checkpoint of its own, so
     // say that and make the override a second, informed answer.
     if (e.status === 409) {
-      const ok = await confirmModal("Overwrite it anyway?",
-        `${e.message} This restores Hostveil's backup over the current file, discarding those changes. ` +
-        "Rollback writes no checkpoint of its own, so this cannot be undone.", "Overwrite");
+      const ok = await confirmModal(t("Overwrite it anyway?"),
+        tr(e.message) + " " + t("This restores Hostveil's backup over the current file and discards those changes. Rollback writes no checkpoint of its own, so this cannot be undone."),
+        t("Overwrite"));
       if (ok) await rollback(cp, true);
       return;
     }
-    flash("Rollback failed: " + e.message, true);
+    flash(t("Rollback failed: {err}", { err: e.message }), true);
   }
 }
 
@@ -1012,11 +1144,11 @@ document.getElementById("modal").addEventListener("click", (e) => {
 // below builds to match it.
 function showOutcomeModal(title, o) {
   const lines = [];
-  if (o.new_score) lines.push(el("p", {}, `Score: ${o.new_score.overall}/100`));
-  if (o.restart_hint) lines.push(el("p", { class: "warn" }, `Restart '${o.restart_hint}' for it to take effect.`));
-  if (o.verify_message) lines.push(el("p", {}, o.verify_message));
-  if (o.checkpoint_id) lines.push(el("p", { class: "meta" }, `Rollback checkpoint: ${o.checkpoint_id}`));
-  const done = el("button", { class: "primary" }, "Done");
+  if (o.new_score) lines.push(el("p", {}, t("Score: {n}/100", { n: o.new_score.overall })));
+  if (o.restart_hint) lines.push(el("p", { class: "warn" }, t("Restart '{svc}' for it to take effect.", { svc: o.restart_hint })));
+  if (o.verify_message) lines.push(el("p", {}, tr(o.verify_message)));
+  if (o.checkpoint_id) lines.push(el("p", { class: "meta" }, t("Rollback checkpoint: {id}", { id: o.checkpoint_id })));
+  const done = el("button", { class: "primary" }, t("Done"));
   done.onclick = closeModal;
   openModal(el("div", {}, el("h3", {}, title), ...lines, el("div", { class: "row" }, done)));
 }
@@ -1028,7 +1160,7 @@ function showOutcomeModal(title, o) {
 // button, false on Cancel *or* on any other way the dialog closes (Escape,
 // a click on the backdrop): a dismissal is a "no" here the same way it is
 // for a native confirm().
-function confirmModal(title, message, confirmLabel = "Confirm") {
+function confirmModal(title, message, confirmLabel = t("Confirm")) {
   return new Promise((resolve) => {
     let settled = false;
     const finish = (result) => {
@@ -1038,7 +1170,7 @@ function confirmModal(title, message, confirmLabel = "Confirm") {
       closeModal();
     };
     const yes = el("button", { class: "primary", onclick: () => finish(true) }, confirmLabel);
-    const no = el("button", { onclick: () => finish(false) }, "Cancel");
+    const no = el("button", { onclick: () => finish(false) }, t("Cancel"));
     openModal(el("div", {}, el("h3", {}, title), el("p", {}, message), el("div", { class: "row" }, yes, no)));
     document.getElementById("modal").addEventListener("close", () => finish(false), { once: true });
   });
@@ -1110,11 +1242,11 @@ exportBtn.onclick = () => {
       const input = Object.assign(document.createElement("input"),
         { type: "radio", name: "fmt", checked: i === 0 });
       input.onchange = () => { chosen = f.id; };
-      return el("label", {}, input, " " + f.label);
+      return el("label", {}, input, " " + tr(f.label));
     })
   );
-  const dl = el("button", { class: "primary" }, "Download");
-  dl.onclick = () => whileBusy(dl, "Exporting…", async () => {
+  const dl = el("button", { class: "primary" }, t("Download"));
+  dl.onclick = () => whileBusy(dl, t("Exporting…"), async () => {
     const res = await fetch("/api/export?format=" + encodeURIComponent(chosen));
     if (!res.ok) throw new Error((await res.text()) || res.statusText);
     const blob = await res.blob();
@@ -1127,7 +1259,7 @@ exportBtn.onclick = () => {
     URL.revokeObjectURL(a.href);
     closeModal();
   });
-  openModal(el("div", {}, el("h3", {}, "Export"), list, el("div", { class: "row" }, dl)));
+  openModal(el("div", {}, el("h3", {}, t("Export")), list, el("div", { class: "row" }, dl)));
 };
 
 // whileBusy disables a button for the duration of the work it starts, and
@@ -1146,7 +1278,7 @@ async function whileBusy(el, label, fn) {
   try {
     await fn();
   } catch (e) {
-    flash(original + " failed: " + e.message, true);
+    flash(t("{action} failed: {err}", { action: original, err: e.message }), true);
   } finally {
     el.disabled = false;
     el.textContent = original;
@@ -1158,12 +1290,12 @@ async function whileBusy(el, label, fn) {
 // narrates which domains are still working instead of freezing a button
 // for minutes. A 409 means a scan is already running: poll that one.
 const rescanBtn = document.getElementById("rescan");
-rescanBtn.onclick = () => whileBusy(rescanBtn, "Rescanning…", async () => {
+rescanBtn.onclick = () => whileBusy(rescanBtn, t("Rescanning…"), async () => {
   marked.clear();
   const res = await fetch("/api/rescan", { method: "POST", headers: { "Content-Type": "application/json" } });
   if (!res.ok && res.status !== 409) throw new Error((await res.text()) || res.statusText);
-  await watchScan("Rescanning");
-  flash("Rescan complete.");
+  await watchScan(t("Rescanning"));
+  flash(t("Rescan complete."));
 });
 
 // scanStartedAt is set once per poll loop (pollRescan) and read by
@@ -1192,12 +1324,12 @@ function formatElapsed(ms) {
 // the stable wire name ("degraded"), and a reader wants "partial".
 function scanStateWord(state) {
   switch (state) {
-    case "running": return "scanning…";
-    case "done": return "done";
-    case "skipped": return "skipped";
-    case "degraded": return "partial";
-    case "error": return "failed";
-    default: return "waiting"; // pending, or a state this page has never seen
+    case "running": return t("scanning…");
+    case "done": return t("done");
+    case "skipped": return t("skipped");
+    case "degraded": return t("partial");
+    case "error": return t("failed");
+    default: return t("waiting"); // pending, or a state this page has never seen
   }
 }
 
@@ -1246,7 +1378,7 @@ function renderScanProgress(verb, domains) {
   const bar = meter(done > 0 ? Math.max(pct, 100 / total) : pct, "b-safe");
   document.getElementById("axes").replaceChildren(
     el("div", { class: "scan-status" },
-      el("span", {}, `${verb}… ${done} of ${total} domains`),
+      el("span", {}, t("{verb}… {done} of {total} domains", { verb, done, total })),
       bar,
       el("span", { class: "scan-elapsed" }, elapsed))
   );
@@ -1262,7 +1394,7 @@ function renderScanProgress(verb, domains) {
   );
 
   document.getElementById("findings").replaceChildren(
-    el("li", { class: "clean muted" }, "Scanning the host…")
+    el("li", { class: "clean muted" }, t("Scanning the host…"))
   );
 }
 
@@ -1297,13 +1429,13 @@ async function watchScan(verb) {
 
 const fixallBtn = document.getElementById("fixall");
 fixallBtn.onclick = async () => {
-  const ok = await confirmModal("Apply every safe fix?",
-    "Every Auto finding is applied now. Each is previewed and backed up first, and reversible from History.",
-    "Fix all safe");
+  const ok = await confirmModal(t("Apply every safe fix?"),
+    t("Every Auto finding is applied now. Each is previewed and backed up first, and reversible from History."),
+    t("Fix all safe"));
   if (!ok) return;
   const findings = active(report.findings).filter(isAuto)
-    .map((f) => ({ id: f.id, service: f.service || "", title: f.title }));
-  applyMany(findings, "Fixing");
+    .map((f) => ({ id: f.id, service: f.service || "", title: ft(f, "title") }));
+  applyMany(findings, t("Fixing"));
 };
 
 // boot loads the page for the first time. Hostveil's own first scan is now
@@ -1330,11 +1462,14 @@ async function boot() {
   rescanBtn.disabled = true;
   fixallBtn.disabled = true;
   try {
-    await watchScan("Scanning");
+    await watchScan(t("Scanning"));
   } finally {
     rescanBtn.disabled = false;
     fixallBtn.disabled = false;
   }
 }
 
-boot().catch((e) => flash("Failed to load: " + e.message, true));
+// The catalog loads first: the first frame is drawn in the reader's language.
+loadCatalog()
+  .then(() => { initLangPicker(); return boot(); })
+  .catch((e) => flash(t("Failed to load: {err}", { err: e.message }), true));

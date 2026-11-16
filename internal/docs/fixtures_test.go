@@ -129,6 +129,12 @@ func walkForFindingIDs(t *testing.T, root string) []fixtureHit {
 		if d.IsDir() || !slices.Contains([]string{".go", ".ans", ".json", ".py"}, filepath.Ext(path)) {
 			return nil
 		}
+		// The dashboard's translation catalogs hold prose with paths in it
+		// (/etc/sysctl.d), and their finding keys are already held to the
+		// checkers by TestEveryFindingIsTranslated.
+		if filepath.Base(filepath.Dir(path)) == "i18n" {
+			return nil
+		}
 		body, rerr := os.ReadFile(path)
 		if rerr != nil {
 			return rerr

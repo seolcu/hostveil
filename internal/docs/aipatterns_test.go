@@ -51,7 +51,7 @@ var aiPatternSkipPrefixes = []string{
 
 var aiPatternExts = map[string]bool{
 	".go": true, ".md": true, ".html": true, ".tmpl": true, ".js": true, ".css": true,
-	".sh": true, ".py": true, ".yml": true, ".yaml": true, ".cff": true, ".example": true,
+	".sh": true, ".py": true, ".json": true, ".yml": true, ".yaml": true, ".cff": true, ".example": true,
 }
 
 func TestNoAIWritingPatterns(t *testing.T) {
