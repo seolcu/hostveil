@@ -80,7 +80,7 @@ var declineReasons = map[string]string{
 	// accounts
 	"proxmox.webui-open":     "Which network is the management network is not written anywhere Hostveil can read, and a wrong guess locks you out of the hypervisor's interface; LISTEN_IP also breaks clusters across subnets.",
 	"proxmox.root-no-tfa":    "A second factor is a device a person holds, and Hostveil must never enrol a credential on anyone's behalf.",
-	"accounts.sudo-nopasswd": "The grant comes from sudo -l, not from reading /etc/sudoers, so nothing says which file, line, or group rule to edit; there is nowhere for an edit to point.",
+	"accounts.sudo-nopasswd": "The grant comes from sudo -l, so nothing says which file, line, or group rule to edit; there is nowhere for an edit to point.",
 	"accounts.duplicate-uid": "Changing a UID requires migrating every file it owns across filesystems, which cannot be represented or rolled back as one action.",
 
 	// fileperms

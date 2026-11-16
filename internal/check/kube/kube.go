@@ -474,7 +474,7 @@ func kubeconfigFinding(cfg k3sConfig) func(os.FileMode) model.Finding {
 		if cfg.modeFrom != "" && cfg.modeFrom != k3sEtc+"/config.yaml" {
 			fix = "The mode is set in " + cfg.modeFrom + " (`" + cfg.mode + "`), which wins over config.yaml: change it there to `0600`, then restart k3s. It rewrites the file at start, so a chmod alone lasts until the next restart. "
 		}
-		fix += "Anyone who needs kubectl should get their own kubeconfig rather than a copy of this one."
+		fix += "Anyone who needs kubectl should get a kubeconfig of their own."
 		opts := []model.FindingOption{
 			model.WithDescription("The admin kubeconfig k3s writes is readable by every account on this host. It holds cluster-admin credentials, so any local user (or any service running as one) can do anything in the cluster, including run a privileged pod that mounts the host's filesystem, which is root on this machine. `--write-kubeconfig-mode 644` is in most k3s tutorials because it makes kubectl work without sudo."),
 			model.WithHowToFix(fix),
@@ -495,7 +495,7 @@ func k0sKubeconfigFinding() func(os.FileMode) model.Finding {
 			"The cluster-admin kubeconfig is readable by every account",
 			model.SeverityMedium, model.SourceKube, model.RemediationReview,
 			model.WithDescription("k0s's admin kubeconfig is readable by every account on this host. It holds cluster-admin credentials, so any local user can do anything in the cluster, including run a privileged pod that mounts the host's filesystem: root on this machine. k0s writes it 0640 itself, so this was loosened after the fact."),
-			model.WithHowToFix("`chmod 0640 "+k0sAdminConf+"`, and give anyone who needs kubectl a kubeconfig of their own (`k0s kubeconfig create <user>`) rather than a copy of this one."),
+			model.WithHowToFix("`chmod 0640 "+k0sAdminConf+"`, and give anyone who needs kubectl a kubeconfig of their own (`k0s kubeconfig create <user>`)."),
 			model.WithEvidence("mode", "0"+strconvOct(mode)),
 		)
 	}

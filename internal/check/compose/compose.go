@@ -171,8 +171,8 @@ func auditContainer(c compose.Container) []model.Finding {
 		// coming up empty here. fix.WhyNoFix answers from the declined list,
 		// and every one of these IDs *is* registered (it is the container
 		// that cannot be fixed, not the finding) so nothing filled it in.
-		f.WhyNoFix = "This container was started with `docker run`, not Compose, so there is no file for Hostveil to edit."
-		f.HowToFix = "This container was started with `docker run`, not Compose, so there is no file to edit. " +
+		f.WhyNoFix = "This container was started with `docker run`, so there is no Compose file for Hostveil to edit."
+		f.HowToFix = "This container was started with `docker run`, so there is no Compose file to edit. " +
 			"Recreate it with the corrected flag, or move it into a compose file where Hostveil can fix it for you. " + f.HowToFix
 		f.Evidence = mergeMeta(f.Evidence, map[string]string{"managed_by": "docker run"})
 		out = append(out, f)

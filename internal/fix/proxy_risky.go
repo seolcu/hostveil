@@ -105,7 +105,7 @@ func buildTraefikSecureAPI(f model.Finding) (Fix, error) {
 	where := f.Evidence["set-in"]
 	flag, ok := strings.CutPrefix(where, "command: ")
 	if !ok {
-		return Fix{}, fmt.Errorf("finding %s is set by %q, not by a command flag", f.ID, where)
+		return Fix{}, fmt.Errorf("finding %s is set by %q; no command flag sets it", f.ID, where)
 	}
 	flag = strings.Trim(strings.TrimSpace(flag), `"`)
 	p, err := composeKeyTarget(f, func(s compose.Service) bool {

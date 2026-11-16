@@ -343,7 +343,7 @@ func (f *facts) socketFindings() []model.Finding {
 		"Docker socket is writable by every account on this host",
 		model.SeverityHigh, model.SourceDockerd, model.RemediationReview,
 		model.WithDescription("Every local account can connect to the Docker socket, and the Docker API grants whoever reaches it the ability to start a container with the host filesystem mounted inside. Any unprivileged user, and any process running as one (a web application, a compromised service account) can therefore become root on this host without a password and without an exploit."),
-		model.WithHowToFix("Restore the socket to group-only access. The mode is set by systemd, not by the daemon, so a `chmod` is undone at the next restart: put `[Socket]` / `SocketMode=0660` in a drop-in under /etc/systemd/system/docker.socket.d/, then `systemctl daemon-reload && systemctl restart docker.socket`. Grant access by adding accounts to the socket's group rather than by widening the mode."),
+		model.WithHowToFix("Restore the socket to group-only access. The mode is set by systemd, so a `chmod` is undone at the next restart: put `[Socket]` / `SocketMode=0660` in a drop-in under /etc/systemd/system/docker.socket.d/, then `systemctl daemon-reload && systemctl restart docker.socket`. Grant access by adding accounts to the socket's group rather than by widening the mode."),
 		model.WithEvidence("path", f.sock.path),
 		model.WithEvidence("mode", fmt.Sprintf("%04o", f.sock.perm)),
 	)}
@@ -430,7 +430,7 @@ func (f *facts) defaultsFindings() []model.Finding {
 			"dockerd.userns-remap",
 			"Container root is host root",
 			model.SeverityLow, model.SourceDockerd, model.RemediationReview,
-			model.WithDescription("User-namespace remapping is not enabled, so uid 0 inside a container is uid 0 on the host. Any container escape, any bind mount the operator did not think through, and any misconfigured volume therefore lands with real root privileges rather than with an unprivileged subordinate uid."),
+			model.WithDescription("User-namespace remapping is not enabled, so uid 0 inside a container is uid 0 on the host. Any container escape, any bind mount the operator did not think through, and any misconfigured volume therefore lands with real root privileges. Remapping would map it to an unprivileged subordinate uid."),
 			model.WithHowToFix("Set `\"userns-remap\": \"default\"` in /etc/docker/daemon.json and restart the daemon. Weigh it first: remapping changes the ownership of every bind mount, and containers using `--privileged`, host networking, or host PID cannot use it, which is why this is a Low and not an instruction."),
 			model.WithEvidence("security options", f.info.securityOptions()),
 			model.WithMetadata("daemon_json", f.cfg.path),

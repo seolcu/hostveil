@@ -133,7 +133,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			"accounts.uid0", "Non-root account with root's UID (0)",
 			model.SeverityHigh, model.SourceAccounts, model.RemediationReview,
 			model.WithDescription("An account other than 'root' has UID 0, which gives it full root privileges under a different name. This is a common backdoor and almost never legitimate."),
-			model.WithHowToFix("Verify why "+strings.Join(rogueRoot, ", ")+" has UID 0. If it is not intentional, lock and expire it (`usermod --lock --expiredate 1 "+rogueRoot[0]+"`) so it can no longer log in, then remove it (`userdel`) or give it a normal, unique UID once nothing depends on it. Grant admin rights via sudo, not UID 0."),
+			model.WithHowToFix("Verify why "+strings.Join(rogueRoot, ", ")+" has UID 0. If it is not intentional, lock and expire it (`usermod --lock --expiredate 1 "+rogueRoot[0]+"`) so it can no longer log in, then remove it (`userdel`) or give it a normal, unique UID once nothing depends on it. Grant admin rights via sudo."),
 			model.WithEvidence("accounts", strings.Join(rogueRoot, ", ")),
 		))
 	}
@@ -148,7 +148,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	if len(duplicateUIDs) > 0 {
 		sort.Strings(duplicateUIDs)
 		findings = append(findings, model.NewFinding("accounts.duplicate-uid", "Multiple accounts share the same UID", model.SeverityMedium, model.SourceAccounts, model.RemediationManual,
-			model.WithDescription("Linux authorizes a process by numeric UID, not account name. Accounts sharing one UID are indistinguishable to file ownership and audit logs."),
+			model.WithDescription("Linux authorizes a process by numeric UID. The account name plays no part. Accounts sharing one UID are indistinguishable to file ownership and audit logs."),
 			model.WithHowToFix("Assign every affected account a unique UID with `usermod -u`, then carefully migrate files owned by the old UID."),
 			model.WithEvidence("uids", strings.Join(duplicateUIDs, model.EvidenceSeparator))))
 	}
@@ -267,7 +267,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			findings = append(findings, model.NewFinding(
 				"accounts.sudo-nopasswd", "An account can become root without a password",
 				model.SeverityMedium, model.SourceAccounts, model.RemediationManual,
-				model.WithDescription("A sudo rule lets this account run any command as root without being asked for a password. That removes the last step between holding the account and holding the host: anyone who gets its SSH key, or a shell through a service it runs, is root immediately rather than needing its password as well. "+
+				model.WithDescription("A sudo rule lets this account run any command as root without being asked for a password. That removes the last step between holding the account and holding the host: anyone who gets its SSH key, or a shell through a service it runs, is root immediately, with no password needed. "+
 					"Cloud and VM images ship this intentionally so the first login works, and it is usually still there years later."),
 				model.WithHowToFix("Run `sudo visudo` (or `sudo visudo -f /etc/sudoers.d/<file>` for a drop-in) and change the rule for "+strings.Join(sudoers, ", ")+" from `NOPASSWD: ALL` to `ALL`, so sudo asks for the account's password. "+
 					"Set that password first with `passwd "+sudoers[0]+"` and confirm it works in a second session: images that ship NOPASSWD often ship no password either, and an account with neither cannot use sudo at all once the rule is gone. "+

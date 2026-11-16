@@ -60,7 +60,7 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 	// on the machine every guest depends on, with no checkpoint to undo it.
 	if strings.Contains(f.Evidence["available"], "pve-firewall") {
 		return Fix{}, fmt.Errorf("finding %s is on a Proxmox VE host, where the datacenter "+
-			"firewall is the one to enable, not ufw", f.ID)
+			"firewall is the one to enable; leave ufw off", f.ID)
 	}
 	list := make([]string, 0, len(ports))
 	for _, p := range ports {

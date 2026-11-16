@@ -709,7 +709,7 @@ func (an *analysis) persistence() {
 				if m := dangerousCommand.FindString(t); m != "" {
 					an.add(Indicator{ID: "persistence.download-and-run", Verdict: Compromise,
 						Title:    "A scheduled job or service runs a downloaded or hidden program",
-						Detail:   a.Source + " runs `" + strings.TrimSpace(m) + "`. Piping a download into a shell, decoding base64, opening /dev/tcp or running from /tmp is what an implant's start-up line looks like, not a package's.",
+						Detail:   a.Source + " runs `" + strings.TrimSpace(m) + "`. Piping a download into a shell, decoding base64, opening /dev/tcp or running from /tmp is what an implant's start-up line looks like. Packages do not start this way.",
 						Evidence: []Evidence{{Artifact: a.Path, Line: i + 1, Text: l}}})
 				}
 			}

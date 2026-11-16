@@ -130,7 +130,7 @@ const pendingSecurityWarning = "Upgrading packages can restart the services they
 func buildApplySecurityUpdates(f model.Finding) (Fix, error) {
 	var built Fix
 	const benefit = "Applies whatever security patches are already sitting unapplied right now: closes " +
-		"today's already-known gaps rather than waiting for the next automatic run."
+		"today's already-known gaps without waiting for the next automatic run."
 	switch f.Evidence["package-manager"] {
 	case "apt":
 		built = execFix("Apply pending security updates", "Refresh apt metadata and fully upgrade installed packages",
@@ -162,15 +162,15 @@ var hardeningPackageBenefit = map[string]string{
 	"rkhunter": "Installs a rootkit and backdoor scanner, giving the host a second opinion on itself " +
 		"beyond what its own compromised binaries might report.",
 	"pam-pwquality": "Installs the PAM module that lets password-strength rules be enforced " +
-		"at login time, not only at account creation.",
+		"at login time as well as at account creation.",
 	"apt-show-versions": "Lets the operator ask, per package, whether a security update is pending " +
 		"from a specific origin; the same query Hostveil's own updates domain depends on.",
 	"apt-listchanges": "Shows what changed before an upgrade lands, so a package upgrade is " +
-		"something the operator reads rather than something that just happens to them.",
+		"something the operator reads before it happens.",
 	"pam-tmpdir": "Gives every login session its own private /tmp, closing the shared-/tmp race and " +
 		"symlink-attack class of local privilege escalation.",
 	"fail2ban": "Automatically bans an IP after repeated failed logins, cutting off a brute-force " +
-		"attempt while it is still in progress rather than after it succeeds.",
+		"attempt while it is still in progress.",
 }
 
 func buildInstallHardeningPackage(f model.Finding) (Fix, error) {

@@ -441,14 +441,14 @@ func auditContainerCaddy(p compose.Project, name string, svc compose.Service) (f
 }
 
 func caddyAdminFinding(addr, where string, sev model.Severity, service, file string, extra ...model.FindingOption) model.Finding {
-	desc := "Caddy's admin API is listening on " + strconv.Quote(addr) + " rather than on loopback. " +
+	desc := "Caddy's admin API is listening on " + strconv.Quote(addr) + " beyond loopback. " +
 		"It has no authentication, and it is not a status page: a single request can read the running configuration or replace it, " +
 		"which means anyone who reaches the port can reroute every site this proxy serves, point it at a server of their own, or turn it off."
 	if service != "" && sev != model.SeverityHigh {
 		desc += " The port is not published to the host, so reaching it takes a foothold in another container on the same network first, which is exactly what a compromised neighbour has."
 	}
 	fix := "Set the global option back to the default (`admin localhost:2019`), or `admin off` if nothing calls the API, then `systemctl reload caddy`. " +
-		"If something off the host manages Caddy, use the `remote` admin listener, which requires client certificates, rather than exposing this one."
+		"If something off the host manages Caddy, use the `remote` admin listener, which requires client certificates, and keep this one on loopback."
 	if service != "" {
 		fix = "Keep the admin address on loopback: remove the non-loopback CADDY_ADMIN value or `admin` option (" + where + "), " +
 			"and do not publish port 2019. Recreate the container afterwards: Caddy reads this at start. " +

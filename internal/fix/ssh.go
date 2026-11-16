@@ -25,7 +25,7 @@ func registerSSH(r *Registry) {
 		"If you rely on `ssh -R` tunnels being reachable from other machines, this closes them to loopback."))
 	r.Register("ssh.hostbasedauth", buildSSHAuto("HostbasedAuthentication", "no", "Disable host-based authentication",
 		"Removes a trust-based login path that bypasses per-user keys entirely.",
-		"If any user logs in via host-based trust rather than their own key, this removes that path."))
+		"If any user logs in via host-based trust, this removes that path. Logins with their own key keep working."))
 	r.Register("ssh.kbdinteractive", buildKbdInteractive)
 	r.Register("ssh.permituserenvironment", buildSSHAuto("PermitUserEnvironment", "no", "Disable user-supplied SSH environments",
 		"Stops a user's ~/.ssh/environment overriding the server process's own environment: a known way to hijack LD_PRELOAD or similar into a login session.",
@@ -46,7 +46,7 @@ func registerSSH(r *Registry) {
 	r.Register("ssh.ignorerhosts", buildSSHAuto("IgnoreRhosts", "yes", "Ignore legacy rhosts trust files",
 		"Ignores legacy .rhosts trust files, closing a decades-old authentication bypass that has no place on a hardened host.", ""))
 	r.Register("ssh.loglevel", buildSSHAuto("LogLevel", "VERBOSE", "Log SSH key fingerprints",
-		"Logs the key fingerprint used on every login, giving the operator forensic evidence of exactly which key authenticated, not just that a login succeeded.", ""))
+		"Logs the key fingerprint used on every login, giving the operator forensic evidence of exactly which key authenticated each login.", ""))
 	r.Register("ssh.maxsessions", buildSSHAuto("MaxSessions", "2", "Limit multiplexed SSH sessions",
 		"Caps multiplexed sessions per connection, limiting how much one compromised or stolen connection can do at once.",
 		"Clients opening more than two sessions over one SSH connection will be refused."))

@@ -40,7 +40,7 @@ var sysctlBenefit = map[string]string{
 	"sysctl.rp-filter": "Drops packets whose source address could not have arrived on the interface " +
 		"they came in on, closing a common IP-spoofing technique.",
 	"sysctl.accept-source-route": "Stops the kernel honoring source-routed packets, closing a way to " +
-		"make traffic take a path chosen by whoever sent it rather than by this network's own routing.",
+		"make traffic take a path chosen by whoever sent it.",
 	"sysctl.send-redirects": "Stops this host sending ICMP redirects itself, which it should not be " +
 		"doing unless it is a router; removes a route-injection tool a compromised host could " +
 		"use against its neighbors.",

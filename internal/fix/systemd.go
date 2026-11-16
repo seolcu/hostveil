@@ -114,7 +114,7 @@ func buildSystemdNoNewPrivileges(f model.Finding) (Fix, error) {
 			"container.",
 		"Closes the setuid path out of this service. A service that "+
 			"escalates (anything calling a setuid helper) stops working, and it "+
-			"stops at the next restart rather than now.")
+			"stops at the next restart.")
 }
 
 // Five of the remaining thirteen protections registered below, alongside
@@ -168,8 +168,8 @@ func buildSystemdProtectKernelModules(f model.Finding) (Fix, error) {
 	return systemdDropIn(f, "ProtectKernelModules", "yes",
 		"Stops the unit loading or removing kernel modules itself, closing a direct path to "+
 			"running arbitrary code in kernel space from what should be an ordinary service.",
-		"Only a service that loads or removes kernel modules itself at runtime: "+
-			"rather than modules already loaded at boot: needs this off.")
+		"Only a service that loads or removes kernel modules itself at runtime "+
+			"needs this off. Modules loaded at boot are unaffected.")
 }
 
 // systemdDropIn builds the edit that turns one [Service] directive on.

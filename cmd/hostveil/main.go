@@ -225,7 +225,7 @@ Export flags:
   --format FMT    json, sarif or markdown (required). json and sarif are
                   byte-identical to scan --json/--sarif. markdown explains
                   each finding and its fix in plain language, for a person
-                  rather than another program.
+                  to read.
   --output FILE   Write to FILE instead of stdout
   --only LIST     Scan only these domains (comma-separated)
   --skip LIST     Scan every domain except these (comma-separated)
@@ -249,7 +249,7 @@ Explain flags:
                   default; set HOSTVEIL_AI_PROVIDER=anthropic or openai to
                   use an external API instead. See Environment below. Uses
                   the saved host description (hostveil ai-context) if one
-                  is set, to make the answer situational rather than generic.
+                  is set, to make the answer specific to this host.
                   With no finding ID, adds a verdict per fixable finding
                   (Apply/Skip/Depends) under the benefit/cost listing.
   --only LIST     With no finding ID: scan only these domains
@@ -260,8 +260,8 @@ Ai-context flags:
 
 Rollback flags:
   --force         Restore even if the file changed after the fix was applied.
-                  Rollback keeps no backup of its own, so it declines by
-                  default rather than discard those edits.
+                  Rollback keeps no backup of its own, so by default it
+                  declines to discard those edits.
 
 Diagnostics flags:
   --trace FILE    Attach a command trace produced with HOSTVEIL_DEBUG=1
@@ -288,8 +288,8 @@ TUI and dashboard flags:
                   publish it to the network; forward the port over SSH instead.
 
 The dashboard prints a URL carrying a one-off access token, and every route
-requires it: loopback separates this host from the network, not you from the
-other accounts on this machine, and serve runs as root. Open the printed URL;
+requires it: loopback separates this host from the network. Other accounts on
+this machine can still reach it, and serve runs as root. Open the printed URL;
 the token then becomes a session cookie for that browser.
 
 Exit status:

@@ -109,7 +109,7 @@ func buildK3sSecretsEncryption(f model.Finding) (Fix, error) {
 	a.Warning = "This cannot be rolled back: once Secrets are rewritten encrypted, removing the setting leaves " +
 		"them unreadable, so the way back is `k3s secrets-encrypt disable` and a rotation, by hand. It restarts " +
 		"k3s twice, which makes the API unavailable for the seconds each takes, and rewrites every Secret; " +
-		"running pods keep running. If a step fails, Hostveil stops there and says which, rather than undoing " +
-		"the earlier ones."
+		"running pods keep running. If a step fails, Hostveil stops there and says which. The earlier " +
+		"steps stay applied."
 	return fx, nil
 }

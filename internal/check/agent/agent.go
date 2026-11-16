@@ -405,7 +405,7 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 				append(rebind,
 					model.WithService(s.in.subject()),
 					model.WithDescription("The gateway is reachable from the network and requires no credential to talk to. Anyone who can reach the port can drive the agent: read the files it can read, run the commands it can run, and use the API keys it holds."),
-					model.WithHowToFix("Set the gateway's authentication mode to a token or password with a long random value, and bind the gateway to loopback as well; authentication is the second line, not the first."),
+					model.WithHowToFix("Set the gateway's authentication mode to a token or password with a long random value, and bind the gateway to loopback as well; binding to loopback is the first line and authentication the second."),
 					model.WithEvidence("setting", gw.AuthKey),
 					model.WithEvidence("value", shown),
 					model.WithEvidence("port", strconv.Itoa(port)),

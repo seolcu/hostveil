@@ -26,7 +26,7 @@ const scanJailPath = "/etc/fail2ban/jail.d/hostveil-nginx-scan.conf"
 func buildEnableScanJail(f model.Finding) (Fix, error) {
 	benefit := "Once fail2ban reloads, an IP that repeatedly requests nonexistent or known-vulnerable paths " +
 		"gets banned automatically; no more finding it and banning it yourself."
-	warning := "Takes effect on the next `fail2ban-client reload`, not immediately. A shared or NAT'd IP " +
+	warning := "Takes effect on the next `fail2ban-client reload`. A shared or NAT'd IP " +
 		"address could ban more than the one visitor responsible for it. This only ever affects HTTP(S) " +
 		"traffic: never SSH, and never the operator's own access to the host."
 	logLines := scanJailLogLines(f)

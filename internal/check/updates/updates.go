@@ -597,7 +597,7 @@ func pendingFinding(n int, mechanism, howToFix string) model.Finding {
 	}
 	return model.NewFinding("updates.pending-security", fmt.Sprintf("%d security update(s) are available but not installed", n),
 		sev, model.SourceUpdates, model.RemediationReview,
-		model.WithDescription("These packages have published security fixes that this host has not applied. Every one is a publicly documented vulnerability with a patch already written, which is the category attackers scan for first. A large backlog usually means automatic updates are configured but failing rather than simply switched off."),
+		model.WithDescription("These packages have published security fixes that this host has not applied. Every one is a publicly documented vulnerability with a patch already written, which is the category attackers scan for first. A large backlog usually means automatic updates are configured and failing."),
 		model.WithHowToFix("Apply them: `"+howToFix+"`. If automatic updates are enabled and this backlog keeps growing, check `systemctl status unattended-upgrades` or the dnf-automatic timer for errors."),
 		model.WithEvidence("pending", strconv.Itoa(n)), model.WithEvidence("package-manager", mechanism),
 	)

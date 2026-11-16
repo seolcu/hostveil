@@ -111,7 +111,7 @@ func severityLegendSection() Section {
 		Heading: "Severity - what the levels mean",
 		Level:   1,
 		Paragraphs: []string{
-			"Hostveil ranks findings by how urgent they are, not by how bad they sound.",
+			"Hostveil ranks findings by how urgent they are.",
 		},
 	}
 	for _, sev := range model.AllSeverities() {
