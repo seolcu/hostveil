@@ -26,7 +26,7 @@ type socket struct {
 type member struct {
 	name string
 	// system marks an account that does not log in interactively: a service
-	// identity rather than a person. It is what separates an administrator who
+	// identity. It is what separates an administrator who
 	// chose this from an unmonitored credential.
 	system bool
 }
@@ -65,8 +65,7 @@ func (c *Checker) readSocket() (s socket, known, absent bool, reason string) {
 // groupName resolves a gid to its name via /etc/group, falling back to the
 // numeric id.
 //
-// The socket's group is resolved by gid rather than by looking up the name
-// "docker", because the name is not fixed: daemon.json's "group" key and the
+// The socket's group is resolved by gid, because the name is not fixed: daemon.json's "group" key and the
 // socket unit's SocketGroup both set it, so `"group": "wheel"` is legal and
 // means every member of wheel is root on this host. Asking for "docker" by
 // name would report a clean host in exactly the case worth catching.
@@ -169,8 +168,7 @@ type account struct {
 	shell string
 }
 
-// system reports whether this account is a service identity rather than a
-// human login. Both signals are needed: a distribution reserves uids below
+// system reports whether this account is a service identity. Both signals are needed: a distribution reserves uids below
 // 1000 for services, and an account created above that range with a nologin
 // shell (the shape most CI runners and agents take) is just as much a
 // credential no one logs into or monitors.

@@ -56,9 +56,9 @@ type BackedFile struct {
 	BlobSHA256 string `json:"blob_sha256,omitempty"`
 
 	// Created records that the fix brought this file into existence, so
-	// restoring it means deleting it rather than writing something back.
+	// restoring it means deleting it.
 	//
-	// It is an explicit flag rather than an inference from an empty Blob,
+	// It is an explicit flag,
 	// because an empty Blob already means something else: SaveModes writes
 	// mode-only entries with no blob, and those must be left alone. Guessing
 	// between "no contents were touched" and "there were no contents" would
@@ -121,7 +121,7 @@ type Store struct {
 func NewStore(dir string) *Store { return &Store{dir: dir} }
 
 // Dir returns the directory the store is rooted at, so a caller that already
-// holds a Store (rather than calling DefaultDir itself) can put something
+// holds a Store can put something
 // else (a diagnostics record, say) beside checkpoints and scans without
 // guessing where a test pointed it.
 func (s *Store) Dir() string { return s.dir }
@@ -227,7 +227,7 @@ func discardUnfinished(dir, id string) {
 // Order matters: meta.json is what List and Get read, so a checkpoint exists
 // exactly when its metadata does. Writing it after the blobs means an
 // interrupted Save leaves a directory nothing will try to restore from,
-// rather than a checkpoint that promises files it never finished copying.
+// and never a checkpoint that promises files it never finished copying.
 func (s *Store) writeMeta(dir string, cp Checkpoint) error {
 	meta, err := json.MarshalIndent(cp, "", "  ")
 	if err != nil {
@@ -246,7 +246,7 @@ func (s *Store) writeMeta(dir string, cp Checkpoint) error {
 // List() reads and parses every one of them on each history view and each
 // rollback.
 //
-// It bounds how far back the history goes; minRetention, not this number, is
+// It bounds how far back the history goes; minRetention is
 // what keeps a fix rollbackable after it is applied.
 const maxCheckpoints = 200
 
@@ -272,7 +272,7 @@ const maxCheckpoints = 200
 const minRetention = time.Hour
 
 // idTimeLayout is the timestamp prefix NewID and NewScanID mint, and both of
-// them format through it rather than restating it, which they used to do,
+// them format through it. They used to restate it,
 // leaving three copies of one layout across two files while this constant's
 // own comment claimed to be what they wrote.
 //
@@ -340,7 +340,7 @@ func (s *Store) pruneCheckpoints() {
 	sort.Strings(names) // oldest first
 	cutoff := time.Now().UTC().Add(-minRetention)
 	for _, name := range names[:len(names)-maxCheckpoints] {
-		// Reaching something recent ends the sweep rather than skipping it:
+		// Reaching something recent ends the sweep:
 		// names are in chronological order, so everything left is newer still.
 		if at, ok := idTime(name); ok && at.After(cutoff) {
 			return
@@ -394,7 +394,7 @@ func (s *Store) SaveModesAndOwners(cp Checkpoint, modes map[string]os.FileMode, 
 // A fix that both creates one file and edits another would need Save and
 // this at once, and cannot express it. No such fix exists: an Action
 // carries a single Path. If one is ever written, this is where it breaks,
-// loudly, rather than silently checkpointing half of it.
+// loudly, and never checkpoints half of it.
 func (s *Store) SaveCreations(cp Checkpoint, paths []string) (Checkpoint, error) {
 	files := make([]BackedFile, 0, len(paths))
 	for _, path := range paths {
@@ -407,11 +407,11 @@ func (s *Store) SaveCreations(cp Checkpoint, paths []string) (Checkpoint, error)
 // backed-up bytes: the shared body of SaveModes and SaveCreations, which
 // differ only in the BackedFile they build.
 //
-// It is one function rather than two identical ones because the order here is
+// It is one function because the order here is
 // required and belongs in a single place: the metadata file is written
 // last, so a checkpoint exists exactly when its metadata does, and a failed
-// write takes the half-built directory with it rather than leaving something
-// List would later report as damaged. Two copies of that is two chances for
+// write takes the half-built directory with it, so List never reports
+// it as damaged later. Two copies of that is two chances for
 // the next edit to land in one of them.
 func (s *Store) saveBlobless(cp Checkpoint, files []BackedFile) (Checkpoint, error) {
 	dir := filepath.Join(s.checkpointsDir(), cp.ID)
@@ -486,7 +486,7 @@ func (s *Store) List() ([]Checkpoint, error) {
 		return cps[i].ID > cps[j].ID
 	})
 	if len(damaged) > 0 {
-		// Returned alongside the readable checkpoints, not instead of them: the
+		// Returned alongside the readable checkpoints: the
 		// list is still useful and the operator still needs to be told that
 		// part of their recovery history is unreadable.
 		sort.Strings(damaged)
@@ -496,7 +496,7 @@ func (s *Store) List() ([]Checkpoint, error) {
 }
 
 // DamagedError reports checkpoints whose metadata could not be read. It
-// accompanies a successful List rather than replacing it: callers that only
+// accompanies a successful List: callers that only
 // want to render the history can ignore it, and callers that report problems
 // can surface it.
 type DamagedError struct{ IDs []string }
@@ -522,7 +522,7 @@ func (s *Store) Get(id string) (Checkpoint, error) {
 	// G304: the variable is a checkpoint ID, joined under the store's own
 	// directory. It reaches here from a UI that got it out of List, so it
 	// names something this process wrote, and the read is of Hostveil's own
-	// state, not of anything the ID could point at outside it.
+	// state, and of nothing the ID could point at outside it.
 	//nolint:gosec // G304: a checkpoint ID under the store's own directory
 	data, err := os.ReadFile(filepath.Join(s.checkpointsDir(), id, "meta.json"))
 	if err != nil {
@@ -570,7 +570,7 @@ func validateCheckpoint(id string, cp Checkpoint) error {
 // ExternalEditError reports that a file changed after the fix wrote it, so
 // rolling back would discard whatever was done to it in between.
 //
-// It is a distinct type rather than a plain error because every UI has to
+// It is a distinct type because every UI has to
 // tell this apart from a genuine failure: the rollback did not fail, it
 // declined, and the user can still choose to proceed.
 type ExternalEditError struct {
@@ -624,7 +624,7 @@ func checkUnmodified(cp Checkpoint, bf BackedFile, known recordedWrites) error {
 
 // recordedWrites maps each path to every content hash some checkpoint
 // recorded writing to it. A nil map means the checkpoints could not be
-// enumerated, which reads as "cannot tell" rather than "tampered with".
+// enumerated, which reads as "cannot tell".
 type recordedWrites map[string]map[string]bool
 
 func (w recordedWrites) has(path, sum string) bool {
@@ -765,12 +765,11 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 		// The file did not exist before the fix, so restoring it means
 		// removing it. An already-absent file is the desired end state, not
 		// an error: an operator who deleted the drop-in by hand and then
-		// rolled back should get success, not a failure describing the thing
-		// they already did.
+		// rolled back should get success.
 		//
 		// This runs after the same external-edit check every other entry
 		// gets, so a drop-in the operator has since edited declines here
-		// rather than being deleted out from under them.
+		// and is never deleted out from under them.
 		if bf.Created {
 			var removeErr error
 			if bf.Root != "" {
@@ -852,7 +851,7 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 // files and not others.
 //
 // It exists so the answer to "what state is my host in now" is in the error
-// rather than absent from it. Rollback keeps no backup of its own, so there
+// itself. Rollback keeps no backup of its own, so there
 // is nothing to retry from automatically and nothing to undo, which makes
 // naming the two halves the only useful thing left to do.
 type PartialRestoreError struct {
@@ -922,7 +921,7 @@ func blobName(path string) string {
 // one is held back from that cap.
 //
 // Exported so the published documentation can be pinned against these two
-// numbers rather than restating them and drifting. "How far back can I roll
+// numbers. "How far back can I roll
 // back?" is a question a user is entitled to a written answer to, and a
 // written answer that has gone stale is worse than none.
 func RetentionPolicy() (count int, window time.Duration) {

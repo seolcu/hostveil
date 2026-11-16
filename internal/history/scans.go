@@ -98,7 +98,7 @@ type ScanSnapshot struct {
 }
 
 // scanIDTime is idTimeLayout under the name this file reads it by. It is an
-// alias rather than a second string: they were two literals of the same
+// alias: they were two literals of the same
 // value, and the one thing neither could do was disagree loudly.
 //
 // The ids are
@@ -114,8 +114,8 @@ const scanIDTime = idTimeLayout
 // for a trend was on disk the whole time with no way to ask for it.
 //
 // A snapshot whose id does not carry a parseable timestamp, or that cannot
-// be read, is skipped rather than failing the call. This is a history
-// view: one unreadable entry should cost that entry, not the whole series;
+// be read, is skipped. This is a history view: one unreadable entry
+// should cost that entry and leave the series;
 // the same reasoning as Store.List returning what it could read
 // alongside its error.
 func (s *Store) ListReports() ([]ScanSnapshot, error) {

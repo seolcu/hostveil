@@ -42,7 +42,7 @@
 // # What is not audited
 //
 // The logging driver and its rotation options. It is the one candidate rule
-// that is availability rather than security (a full disk, not a way in) and
+// that is about availability (a full disk is no way in) and
 // more decisively it cannot be answered accurately from here: `docker info`
 // reports the driver but never its log-opts, so `json-file` with a max-size
 // is indistinguishable from `json-file` without one, and a per-service
@@ -92,8 +92,8 @@ func New() *Checker {
 // Source identifies the dockerd domain.
 func (*Checker) Source() model.Source { return model.SourceDockerd }
 
-// Available requires a daemon that answers, not merely a `docker`
-// binary on PATH. The distinction matters: a client that cannot
+// Available requires a daemon that answers. A `docker` binary on PATH
+// is not enough. The distinction matters: a client that cannot
 // reach the socket reports no daemon configuration at all, and a domain that
 // accepted that would score a perfect Docker-daemon axis on the
 // host whose daemon could not be examined.
@@ -107,7 +107,7 @@ func (*Checker) Available(ctx context.Context, env platform.Env) (bool, string) 
 // Check gathers the daemon's configuration from every source that has part
 // of it, then runs the rules that source supports.
 //
-// Coverage is counted in rules, not in sources, because that is the unit a
+// Coverage is counted in rules, because that is the unit a
 // user loses when something cannot be read: losing `docker info` costs the
 // three default-hardening rules and leaves the four socket and group rules
 // (including two of the three Criticals) answered. Reporting that
@@ -180,7 +180,7 @@ func (c *Checker) gather(ctx context.Context, env platform.Env) *facts {
 }
 
 // rootless reports whether this is a rootless daemon, which changes what two
-// rules mean rather than merely how bad they are.
+// rules mean.
 func (f *facts) rootless() bool { return f.infoKnown && f.info.rootless }
 
 // coverage translates what could not be read into the rule count it cost.
@@ -202,8 +202,8 @@ func (f *facts) coverage() check.Coverage {
 	}
 
 	// The socket mode rule. A daemon reached over DOCKER_HOST with no local
-	// socket has nothing to judge, that is not applicable, not uncovered,
-	// so it leaves the denominator rather than lowering the fraction.
+	// socket has nothing to judge. That is not applicable,
+	// so it leaves the denominator.
 	if !f.sockAbsent {
 		if f.sockKnown {
 			cov.Covered(1)
@@ -238,7 +238,7 @@ func (f *facts) coverage() check.Coverage {
 // High (an endpoint anyone can reach is reachable now either way) but they
 // are separate findings with separate remediations, because TLS without
 // client verification means the operator has demonstrably thought about the
-// socket and the remaining work is incremental rather than a rethink.
+// socket and the remaining work is incremental.
 func (f *facts) apiFindings() []model.Finding {
 	if !f.cfgKnown {
 		return nil
@@ -285,9 +285,9 @@ func (f *facts) apiFindings() []model.Finding {
 	}
 
 	// Rootless no longer changes the level, and that is the taxonomy working
-	// rather than information being lost. Under Critical/High the split was
+	// as designed. Under Critical/High the split was
 	// about blast radius (host root against one user's containers) which is
-	// a guess at how bad, not a statement about how urgent. On the urgency
+	// a guess at how bad. It says nothing about how urgent. On the urgency
 	// scale both answers are the same one: an unauthenticated API on a TCP
 	// port is reachable now, by anyone who can route to it, with nothing to
 	// break first. The difference it does make is still reported, in the
@@ -352,13 +352,12 @@ func (f *facts) socketFindings() []model.Finding {
 // groupFindings reports the accounts that hold the socket's group, which is
 // root-equivalent authority on this host.
 //
-// This finding lives in the dockerd domain rather than in account hygiene for
+// This finding lives in the dockerd domain for
 // three reasons, in ascending order of weight. The account checker gates on a
 // readable /etc/passwd and has no way to ask whether Docker is even here, so
 // it would report root-equivalence on a host where the group is a leftover of
 // a package that has been removed. Behind a reachable daemon the claim is
-// exactly true, and a host with no Docker gets the axis excluded rather than
-// scored. And the group is not necessarily named "docker" at all: it is
+// exactly true, and a host with no Docker gets the axis excluded. And the group is not necessarily named "docker" at all: it is
 // whichever group owns the socket, which daemon.json's "group" key can set to
 // anything, so answering correctly needs a daemon fact that account hygiene
 // has no business knowing.

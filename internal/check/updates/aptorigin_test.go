@@ -52,7 +52,7 @@ APT::Periodic::Unattended-Upgrade "1";
 		t.Fatal("unattended upgrades are switched off by the last fragment apt reads, and the domain reported nothing")
 	}
 	if want := filepath.Join(dir, "99-disable-auto-upgrades"); got.Evidence["set-by"] != want {
-		t.Errorf("set-by = %q, want %q; the fix has to edit the file whose assignment apt reads last, not the one that loses",
+		t.Errorf("set-by = %q, want %q; the fix has to edit the file whose assignment apt reads last",
 			got.Evidence["set-by"], want)
 	}
 	if got.Evidence["config"] != got.Evidence["set-by"] {

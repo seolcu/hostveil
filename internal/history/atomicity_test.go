@@ -76,7 +76,7 @@ func TestNoProductionWriteBypassesAtomicWrite(t *testing.T) {
 
 // A scan snapshot has to survive the round trip byte for byte: the delta is
 // computed by unmarshalling it, so a write that changed the content at all
-// would be a wrong delta rather than a missing one.
+// would be a wrong delta.
 func TestSaveReportRoundTrips(t *testing.T) {
 	s := NewStore(t.TempDir())
 	want := []byte(`{"findings":[],"score":{"overall":42}}`)

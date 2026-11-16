@@ -255,7 +255,7 @@ func TestScanSnapshotsArePrunedToMaxScans(t *testing.T) {
 	if len(names) != maxScans {
 		t.Errorf("retained %d snapshots, want the %d cap", len(names), maxScans)
 	}
-	// The newest must be the survivors, not an arbitrary subset.
+	// The newest must be the survivors.
 	if _, ok, err := store.LastReport(); err != nil || !ok {
 		t.Errorf("LastReport after pruning: ok=%v err=%v", ok, err)
 	}
@@ -392,7 +392,7 @@ func TestOldCheckpointsWithoutHashesStillRollBack(t *testing.T) {
 // The IDs are old. Recent checkpoints are held back from the cap
 // (see minRetention), so dating these a year ago is what puts them in the
 // cap's reach at all, and it is what the cap is for: backups from past
-// sessions, not the ones this session just wrote.
+// sessions. This session's own backups stay.
 func TestCheckpointsArePrunedOldestFirst(t *testing.T) {
 	s := NewStore(t.TempDir())
 
@@ -448,7 +448,7 @@ func agedID(t time.Time) string {
 // maxCheckpoints in one run used to prune its own earliest checkpoints; the
 // fixes it applied first became unrollbackable the instant they were applied.
 // The cap's comment says that must never happen and then relies on 200 being a
-// big enough number, which is a hope rather than a mechanism: no-new-privileges
+// big enough number, which is a hope with no mechanism behind it: no-new-privileges
 // and a missing restart policy are both Auto and both fire on nearly every
 // stock compose service, so a host with a hundred services reaches the cap in
 // a single batch.

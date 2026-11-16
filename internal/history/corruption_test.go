@@ -94,7 +94,7 @@ func TestRollbackRefusesASilentlyCorruptedBackup(t *testing.T) {
 	}
 }
 
-// force is for discarding the operator's later edits, not for restoring
+// force is for discarding the operator's later edits. It never restores
 // garbage. A damaged backup is not something --force should push through:
 // there is nothing correct on the other side of it.
 func TestForceDoesNotOverrideADamagedBackup(t *testing.T) {
@@ -225,7 +225,7 @@ func TestSaveRecordsTheBackupHash(t *testing.T) {
 // Save that did not complete means the target file was never touched and
 // there is nothing to undo.
 //
-// This is not only the crash case. Save returns on the first failed write
+// This covers more than the crash case. Save returns on the first failed write
 // (a full disk, EPERM, a read-only mount) applyEdit refuses to apply, and the
 // partial directory stays on disk permanently, so every `hostveil history`
 // from then on reports damage that no rollback could ever fix.
