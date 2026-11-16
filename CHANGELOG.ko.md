@@ -7,6 +7,15 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.37.1](https://github.com/seolcu/hostveil/compare/v3.37.0...v3.37.1) (2026-11-17)
+
+### 버그 수정
+
+* **site:** 웹사이트 헤더, README 배너, 소셜 카드가 본문처럼 이름을
+  "Hostveil"로 씁니다. 이슈 템플릿, 패키지 설명, 설치 스크립트의 안내문,
+  데모 스크립트도 같습니다. 명령어, 파일 이름, `hostveil` 테마는 소문자
+  그대로입니다 ([#893](https://github.com/seolcu/hostveil/pull/893)).
+
 ## [3.37.0](https://github.com/seolcu/hostveil/compare/v3.36.0...v3.37.0) (2026-11-17)
 
 ### 새 기능
