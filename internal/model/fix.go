@@ -25,9 +25,15 @@ type ActionPreview struct {
 	// payoff and the risk are read together.
 	Benefit string `json:"benefit,omitempty"`
 	Warning string `json:"warning,omitempty"`
-	Type    string `json:"type"` // "edit" | "exec"
-	Path    string `json:"path,omitempty"`
-	Diff    string `json:"diff,omitempty"`
+	// CheckFirst is fix.Action.CheckFirst: one thing to confirm before
+	// applying. The dashboard asks the operator to tick it off first.
+	CheckFirst string `json:"check_first,omitempty"`
+	// TakesEffectOn is fix.Action.TakesEffectOn: what has to happen before
+	// the change reaches the host. Empty means it is in force once written.
+	TakesEffectOn string `json:"takes_effect_on,omitempty"`
+	Type          string `json:"type"` // "edit" | "exec"
+	Path          string `json:"path,omitempty"`
+	Diff          string `json:"diff,omitempty"`
 	// Commands is what an exec action runs, or for an edit, what runs after
 	// the write to put it in force (fix.Action.AfterWrite).
 	Commands [][]string `json:"commands,omitempty"`

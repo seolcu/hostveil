@@ -52,6 +52,43 @@ type ScoreBreakdown struct {
 	// Equal to Overall when nothing is fixable, which is the case every UI
 	// must render as nothing at all.
 	AfterFixes uint8 `json:"after_fixes"`
+
+	// Left says where the points between the score and 100 are, by what it
+	// takes to win them back. See PointsLeft.
+	Left PointsLeft `json:"left"`
+}
+
+// PointsLeft splits the points a score is short of 100 by what the operator
+// can do about each part.
+//
+// AfterFixes answers "how far do the offered fixes go". Left answers the
+// question a reader asks next, looking at a 58 after every fix: what is the
+// rest, and is any of it theirs to win. Without it a remaining gap reads as
+// the tool failing.
+//
+// Pending is inside the gap between the score and AfterFixes: fixes already
+// applied that take effect after a restart. Manual and Unavailable are the
+// gap between AfterFixes and 100. They are attributed in that order, each
+// measured with the previous part already won, so Manual + Unavailable is
+// exactly 100 - AfterFixes and no point is counted twice.
+type PointsLeft struct {
+	// Pending is the points that return once applied fixes take effect.
+	Pending      uint8 `json:"pending"`
+	PendingCount int   `json:"pending_count"`
+	// Manual is the points held by findings Hostveil explains and leaves for
+	// the operator to fix by hand (RemediationManual, and anything not
+	// classified at all).
+	Manual      uint8 `json:"manual"`
+	ManualCount int   `json:"manual_count"`
+	// Unavailable is the points held by findings with no fix published yet,
+	// such as a CVE with no upstream patch.
+	Unavailable      uint8 `json:"unavailable"`
+	UnavailableCount int   `json:"unavailable_count"`
+}
+
+// Any reports whether any part of PointsLeft is worth showing.
+func (p PointsLeft) Any() bool {
+	return p.Pending > 0 || p.Manual > 0 || p.Unavailable > 0
 }
 
 // ScoreAxis is one scoring dimension. Applicable is false when the axis's
@@ -365,12 +402,64 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 	// skips a Fixed finding, so "what this would be after the fixes" is the
 	// same arithmetic on a different input, and there is no way for the two
 	// numbers to drift apart into two answers about one host.
-	after := scoreOnce(withOfferedFixesApplied(findings), states)
+	offered := withOfferedFixesApplied(findings)
+	after := scoreOnce(offered, states)
 	b.AfterFixes = after.Overall
 	for i := range b.Axes {
 		b.Axes[i].AfterFixes = after.Axes[i].Score
 	}
+	if b.Applicable {
+		b.Left = pointsLeft(findings, offered, states, b.Overall, after.Overall)
+	}
 	return b
+}
+
+// pointsLeft fills PointsLeft. Each part is the same scorer run on the
+// findings with one more group treated as resolved, so the parts use the
+// arithmetic the score itself uses.
+func pointsLeft(findings, offered []Finding, states map[Source]ScanState, score, afterFixes uint8) PointsLeft {
+	var left PointsLeft
+
+	inForce := make([]Finding, len(findings))
+	copy(inForce, findings)
+	for i := range inForce {
+		if inForce[i].Fixed && inForce[i].Pending {
+			inForce[i].Pending = false
+			left.PendingCount++
+		}
+	}
+	if left.PendingCount > 0 {
+		left.Pending = gain(scoreOnce(inForce, states).Overall, score)
+	}
+
+	resolved := make([]Finding, len(offered))
+	copy(resolved, offered)
+	for i := range resolved {
+		f := &resolved[i]
+		if !f.Active() {
+			continue
+		}
+		switch f.Remediation {
+		case RemediationManual, RemediationUnset:
+			f.Fixed = true
+			left.ManualCount++
+		case RemediationUnavailable:
+			left.UnavailableCount++
+		}
+	}
+	withManual := scoreOnce(resolved, states).Overall
+	left.Manual = gain(withManual, afterFixes)
+	if left.UnavailableCount > 0 {
+		left.Unavailable = gain(100, withManual)
+	}
+	return left
+}
+
+func gain(to, from uint8) uint8 {
+	if to <= from {
+		return 0
+	}
+	return to - from
 }
 
 // withOfferedFixesApplied returns findings with every one Hostveil can

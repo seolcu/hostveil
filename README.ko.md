@@ -221,6 +221,10 @@ Auto가 되려면 다음 세 조건을 모두 만족해야 합니다.
 되지 않을 수 있습니다. 전체 점수에는 이름도 붙습니다. 80 이상은 *상태가 좋음*,
 50에서 79는 *그저 그럼*, 25에서 49는 *노출됨*, 25 미만은 *활짝 열림*입니다.
 
+대시보드와 `hostveil scan`은 점수 아래에 남은 점수와 그 이유를 보여 줍니다.
+재시작 후 돌아오는 점수, 직접 고칠 수 있는 Manual 항목의 점수, 아직 수정이
+나오지 않은 항목의 점수입니다.
+
 전체 모델과 축별 몫은 [점수 체계](https://hostveil.seolcu.com/ko/docs/scoring)
 페이지에 있습니다.
 
@@ -375,7 +379,8 @@ graph TD
     v4 --> v5["3.22.0: 리버스 프록시"]
     v5 --> v6["3.30.0: Proxmox VE 호스트"]
     v6 --> v7["3.31.0: 단일 노드 쿠버네티스"]
-    v7 -.-> n1["에이전트 런타임 확대"]
+    v7 --> v8["3.36.0: 포렌식 준비도 (선택)"]
+    v8 -.-> n1["에이전트 런타임 확대"]
     n1 -.-> n2["리버스 프록시 확대"]
     n2 -.-> n3["배포판 커버리지 확대"]
     n3 -.-> e4(["다국어 지원"])
@@ -393,7 +398,7 @@ graph TD
     classDef notplanned fill:#101816,stroke:#516057,stroke-width:1px,stroke-dasharray:4 3,color:#9aa89f
     classDef npTitle fill:#07100f,stroke:#31413b,color:#9aa89f
 
-    class v1,v2,v3,v4,v5,v6,v7 shipped
+    class v1,v2,v3,v4,v5,v6,v7,v8 shipped
     class n1,n2,n3 next
     class e4 exploring
     class x1,x2,x3,x4 notplanned
