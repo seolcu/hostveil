@@ -23,7 +23,10 @@ Vagrant.configure("2") do |config|
     rsync__exclude: [".git/", "demo/.vagrant/"]
 
   config.vm.provider "libvirt" do |lv|
-    lv.memory = 2048
+    # 2GB runs the stacks, but Trivy scanning the host packages next to them
+    # can be OOM-killed, which shows up as "CVEs partial: ... signal: killed".
+    # HOSTVEIL_DEMO_MEMORY (MB, e.g. in demo/.env) raises it.
+    lv.memory = ENV.fetch("HOSTVEIL_DEMO_MEMORY", "2048").to_i
     lv.cpus = 2
 
     # The box ships an 8.7GB disk and this demo does not fit on it. The seven
@@ -46,7 +49,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.provider "virtualbox" do |vb|
     vb.name = "hostveil-homelab"
-    vb.memory = 2048
+    vb.memory = ENV.fetch("HOSTVEIL_DEMO_MEMORY", "2048").to_i
     vb.cpus = 2
   end
 
