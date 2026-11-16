@@ -7,6 +7,73 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.36.0](https://github.com/seolcu/hostveil/compare/v3.35.0...v3.36.0) (2026-11-17)
+
+이번 릴리스는 보안이 본업이 아닌 홈서버 운영자를 위한 변경이 중심입니다.
+대시보드는 수정마다 쉬운 문장으로 설명하고, 접속을 끊을 수 있는 수정 앞에서는
+먼저 확인할 것을 묻습니다. 모든 수정을 적용한 뒤에도 남는 점수가 어디에 있는지도
+보여 줍니다. 그 밖에 포렌식 준비도 영역과 `hostveil triage`가 생겼고, 호스트
+패키지의 미패치 취약점을 스캔하며, 제품과 웹사이트와 저장소의 디자인을 하나로
+맞췄습니다.
+
+**제거된 기능.** 다음 네 가지가 없어졌습니다. 이를 쓰는 스크립트는 고쳐야 합니다.
+
+* `hostveil advise`: 발견 항목 ID 없이 `hostveil explain`을 실행합니다.
+* `hostveil fleet`: 호스트마다 `ssh <host> hostveil scan --json`을 실행합니다.
+* `export --format docx`, `--format pdf`: `markdown`으로 내보낸 뒤 문서 도구로
+  변환합니다.
+* `--layout`, `HOSTVEIL_LAYOUT`: TUI와 대시보드는 기본 배치 하나만 씁니다.
+
+### 새 기능
+
+* **web:** 대시보드에서 수정을 열면 얻는 효과와 깨질 수 있는 것을 먼저
+  보여 주고, 이력에서 되돌릴 수 있는지와 언제 반영되는지를 적습니다. 접속을
+  끊거나 서비스를 멈추거나 되돌릴 수 없는 수정 약 45개에는 먼저 확인할 것이
+  하나씩 붙습니다. 예를 들어 `ssh.passwordauth`는 두 번째 터미널에서 SSH 키로
+  로그인해 보라고 안내합니다. 확인 표시를 해야 Apply가 켜집니다. diff는
+  "Show the exact change" 아래에 있습니다
+  ([#889](https://github.com/seolcu/hostveil/pull/889)).
+* **web:** 개요 화면이 점수 아래에 남은 점수를 보여 줍니다. 재시작 후 돌아오는
+  점수, 직접 고칠 항목의 점수, 아직 수정이 나오지 않은 항목의 점수입니다.
+  `hostveil scan`은 같은 내용을 한 줄로 출력하고, `--json`에는 `score.left`가
+  들어갑니다 ([#888](https://github.com/seolcu/hostveil/pull/888)).
+* **core:** 포렌식 준비도는 기본으로 꺼져 있습니다. 90일치 증거는 홈서버보다
+  조직에 더 의미가 있기 때문입니다. `scan`, `tui`, `serve`, `fix`, `explain`,
+  `export`에 `--with forensic`을 붙이면 켜집니다. 켜거나 꺼도 그 항목이 새로
+  생기거나 해결된 것으로 보고되지 않습니다
+  ([#886](https://github.com/seolcu/hostveil/pull/886)).
+* **check:** 포렌식 준비도 영역(`forensic.*`)을 추가했습니다. 재부팅 후에도
+  남는 저널, 90일치 인증·웹 로그, 웹 서버 계정에 대한 auditd, 동기화된 시계,
+  접근 로그의 요청 크기, 다른 기계에 보내는 로그 사본을 확인합니다.
+  `hostveil triage`는 읽기 전용으로 해시가 붙은 증거 묶음을 모으고, 각 지표를
+  시도, 의심, 침해로 판정합니다
+  ([#864](https://github.com/seolcu/hostveil/pull/864)).
+* **cmd:** `triage`가 프록시, 터널, NAT 뒤에서 내부 주소 하나로 보이는 SSH
+  추측 공격을 찾아내고, fail2ban 로그에서 차단 기록을 읽습니다
+  ([#878](https://github.com/seolcu/hostveil/pull/878)).
+* **cve:** CVE 영역이 `trivy rootfs`로 호스트 패키지도 스캔합니다. 새 항목
+  `cve.unpatched-host`는 배포판이 아직 고치지 않은 취약점을 보여 줍니다. 이제
+  Trivy만 있으면 이 영역이 실행되고, Docker 데몬에 닿지 못하면 부분 점검으로
+  보고합니다 ([#879](https://github.com/seolcu/hostveil/pull/879)).
+* **ui:** TUI, 대시보드, 웹사이트, 저장소의 디자인을 하나로 맞췄습니다. 새
+  마크, "안전해짐"을 뜻하는 초록 하나와 파란 강조색을 쓰는 새 기본 테마
+  `hostveil`, 시스템 산세리프로 바꾼 웹사이트가 포함됩니다
+  ([#866](https://github.com/seolcu/hostveil/pull/866)).
+
+### 버그 수정
+
+* **check:** Debian과 Ubuntu 기본값인 0644 `/etc/crontab`이 High로 잡혀 `scan`이
+  종료 코드 1로 끝났습니다. 쓰기 가능한 crontab은 그대로 High이고, 읽기만 가능한
+  경우는 새 Low 항목 `fileperms.crontab-readable`입니다. cron과 at의 허용·거부
+  목록은 이제 쓰기 권한만 봅니다
+  ([#877](https://github.com/seolcu/hostveil/pull/877)).
+* **ui:** 제품, 문서, 코드 전반에서 기계가 쓴 것처럼 읽히는 표현을 고쳤고,
+  테스트가 이를 막습니다. 대기 중인 수정의 표시는 이제
+  "Applied, waiting to take effect"입니다
+  ([#887](https://github.com/seolcu/hostveil/pull/887)).
+* **demo:** 데모 VM의 메모리를 2 GB보다 크게 늘릴 수 있습니다
+  ([#885](https://github.com/seolcu/hostveil/pull/885)).
+
 ## [3.35.0](https://github.com/seolcu/hostveil/compare/v3.34.0...v3.35.0) (2026-10-20)
 
 이제 unattended-upgrades가 건너뛰도록 설정된 업데이트를 찾아냅니다.
