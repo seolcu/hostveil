@@ -40,10 +40,10 @@ ClientAliveCountMax 0
 LoginGraceTime 60
 EOF
 
-# The seeded host carries a deliberately weak drop-in. Leaving it in place
+# The seeded host carries a weak drop-in. Leaving it in place
 # would mean testing precedence rather than hardening: a later file wins, and
 # 00- sorts before 99-, so this one already loses to nothing. Remove it so the
-# control host is actually hardened.
+# control host is hardened.
 rm -f /etc/ssh/sshd_config.d/00-hostveil-demo.conf
 
 # CIS Debian 3.3 (network parameters) and 1.5 (kernel hardening). One
@@ -93,7 +93,7 @@ say "accounts: CIS 5.4.2"
 # there has ever been, which makes it a step that could never once have
 # succeeded. `2>/dev/null || true` meant the script said "removing UID 0
 # account breakglass", removed nothing, and exited 0; the control group was
-# quietly missing its account-hygiene half, and Hostveil went on reporting
+# silently missing its account-hygiene half, and Hostveil went on reporting
 # accounts.uid0 about a host this script claimed to have hardened.
 #
 # A control group that silently skips a step is worse than one that fails,

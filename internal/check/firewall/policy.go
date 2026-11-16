@@ -156,7 +156,7 @@ func parseUFWDefault(out string) inboundPolicy {
 //
 // Only an explicit ACCEPT target permits unmatched inbound traffic.
 // "default" is firewalld's own name for reject, and DROP and %%REJECT%% say
-// so outright.
+// so directly.
 func parseFirewalldTarget(out string) inboundPolicy {
 	for _, line := range strings.Split(out, "\n") {
 		line = strings.TrimSpace(line)
@@ -180,7 +180,7 @@ func parseFirewalldTarget(out string) inboundPolicy {
 // description says so rather than the severity pretending to know.
 //
 // The fix carries the same reason firewall.inactive's does, and the same
-// resolution: with the port sshd is actually listening on in evidence, it
+// resolution: with the port sshd is listening on in evidence, it
 // can allow that port first and only then flip the default policy, as two
 // commands of one action. It stays Review: the change cannot be rolled back
 // and it takes every other inbound port with it, which an operator should

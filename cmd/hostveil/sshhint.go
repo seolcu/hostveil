@@ -20,7 +20,7 @@ import (
 // nothing but a token on a port anyone on the segment can reach. A forwarded
 // port is the same access with the authentication already done.
 //
-// The host in the command is the address the client actually reached, read out
+// The host in the command is the address the client reached, read out
 // of SSH_CONNECTION's third field, rather than the machine's hostname or an
 // interface address. Those are guesses about what the client can route to;
 // this one is the address a packet from that client demonstrably arrived on.

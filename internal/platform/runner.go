@@ -75,7 +75,7 @@ const waitDelay = 2 * time.Second
 // Run executes the command and returns its stdout.
 //
 // A caller that set its own deadline keeps it: the CVE checker gives Trivy
-// minutes on purpose, and imposing the default on top would kill every image
+// minutes, and imposing the default on top would kill every image
 // scan. The default is a floor for callers that said nothing, not a ceiling
 // over callers that did.
 //
@@ -156,7 +156,7 @@ func (r DefaultRunner) Run(ctx context.Context, name string, args ...string) ([]
 
 // maxOutput bounds what one command may hand back.
 //
-// Generous on purpose: Trivy's JSON for a large image runs to tens of
+// Generous: Trivy's JSON for a large image runs to tens of
 // megabytes and has to fit. This is a ceiling on a runaway, not a budget.
 const maxOutput = 128 << 20
 
@@ -273,7 +273,7 @@ var adminDirs = []string{"/usr/local/sbin", "/usr/sbin", "/sbin"}
 // LookPath resolves a binary on PATH, then in the administrative directories.
 //
 // Appended, never prepended: this only adds resolution where PATH had none, so
-// a host that deliberately shadows a tool earlier on PATH keeps its answer.
+// a host that shadows a tool earlier on PATH keeps its answer.
 func (DefaultRunner) LookPath(name string) (string, error) {
 	path, err := exec.LookPath(name)
 	if err == nil {
@@ -300,14 +300,14 @@ func Has(r CommandRunner, name string) bool {
 	return err == nil
 }
 
-// DockerReachable reports whether the Docker daemon actually answers, and if
+// DockerReachable reports whether the Docker daemon answers, and if
 // not, why in plain language.
 //
 // Checkers must not settle for Has(r, "docker"): the client binary being on
 // PATH says nothing about whether this user may talk to the socket. Without
 // that distinction a non-root scan enumerates no containers, finds nothing,
 // and reports a clean result, which for the CVE domain means a perfect
-// vulnerability score on a host nobody actually scanned.
+// vulnerability score on a host that was never scanned.
 func DockerReachable(ctx context.Context, r CommandRunner) (bool, string) {
 	if !Has(r, "docker") {
 		return false, "Docker not installed"
@@ -325,7 +325,7 @@ func DockerReachable(ctx context.Context, r CommandRunner) (bool, string) {
 // written out by hand in five test files, and a scripted command that no
 // longer matches the caller's does not fail: it falls through to the fake
 // runner's error path, which every checker reads as a daemon that did not
-// answer. That is the same value a genuinely unreachable daemon produces, so
+// answer. That is the same value a unreachable daemon produces, so
 // a test covering the reachable case would go on passing while covering the
 // opposite one.
 func DockerProbeArgv() []string {

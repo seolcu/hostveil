@@ -168,7 +168,7 @@ func TestIncludesAreFollowed(t *testing.T) {
 	}
 }
 
-// Traefik's insecure API, in the three spellings people actually write.
+// Traefik's insecure API, in the three spellings people write.
 func TestTraefikInsecureAPIIsFound(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -241,7 +241,7 @@ func TestTraefikWithoutTheInsecureAPIIsClean(t *testing.T) {
 
 // A host with neither surface has no proxy to have an opinion about, and the
 // axis is renormalized away rather than scored on an absence. This is the
-// opposite of the firewall domain, where absence *is* the finding: nobody is
+// opposite of the firewall domain, where absence *is* the finding: no host is
 // insecure for not running a reverse proxy.
 func TestAHostWithNoProxyIsSkipped(t *testing.T) {
 	c := &Checker{NginxRoot: filepath.Join(t.TempDir(), "nope")}

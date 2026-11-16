@@ -40,7 +40,7 @@ const periodicKey = "APT::Periodic::Unattended-Upgrade"
 // `apt-config dump <key>` prints `APT::Periodic::Unattended-Upgrade "1";` when
 // the key is set anywhere and nothing when it is not, having applied its own
 // precedence over every fragment. That is the same move as reading kernel
-// parameters through the file systemd-sysctl will actually apply, and as
+// parameters through the file systemd-sysctl will apply, and as
 // asking `docker compose config` for a merged project.
 //
 // The third return is whether apt could be asked at all. A host without

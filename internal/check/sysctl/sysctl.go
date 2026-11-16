@@ -4,7 +4,7 @@
 // the quiet knobs that stop a local foothold from becoming root and a
 // spoofed packet from becoming a route.
 //
-// net.ipv4.ip_forward is deliberately not audited. Docker, WireGuard,
+// net.ipv4.ip_forward is not audited. Docker, WireGuard,
 // Tailscale exit nodes, libvirt, LXD, and Kubernetes all legitimately
 // enable it, none of that is detectable from here, and a rule that accuses
 // most self-hosters' routers erodes trust in the whole domain.
@@ -67,10 +67,10 @@ type Rule struct {
 	// ("or 2 on VPN/multi-homed hosts") that a person needs and a fix must
 	// not act on.
 	//
-	// It names only keys this rule actually audits. Writing a value the
+	// It names only keys this rule audits. Writing a value the
 	// checker never reads would produce a fix whose effect the next scan
 	// cannot confirm, and on a host with IPv6 disabled `sysctl -w` on an
-	// absent key fails outright: taking the rest of the fix with it.
+	// absent key fails completely: taking the rest of the fix with it.
 	Set []string
 	// Remediation is Review only where a safe value depends on the host being
 	// a router, relay, or multi-homed. Unset means the persistent file edit is
@@ -258,7 +258,7 @@ func defaultRules() []Rule {
 		{ID: "sysctl.proxy-arp-all", Title: "Proxy ARP is enabled globally", Sev: model.SeverityMedium, Remediation: model.RemediationReview, Desc: "Proxy ARP makes the host answer address-resolution requests for other systems and can unexpectedly bridge network boundaries.", Keys: []string{"net.ipv4.conf.all.proxy_arp"}, Want: "net.ipv4.conf.all.proxy_arp = 0", Set: []string{"net.ipv4.conf.all.proxy_arp=0"}, Flagged: isNot(0)},
 		{ID: "sysctl.proxy-arp-default", Title: "Proxy ARP is enabled for new interfaces", Sev: model.SeverityMedium, Remediation: model.RemediationReview, Desc: "The default interface policy can make future interfaces answer ARP requests on behalf of other systems.", Keys: []string{"net.ipv4.conf.default.proxy_arp"}, Want: "net.ipv4.conf.default.proxy_arp = 0", Set: []string{"net.ipv4.conf.default.proxy_arp=0"}, Flagged: isNot(0)},
 		{ID: "sysctl.multicast-forwarding", Title: "IPv4 multicast forwarding is enabled", Sev: model.SeverityLow, Remediation: model.RemediationReview, Desc: "A server that is not a multicast router should not forward multicast traffic between interfaces.", Keys: []string{"net.ipv4.conf.all.mc_forwarding"}, Want: "net.ipv4.conf.all.mc_forwarding = 0", Set: []string{"net.ipv4.conf.all.mc_forwarding=0"}, Flagged: isNot(0)},
-		{ID: "sysctl.bootp-relay", Title: "BOOTP relay is enabled", Sev: model.SeverityLow, Remediation: model.RemediationReview, Desc: "Relaying legacy BOOTP traffic crosses network boundaries and is unnecessary unless this host deliberately serves as a relay.", Keys: []string{"net.ipv4.conf.all.bootp_relay"}, Want: "net.ipv4.conf.all.bootp_relay = 0", Set: []string{"net.ipv4.conf.all.bootp_relay=0"}, Flagged: isNot(0)},
+		{ID: "sysctl.bootp-relay", Title: "BOOTP relay is enabled", Sev: model.SeverityLow, Remediation: model.RemediationReview, Desc: "Relaying legacy BOOTP traffic crosses network boundaries and is unnecessary unless this host serves as a relay.", Keys: []string{"net.ipv4.conf.all.bootp_relay"}, Want: "net.ipv4.conf.all.bootp_relay = 0", Set: []string{"net.ipv4.conf.all.bootp_relay=0"}, Flagged: isNot(0)},
 		{ID: "sysctl.tcp-rfc1337", Title: "TCP TIME-WAIT assassination protection is disabled", Sev: model.SeverityLow, Desc: "RFC 1337 protection prevents forged reset packets from prematurely terminating TIME-WAIT state and confusing later connections.", Keys: []string{"net.ipv4.tcp_rfc1337"}, Want: "net.ipv4.tcp_rfc1337 = 1", Set: []string{"net.ipv4.tcp_rfc1337=1"}, Flagged: isNot(1)},
 	}
 }
@@ -456,7 +456,7 @@ func (c *Checker) readKey(key string) (int64, error) {
 }
 
 // evidenceFor renders the observed values in rule-key order, so evidence is
-// stable across scans and a repeat scan produces no delta nobody caused.
+// stable across scans and a repeat scan produces no spurious delta.
 func evidenceFor(keys []string, vals []Reading) string {
 	var parts []string
 	for i, k := range keys {

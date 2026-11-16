@@ -58,14 +58,14 @@ func registerSSH(r *Registry) {
 		"Stops relying on spoofable TCP keepalives for liveness, leaving ClientAliveInterval's encrypted check as the one source of truth for whether a session is still alive.",
 		"Use ClientAliveInterval for encrypted liveness checks; dead connections may otherwise take longer to disappear from intermediate network devices."))
 	r.Register("ssh.usedns", buildSSHAuto("UseDNS", "no", "Disable SSH reverse-DNS lookups",
-		"Removes a DNS lookup from the login path: both a minor timing/DoS surface and a spoofing vector, for a lookup the login never actually needed.", ""))
+		"Removes a DNS lookup from the login path: both a minor timing/DoS surface and a spoofing vector, for a lookup the login never needed.", ""))
 	r.Register("ssh.allowagentforwarding", buildSSHAuto("AllowAgentForwarding", "no", "Disable SSH agent forwarding",
-		"Stops a compromised host from riding a forwarded SSH agent to authenticate elsewhere as the user, using credentials that were never actually stored here.",
+		"Stops a compromised host from riding a forwarded SSH agent to authenticate elsewhere as the user, using credentials that were never stored here.",
 		"Existing workflows that hop through this host using a forwarded agent will stop working."))
 }
 
 // buildKbdInteractive disables keyboard-interactive authentication by
-// setting whichever keyword is actually in force. The checker records it in
+// setting whichever keyword is in force. The checker records it in
 // the finding: sshd treats ChallengeResponseAuthentication as an alias for
 // KbdInteractiveAuthentication and keeps the first value it sees for either,
 // so writing the modern keyword into a file where the old alias already
@@ -149,7 +149,7 @@ func buildRootLogin(f model.Finding) (Fix, error) {
 		Actions: []Action{
 			sshEdit(path, "Allow root only with an SSH key (prohibit-password)",
 				"Keeps key-based root access working while removing the one thing root logins are "+
-					"actually dangerous for: a guessable or stolen password.",
+					"dangerous for: a guessable or stolen password.",
 				"Keep a working key for root, or use a sudo user instead.", "PermitRootLogin", "prohibit-password"),
 			sshEdit(path, "Disable root login entirely (no)",
 				"Removes direct root login over SSH entirely, so compromising this host's authentication "+

@@ -20,8 +20,8 @@ import (
 var changelogVersion = regexp.MustCompile(`(?m)^## \[(\d+\.\d+\.\d+)\]`)
 
 // koChangelogStartsAt is the first release written up in Korean. Everything
-// before it is English-only and deliberately not backfilled: inventing a
-// translation of a release nobody wrote one for is worse than saying where the
+// before it is English-only and not backfilled: inventing a
+// translation of a release that never had one is worse than saying where the
 // record begins, which CHANGELOG.ko.md does in its own opening lines.
 const koChangelogStartsAt = "3.20.1"
 
@@ -55,7 +55,7 @@ func TestBothChangelogsCoverTheSameReleases(t *testing.T) {
 	}
 	for _, v := range en {
 		if v == koChangelogStartsAt {
-			break // everything older is English-only on purpose
+			break // everything older is English-only
 		}
 		if !inKO[v] {
 			t.Errorf("CHANGELOG.md has an entry for %s and CHANGELOG.ko.md does not.\n"+

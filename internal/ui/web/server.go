@@ -152,7 +152,7 @@ const shutdownGrace = 5 * time.Second
 // never used any of it, so the operator's first look at Hostveil was a
 // browser tab that appeared to hang.
 //
-// The context is the whole point of the signature. Before it, serve ignored
+// The context is why the signature changed. Before it, serve ignored
 // cancellation entirely: `cmdServe` took a context and never looked at it,
 // and this method blocked in http.Server.ListenAndServe with no Shutdown
 // wired up. Combined with signal.NotifyContext consuming the only signal it
@@ -175,7 +175,7 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 	// handleRescan there is nothing to do with the return value.
 	s.progress.begin()
 	// runTrackedScan reads s.baseCtx, set to ctx two lines up, rather than
-	// taking a context argument: deliberately, since it also runs from
+	// taking a context argument, since it also runs from
 	// handleRescan, where the request's own context must not be the one a
 	// scan runs under (see hostWork).
 	go s.runTrackedScan()
@@ -186,7 +186,7 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 		ReadHeaderTimeout: 5 * time.Second,
 		// No WriteTimeout: a rescan legitimately takes minutes on a host with
 		// many images, and cutting the response off mid-scan would look like a
-		// crash. IdleTimeout still reaps connections nobody is using.
+		// crash. IdleTimeout still reaps idle connections.
 		IdleTimeout: 2 * time.Minute,
 	}
 
@@ -257,7 +257,7 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request) bool {
 	if !tokenEqual(r.URL.Query().Get("t"), s.token) {
 		return false
 	}
-	// Secure is deliberately unset, which is what gosec's G124 sees. The
+	// Secure is unset, which is what gosec's G124 sees. The
 	// dashboard is plain HTTP on loopback and cannot be anything else (it
 	// has no certificate and no name to put on one) so a Secure cookie
 	// would simply never be sent and every request would arrive
@@ -422,7 +422,7 @@ type resultPayload struct {
 //
 // It is its own route rather than a field on /api/result because the result
 // is refetched after every fix, and re-reading thirty snapshots from disk
-// each time would be work nobody asked for. The trend only moves when a
+// each time would be unrequested work. The trend only moves when a
 // scan does.
 func (s *Server) handleTrend(w http.ResponseWriter, _ *http.Request) {
 	points, err := s.engine.ScoreHistory()
@@ -555,7 +555,7 @@ func (s *Server) runTrackedScan() {
 }
 
 func (s *Server) handleRescanStatus(w http.ResponseWriter, _ *http.Request) {
-	// Never cache: the whole point of the route is that the answer changes
+	// Never cache: the route exists because the answer changes
 	// second to second.
 	w.Header().Set("Cache-Control", "no-store")
 	running, domains := s.progress.snapshot()
@@ -568,7 +568,7 @@ func (s *Server) handleRescanStatus(w http.ResponseWriter, _ *http.Request) {
 // handleExplain returns the deterministic explanation plus, when a local
 // AI provider is reachable, an advisory AI one (model.Explanation's ai /
 // ai_error fields). It runs under the request's own context, unlike a fix
-// or a scan: an explanation mutates nothing, so one nobody is waiting for
+// or a scan: an explanation mutates nothing, so one no client is waiting for
 // should die with the tab that asked for it.
 func (s *Server) handleExplain(w http.ResponseWriter, r *http.Request) {
 	f, ok := s.lookup(r.URL.Query().Get("id"), r.URL.Query().Get("service"))
@@ -695,7 +695,7 @@ func (s *Server) handleFixAll(w http.ResponseWriter, r *http.Request) {
 	// The whole report, which is what the dashboard's button counts: its
 	// filter chips narrow the list, not the batch. The TUI means the other
 	// thing by the same words, and saying so through one helper is how the
-	// two stay deliberately different rather than accidentally so.
+	// two stay different rather than accidentally so.
 	writeJSON(w, s.engine.ApplyBatch(hostWork(r), report.AutoFixable(model.Filter{})))
 }
 
@@ -831,7 +831,7 @@ func mustSub() fs.FS {
 // A wildcard bind is rendered as 127.0.0.1, because a wildcard is an
 // instruction to the listener and not an address anyone can browse to:
 // "http://0.0.0.0:8787/" pasted into a browser is at best confusing. It is
-// also the address that actually works: the Host allowlist requires a
+// also the address that works: the Host allowlist requires a
 // loopback host regardless of what the socket is bound to.
 func (s *Server) URL() string {
 	return fmt.Sprintf("http://%s/?t=%s", browseHost(s.addr), s.token)

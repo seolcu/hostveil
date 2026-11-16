@@ -54,7 +54,7 @@ func (e *Engine) ApplyFix(ctx context.Context, f model.Finding, actionIdx int) (
 	// A checker that has just re-reported the finding is holding evidence the
 	// host has not changed, so the score must not credit the fix: whatever
 	// the fix declared about itself. VerifyUnavailable is the opposite and
-	// deliberately does nothing here: "could not look" is not evidence, and
+	// does nothing here: "could not look" is not evidence, and
 	// treating it as pending would mean re-checking made the number worse, so
 	// an operator applying fixes one at a time would score below one who ran
 	// `fix --all` over exactly the same fixes.
@@ -98,7 +98,7 @@ func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (
 		return model.FixOutcome{Success: false, Error: err.Error()}, err
 	}
 
-	// Whether the host has actually changed, taken from the action already in
+	// Whether the host has changed, taken from the action already in
 	// hand. A fix that names what puts it in force is a fix whose artifact is
 	// not what the host reads, so writing it changed nothing an attacker can
 	// see, and the score below must not pretend otherwise.
@@ -225,7 +225,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	// are the same situation from the caller's side. The sysctl and apt
 	// drop-ins land in directories every distribution ships, so this went
 	// unnoticed until a systemd drop-in: /etc/systemd/system/<unit>.d/ is
-	// created by whoever first overrides that unit, which is usually nobody.
+	// created by whoever first overrides that unit, and usually no one does.
 	// WriteFileAtomic stages its temp file beside the target, so a missing
 	// directory fails there rather than at the rename, after the checkpoint
 	// is already written.
@@ -241,7 +241,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		// hidden the change it just made from the person who asked for it.
 		// Nothing secret is written here; the file holds one directive that
 		// is also in the finding, the preview and the checkpoint.
-		//nolint:gosec // G301: a config directory under /etc, readable on purpose
+		//nolint:gosec // G301: a config directory under /etc, readable
 		if err := os.MkdirAll(filepath.Dir(a.Path), 0o755); err != nil {
 			return model.FixOutcome{}, fmt.Errorf("creating the directory for %s: %w", a.Path, err)
 		}
@@ -322,7 +322,7 @@ func (e *Engine) runAfterWrite(ctx context.Context, a fix.Action) error {
 //
 // Every unit a command starts has its failed state cleared first. systemd
 // counts starts against a limit (docker.service allows three a minute) and
-// past it refuses the next one outright, failed or not. Two Hostveil paths hit
+// past it refuses the next one completely, failed or not. Two Hostveil paths hit
 // it on a real Docker (scripts/e2e/individual.sh): the retry after a restart
 // the new file broke, when the daemon's own Restart=always had already used up
 // the limit, which left Docker down; the one outcome that retry exists to
@@ -379,7 +379,7 @@ func (e *Engine) undoAfterFailedFollowUp(ctx context.Context, a fix.Action, id s
 }
 
 // runEditValidator checks that the bytes an edit action produced are something the
-// service will actually accept, before they reach the live file.
+// service will accept, before they reach the live file.
 //
 // The validator runs twice: once on the original file, once on the new
 // content, both in a temporary directory. Only a validator that accepts the
@@ -509,7 +509,7 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 // failure.
 //
 // The record is written whether or not every command succeeded, and that is
-// the point. A fix like the updates one (`apt-get install -y unattended-upgrades`
+// required. A fix like the updates one (`apt-get install -y unattended-upgrades`
 // then `systemctl enable --now`) changes the host on the first command; if
 // the second fails, returning before the Save left the host modified with no
 // history entry at all, reported only as `Success: false`. The operator was

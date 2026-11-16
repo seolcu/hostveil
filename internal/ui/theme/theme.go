@@ -36,7 +36,7 @@ import (
 // that mean anything: four heats, safety, and structure. Only three of the
 // heats carry a severity (the fourth serves the score bands, which have four)
 // so do not read this list as one colour per level. severityColor in
-// internal/ui/tui is where that mapping actually lives.
+// internal/ui/tui is where that mapping lives.
 //
 // Accent is the newest and the one that changed the rule above it. This
 // system was monochrome-plus-risk: color meant danger or safety and nothing
@@ -50,7 +50,7 @@ import (
 // monopoly on the heats.
 //
 // Manual and Unavail answer a different question, not "how bad" but "what
-// kind of nothing can Hostveil do about it", and they are deliberately not
+// kind of nothing can Hostveil do about it", and they are not
 // heats. A host can legitimately carry a dozen Manual findings by design (no
 // safe automatable action exists) and that must not read as a dozen problems
 // screaming for attention the way a dozen Crit findings would. Both sit at
@@ -99,7 +99,7 @@ var themes = []Theme{
 			// The brand's own dark palette, and the one the website's dark
 			// scheme and the mark are drawn from: graphite neutrals with no
 			// hue of their own, and one green that means the part that has
-			// been made safe. The neutrals are deliberately hueless so the
+			// been made safe. The neutrals are hueless so the
 			// only colour on a clean screen is Safe.
 			//
 			// Accent is a blue rather than a second green. Structure has to

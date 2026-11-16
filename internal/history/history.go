@@ -47,7 +47,7 @@ type BackedFile struct {
 	// recorded what was *backed up*, so a blob that was truncated by a crash
 	// between the write returning and the data reaching disk, or by delayed
 	// allocation on XFS or btrfs, was restored as-is. Writing an empty
-	// /etc/ssh/sshd_config over a working one is precisely the unrecoverable
+	// /etc/ssh/sshd_config over a working one is the unrecoverable
 	// outcome the whole recovery layer exists to prevent.
 	//
 	// Omitempty: blobs written before this field existed have no hash, and a
@@ -208,7 +208,7 @@ func (s *Store) Discard(id string) error {
 //     carry a random suffix so production never reuses one, but a caller that
 //     did would otherwise have the earlier checkpoint deleted by the later
 //     Save's failure.
-//   - An empty ID is refused outright. dir is checkpointsDir()/cp.ID, so an
+//   - An empty ID is refused completely. dir is checkpointsDir()/cp.ID, so an
 //     empty one makes this a RemoveAll of every checkpoint on the host. The
 //     call could not reach here with one today; the cost of being wrong about
 //     that is the entire recovery history.
@@ -239,7 +239,7 @@ func (s *Store) writeMeta(dir string, cp Checkpoint) error {
 // maxCheckpoints caps how many restore points are kept.
 //
 // Unlike a scan snapshot, a checkpoint is a backup: discarding one discards
-// the ability to undo the fix that wrote it, so this cap is deliberately
+// the ability to undo the fix that wrote it, so this cap is
 // far looser than maxScans. It exists because checkpoints hold a full copy
 // of every file a fix touched and nothing ever removed them: a long-lived
 // host accumulated backups until the state directory was the problem, and
@@ -277,7 +277,7 @@ const minRetention = time.Hour
 // own comment claimed to be what they wrote.
 //
 // The stakes are not equal on the two sides. A scan id that stops parsing
-// empties the trend, quietly. A *checkpoint* id that stops parsing makes every
+// empties the trend, silently. A *checkpoint* id that stops parsing makes every
 // checkpoint undatable, and pruneCheckpoints treats undatable as prunable, so
 // minRetention, the guarantee that a fix stays rollbackable however many
 // arrive at once, would evaporate without a single error.
@@ -317,7 +317,7 @@ func idTime(id string) (time.Time, bool) {
 // (see NewID), so a lexical sort is chronological: the same property
 // scanFiles relies on. Going through List() instead would read and JSON-parse
 // every checkpoint on disk on *every* fix applied, turning a batch fix into a
-// quadratic pile of reads; the cheap path is the whole point of pruning here.
+// quadratic pile of reads; the cheap path is why pruning works this way.
 //
 // A failure to prune is not a failure to apply a fix: the checkpoint is
 // already written, the host is already changed, and refusing here would
@@ -387,7 +387,7 @@ func (s *Store) SaveModesAndOwners(cp Checkpoint, modes map[string]os.FileMode, 
 // It is the third sibling of Save and SaveModes, and it exists for the same
 // reason SaveModes does: the checkpoint has to describe what undoing this
 // fix means, and "write these bytes back" cannot describe a file that had
-// no bytes. There is nothing to back up (that is the whole point) so the
+// no bytes. There is nothing to back up (by design) so the
 // checkpoint stores no blobs and is Reversible on the strength of naming
 // the paths.
 //
@@ -408,7 +408,7 @@ func (s *Store) SaveCreations(cp Checkpoint, paths []string) (Checkpoint, error)
 // differ only in the BackedFile they build.
 //
 // It is one function rather than two identical ones because the order here is
-// load-bearing and belongs in a single place: the metadata file is written
+// required and belongs in a single place: the metadata file is written
 // last, so a checkpoint exists exactly when its metadata does, and a failed
 // write takes the half-built directory with it rather than leaving something
 // List would later report as damaged. Two copies of that is two chances for
@@ -449,7 +449,7 @@ func (s *Store) List() ([]Checkpoint, error) {
 		switch {
 		case errors.Is(err, fs.ErrNotExist):
 			// No meta.json at all: this was never a checkpoint. writeMeta
-			// writes the metadata last precisely so an interrupted Save leaves
+			// writes the metadata last so an interrupted Save leaves
 			// a directory nothing will try to restore from, and since apply
 			// order is backup → write, a Save that did not finish means the
 			// target file was never touched and there is nothing to undo.
@@ -468,7 +468,7 @@ func (s *Store) List() ([]Checkpoint, error) {
 			// back. Dropping it silently made that fix vanish from `hostveil
 			// history` with no message and no way to tell it had ever been
 			// applied, and it also fell out of recordedWrites, which can turn
-			// an honest rollback into a false "the file was edited externally"
+			// an accurate rollback into a false "the file was edited externally"
 			// refusal.
 			damaged = append(damaged, e.Name())
 			continue
@@ -591,7 +591,7 @@ func (e *ExternalEditError) Error() string {
 // findings in one compose file applies two fixes to the same path in
 // sequence, so by the time the first checkpoint is rolled back the file
 // legitimately holds what the second fix wrote. Treating that as tampering
-// would refuse a rollback nobody interfered with. (An existing test,
+// would refuse a rollback that no edit interfered with. (An existing test,
 // TestRollbackUnmarksOnlyTheCheckpointedService, is exactly this shape and
 // is what caught it.)
 //
@@ -647,7 +647,7 @@ func (s *Store) recordedWrites() recordedWrites {
 	cps, err := s.List()
 	// An incomplete index is worse than none. Membership is the whole test
 	// (the file must hash to something *some* fix recorded writing) so a
-	// missing checkpoint turns an honest rollback into a false "you edited
+	// missing checkpoint turns an accurate rollback into a false "you edited
 	// this externally" refusal. nil reads as "cannot tell", which allows the
 	// restore the operator explicitly asked for.
 	if err != nil {
@@ -821,7 +821,7 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 		// replaced it with a symlink since the fix ran: os.Chmod would carry
 		// root's chmod through to the link's target.
 		// A file that is no longer there is the same situation the Created
-		// branch above tolerates deliberately: the operator removed it, and
+		// branch above tolerates: the operator removed it, and
 		// failing to set the mode of something that does not exist is not a
 		// failure to restore it.
 		var chmodErr error
@@ -872,7 +872,7 @@ func (e *PartialRestoreError) Unwrap() error { return e.Err }
 // NewID returns a sortable checkpoint ID based on the current time and the
 // finding it fixes.
 //
-// The trailing random component is load-bearing, not decoration. The
+// The trailing random component is required. The
 // timestamp resolves to a millisecond and the finding hash is constant for
 // a given finding ID, so without it a batch fix that raises the same
 // finding for several services (three exposed datastores in one compose

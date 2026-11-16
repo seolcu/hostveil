@@ -37,7 +37,7 @@ func TestCVEAvailableWithTrivyAlone(t *testing.T) {
 // The bug this guards: the docker CLI on PATH says nothing about whether this
 // user may talk to the socket. Treating presence as reachability let the scan
 // proceed, fail on every image, and report zero vulnerabilities, which scores
-// as a perfect 100 on a host that was never actually scanned. The host's
+// as a perfect 100 on a host that was never scanned. The host's
 // packages are still scanned, so the axis is Degraded and says why.
 func TestCVEUnreachableDaemonIsAGapNotAClean(t *testing.T) {
 	r := &scriptRunner{dockerDown: true}
@@ -132,7 +132,7 @@ type scriptRunner struct {
 	mu   sync.Mutex
 	argv []string // the last trivy argv, for flag assertions
 	// calls records every trivy invocation in order: "warm" for the DB
-	// download, the image name for a scan. The order is the point: the
+	// download, the image name for a scan. The order matters: the
 	// download has to finish before the first scan starts.
 	calls []string
 }
@@ -399,7 +399,7 @@ func TestCVECleanScanIsNotDegraded(t *testing.T) {
 	}
 }
 
-// A host with no containers genuinely has no image vulnerabilities, that is a
+// A host with no containers has no image vulnerabilities, that is a
 // clean Done, not a degraded or failed scan.
 func TestCVENoImagesIsClean(t *testing.T) {
 	r := composeProject(t)
@@ -518,7 +518,7 @@ func TestAllUnfixableStillReportsTheImage(t *testing.T) {
 	}
 }
 
-// A genuinely clean image produces nothing at all.
+// A clean image produces nothing at all.
 func TestCleanImageProducesNoFindings(t *testing.T) {
 	fs, err := parseTrivy([]byte(`{"Results":[]}`), target{image: "redis:7", service: "cache", file: "f", project: "p"})
 	if err != nil {
@@ -651,7 +651,7 @@ func TestNoRollupWhenNothingIsFixable(t *testing.T) {
 	}
 }
 
-// A digest pin cannot be improved by pulling, and the honest remediation
+// A digest pin cannot be improved by pulling, and the accurate remediation
 // (repin to a newer digest) needs data the report does not carry. The
 // finding is still emitted: the image really is outdated, and hiding a real
 // problem because its remediation is awkward is the worse failure.

@@ -24,7 +24,7 @@
 // public server receives. Suspicious is something a normal host also does,
 // which a person should confirm. Compromise is something a healthy host does
 // not do. Keeping attempts apart from the rest is most of the value: the
-// question an operator actually has is not "was I attacked" (yes, constantly)
+// question an operator has is not "was I attacked" (yes, constantly)
 // but "did any of it work".
 //
 // Alongside the indicators it reports evidence gaps; questions the bundle

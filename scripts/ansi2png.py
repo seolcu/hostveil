@@ -58,7 +58,7 @@ def parse_hex(value: str, what: str) -> tuple[int, int, int]:
 def xterm256(index: int) -> tuple[int, int, int]:
     """One entry of the xterm-256 palette as RGB.
 
-    This exists because a screenshot taken the honest way is a 256-colour
+    This exists because a screenshot taken from a real terminal is a 256-colour
     screenshot. hostveil's subject is servers, servers are reached over SSH,
     SSH does not forward COLORTERM, and so colorprofile degrades the TUI to
     xterm-256 on very nearly every real session: the same fact
@@ -184,7 +184,7 @@ def ansi_to_image(text: str, font_path: str, font_size: int = 13) -> Image.Image
     return img
 
 
-# Where DejaVu Sans Mono actually lives, by packaging convention. The first
+# Where DejaVu Sans Mono lives, by packaging convention. The first
 # entry is Debian's and was the only one this script knew, so it worked on the
 # machine it was written on and raised "cannot open resource" everywhere else,
 # including Fedora, where the same font is packaged under a different path.

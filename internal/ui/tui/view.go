@@ -86,7 +86,7 @@ func newStyles(t theme.Theme) *styles {
 
 // kindStyle colors the remediation column.
 //
-// Deliberately not a heat. The severity column two fields to the left is
+// Not a heat colour. The severity column two fields to the left is
 // already drawn in crit/high/med/low, and painting the kind in one of those
 // too would put two differently-meaning colours from the same set on one row:
 // a HIGH row whose kind came out yellow reads as a row that is somehow both.
@@ -102,7 +102,7 @@ func newStyles(t theme.Theme) *styles {
 // on purpose, so it gets no color of its own to be muted about.
 func (s *styles) kindStyle(f model.Finding) lipgloss.Style {
 	// Pending is drawn in the accent rather than the safe green, and the
-	// distinction is the point: green on this column has meant "Hostveil can
+	// distinction matters: green on this column has meant "Hostveil can
 	// deal with this" since the column existed, and a row whose fix is
 	// written but not in force is not dealt with. The accent is what this
 	// interface spends on "there is something for you here", which is exactly
@@ -181,7 +181,7 @@ func (s *styles) band(v uint8) color.Color {
 // least ink: on a real host, Container at 0, Dockerd at 10 and CVEs at 16
 // filled nothing of six cells while the two clean domains filled all six in
 // green. Scanning the rail, the eye landed on what was fine. Worse, an empty
-// track is what a *skipped* domain is drawn as deliberately, so the two
+// track is what a *skipped* domain is drawn as, so the two
 // states the whole scanner exists to keep apart, "nothing there" and "I could
 // not look", arrived as the same row.
 //
@@ -422,7 +422,7 @@ func (m *appModel) messageRows(n int) []string {
 // which on a host with many images takes minutes. "How far in?" needs a
 // denominator, which the events cannot supply and the engine can.
 //
-// There is deliberately no estimate of the time remaining. Eleven of the
+// There is no estimate of the time remaining. Eleven of the
 // twelve domains together finish inside a second; the twelfth shells out to
 // Trivy, whose duration depends on the images, their size, and whether the
 // vulnerability database needs downloading first. Nearly all of the unknown
@@ -593,7 +593,7 @@ func (m *appModel) paneRows(w, budget int) []string {
 	// The divider is drawn at the pane's own width and *not* indented with the
 	// rows around it: it is the one row here that has to meet the separator to
 	// its left, and joinColumns can only turn that meeting into a ├ if the
-	// rule actually reaches the column edge.
+	// rule reaches the column edge.
 	out = append(out, "", m.ruleRowOf(w))
 	out = append(out, indentRows(m.paneActionRows(f), paneInset)...)
 	return m.clipRows(out, budget)
@@ -613,7 +613,7 @@ func (m *appModel) paneActionRows(f model.Finding) []string {
 }
 
 // emptyListRows is what the list column says when there is nothing in it: a
-// clean host, a filter that matched nothing, or a host nobody could look at.
+// clean host, a filter that matched nothing, or a host the scan could not look at.
 //
 // "Clean" is a claim about the whole host, so it may only be made when the
 // whole host was examined. The CLI has always drawn that line; this view and
@@ -772,7 +772,7 @@ func (m *appModel) findingRow(f model.Finding, cursor bool, w int) string {
 	sev := sevAbbr(f.Severity)
 	kind := kindCell(f)
 
-	// Budget the row from what is actually drawn rather than a fixed 46.
+	// Budget the row from what is drawn rather than a fixed 46.
 	// The old constant did not account for the trailing service suffix at
 	// all, so a finding on "cloud/nextcloud-12" overran the terminal by
 	// however long the service name happened to be, and it did not account
@@ -882,7 +882,7 @@ func kindAbbr(r model.RemediationKind) string {
 
 // markColumns is the width of the pick-marker column, which is the widest of
 // the three things that can be drawn in it. Two columns on every terminal
-// that draws ambiguous characters narrow, and the point of measuring is the
+// that draws ambiguous characters narrow, and the reason for measuring is the
 // one that does not.
 func (m *appModel) markColumns() int {
 	return max(2, lipgloss.Width(m.gl.Of(glyph.OK)+" "), lipgloss.Width("· "))
@@ -898,7 +898,7 @@ func (m *appModel) markColumns() int {
 // left edge it produced is the first thing the eye catches in a list that is
 // otherwise a grid.
 //
-// So: the widest id actually on screen, floored at the common case so a list
+// So: the widest id on screen, floored at the common case so a list
 // of short ids does not close the gap the titles are read across, and capped
 // at a third of the column so one long id cannot spend the title's room.
 func (m *appModel) idColumnWidth(w int) int {
@@ -915,7 +915,7 @@ func (m *appModel) idColumnWidth(w int) int {
 // information only in the footer, where it reads as one more key among
 // fourteen rather than as the state the list is in.
 //
-// It says what pressing the key does *now*, which is the whole point; `a`
+// It says what pressing the key does *now*, which is its purpose; `a`
 // applies the marked findings, or every Auto finding when nothing is marked,
 // and those are different enough that a bar naming only one of them would be
 // wrong half the time.
@@ -1090,7 +1090,7 @@ func (m *appModel) fitChips(chips []chipSpec, w int) string {
 // (ink on that color) while it is on.
 //
 // The fill is an attribute, so it does not survive being stripped of
-// styling, and it is deliberately not the only thing carrying the state:
+// styling, and it is not the only thing carrying the state:
 // the head line above prints the narrowed count over the unnarrowed one
 // ("FINDINGS · 3/26"), which is what a monochrome terminal, a pipe and a
 // screenshot all still show.
@@ -1481,7 +1481,7 @@ func (m *appModel) checkpointIDWidth() int {
 // themeRows is the color-theme picker. Moving the cursor restyles the whole
 // frame on the spot rather than showing a swatch and a name: a palette is
 // only judgeable against the meters, severity gutters and diffs it will
-// actually be drawn with.
+// be drawn with.
 func (m *appModel) themeRows() []string {
 	s := m.sty()
 	out := []string{""}

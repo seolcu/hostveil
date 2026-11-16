@@ -15,7 +15,7 @@ import (
 // This was the gap between them.
 //
 // A divergence here empties the trend and shortens "since last scan" to
-// nothing, because ListReports skips every id it cannot date; quietly, with
+// nothing, because ListReports skips every id it cannot date; silently, with
 // no error anywhere.
 func TestAScanIDRoundTripsThroughTheCodeThatReadsIt(t *testing.T) {
 	id := NewScanID()

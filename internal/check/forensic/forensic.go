@@ -17,7 +17,7 @@
 // from a compromise later, which is why the domain exists at all and why its
 // cap is small rather than zero.
 //
-// The checks are deliberately limited to settings with one defensible value
+// The checks are limited to settings with one defensible value
 // on a single self-hosted server. Retention targets are ninety days, the
 // window in which most intrusions are noticed by someone other than the
 // attacker; anything shorter means "last month" is already unanswerable.

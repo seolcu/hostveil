@@ -112,7 +112,7 @@ These patterns read as machine-written. They apply to every file in the reposito
 - No closing summaries ("Overall,", "In short,", "In summary,", "The upshot", 결론적으로, 종합하면, 요컨대) and no moralising last line.
 
 **Words**
-- English: *deliberately, on purpose, honest(ly), quietly, silently* (when it means "without saying so"), *plainly, genuinely, truly, actually* (as emphasis), *outright, precisely, load-bearing, crucial, pivotal, vital, key* (adjective), *robust, seamless, powerful, comprehensive, leverage, delve, landscape, testament, underscore, showcase, foster, notably, worth noting, it's important to note, the point is, here's the thing*, a rhetorical *nobody* or *no one*.
+- English: *deliberately, on purpose* (write "intentionally" only where someone's intent is the subject), *honest(ly), quietly, plainly, genuinely, truly, actually* (as emphasis), *outright, precisely, load-bearing, crucial, pivotal, vital, key* (adjective), *robust, seamless, powerful, comprehensive, leverage, delve, landscape, testament, underscore, showcase, foster, notably, worth noting, it's important to note, the point is, here's the thing*, a rhetorical *nobody* or *no one*.
 - Korean: 일부러, 정직하게, 솔직히, 조용히, 사실상(강조로), 핵심은, 짚어 둘 만합니다, 주목할 만한, 이처럼, 결론적으로, 종합하면.
 
 **Formatting**

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Hostveil's own score, per axis, and its coverage. The self-measurement:
-# reported alongside the independent ones precisely so a reader can see
+# reported alongside the independent ones so a reader can see
 # whether they move together.
 set -euo pipefail
 

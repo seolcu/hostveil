@@ -302,7 +302,7 @@ func render(t *template.Template, name, out string, v View) error {
 	}
 	body := strings.TrimRight(buf.String(), "\n") + "\n"
 	// G301/G306: sitegen writes the published website into the repository.
-	// A directory nobody can enter and a file nobody can read is not a site,
+	// A directory no one can enter and a file no one can read do not make a site,
 	// and this never runs on a host; it runs in CI and on a maintainer's
 	// machine, producing content that is then committed and served.
 	//nolint:gosec // G301: generated site output, meant to be readable
@@ -346,8 +346,8 @@ func fragment(kind, lang, slug string) (string, error) {
 		frag = strings.Replace(frag, changelogMarker, entries, 1)
 	}
 
-	// The checks page's "what each fix actually does" section. Same marker
-	// shape as the changelog, deliberately not generalized into one
+	// The checks page's "what each fix does" section. Same marker
+	// shape as the changelog, not generalized into one
 	// mechanism for two cases. Every language with the marker gets the
 	// section and its Fix-column links: see renderFixActions's doc comment
 	// for what is and is not localized within it.

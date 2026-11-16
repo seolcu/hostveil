@@ -85,7 +85,7 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 // emits a single finding.
 //
 // When a tool is installed but every probe fails: `ufw status` and
-// `nft list ruleset` both need root: the honest answer is "cannot tell",
+// `nft list ruleset` both need root: the accurate answer is "cannot tell",
 // not "no firewall". Reporting the finding there would accuse a properly
 // firewalled host of being wide open purely because the scan lacked
 // privileges.
@@ -113,7 +113,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			// The same rule the probe itself follows: not being able to read
 			// the policy degrades the domain, it does not accuse the host.
 			partial = &check.PartialError{
-				Reason: "cannot read " + which + "'s default inbound policy; re-run with sudo to check whether the firewall actually denies unmatched traffic",
+				Reason: "cannot read " + which + "'s default inbound policy; re-run with sudo to check whether the firewall denies unmatched traffic",
 			}
 		}
 
@@ -176,7 +176,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 }
 
 // withSSHPortEvidence attaches the ssh_port evidence both firewall.inactive
-// and firewall.default-allow's fixes depend on: the port(s) sshd is actually
+// and firewall.default-allow's fixes depend on: the port(s) sshd is
 // listening on, without which enabling or tightening a default-deny policy
 // could sever the very session used to apply it.
 func withSSHPortEvidence(f model.Finding, ctx context.Context, r platform.CommandRunner) model.Finding {
@@ -254,7 +254,7 @@ const (
 	// StatusActive means a supported firewall is actively filtering.
 	StatusActive
 	// StatusUnknown means a firewall tool is installed but could not be
-	// queried: almost always missing root. It is deliberately distinct
+	// queried: almost always missing root. It is distinct
 	// from Inactive: "I could not look" is not evidence of absence.
 	StatusUnknown
 )
@@ -345,7 +345,7 @@ func probe(ctx context.Context, r platform.CommandRunner) (Status, string) {
 		return st, which
 	}
 
-	// Only claim "no firewall" if every installed tool actually answered.
+	// Only claim "no firewall" if every installed tool answered.
 	if unreadable {
 		return StatusUnknown, ""
 	}
@@ -355,7 +355,7 @@ func probe(ctx context.Context, r platform.CommandRunner) (Status, string) {
 // hasHostFirewall reports whether an nft ruleset contains an actual
 // host-level input firewall: a base chain hooked at input whose default
 // policy drops or rejects traffic (what ufw, firewalld, and hand-written
-// nftables firewalls install). It deliberately does NOT count the tables
+// nftables firewalls install). It does NOT count the tables
 // Docker adds for container networking: those hook prerouting/forward/
 // postrouting and never set an input drop policy, so a plain Docker host
 // with no firewall must still be flagged. Matching any "table " (the old

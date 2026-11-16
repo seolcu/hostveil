@@ -29,7 +29,7 @@ type Action struct {
 	Label   string
 	Warning string // shown in preview for risky actions (e.g. may lock out SSH)
 
-	// Benefit is one sentence stating what applying this action actually
+	// Benefit is one sentence stating what applying this action
 	// gets the operator, shown in preview beside Warning so the payoff and
 	// the risk are read together: a medicine label states efficacy next
 	// to side effects, not side effects alone. Required on every action
@@ -74,7 +74,7 @@ type Action struct {
 	// Opt-in, because a symlinked target is legitimate elsewhere and a
 	// blanket refusal would break the fix that depends on one: Ubuntu ships
 	// /etc/sysctl.d/99-sysctl.conf as a link to /etc/sysctl.conf, which is
-	// exactly the file persistSysctl resolves to and edits on purpose.
+	// exactly the file persistSysctl resolves to and edits intentionally.
 	NoFollow bool
 	// SafeRoot is the trusted directory under which Path or Paths must live.
 	// Every component below it is opened descriptor-relatively without
@@ -89,7 +89,7 @@ type Action struct {
 	// and got it wrong in the dangerous direction. The compose checker reads
 	// the project file, the compose fix edits that file, so the re-check
 	// finds nothing and reports VerifyGone: "the finding is gone", while
-	// the container that is actually running still publishes the port on
+	// the container that is running still publishes the port on
 	// every interface. A positive confirmation over an unchanged host is the
 	// worst single thing this tool can say.
 	//
@@ -175,7 +175,7 @@ type Action struct {
 	Mode  func(current fs.FileMode) fs.FileMode
 	// ChownUID, on a mode action, also sets each path's owning user to this
 	// uid, leaving the group as it is. The prior owner goes in the checkpoint,
-	// so a rollback restores it with the mode. The group is deliberately not
+	// so a rollback restores it with the mode. The group is not
 	// touched: the right group differs by distribution (/etc/shadow is
 	// root:shadow on Debian and root:root elsewhere), and the owner is the
 	// half of the finding that is wrong.
@@ -196,7 +196,7 @@ const VerifyPathToken = "{}"
 //
 // The order is not incidental. Every interface lists the alternatives in it,
 // the TUI and the dashboard both preselect the first, and (the part that
-// makes it load-bearing) `fix --all --review` applies index 0 without asking.
+// makes it matter) `fix --all --review` applies index 0 without asking.
 // So Actions[0] is what Hostveil recommends, and it is what an operator who
 // does not read them gets.
 //
@@ -230,9 +230,9 @@ type Fix struct {
 	// without asking, which is defensible for a fix that is Review because it
 	// cannot be checkpointed or because it has two right answers. It is not
 	// defensible for one that is Review because it can break a deployment
-	// that set something on purpose (removing a Docker socket mount stops
-	// Portainer) where the whole point of offering it is that somebody who
-	// knows the service reads the Warning first. A batch is nobody reading.
+	// that set something intentionally (removing a Docker socket mount stops
+	// Portainer) where it is offered so that somebody who
+	// knows the service reads the Warning first. In a batch no one reads it.
 	IndividualOnly bool
 }
 
@@ -259,7 +259,7 @@ type Fix struct {
 //
 // It lives here rather than in the engine because it is a statement about
 // the fix's shape and nothing else, which is what lets the docs tests ask
-// the registry what a user will actually be shown.
+// the registry what a user will be shown.
 func (f Fix) EffectiveKind() model.RemediationKind {
 	if f.Kind != model.RemediationAuto {
 		return f.Kind

@@ -18,7 +18,7 @@ type ScoreBreakdown struct {
 	// The per-axis Applicable flag exists so a skipped domain is reported N/A
 	// rather than 100; without this the same lie survived in the aggregate.
 	// With every axis excluded there is nothing to renormalize over, and the
-	// arithmetic falls out at a perfect 100; a host nobody could look at,
+	// arithmetic falls out at a perfect 100; a host the scan could not look at,
 	// scored as flawless. It takes an unusual host (no package manager, no
 	// readable sshd_config, no firewall tooling, no Docker) but "unusual" is
 	// not "impossible", and this is the one number the whole tool is judged
@@ -31,7 +31,7 @@ type ScoreBreakdown struct {
 	// It answers a question the score alone cannot, and that an operator
 	// reasonably reads the score as already answering. A host whose container
 	// axis sits at 2 after `fix --all` looks like a tool that did nothing,
-	// when what actually happened is that the findings still standing are
+	// when what happened is that the findings still standing are
 	// Manual by design: a Docker socket mounted into Portainer, a second UID 0
 	// account, host networking. The number was right and it was being read as
 	// a verdict on the effort rather than on the host.
@@ -113,7 +113,7 @@ func (b ScoreBreakdown) Headroom() (uint8, bool) {
 // The "~" is the part that matters. A degraded axis is scored from an
 // incomplete picture, and an unmarked score on one is the same lie
 // Applicable exists to prevent, just in smaller print: it says a domain
-// vouches for ground it never looked at. One renderer quietly dropping the
+// vouches for ground it never looked at. One renderer silently dropping the
 // marker would have looked like a cleaner number.
 //
 // Colour stays with the renderers. A terminal has a palette, a stylesheet has
@@ -146,11 +146,11 @@ const ValueTextWidth = 4
 // Headroom is what this axis becomes once every fix Hostveil offers on it is
 // applied, and whether that is worth showing at all.
 //
-// The second return is the whole point: every interface hides the figure
+// The second return matters: every interface hides the figure
 // under the same two conditions; nothing when it equals the score, because
 // an arrow pointing where it started says the fixes are worth nothing, and
 // nothing beside an N/A axis, because a number there is a claim about a
-// domain nobody looked at. Those two conditions were written out in each
+// domain the scan never looked at. Those two conditions were written out in each
 // renderer and held together only by a test that greps for them.
 func (a ScoreAxis) Headroom() (uint8, bool) {
 	if !a.Applicable || a.AfterFixes <= a.Score {
@@ -267,14 +267,14 @@ func axisDefsFromSources() []axisDef {
 // purely how much this domain matters, never a threshold. The caps sum to
 // 100 so the overall is a weighted average of the axes that ran.
 //
-// "agent" ties with "ports" deliberately: both describe a network service
+// "agent" ties with "ports": both describe a network service
 // that should not be reachable. The agent domain's worst case is strictly
 // worse (an unauthenticated gateway is remote code execution as a real
 // user) but it applies to far fewer hosts, and it is N/A-excluded entirely
 // on any host with no agent runtime installed. So the generous cap costs a
 // typical host nothing and carries real weight where it applies.
 //
-// "sysctl" ties with "fileperms" deliberately too: both are quiet local-
+// "sysctl" ties with "fileperms" too: both are quiet local-
 // hardening backstops; neither is the hole an attacker comes in through,
 // each is what stops a foothold from becoming root.
 //
@@ -380,7 +380,7 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 //
 // Review counts, not only Auto. The operator who wants to know what fixing
 // everything gets them is going to accept the Review fixes too, that is the
-// path scripts/measure/run.sh calls `reviewed`, and it exists precisely
+// path scripts/measure/run.sh calls `reviewed`, and it exists
 // because measuring only the unattended half measures half the tool.
 //
 // Remediation is read here rather than the registry being consulted, and that
@@ -517,7 +517,7 @@ func scoreOnce(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 }
 
 // renormalize scales the summed penalty against the caps of the axes that
-// actually ran, yielding a 0-100 score even when some axes are N/A.
+// ran, yielding a 0-100 score even when some axes are N/A.
 func renormalize(penalty float64, ranCapSum int) uint8 {
 	if ranCapSum <= 0 {
 		// Callers must check ScoreBreakdown.Applicable rather than reading

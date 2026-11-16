@@ -23,7 +23,7 @@ import (
 // exact failure this step was added to prevent, reintroduced by the step going
 // stale rather than by anyone removing it.
 //
-// linux/amd64 is deliberately absent from the workflow's loop: the ordinary
+// linux/amd64 is absent from the workflow's loop: the ordinary
 // Build step is that target, so it is added back here rather than compiled
 // twice there.
 const ciNativeTarget = "linux/amd64"
@@ -94,7 +94,7 @@ func TestCICompilesEveryTargetGoreleaserBuilds(t *testing.T) {
 	for _, target := range compiled {
 		if !slices.Contains(released, target) {
 			t.Errorf("CI compiles %s, which no release ships; the loop in ci.yml "+
-				"is spending gate time on a target nobody downloads", target)
+				"is spending gate time on a target with no downloads", target)
 		}
 	}
 }

@@ -163,7 +163,7 @@ func TestWrapHasAMinimumWidth(t *testing.T) {
 // saying their terminal draws that class wide, which is a fact about the
 // terminal rather than about their language. This is the distinction the
 // package doc argues for, and it is checked here directly: the seam exists
-// (eastAsianEnv, eastAsianWidth) precisely so a test does not have to mutate a
+// (eastAsianEnv, eastAsianWidth) so a test does not have to mutate a
 // process-wide setting that was read at init.
 func TestOnlyTheVariableTurnsOnEastAsianWidth(t *testing.T) {
 	for _, v := range []string{"", "0", "false", "FALSE", "ko_KR.UTF-8", "ja_JP.UTF-8", "yes", "wide"} {
@@ -189,7 +189,7 @@ func TestAmbiguousWidthFollowsTheVariable(t *testing.T) {
 	if eastAsianWidth(os.Getenv(eastAsianEnv)) {
 		want = 2
 	}
-	// Genuinely East Asian Ambiguous, and all four are drawn by hostveil: the
+	// East Asian Ambiguous, and all four are drawn by hostveil: the
 	// ellipsis Truncate appends, the arrow in a delta, the ± in a score
 	// change, and the domain-status bullet.
 	for _, s := range []string{"…", "→", "±", "·"} {
@@ -210,7 +210,7 @@ func TestAmbiguousWidthFollowsTheVariable(t *testing.T) {
 		t.Errorf("Of(%q) = %d, want %d; the filled block is ambiguous and the empty one "+
 			"is not, which is the asymmetry the meter is laid out around", "█", got, want)
 	}
-	// Genuinely wide characters are still wide; the condition narrows only
+	// Wide characters are still wide; the condition narrows only
 	// the ambiguous class.
 	for _, s := range []string{"한", "漢", "あ"} {
 		if got := Of(s); got != 2 {

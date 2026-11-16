@@ -182,7 +182,7 @@ func lookupString(m map[string]any, dotted string) string {
 // envFile is what a runtime's KEY=value file tells us. Values holds only the
 // keys the caller declared safe to read; Present records every key by name.
 //
-// The split is the whole point. A credential must be able to influence a
+// The split is what matters. A credential must be able to influence a
 // finding: "your API key file is world-readable" needs to know a key is in
 // there, without the value ever reaching a Finding, because evidence is
 // rendered by every UI and persisted to disk. Presence is enough to make the

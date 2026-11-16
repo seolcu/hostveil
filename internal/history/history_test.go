@@ -149,7 +149,7 @@ func TestListIsNewestFirst(t *testing.T) {
 
 	// Save does not stamp CreatedAt (the engine does, in core.applyEdit)
 	// so the test has to. Without it all three carried the zero time, the
-	// assertion below was vacuously true, and the ordering was actually
+	// assertion below was vacuously true, and the ordering was
 	// being decided by the ID tiebreak. Flipping After to Before in List
 	// left the whole suite green.
 	base := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
@@ -389,7 +389,7 @@ func TestOldCheckpointsWithoutHashesStillRollBack(t *testing.T) {
 // holds a full copy of every file its fix touched, so a long-lived host grew
 // its state directory without bound and paid for it on every history view.
 //
-// The IDs are old on purpose. Recent checkpoints are held back from the cap
+// The IDs are old. Recent checkpoints are held back from the cap
 // (see minRetention), so dating these a year ago is what puts them in the
 // cap's reach at all, and it is what the cap is for: backups from past
 // sessions, not the ones this session just wrote.

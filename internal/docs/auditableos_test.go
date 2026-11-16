@@ -12,7 +12,7 @@ import (
 // osGated are the checkers whose Available must consult platform.AuditableOS,
 // and the reason each one has to.
 //
-// The others do not need it: they probe something a non-Linux host genuinely
+// The others do not need it: they probe something a non-Linux host
 // lacks (/proc/sys, systemd, apt-get, ss, a reachable Docker daemon) and
 // skip cleanly on their own. These probe something that exists on macOS and
 // means something else there, so without the gate each produces an answer
@@ -65,7 +65,7 @@ func TestTheOSGateIsWhereItHasToBe(t *testing.T) {
 
 // And the other direction: a checker that grew the gate without a recorded
 // reason. The gate makes a domain report nothing at all on a platform, which
-// is a large thing to do quietly.
+// is a large thing to do silently.
 func TestNoCheckerIsOSGatedWithoutAReason(t *testing.T) {
 	for _, domain := range checkDomains(t) {
 		if _, listed := osGated[domain]; listed {

@@ -245,7 +245,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	}
 
 	// Who can become root, and what stands in their way. An empty password is
-	// the classic version of that question and sudo is the one people actually
+	// the classic version of that question and sudo is the one people
 	// hit: a NOPASSWD rule turns "holds this account's SSH key" into "is root",
 	// with nothing in between.
 	//
@@ -268,7 +268,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 				"accounts.sudo-nopasswd", "An account can become root without a password",
 				model.SeverityMedium, model.SourceAccounts, model.RemediationManual,
 				model.WithDescription("A sudo rule lets this account run any command as root without being asked for a password. That removes the last step between holding the account and holding the host: anyone who gets its SSH key, or a shell through a service it runs, is root immediately rather than needing its password as well. "+
-					"Cloud and VM images ship this on purpose so the first login works, and it is usually still there years later."),
+					"Cloud and VM images ship this intentionally so the first login works, and it is usually still there years later."),
 				model.WithHowToFix("Run `sudo visudo` (or `sudo visudo -f /etc/sudoers.d/<file>` for a drop-in) and change the rule for "+strings.Join(sudoers, ", ")+" from `NOPASSWD: ALL` to `ALL`, so sudo asks for the account's password. "+
 					"Set that password first with `passwd "+sudoers[0]+"` and confirm it works in a second session: images that ship NOPASSWD often ship no password either, and an account with neither cannot use sudo at all once the rule is gone. "+
 					"Keep a root shell open until you have checked."),

@@ -64,7 +64,7 @@ func hasFinding(fs []model.Finding, id string) bool {
 
 // The tests run as whatever uid the suite runs as. Under root that is 0 and
 // the fixture is correctly owned; unprivileged, it is not, which is the
-// interesting case and the one CI actually exercises.
+// interesting case and the one CI exercises.
 func TestOwnershipIsCheckedIndependentlyOfMode(t *testing.T) {
 	for name, wrong := range map[string]bool{"correctly owned": false, "wrongly owned": true} {
 		t.Run(name, func(t *testing.T) {

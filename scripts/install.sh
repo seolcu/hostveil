@@ -57,7 +57,7 @@ package_owner() {
 
 # uninstall removes what this script installed, and nothing else.
 #
-# It deliberately does not delete the state directory. That is where the
+# It does not delete the state directory. That is where the
 # rollback checkpoints live (the backups of every file Hostveil has edited
 # on this host) and removing Hostveil is not a statement that the operator
 # no longer wants the ability to undo what it did. So the path is printed

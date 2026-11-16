@@ -27,7 +27,7 @@ archives:
       {{ .ProjectName }}-{{ .Os }}-{{ .Arch }}
     formats: ["tar.gz"]
 
-# Native packages, for the audience this tool is actually for. Hostveil
+# Native packages, for the audience this tool is for. Hostveil
 # runs meaningfully only on Linux, and its users administer servers, where
 # `apt install ./hostveil.deb` is the ordinary way software arrives and a
 # tarball extracted into /usr/bin is the exception. Until now the only
@@ -47,7 +47,7 @@ archives:
 # though it did would invent a lifecycle the tool does not have, and a
 # package that removed /var/lib/hostveil on purge would delete the
 # checkpoints that are the only backup of every file it ever edited, which
-# is precisely why install.sh --uninstall leaves them alone too.
+# is why install.sh --uninstall leaves them alone too.
 nfpms:
   - id: packages
     package_name: hostveil

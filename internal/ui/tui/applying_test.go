@@ -50,7 +50,7 @@ func TestConfirmingAFixEntersApplyingImmediately(t *testing.T) {
 	}
 
 	// The screen itself must already read "applying", not the frame the
-	// preview left behind: the whole point is that this does not wait for
+	// preview left behind: this checks that it does not wait for
 	// appliedMsg to say so.
 	if view := am.View().Content; !strings.Contains(view, "APPLYING") {
 		t.Errorf("view after y does not show the applying screen:\n%s", view)

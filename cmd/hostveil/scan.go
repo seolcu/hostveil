@@ -227,7 +227,7 @@ func scanSelection(only, skip string) (core.ScanOptions, string) {
 const (
 	exitClean      = 0 // the scan ran and found nothing serious
 	exitFindings   = 1 // unfixed High findings
-	exitIncomplete = 3 // a domain failed outright; the result describes less than the host
+	exitIncomplete = 3 // a domain failed completely; the result describes less than the host
 )
 
 // exitCode is what a CI or cron gate reads.
@@ -245,7 +245,7 @@ const (
 // axes and the pipeline saw exit 0. A blind scan and a clean host were
 // indistinguishable to the one consumer that cannot look at the output.
 //
-// Skipped and Degraded deliberately do not qualify. Skipped is the ordinary
+// Skipped and Degraded do not qualify. Skipped is the ordinary
 // state of a host that has no Docker or no Trivy, and failing every such
 // pipeline would train people to ignore the code. Degraded means the checker
 // covered part of its ground and said so, and those findings are real and

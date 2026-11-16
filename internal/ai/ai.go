@@ -45,7 +45,7 @@ func (Noop) Explain(context.Context, model.Finding, string) (string, error) { re
 // Advise returns an empty verdict.
 func (Noop) Advise(context.Context, []model.Finding, string) (string, error) { return "", nil }
 
-// buildPrompt composes the advisory prompt for one finding. It deliberately
+// buildPrompt composes the advisory prompt for one finding. It
 // sends only the finding's human-readable fields (title, description,
 // suggested fix, service, and its fix's Benefit/SideEffect) and never raw
 // evidence values, so secrets and paths captured as evidence do not leave

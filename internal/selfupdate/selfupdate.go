@@ -6,7 +6,7 @@
 // resolve the latest release, verify what it downloaded, and only then touch
 // /usr/bin.
 //
-// # What this is, honestly
+// # What this is, accurately
 //
 // A path by which a program running as root fetches code from the network and
 // runs it. Hostveil audits hosts for exactly that shape, so the rules it
@@ -38,7 +38,7 @@ import (
 
 // Repo is the only repository this will install from. A constant rather than a
 // parameter: an updater that can be pointed somewhere else is an updater whose
-// safety argument depends on nobody pointing it somewhere else.
+// safety argument depends on no one pointing it somewhere else.
 const Repo = "seolcu/hostveil"
 
 // Origin is how the running binary got onto this host, which decides whether
@@ -103,7 +103,7 @@ type Release struct {
 // SameVersion compares two versions without caring which of them carries the
 // leading v.
 //
-// The two sides genuinely disagree. goreleaser stamps the binary with
+// The two sides disagree. goreleaser stamps the binary with
 // `-X main.version=v{{.Version}}`, so a released Hostveil says "v3.17.0",
 // while the release tag read back out of the /releases/latest redirect is
 // trimmed to "3.17.0" because that is what builds an asset URL. Comparing them

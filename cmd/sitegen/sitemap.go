@@ -28,7 +28,7 @@ type page struct {
 
 // sitemap renders the URL set as a sitemap with hreflang alternates.
 //
-// Deliberately no <lastmod>, <changefreq> or <priority>. A real lastmod needs
+// No <lastmod>, <changefreq> or <priority>. A real lastmod needs
 // a file mtime or a build timestamp, and either would make the output differ
 // between two runs of the same commit, which CI checks with
 // `git diff --exit-code site/`, and which the whole design of this generator
@@ -57,7 +57,7 @@ func sitemap(pages []page) string {
 
 // robots allows everything and points at the sitemap.
 //
-// Nothing is disallowed on purpose. The one non-page file the site serves is
+// Nothing is disallowed. The one non-page file the site serves is
 // install.sh, which .github/workflows/pages.yml copies in at deploy time and
 // which the landing page tells people to curl: a site that told crawlers to
 // ignore its own install command would be hiding the thing it advertises.

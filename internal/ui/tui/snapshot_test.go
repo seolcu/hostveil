@@ -14,7 +14,7 @@ import (
 // The palette and arrangement the dump renders in. Both default to what a
 // first run shows, so the committed frames do not move; both are named because
 // a palette change and an arrangement change are exactly the two things a
-// screenshot is the only honest review of, and neither is visible in the one
+// screenshot is the only accurate review of, and neither is visible in the one
 // arrangement the dumper used to be hardwired to.
 //
 // An unknown ID is a hard failure rather than a silent fall back to the
@@ -41,7 +41,7 @@ func snapshotTheme(t *testing.T) theme.Theme {
 // meets them. Reached from TestSnapshotDump when HOSTVEIL_SNAPSHOT names a
 // directory; see that test for why there is only the one hook.
 //
-// The fixture is deliberately a plausible host rather than a minimal one: a
+// The fixture is a plausible host rather than a minimal one: a
 // full nine domains, one of them degraded, findings at every severity, a
 // couple marked, and enough of them to scroll. A layout only misbehaves when
 // there is something in it.

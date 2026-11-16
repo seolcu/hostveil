@@ -182,13 +182,13 @@ func TestRollbackUnmarksFixedAndRescores(t *testing.T) {
 	if !engine.state.current.Findings[0].Fixed {
 		t.Fatal("apply did not mark the finding fixed")
 	}
-	// Deliberately not asserted here any more: that the score went up. A
+	// No longer asserted here: that the score went up. A
 	// compose edit is not in force until the container is recreated, so this
-	// apply leaves the number alone on purpose: see
+	// apply leaves the number alone: see
 	// TestAnInForceFixMovesTheScoreAndAPendingOneDoesNot, which owns that
 	// claim now and owns both halves of it. What this test is about is the
 	// rollback tail, and for that the pending case is the harder one: the
-	// score never moved, so an unmark that quietly did nothing would look
+	// score never moved, so an unmark that silently did nothing would look
 	// exactly like a correct one.
 	if !engine.state.current.Findings[0].Pending {
 		t.Fatal("a compose edit is not in force when it is written; apply did not record that")
@@ -284,12 +284,12 @@ func TestAnInForceFixMovesTheScoreAndAPendingOneDoesNot(t *testing.T) {
 
 // TestABatchChargesAPendingFixToo is the path-independence half.
 //
-// ApplyBatch deliberately does not re-check (twenty compose findings would
+// ApplyBatch does not re-check (twenty compose findings would
 // mean twenty enumerations of every container on the host) so if pending were
 // decided by verification rather than by the fix's own declaration, the batch
 // would be the optimistic path and `fix --all` would score a host higher than
 // applying the same fixes one at a time. Action.TakesEffectOn is on the fix
-// precisely so both paths reach the same answer with no re-check.
+// so both paths reach the same answer with no re-check.
 func TestABatchChargesAPendingFixToo(t *testing.T) {
 	f := composeFindingOn(t, "compose.ds006")
 
@@ -609,7 +609,7 @@ func TestModeFixAbortsWhenAPathIsMissing(t *testing.T) {
 }
 
 // A directory already at its target mode must produce no change at all.
-// tighten() carries the type bits through precisely so that planModes sees a
+// tighten() carries the type bits through so that planModes sees a
 // fixed point here; when it dropped fs.ModeDir the comparison against the
 // full mode never matched, and applyMode would checkpoint and chmod a
 // compliant directory while reporting success for work it had not done.
@@ -640,7 +640,7 @@ func TestModeFixOnCompliantDirectoryIsANoOp(t *testing.T) {
 	}
 }
 
-// A directory that genuinely is too permissive must still be tightened, and
+// A directory that is too permissive must still be tightened, and
 // must still be a directory afterwards.
 func TestModeFixTightensLooseDirectory(t *testing.T) {
 	engine := fixEngine(t)
@@ -669,7 +669,7 @@ func TestModeFixTightensLooseDirectory(t *testing.T) {
 	}
 }
 
-// Auto means "safe to apply unattended", so `fix --all` must actually pick
+// Auto means "safe to apply unattended", so `fix --all` must pick
 // a mode fix up. ApplyBatch takes only single-action Auto fixes, which is
 // exactly the shape ActionMode produces.
 func TestApplyBatchIncludesModeFixes(t *testing.T) {
@@ -872,7 +872,7 @@ func TestCompletedBatchIsNotMarkedInterrupted(t *testing.T) {
 
 // A checkpoint must not outlive the write it describes.
 //
-// The backup is taken first, deliberately: nothing is written until there is
+// The backup is taken first: nothing is written until there is
 // something to go back to. But when the write then fails, the checkpoint that
 // survives says a reversible fix was applied to a file that never changed:
 // `hostveil history` lists it with a full diff, and its AppliedSHA256 asserts
@@ -979,7 +979,7 @@ func TestNoBackupMeansNoWrite(t *testing.T) {
 
 // "One fix at a time, and a scan is a fix for this purpose."
 //
-// The apply-versus-apply half of that has a test. The half that is actually
+// The apply-versus-apply half of that has a test. The half that is
 // surprising (that a scan takes the same lock) did not, and it is the half
 // the sentence was written to explain: a scan reads the files a fix is
 // part-way through writing, so a report built during one describes a host that

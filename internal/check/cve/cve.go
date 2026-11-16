@@ -46,7 +46,7 @@ func (*Checker) Available(_ context.Context, env platform.Env) (bool, string) {
 //
 // Failures are counted rather than swallowed, because "no vulnerabilities
 // found" and "nothing could be examined" score identically but mean opposite
-// things. Some targets unscannable is Degraded; all of them is an outright
+// things. Some targets unscannable is Degraded; all of them is a complete
 // error, which drops the axis from scoring entirely.
 func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
 	var cov check.Coverage
@@ -147,7 +147,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		cov.Missed(0, "scanned compose images only; cannot enumerate containers started outside Compose")
 	}
 	// Nothing missed includes the no-images case: a host with no containers
-	// genuinely has no image vulnerabilities.
+	// has no image vulnerabilities.
 	return findings, cov.Err()
 }
 
@@ -200,7 +200,7 @@ const dbTimeout = 5 * time.Minute
 // want it is not a rare interleaving: it is the ordinary case when four start
 // together, and the loser does not degrade, it exits: "unable to initialize fs
 // cache: cache may be in use by another process". So the parallelism above was
-// quietly costing coverage on every scan it sped up.
+// silently costing coverage on every scan it sped up.
 //
 // The damage is not that findings go missing. It is that they go missing in
 // the flattering direction: an image that could not be scanned contributes no
@@ -211,7 +211,7 @@ const dbTimeout = 5 * time.Minute
 //
 // Hostveil said "partial" every time, which is the coverage machinery working
 // exactly as designed: a domain that could not look never claims it found
-// nothing. But a Degraded axis is still scored, deliberately, so the honest
+// nothing. But a Degraded axis is still scored, so the accurate
 // flag sat beside a number that was wrong by 28 points.
 //
 // Warming the cache first is the obvious fix and it is not enough. Four
@@ -274,7 +274,7 @@ func scanAll(ctx context.Context, r platform.CommandRunner, targets []target) (f
 	// For more than one, the fast path has to be earned. Where Trivy will not
 	// give both halves of it, the scans go one at a time rather than four at
 	// a time into a lock they cannot share: slower than this domain was
-	// yesterday, and the first version of it that reports what it actually
+	// yesterday, and the first version of it that reports what it
 	// examined.
 	cacheArgs, parallelism := []string(nil), 1
 	if len(targets) > 1 && warmCache(ctx, r) == nil {
@@ -473,8 +473,8 @@ func parseTrivy(out []byte, t target) ([]model.Finding, error) {
 		return nil, fmt.Errorf("decode trivy output for %s: %w", t.image, err)
 	}
 
-	// Split into the two groups that have genuinely different remediations:
-	// vulnerabilities a newer image could fix, and vulnerabilities nobody has
+	// Split into the two groups that have different remediations:
+	// vulnerabilities a newer image could fix, and vulnerabilities no vendor has
 	// fixed yet. Everything within a group shares one remediation, which is
 	// why the group (not the individual CVE) is the finding.
 	var fixable, unpatched group
@@ -639,7 +639,7 @@ func imageReferenceIsMutable(image string) bool {
 }
 
 // outdatedFinding reports the vulnerabilities a newer image would fix. It
-// carries the only CVE remediation Hostveil can actually perform; see the fix
+// carries the only CVE remediation Hostveil can perform; see the fix
 // registry's doc comment for why no per-CVE finding does.
 func outdatedFinding(t target, g group) (model.Finding, bool) {
 	if g.empty() {
@@ -669,7 +669,7 @@ func outdatedFinding(t target, g group) (model.Finding, bool) {
 		g.worst(), model.SourceCVE, rem, opts...), true
 }
 
-// unpatchedFinding reports the vulnerabilities nobody has fixed yet.
+// unpatchedFinding reports the vulnerabilities with no fix yet.
 //
 // It exists so that an image whose vulnerabilities are ALL unfixed still
 // produces a finding. Without it, aggregating per-CVE findings away would

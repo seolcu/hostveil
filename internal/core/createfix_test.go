@@ -206,7 +206,7 @@ func TestRollbackOfAnAlreadyDeletedFileSucceeds(t *testing.T) {
 
 // CreateIfMissing is opt-in per action for a reason: for every other fix a
 // missing target is a real error. An sshd_config that is not there means
-// the finding was stale or the path was wrong, and quietly creating one
+// the finding was stale or the path was wrong, and silently creating one
 // would be worse than failing.
 func TestEditWithoutCreateStillFailsOnAMissingFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "absent.conf")

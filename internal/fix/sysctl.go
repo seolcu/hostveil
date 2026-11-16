@@ -16,7 +16,7 @@ import (
 // cannot take another's line with it.
 const dropInDir = "/etc/sysctl.d/"
 
-// sysctlBenefit names what each kernel parameter actually buys, keyed by
+// sysctlBenefit names what each kernel parameter buys, keyed by
 // finding ID since buildSysctl/buildSysctlReview are two generic builders
 // shared across every ID below. The same text is used for both the persist
 // and (where offered) the immediate-apply alternative: TakesEffectOn and
@@ -28,7 +28,7 @@ var sysctlBenefit = map[string]string{
 	"sysctl.syncookies": "Enables SYN cookies, so a SYN-flood cannot exhaust the connection queue " +
 		"and deny the host's legitimate services.",
 	"sysctl.accept-redirects": "Stops the kernel trusting ICMP redirects, closing an easy way for " +
-		"something on the local network to quietly re-route this host's outbound traffic through itself.",
+		"something on the local network to silently re-route this host's outbound traffic through itself.",
 	"sysctl.protected-links": "Stops a process following a symlink it does not own in a world-writable " +
 		"sticky directory, closing a classic local privilege-escalation and file-clobbering trick.",
 	"sysctl.kptr-restrict": "Hides kernel pointer addresses from unprivileged reads of /proc, taking " +
@@ -42,7 +42,7 @@ var sysctlBenefit = map[string]string{
 	"sysctl.accept-source-route": "Stops the kernel honoring source-routed packets, closing a way to " +
 		"make traffic take a path chosen by whoever sent it rather than by this network's own routing.",
 	"sysctl.send-redirects": "Stops this host sending ICMP redirects itself, which it should not be " +
-		"doing unless it is actually a router; removes a route-injection tool a compromised host could " +
+		"doing unless it is a router; removes a route-injection tool a compromised host could " +
 		"use against its neighbors.",
 	"sysctl.suid-dumpable": "Stops a crashed setuid process writing a core dump that can contain " +
 		"whatever secrets were in its memory at the moment it crashed.",
@@ -98,7 +98,7 @@ var sysctlBenefit = map[string]string{
 //
 // Unambiguous sysctl findings are Auto: one reversible drop-in records the
 // desired value without changing the running kernel underneath an unattended
-// operator. Topology-dependent findings are Review, with two genuinely
+// operator. Topology-dependent findings are Review, with two
 // independent alternatives rather than two halves of one procedure:
 //
 //   - write a drop-in; persistent, and takes effect at the next boot or
@@ -211,7 +211,7 @@ func buildModuleBlock(f model.Finding) (Fix, error) {
 		}}}}, nil
 }
 
-// buildSysctl persists the finding's exact key=value pairs. It deliberately
+// buildSysctl persists the finding's exact key=value pairs. It
 // does not change the running kernel: that keeps unattended application a
 // reversible file edit, while TakesEffectOn tells the operator that a reboot
 // or an explicit sysctl --system is still required.
@@ -258,7 +258,7 @@ func buildSysctlReview(f model.Finding) (Fix, error) {
 // legacyConfFile is read after every drop-in, so nothing written under
 // /etc/sysctl.d can override it. Ubuntu ships /etc/sysctl.d/99-sysctl.conf as
 // a symlink to it, which is how a file the operator has been editing for
-// years quietly outranks anything Hostveil writes.
+// years silently outranks anything Hostveil writes.
 const legacyConfFile = "/etc/sysctl.conf"
 
 // persistSysctl builds the alternative that survives a reboot.
@@ -297,7 +297,7 @@ func persistSysctl(f model.Finding, pairs []string, benefit string) Action {
 		return Action{
 			Label:         "Persist it: correct " + origin,
 			Benefit:       benefit,
-			Warning:       "Edits a file you wrote. " + origin + " is read after everything in /etc/sysctl.d, so a new file there would be overridden: this changes the line that actually decides the value.",
+			Warning:       "Edits a file you wrote. " + origin + " is read after everything in /etc/sysctl.d, so a new file there would be overridden: this changes the line that decides the value.",
 			TakesEffectOn: sysctlEffect,
 			Kind:          ActionEdit,
 			Path:          origin,

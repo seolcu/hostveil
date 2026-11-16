@@ -246,7 +246,7 @@ func TestAContainerIsSkippedRatherThanAccused(t *testing.T) {
 	}
 }
 
-// And an ordinary host is still audited, which is the point of the gate being
+// And an ordinary host is still audited, which is why the gate is
 // a gate. A machine that *runs* containers is not a container.
 func TestAHostIsStillAudited(t *testing.T) {
 	c := New()

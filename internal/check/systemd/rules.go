@@ -35,9 +35,9 @@ import (
 // restart <unit>` is a fix that writes the artifact now and names what has
 // to happen for it to take effect, not two alternatives, so it does not
 // need to be Review for the "independent alternatives" reason: it is
-// Review because a service that deliberately escalates, or needs one of
+// Review because a service that escalates, or needs one of
 // these capabilities, stops coming back, and that is not a thing to do
-// while nobody is watching). See that file's registerSystemd doc comment
+// unattended). See that file's registerSystemd doc comment
 // for the reasoning behind each.
 type rule struct {
 	id    string
@@ -61,8 +61,8 @@ type rule struct {
 	// carries no such blind spot: it closes the setuid path and nothing
 	// about the unit hides whether that matters.
 	//
-	// Review rather than Auto because a service that deliberately escalates
-	// stops coming back, and that is not a thing to do while nobody is
+	// Review rather than Auto because a service that escalates
+	// stops coming back, and that is not a thing to do on an unattended
 	// watching. The registry's fix is one action, which is Auto's shape;
 	// resolvedKind takes the more cautious of the two, so this is what the
 	// operator is shown.
@@ -87,7 +87,7 @@ func known(v string) bool { return v != "" }
 // so the test is against the one value that means "not protected" rather than
 // against `!on(v)`, which would flag "full" and "read-only" as failures.
 //
-// Only "no", and deliberately not also "off": systemd normalizes every
+// Only "no", and not also "off": systemd normalizes every
 // spelling of disabled to "no" in `show` output, and a second arm for a value
 // it never emits is a branch no test can reach. This domain's first draft had
 // one, checked against a real host's 77 units, and found no/yes/full/strict
@@ -105,7 +105,7 @@ var rules = []rule{
 		sev:        model.SeverityLow,
 		sevNonRoot: model.SeverityMedium,
 		desc: "NoNewPrivileges is off, so anything this service runs can gain privileges through a setuid binary; the standard way a foothold inside a service becomes a foothold outside it. " +
-			"It costs nothing on a service that does not deliberately escalate, which is why it is the same protection the container domain checks for under the name no-new-privileges.",
+			"It costs nothing on a service that does not escalate, which is why it is the same protection the container domain checks for under the name no-new-privileges.",
 		directive:   "NoNewPrivileges=yes",
 		remediation: model.RemediationReview,
 		flagged:     func(u unit) bool { return known(u.NoNewPrivileges) && !on(u.NoNewPrivileges) },
@@ -206,7 +206,7 @@ func dropInPath(unitID, loaded string) string {
 // case where no file it could name would work.
 //
 // A drop-in wins on filename, so when systemd has already loaded one that
-// sorts after anything Hostveil would write, the honest instruction is not
+// sorts after anything Hostveil would write, the accurate instruction is not
 // "create this file": it is that the operator has to deal with the file that
 // outranks it. Telling them to write one that loses would be advice that
 // cannot work, which the environment reference test calls the worst kind.
@@ -223,7 +223,7 @@ func howToFix(u unit, r rule) string {
 	}
 	return fmt.Sprintf(
 		"Create %s containing:\n\n    [Service]\n    %s\n\nThen run `systemctl daemon-reload` and `systemctl restart %s`. "+
-			"Restart it while you are watching: these protections change what the service can reach, and a service that needs what one of them hides fails at start rather than misbehaving quietly. "+
+			"Restart it while you are watching: these protections change what the service can reach, and a service that needs what one of them hides fails at start rather than misbehaving silently. "+
 			"Remove the file to undo it.",
 		dropIn, r.directive, u.ID)
 }

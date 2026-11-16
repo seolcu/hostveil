@@ -147,7 +147,7 @@ func TestEmptyPasswordOnNonLoginAccountIgnored(t *testing.T) {
 // An unreadable /etc/shadow costs the empty-password half of this domain.
 // The findings from the readable half are still real and must survive, but
 // the result must say so: reporting clean would score identically to "every
-// account has a password" while meaning "nobody looked", and the axis would
+// account has a password" while meaning "the scan did not look", and the axis would
 // hand a non-root scan full marks for account hygiene it never checked.
 func TestShadowUnreadableIsPartialNotClean(t *testing.T) {
 	pw := writeFile(t, "passwd", cleanPasswd+"backdoor:x:0:0::/root:/bin/bash\n")

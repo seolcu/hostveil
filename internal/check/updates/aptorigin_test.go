@@ -34,7 +34,7 @@ APT::Periodic::Unattended-Upgrade "1";
 		AptConfigPath:  filepath.Join(dir, "20auto-upgrades"),
 		AptConfDirPath: dir,
 	}
-	// apt answers what apt actually resolves.
+	// apt answers what apt resolves.
 	env := checktest.New().Also("apt-config", "unattended-upgrade", "apt").
 		Script(`APT::Periodic::Unattended-Upgrade "0";`+"\n",
 			"apt-config", "dump", "APT::Periodic::Unattended-Upgrade").Env()

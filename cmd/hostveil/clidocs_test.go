@@ -247,8 +247,8 @@ func TestEverySubcommandHasAReferenceSection(t *testing.T) {
 //
 // Both lists that decide those things are hand-maintained maps (docSection
 // here, and needsRoot's switch) and adding a subcommand fails neither of
-// them. A command that nobody added to needsRoot runs unprivileged and
-// discovers it needed root half way through; one nobody added to the CLI
+// them. A command missing from needsRoot runs unprivileged and
+// discovers it needed root half way through; one missing from the CLI
 // reference is a command users find by reading the help text and nowhere else.
 //
 // The harvest is from the dispatch switch rather than from function names, so
@@ -294,7 +294,7 @@ func TestEverySubcommandIsClassifiedAndDocumented(t *testing.T) {
 	for name, handler := range dispatched {
 		if _, ok := runsAsInvokingUser[name]; ok {
 			if needsRoot(name) {
-				t.Errorf("%q is listed as running as the invoking user on purpose, and needsRoot elevates it", name)
+				t.Errorf("%q is listed as running as the invoking user, and needsRoot elevates it", name)
 			}
 		} else if !needsRoot(name) {
 			t.Errorf("%q dispatches to %s and needsRoot says it does not need root; "+

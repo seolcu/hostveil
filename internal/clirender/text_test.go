@@ -145,7 +145,7 @@ func lineContaining(s, sub string) string {
 }
 
 // "Clean" is a claim about the whole host. With domains missing, the most the
-// report can honestly say is that what it looked at was clean.
+// report can accurately say is that what it looked at was clean.
 func TestTextDoesNotClaimCleanWhenDomainsDidNotRun(t *testing.T) {
 	out := plain(model.Report{
 		Domains: []model.DomainResult{
@@ -234,7 +234,7 @@ func TestDeltaSummaryNamesWhatMoved(t *testing.T) {
 	}
 }
 
-// Naming every new item defeats the point when hundreds arrive at once.
+// Naming every new item is useless when hundreds arrive at once.
 func TestDeltaSummaryBoundsNamedListMembers(t *testing.T) {
 	var before, after []string
 	for i := range 400 {

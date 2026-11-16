@@ -70,7 +70,7 @@ func parseDiscovery(ctx context.Context, r platform.CommandRunner, out []byte) (
 // docker-compose.override.yml with no flag asked for, and `-f base.yml -f
 // prod.yml` is the standard production pattern, so several files is the
 // ordinary case, not an exotic one. Compose *appends* port mappings rather
-// than replacing them, which docker shows plainly for a base binding redis to
+// than replacing them, which docker shows for a base binding redis to
 // loopback and an override publishing it:
 //
 //	ports:
@@ -82,7 +82,7 @@ func parseDiscovery(ctx context.Context, r platform.CommandRunner, out []byte) (
 // as clean.
 //
 // So the merge is asked of the tool that owns it. This is the same move as
-// reading kernel parameters through the file systemd-sysctl will actually
+// reading kernel parameters through the file systemd-sysctl will
 // apply and unit properties through `systemctl show`: a checker that
 // re-implements somebody else's precedence rules is a checker that will
 // disagree with reality on the hosts that matter.

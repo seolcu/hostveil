@@ -10,7 +10,7 @@ import (
 	"github.com/seolcu/hostveil/internal/platform"
 )
 
-// sudoListArgv asks sudo what one user may actually run.
+// sudoListArgv asks sudo what one user may run.
 //
 // The alternative is parsing /etc/sudoers and /etc/sudoers.d ourselves, and
 // this domain is exactly where that goes wrong. sudoers is a layered
@@ -51,7 +51,7 @@ var sudoTags = []string{
 // grantsPasswordlessRoot reports whether `sudo -l` output for one user says
 // that user can run anything, as anyone, without being asked for a password.
 //
-// Deliberately only the unrestricted case. A NOPASSWD rule on a named command
+// Only the unrestricted case. A NOPASSWD rule on a named command
 // is ordinary administration (a backup script, a monitoring hook) and it is
 // not a path to root unless that command happens to be exploitable, which is a
 // question a config reader cannot answer. Flagging every one of them would bury

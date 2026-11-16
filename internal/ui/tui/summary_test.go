@@ -336,7 +336,7 @@ func TestFrameHeightHoldsWithCoverageAndChips(t *testing.T) {
 // filter." The chip row is drawn from the unfiltered report, so it is there
 // whenever the host has findings at all: using it to detect a filter would
 // have turned every empty filtered list into the wrong message, and every
-// genuinely clean host into the other wrong one.
+// clean host into the other wrong one.
 func TestEmptyListDistinguishesAFilterFromACleanHost(t *testing.T) {
 	filtered := summaryModel(100, 24)
 	high := model.SeverityHigh
@@ -362,7 +362,7 @@ func TestEmptyListDistinguishesAFilterFromACleanHost(t *testing.T) {
 // The dashboard has two rows over its findings list: the filter chips, then a
 // bar of batch buttons. The terminal had only the first, and what a batch
 // would do was documented in the footer among fourteen other keys, so the
-// state the list was actually in (two findings marked, `a` about to apply
+// state the list was in (two findings marked, `a` about to apply
 // exactly those) was the one thing the screen did not say.
 func TestTheBatchBarSaysWhatTheBatchKeyWouldDo(t *testing.T) {
 	m := summaryModel(120, 30)
@@ -407,7 +407,7 @@ func TestThePaneNamesTheKeysThatActOnWhatItShows(t *testing.T) {
 		t.Errorf("the pane does not offer the AI explanation:\n%s", rows)
 	}
 	// A fixable finding gets the fix line; a Manual one must not, because a
-	// key that does nothing is worse than a key nobody was told about.
+	// key that does nothing is worse than an undocumented key.
 	fixable := -1
 	manual := -1
 	for i, f := range m.active {
@@ -472,7 +472,7 @@ func TestAMeterSeparatesAZeroScoreFromADomainThatDidNotRun(t *testing.T) {
 		if got := filled(s.meterAtLeastOne(score, w, s.band(score), true)); got < 1 {
 			t.Errorf("an axis that ran and scored %d drew %d filled cells; a domain in "+
 				"the worst shape on the host must not render as an empty track, which "+
-				"is what a skipped domain is drawn as on purpose", score, got)
+				"is what a skipped domain is drawn as", score, got)
 		}
 	}
 	if got := filled(s.meterAtLeastOne(0, w, s.cLine, false)); got != 0 {

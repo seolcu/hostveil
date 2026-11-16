@@ -60,11 +60,11 @@ func (c config) origin() string {
 }
 
 // exposedEndpoints lists the configured TCP endpoints reachable from off this
-// host, in sorted order so a repeat scan produces no delta nobody caused.
+// host, in sorted order so a repeat scan produces no spurious delta.
 //
 // Unix and fd sockets are not endpoints in this sense: they are the local
 // socket, judged by its permissions instead. A loopback TCP socket is
-// deliberately clean: it is the documented way to put a proxy in front of the
+// clean: it is the documented way to put a proxy in front of the
 // daemon, and it is reachable by nothing the unix socket was not.
 func (c config) exposedEndpoints() []string {
 	var out []string

@@ -13,11 +13,11 @@ import (
 // PlannedDomains is a promise about a scan that has not happened yet, and the
 // only thing that can break it is the selection drifting from the one ScanWith
 // applies. So the test runs the scan and compares the plan against the domains
-// that actually reported.
+// that reported.
 //
 // A plan that over-counts is the failure worth naming: the terminal draws a
 // bar out of it, and a bar that reaches eleven of twelve and stops there reads
-// as a hang, which is precisely the state the progress display was added to
+// as a hang, which is the state the progress display was added to
 // rule out.
 func TestThePlanNamesTheDomainsTheScanActuallyRuns(t *testing.T) {
 	sources := []model.Source{model.SourceSSH, model.SourceFirewall, model.SourceSysctl, model.SourceUpdates}

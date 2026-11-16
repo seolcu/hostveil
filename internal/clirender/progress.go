@@ -14,7 +14,7 @@ import (
 //
 // The engine drops an event rather than let a slow consumer stall a scan
 // (see check.emit), so the buffer is what keeps that safety valve from
-// quietly costing progress lines. Two events per domain is the whole traffic
+// silently costing progress lines. Two events per domain is the whole traffic
 // of a scan; this is comfortably more.
 const ProgressBufferSize = 64
 

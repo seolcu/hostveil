@@ -36,7 +36,7 @@ func TestRepeatsOfOneFindingCostLessEachTime(t *testing.T) {
 	four := axis([]Finding{med("compose.ds009", "a"), med("compose.ds009", "b"),
 		med("compose.ds009", "c"), med("compose.ds009", "d")})
 	// Four distinct mistakes, one per service, cost more than one mistake
-	// repeated four times, that is the whole point.
+	// repeated four times, which is what the damping is for.
 	distinct := axis([]Finding{med("compose.ds009", "a"), med("compose.ds006", "b"),
 		med("compose.ds012", "c"), med("compose.ds022", "d")})
 

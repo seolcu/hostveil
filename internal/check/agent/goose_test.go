@@ -45,7 +45,7 @@ func TestGooseModeAutoIsExecUnrestricted(t *testing.T) {
 }
 
 // The case the rule exists for. Goose's default is auto, so the host where
-// nobody chose a mode is running the one that approves everything, and a
+// no one chose a mode is running the one that approves everything, and a
 // rule that fired only on an explicit value would call it clean.
 func TestGooseModeUnsetIsTheDefaultAuto(t *testing.T) {
 	for name, write := range map[string]func(h *host){

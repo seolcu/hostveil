@@ -3,7 +3,7 @@
 // keys on disk in a user's home; misconfigured, the failure mode is
 // unauthenticated remote code execution as a real account.
 //
-// The scope is deliberately narrow. These projects ship their own config
+// The scope is narrow. These projects ship their own config
 // auditors, which cover their settings far more thoroughly than Hostveil
 // could sustain across two fast-moving upstream schemas. What they cannot see
 // is the host: whether the gateway is *actually* listening on a reachable
@@ -45,7 +45,7 @@ func (*Checker) Source() model.Source { return model.SourceAgent }
 // Available probes for an actual agent installation, not merely for the
 // ability to look.
 //
-// The failure modes are kept distinct on purpose. An unreadable /etc/passwd
+// The failure modes are kept distinct. An unreadable /etc/passwd
 // means we could not look, a home we cannot enter means we could not look
 // *there*, and a host with no runtime installed means there was nothing to
 // find. All three skip the domain, but conflating them would let "I couldn't
@@ -273,12 +273,12 @@ func secretKeysIn(s scan, path string) []string {
 }
 
 // gatewayFindings judges the runtime's network exposure from its configured
-// bind, corroborated by what the host is actually listening on.
+// bind, corroborated by what the host is listening on.
 // The firewall used to be probed for this and handed in. It stopped being
 // read when the severity levels merged (blast radius and confidence are not
 // urgency, so a reachable gateway behind a firewall is the same level as one
 // without) and the parameter outlived the use by long enough that the
-// comment at the call site still described it as load-bearing.
+// comment at the call site still described it as required.
 //
 // What that cost was not a wrong answer, it was work: producing the argument
 // meant running up to four firewall binaries on every scan of every host and
@@ -382,7 +382,7 @@ func gatewayFindings(s scan, listeners []platform.Listener) []model.Finding {
 		s.in.rt.Display+" gateway is reachable from the network",
 		sev, model.SourceAgent, gatewayKind, opts...)}
 
-	// Authentication is only judged once the gateway is actually exposed.
+	// Authentication is only judged once the gateway is exposed.
 	// Every one of these runtimes treats "no auth on loopback" as a
 	// legitimate single-user default, so flagging it would put a High on
 	// a correct install: a score you could not improve by doing everything
@@ -466,7 +466,7 @@ func listenerOnlyFindings(s scan, listeners []platform.Listener) []model.Finding
 // default port is always known, so the fallback bought very little and cost a
 // false positive on some of the most common process names there are.
 //
-// ProcNames is still used, for what it is actually good for: when several
+// ProcNames is still used, for what it is good for: when several
 // listeners share the port, prefer the one the runtime plausibly owns, so the
 // evidence names a useful process.
 func matchListener(listeners []platform.Listener, port int, procs []string) (platform.Listener, bool) {

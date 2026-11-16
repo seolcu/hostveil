@@ -139,7 +139,7 @@ function bandFor(v) { return BANDS.find((b) => v >= b.min) || { cls: "b-na", ver
 // zero or one of them so a caller can spread it into a child list.
 //
 // Two refusals, and every interface makes the same two: nothing beside an N/A
-// axis, because a number there is a claim about a domain nobody looked at;
+// axis, because a number there is a claim about a domain the scan never looked at;
 // and nothing when the figure equals the score, because an arrow pointing at
 // where it already is says the fixes are worth nothing. On a well-kept host
 // that is most rows, and the column has to stay quiet on them or it becomes
@@ -154,7 +154,7 @@ function afterFixesNote(applicable, score, after, render) {
 // internal/docs/afterfixes_test.go holds the two together by reading this
 // file.
 //
-// The "~" is the load-bearing part: a degraded axis is scored from an
+// The "~" is the important part: a degraded axis is scored from an
 // incomplete picture, and an unmarked score on one says a domain vouches for
 // ground it never looked at.
 function axisValueText(ax) {
@@ -389,7 +389,7 @@ function renderDomainNotice() {
 // ── domain rail ──────────────────────────────────────────────────────
 // Every axis as a row: score, bar, severity mix, and for a domain that did
 // not run, the reason instead of a number. It doubles as the domain filter,
-// which is the point: the rail is where a skipped domain is both visible
+// as intended: the rail is where a skipped domain is both visible
 // and clickable.
 function renderRail(all) {
   const rail = document.getElementById("rail");
@@ -497,7 +497,7 @@ function render() {
     marked.clear();
     renderBatchbar();
     // "Clean" is a claim about the whole host, so it may only be made when
-    // the whole host was actually examined. Finding nothing and being
+    // the whole host was examined. Finding nothing and being
     // unable to look score the same and mean opposite things, and this
     // page said "Clean." either way, so a host whose every checker had
     // failed was reported spotless right above the notice saying so.
@@ -563,7 +563,7 @@ function renderOverview(all, visible, rows) {
   box.append(el("p", { class: "over-lead" },
     `${all.length} unresolved finding${all.length === 1 ? "" : "s"} across the domains that ran.`));
 
-  // Severity chips, only for severities actually present. Ordered by the
+  // Severity chips, only for severities present. Ordered by the
   // model's table, which is most-severe-first.
   const chips = el("div", { class: "over-sev" });
   for (const [i, sev] of Object.entries(SEV)) {
@@ -895,7 +895,7 @@ async function rollback(cp, force = false) {
     // 409 is the engine declining, not failing: the file changed after
     // Hostveil wrote it, so restoring the backup would discard whatever
     // was done in between. Rollback keeps no checkpoint of its own, so
-    // say that plainly and make the override a second, informed answer.
+    // say that and make the override a second, informed answer.
     if (e.status === 409) {
       const ok = await confirmModal("Overwrite it anyway?",
         `${e.message} This restores Hostveil's backup over the current file, discarding those changes. ` +

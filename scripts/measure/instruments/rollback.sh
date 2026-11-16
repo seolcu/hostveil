@@ -6,7 +6,7 @@
 # operator to let it edit files on a server, and "you can undo it" is the
 # reason that is acceptable.
 #
-# The hashing is deliberately not done from the checkpoints. A checkpoint
+# The hashing is not done from the checkpoints. A checkpoint
 # records what Hostveil believes it backed up, so comparing a restored file
 # against it asks whether Hostveil agrees with itself. The candidate paths
 # come from the scan instead (every file a finding points at) and they are
@@ -43,7 +43,7 @@ ids() { hostveil history 2>/dev/null | grep -oE 'rollback [0-9]{8}-[0-9.]+-[0-9a
 case "${1:-}" in
 candidates)
   # Every absolute path a finding carries, from metadata and evidence alike,
-  # plus every entry of the enumerated directories. A superset on purpose:
+  # plus every entry of the enumerated directories. A superset:
   # hashing a file no fix touches costs nothing, and missing one would
   # silently narrow what "restored" is claiming.
   # `scan` exits 1 whenever it finds anything exposed, which is the whole

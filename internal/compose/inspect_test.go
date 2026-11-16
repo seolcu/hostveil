@@ -137,7 +137,7 @@ func TestUnpublishedPortNotMarkedPublished(t *testing.T) {
 
 // PortBindings is a map, so iteration order is random. Findings carry these
 // values as evidence, and unstable evidence makes every rescan report a
-// change nobody made.
+// change that did not happen.
 func TestPortOrderIsStable(t *testing.T) {
 	in := `[{"Name":"/x","Config":{"Image":"a"},"HostConfig":{"PortBindings":{
 	 "80/tcp":[{"HostIp":"0.0.0.0","HostPort":"8080"}],

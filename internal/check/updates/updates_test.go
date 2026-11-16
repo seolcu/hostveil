@@ -336,7 +336,7 @@ FEDORA-2026-bbbb Moderate/Sec.  curl-8.6.0-1.fc41.x86_64
 
 	fs, err := dnfChecker(t, dnfApplies).Check(context.Background(), env)
 
-	// Still degraded: a reboot genuinely cannot be determined.
+	// Still degraded: a reboot cannot be determined.
 	var partial *check.PartialError
 	if !errors.As(err, &partial) {
 		t.Fatalf("want a PartialError, got %v", err)
@@ -344,7 +344,7 @@ FEDORA-2026-bbbb Moderate/Sec.  curl-8.6.0-1.fc41.x86_64
 	if !strings.Contains(partial.Reason, "dnf-utils") {
 		t.Errorf("the reason should name the missing package: %q", partial.Reason)
 	}
-	// But the second probe ran, which is the whole point.
+	// But the second probe ran, which is what this test checks.
 	find(t, fs, "updates.pending-security")
 }
 

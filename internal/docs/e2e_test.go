@@ -23,7 +23,7 @@ import (
 // it, and it is invisible: a vacuous jq selection is indistinguishable from a
 // clean result.
 //
-// So the workflow's literals are pinned against what the model actually
+// So the workflow's literals are pinned against what the model
 // writes. A rename in internal/model fails here, in a Go test that runs on
 // every change, rather than silently retiring the E2E assertion.
 var e2eStateSelector = regexp.MustCompile(`\.state\s*==\s*("[^"]*"|[^\s)]+)`)

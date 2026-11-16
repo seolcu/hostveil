@@ -52,7 +52,7 @@ func TestAnImagesOwnHealthcheckCountsAsOne(t *testing.T) {
 		}
 	})
 
-	// The format string prints one token on purpose. A daemon answering
+	// The format string prints one token. A daemon answering
 	// something else is a miss, not a match: searching a whole inspect
 	// document for the word would call it present on any image mentioning it.
 	t.Run("an unexpected answer is a miss", func(t *testing.T) {

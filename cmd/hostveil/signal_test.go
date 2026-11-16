@@ -27,7 +27,7 @@ func TestFirstSignalCancelsTheRun(t *testing.T) {
 // stop() must unregister the handler, or a test binary that calls
 // notifyContext leaves SIGTERM diverted for whatever runs after it.
 //
-// The escalation half (a second signal exiting with 130) is deliberately
+// The escalation half (a second signal exiting with 130) is
 // not tested here: it calls os.Exit, which would take the test binary with
 // it. What is testable is that the handler stops handling once stop returns,
 // so the escalation goroutine is not left holding the process's signals.

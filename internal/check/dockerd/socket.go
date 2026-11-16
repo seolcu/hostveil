@@ -27,7 +27,7 @@ type member struct {
 	name string
 	// system marks an account that does not log in interactively: a service
 	// identity rather than a person. It is what separates an administrator who
-	// chose this from a credential nobody is watching.
+	// chose this from an unmonitored credential.
 	system bool
 }
 
@@ -173,7 +173,7 @@ type account struct {
 // human login. Both signals are needed: a distribution reserves uids below
 // 1000 for services, and an account created above that range with a nologin
 // shell (the shape most CI runners and agents take) is just as much a
-// credential nobody logs into and nobody watches.
+// credential no one logs into or monitors.
 // The shell half is platform.IsNonLoginShell, shared with the account
 // domain, which asks the same question to decide whether an empty password
 // is a login risk. This copy tested the path's suffix and so handled a

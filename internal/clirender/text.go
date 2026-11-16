@@ -76,7 +76,7 @@ func Text(r model.Report, opts Options) string {
 	active := r.Select(model.Filter{})
 	if len(active) == 0 {
 		// "Clean" is a claim about the whole host, so it may only be made
-		// when the whole host was actually examined.
+		// when the whole host was examined.
 		if n := r.IncompleteDomains(); n > 0 {
 			fmt.Fprintf(&b, "\n%sNo problems found in the domains that ran, but %d did not complete (see above).%s\n",
 				c.yellow, n, c.reset)
@@ -182,7 +182,7 @@ func DeltaSummary(d model.Delta, opts Options) string {
 
 // maxChangedValue bounds how long an evidence value may be before it is
 // summarised rather than printed. An aggregate finding can carry thousands
-// of IDs in one value; the point of the line is what moved, not the payload.
+// of IDs in one value; the line reports what moved, not the payload.
 const maxChangedValue = 40
 
 // changedLines names findings that persisted but moved, and says how. A bare
@@ -359,7 +359,7 @@ func wrap(s string, width int, indent string) string {
 //
 // Nothing is the common case and it has to stay that way: an arrow pointing
 // at the number it starts from is noise on every clean host, and a number
-// beside an N/A axis is a claim about a domain nobody looked at. The three
+// beside an N/A axis is a claim about a domain the scan never looked at. The three
 // UIs each own their own formatting and all three answer these two questions
 // the same way: TestEveryUIHidesAfterFixesTheSameWay pins that.
 // headroom is anything that knows whether its own headroom is worth showing:

@@ -13,7 +13,7 @@ import (
 // What a terminal interface has instead of borders and shadows is the grid:
 // columns that start where the column above started, and lines that meet the
 // lines they cross. Nothing here is about content (every check below passes
-// on a screen full of the wrong words) and that is the point. These are the
+// on a screen full of the wrong words) and that is what these tests catch. These are the
 // faults a reader sees before they have read anything.
 
 // columnIndex is the display column needle starts at.
@@ -35,7 +35,7 @@ func columnIndex(row []rune, needle string) int {
 // continuation entry so that index == column in either width mode.
 //
 // Indexing by rune would be the same thing only while every glyph is one
-// column wide, which is precisely the assumption that broke the grid under
+// column wide, which is the assumption that broke the grid under
 // RUNEWIDTH_EASTASIAN=1. A test written on it would have agreed with the bug.
 func rowRunes(t *testing.T, frame string) [][]rune {
 	t.Helper()
@@ -72,7 +72,7 @@ func cover(rows [][]rune, r, c int) rune {
 
 // arms is the box-drawing character with exactly these connections, and the
 // whole of what "the lines meet" means: a glyph is right when its arms are
-// the neighbours that actually reach it.
+// the neighbours that reach it.
 var arms = map[[4]bool]rune{
 	// up, down, left, right
 	{true, true, false, false}:   '│',
@@ -132,7 +132,7 @@ func TestEveryRuleMeetsTheColumnsItCrosses(t *testing.T) {
 							n++
 						}
 					}
-					// Only where three or four lines actually arrive. Two arms is
+					// Only where three or four lines arrive. Two arms is
 					// a plain rule or a plain separator and needs no glyph of its
 					// own, and zero or one is a │ used as punctuation (the spark
 					// strip's dividers, the inline block's gutter) which is text
@@ -151,7 +151,7 @@ func TestEveryRuleMeetsTheColumnsItCrosses(t *testing.T) {
 }
 
 // The grid has to survive every width, not the two a screenshot was taken
-// at. This sweeps each arrangement across the sizes a terminal is actually
+// at. This sweeps each arrangement across the sizes a terminal is
 // dragged through and holds three things at once:
 //
 //   - the frame is exactly the terminal, in both directions. A row one column
@@ -164,7 +164,7 @@ func TestEveryRuleMeetsTheColumnsItCrosses(t *testing.T) {
 //   - the columns are given back cleanly as the terminal narrows: below the
 //     thresholds there are no separators to reach, and nothing may draw one.
 //
-// The width sweep is the point. `TestFrameFitsTerminalWidth` already sweeps
+// The width sweep is what this file adds. `TestFrameFitsTerminalWidth` already sweeps
 // widths, but only ever with the default arrangement: five of the six were
 // covered at whatever sizes a test happened to name, which for the rail
 // layouts is on both sides of the width where the rail is dropped.

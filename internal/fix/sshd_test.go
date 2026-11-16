@@ -15,8 +15,8 @@ import "testing"
 
 // The directive exists, but only inside a Match block. Editing it changes what
 // SSH does for the sessions that block selects (something the operator wrote
-// deliberately and the finding never referred to) while the global setting
-// the finding was actually about stays exactly as it was.
+// and the finding never referred to) while the global setting
+// the finding was about stays exactly as it was.
 func TestDirectiveInsideAMatchBlockIsLeftAlone(t *testing.T) {
 	in := []byte("PermitRootLogin no\n" +
 		"\n" +

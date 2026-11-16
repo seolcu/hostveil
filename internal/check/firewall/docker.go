@@ -20,7 +20,7 @@ const defaultDaemonConfig = "/etc/docker/daemon.json"
 
 // publishedPortRE matches the host side of a public port mapping in
 // `docker ps` output: "0.0.0.0:6379->6379/tcp" and its IPv6 twin
-// ":::6379->6379/tcp". A mapping published to 127.0.0.1 is deliberately not
+// ":::6379->6379/tcp". A mapping published to 127.0.0.1 is not
 // matched: it is reachable only from the host, so no firewall is being
 // bypassed.
 var publishedPortRE = regexp.MustCompile(`(?:0\.0\.0\.0|\[::\]|::):(\d+)->`)
@@ -37,7 +37,7 @@ var publishedPortRE = regexp.MustCompile(`(?:0\.0\.0\.0|\[::\]|::):(\d+)->`)
 // This is the single most common real exposure on a self-hosted Docker host,
 // and until this check existed Hostveil actively rewarded it: an active ufw
 // scored the firewall axis full marks, and the ports checker suppresses its
-// generic exposure finding precisely because a firewall is up. A host with
+// generic exposure finding because a firewall is up. A host with
 // Postgres open to the world scored better than one with no firewall and
 // nothing running.
 //

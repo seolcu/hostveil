@@ -22,7 +22,7 @@ import (
 // itself decided when and how a report left the host; the network path was
 // removed rather than fixed because a self-hosted-server tool's own audience
 // is the one most likely to distrust that decision being made for them. What
-// is left is the part nobody objected to: collecting the pieces a human
+// is left is the part with no objection: collecting the pieces a human
 // would otherwise have to gather by hand before filing an issue.
 func cmdDiagnostics(_ context.Context, args []string) int {
 	fs := flag.NewFlagSet("diagnostics", flag.ContinueOnError)
@@ -65,7 +65,7 @@ type diagnosticsOptions struct {
 
 // buildDiagnosticsReport assembles Hostveil's own identity, recent crash
 // records, the last saved scan's score and per-finding IDs/severities/domain
-// states (deliberately never the full description, remediation text, or
+// states (never the full description, remediation text, or
 // evidence a finding carries, which can quote the very config an operator is
 // asking for help with) and an optional HOSTVEIL_DEBUG trace the operator
 // already produced by hand. See --help's Environment section for that

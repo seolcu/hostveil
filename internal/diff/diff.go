@@ -234,7 +234,7 @@ func lcsDiff(a, b []string) []op {
 
 // maxCoreCells caps the LCS table lcsCore is willing to build.
 //
-// The trim above makes the core tiny for the edits Hostveil actually
+// The trim above makes the core tiny for the edits Hostveil
 // performs, but it can only trim what matches: when internal/compose falls
 // back to re-encoding a whole YAML file, the reflow leaves no common head or
 // tail at all and the core sees both files entire. Ten million cells is
@@ -243,7 +243,7 @@ func lcsDiff(a, b []string) []op {
 //
 // Past the cap the diff degrades to whole-file replace rather than failing:
 // a fix must not be blocked because its preview is expensive to render, and
-// "every line changed" is an honest description of a reflowed file.
+// "every line changed" is an accurate description of a reflowed file.
 const maxCoreCells = 10_000_000
 
 // replaceAll is the degenerate diff: delete every line of a, add every line

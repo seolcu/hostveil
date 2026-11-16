@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// countingRunner records how many times each command actually reached the
+// countingRunner records how many times each command reached the
 // host, and can be held mid-call to force overlapping requests.
 type countingRunner struct {
 	runs      atomic.Int64
@@ -80,7 +80,7 @@ func TestScanCacheKeysOnArguments(t *testing.T) {
 	}
 }
 
-// The single-flight behaviour is the point rather than a refinement: the
+// The single-flight behaviour is the purpose of the cache: the
 // compose and CVE checkers start together and ask for `docker compose ls` at
 // the same moment, so a cache that only remembered completed calls would let
 // both miss and both run; the exact duplication this exists to remove.

@@ -57,7 +57,7 @@ func TestAnExecFixIsNeverClassifiedAuto(t *testing.T) {
 			"with a human approving it", findings[0].Remediation)
 	}
 
-	// And the batch must actually decline it, which is the consequence that
+	// And the batch must decline it, which is the consequence that
 	// matters rather than the label.
 	out := e.ApplyBatch(context.Background(), findings)
 	if len(out.Applied) != 0 {

@@ -49,7 +49,7 @@ func buildEngineWithAI(useAI bool) *core.Engine {
 
 // buildRegistry lists every checker, in scan order.
 //
-// This order is load-bearing: Registry.Run writes its results by registry
+// This order matters: Registry.Run writes its results by registry
 // index, so this is what orders Report.Domains and therefore the CLI's
 // per-domain status block. It is the third copy of the domain order: the
 // other two, AllSources and the scoring axes, were merged into one table

@@ -112,7 +112,7 @@ type appModel struct {
 	scanState map[model.Source]model.ScanState
 	// scanStartedAt is when this scan began and scanElapsed is how long ago
 	// that was, refreshed by the ticker. The elapsed figure is stored rather
-	// than read at render time on purpose: View must be a pure function of
+	// than read at render time: View must be a pure function of
 	// the model, and a clock read inside it would make two renders of one
 	// state differ.
 	scanStartedAt time.Time
@@ -260,7 +260,7 @@ func (m *appModel) clearAI() {
 // marked the finding fixed (or un-marked it, after a rollback) and rescored,
 // and the list is drawn from m.report. A handler that forgets leaves the
 // screen showing a finding the engine knows is gone: no error, no log, just
-// a list that is quietly one round out of date.
+// a list that is silently one round out of date.
 //
 // It was written out three times, which is three chances for a fourth
 // message to be added without it.
@@ -310,7 +310,7 @@ const scanEventBuffer = 32
 //
 // The channel is closed here, by the only goroutine that writes to it, so
 // waitForScanEvent's receive ends cleanly when the scan does rather than
-// blocking forever on a channel nobody will write to again.
+// blocking forever on a channel that will never be written to again.
 func scanCmd(ctx context.Context, e *core.Engine, ch chan model.ScanEvent) tea.Cmd {
 	return func() tea.Msg {
 		report := e.Scan(ctx, ch)
@@ -1113,7 +1113,7 @@ func (m *appModel) startBatch() tea.Cmd {
 }
 
 // presentSources lists the distinct sources among active findings, sorted,
-// so the domain filter only cycles through domains that actually appear.
+// so the domain filter only cycles through domains that appear.
 func (m *appModel) presentSources() []model.Source {
 	seen := map[model.Source]bool{}
 	var out []model.Source
@@ -1270,7 +1270,7 @@ func (m *appModel) rollbackSummary(o model.RollbackOutcome) string {
 
 func (m *appModel) batchSummary(o model.BatchOutcome) string {
 	// The claim comes from the engine; this adds only the tick and the one
-	// thing that is genuinely local, which key reaches the history view.
+	// thing that is local, which key reaches the history view.
 	// The fixes that did land are already on the host with checkpoints
 	// waiting there, and an operator who thinks the batch completed has no
 	// reason to go looking.

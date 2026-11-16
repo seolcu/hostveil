@@ -35,7 +35,7 @@ func (c *Coverage) Covered(n int) {
 //
 // n may be zero for a gap with no unit of its own: "cannot enumerate the
 // containers started outside Compose" is unmeasurable by definition, since
-// the units it would have added are precisely the ones that could not be
+// the units it would have added are the ones that could not be
 // counted. Such a gap still degrades the domain: it contributes a reason
 // without pretending to a denominator it does not know.
 //

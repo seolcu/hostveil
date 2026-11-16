@@ -11,7 +11,7 @@ import "github.com/seolcu/hostveil/internal/model"
 // nothing would say a word. The difference between those two is the whole
 // subject of the fixing page: one of them is what `fix --all` runs on its own.
 //
-// The Korean row is deliberately the same four English words as the English
+// The Korean row is the same four English words as the English
 // one, not a translation of them. Hostveil's CLI, TUI, and dashboard are
 // English-only and always print "Auto"/"Review"/"Manual"/"Unavailable"
 // (there is no Korean build of the tool itself) so a Korean docs page that

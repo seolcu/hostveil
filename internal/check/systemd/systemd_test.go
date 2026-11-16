@@ -19,7 +19,7 @@ var showArgv = []string{"systemctl", "show", "*.service", "--property=" + string
 // Key=Value one per line, in an order of systemd's choosing rather than the
 // order they were asked for.
 func unitRecord(props map[string]string) string {
-	// Deliberately not the request order; the parser must key by name.
+	// Not the request order; the parser must key by name.
 	order := []string{"FragmentPath", "DropInPaths", "User", "PrivateTmp", "ProtectHome", "Id", "ProtectSystem", "LoadState", "NoNewPrivileges"}
 	var b strings.Builder
 	for _, k := range order {
@@ -196,7 +196,7 @@ func TestUnknownPropertyIsNotAFinding(t *testing.T) {
 }
 
 // Which severity applies depends on the account, and the two rules point in
-// opposite directions on purpose: a root service can already do anything, so
+// opposite directions: a root service can already do anything, so
 // the setuid path NoNewPrivileges closes buys little there, while the
 // filesystem protections are worth most exactly there.
 func TestSeverityFollowsTheAccount(t *testing.T) {
@@ -281,7 +281,7 @@ func TestAvailability(t *testing.T) {
 }
 
 // A failure to enumerate is an error, not an empty result: the axis is then
-// excluded rather than scored a perfect 100 on evidence nobody obtained.
+// excluded rather than scored a perfect 100 on evidence the scan never obtained.
 func TestEnumerationFailureIsAnError(t *testing.T) {
 	_, err := New().Check(context.Background(), platform.Env{
 		ServiceManager: platform.SMSystemd, Runner: checktest.New(),

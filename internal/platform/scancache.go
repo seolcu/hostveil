@@ -21,7 +21,7 @@ import (
 // from becoming an inventory object every checker has to be taught about:
 // nothing in check/ changes, and a future checker gets the sharing for free.
 //
-// The single-flight behaviour is the point, not an optimization on top of
+// The single-flight behaviour is the purpose, and more than an optimization on top of
 // the cache. The duplicate callers start together, so a plain
 // cache-after-the-fact would let both miss and both run: exactly the case
 // this exists to remove.

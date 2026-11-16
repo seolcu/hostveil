@@ -39,7 +39,7 @@ func TestApplyOneAppliesAnEligibleAutoFinding(t *testing.T) {
 	// verify step ran, so there is nothing in Verified/VerifyMessage.
 	if out.Verified != model.VerifyNotRun || out.VerifyMessage != "" {
 		t.Errorf("ApplyOne ran a verify step (Verified=%v, VerifyMessage=%q); "+
-			"that is ApplyFix's job, and doing it here defeats the point of a "+
+			"that is ApplyFix's job, and doing it here defeats the purpose of a "+
 			"per-item loop that must not re-run a domain checker per finding",
 			out.Verified, out.VerifyMessage)
 	}

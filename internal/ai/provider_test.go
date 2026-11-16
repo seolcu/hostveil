@@ -89,7 +89,7 @@ func TestFromEnvNamesTheBadValueRatherThanSilentlyFallingBack(t *testing.T) {
 	t.Setenv("HOSTVEIL_AI_PROVIDER", "chatgpt")
 	e := FromEnv()
 	if !e.Available(context.Background()) {
-		t.Fatal("unknownProvider must report Available so Explain actually runs and surfaces the bad value")
+		t.Fatal("unknownProvider must report Available so Explain runs and surfaces the bad value")
 	}
 	_, err := e.Explain(context.Background(), finding(), "")
 	if err == nil || !strings.Contains(err.Error(), "chatgpt") {

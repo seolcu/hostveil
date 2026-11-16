@@ -865,7 +865,7 @@ func (an *analysis) antiForensics() {
 			if len(f) >= 3 && f[2] == "/dev/null" {
 				an.add(Indicator{ID: "antiforensic.history-disabled", Verdict: Suspicious,
 					Title:    "A shell history is linked to /dev/null",
-					Detail:   f[0] + " points at /dev/null, so nothing typed in that account's shell is kept. Some people do this on purpose; intruders do it routinely.",
+					Detail:   f[0] + " points at /dev/null, so nothing typed in that account's shell is kept. Some people do this intentionally; intruders do it routinely.",
 					Evidence: []Evidence{{Artifact: a.Path, Line: i + 1, Text: l}}})
 			}
 		}
@@ -912,7 +912,7 @@ func (an *analysis) gaps() {
 			an.res.Gaps = append(an.res.Gaps, Gap{Question: q, Reason: f.Title, Finding: f.ID})
 		}
 	}
-	// Coverage the logs actually have, whatever the configuration says.
+	// Coverage the logs have, whatever the configuration says.
 	if l := an.sshLines(); len(l) == 0 {
 		an.res.Gaps = append(an.res.Gaps, Gap{Question: "Who logged in over SSH, and from where?",
 			Reason: "No SSH log entries were collected for the window: no auth log, and the journal had none."})

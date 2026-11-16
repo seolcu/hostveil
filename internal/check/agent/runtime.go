@@ -24,7 +24,7 @@ const (
 //
 // Secret marks a path that holds raw credentials. It changes which finding is
 // emitted (agent.secret-exposed rather than agent.config-perms) and, for
-// files, requires that the contents actually look like credentials before the
+// files, requires that the contents look like credentials before the
 // finding fires.
 type ModeRule struct {
 	Rel    string
@@ -73,7 +73,7 @@ type DangerRule struct {
 }
 
 // GatewayDesc describes a runtime's network surface, so the checker can judge
-// the configured intent and cross-check it against what the host is actually
+// the configured intent and cross-check it against what the host is
 // listening on.
 type GatewayDesc struct {
 	DefaultPort int    // used when PortKey is absent or unset
@@ -81,7 +81,7 @@ type GatewayDesc struct {
 	BindKey     string
 
 	// BindDefault is the documented bind when BindKey is absent. Leave it
-	// empty when the default is genuinely unknown: an empty resolved bind
+	// empty when the default is unknown: an empty resolved bind
 	// means "we cannot tell from config", and the checker falls back to the
 	// observed listener rather than guessing a finding into existence.
 	BindDefault string
@@ -139,8 +139,8 @@ type Runtime struct {
 // mirrors upstream documentation; keep it that way, and prefer a small set of
 // stable high-signal keys over a full port of each project's own hardening
 // matrix. OpenClaw ships `openclaw security audit`, which covers its config
-// exhaustively; Hostveil's job is the host-observable half (what is actually
-// listening, what is actually readable) scored beside the other domains.
+// exhaustively; Hostveil's job is the host-observable half (what is
+// listening, what is readable) scored beside the other domains.
 func defaultRuntimes() []Runtime {
 	return runtimes()
 }
@@ -175,11 +175,11 @@ func runtimes() []Runtime {
 				BindKey:     "gateway.bind",
 				BindDefault: "loopback",
 				// "auto" and "tailnet" are not loopback, but neither is
-				// plainly reachable from an untrusted network; they are
+				// reachable from an untrusted network; they are
 				// treated as exposed so the auth check still applies.
 				LoopbackOnly: []string{"loopback"},
 				AuthKey:      "gateway.auth.mode",
-				// Unset is deliberately absent: OpenClaw fails closed when
+				// Unset is absent: OpenClaw fails closed when
 				// gateway.auth.mode is unset, so an absent key is not "open".
 				AuthDisabled: []string{"none"},
 				// The gateway's process is "openclaw-gateway", which the kernel
@@ -210,7 +210,7 @@ func runtimes() []Runtime {
 					Sev:      model.SeverityHigh,
 					Title:    "Agent is permitted to run elevated commands",
 					Desc:     "Elevated mode is the documented escape hatch out of the agent's sandbox and onto the host. Combined with any path by which an attacker can influence the agent's input, it turns prompt injection into host compromise.",
-					HowToFix: "Set `tools.elevated.enabled` to `false`. If some workflow genuinely needs it, restrict `tools.elevated.allowFrom` to a single trusted channel.",
+					HowToFix: "Set `tools.elevated.enabled` to `false`. If some workflow needs it, restrict `tools.elevated.allowFrom` to a single trusted channel.",
 				},
 				{
 					ID: "agent.sandbox-off", Key: "agents.defaults.sandbox.mode", Bad: []string{"off"},
@@ -223,7 +223,7 @@ func runtimes() []Runtime {
 					Sev:      model.SeverityHigh,
 					Title:    "Agent tools run unsandboxed on the host",
 					Desc:     "With the sandbox off, the agent's tools run directly on the gateway host rather than in an isolated container, so a tool call that goes wrong reaches your real filesystem and network.",
-					HowToFix: "Enable the sandbox (`agents.defaults.sandbox.mode`) and keep `workspaceAccess` at `none` or `ro` unless the agent genuinely needs to write.",
+					HowToFix: "Enable the sandbox (`agents.defaults.sandbox.mode`) and keep `workspaceAccess` at `none` or `ro` unless the agent needs to write.",
 				},
 				{
 					ID: "agent.control-ui-insecure", Key: "gateway.controlUi.allowInsecureAuth", Bad: []string{"true"},
@@ -269,7 +269,7 @@ func runtimes() []Runtime {
 			Gateway: GatewayDesc{
 				DefaultPort: 9119,
 				BindKey:     "dashboard.host",
-				// Left empty on purpose: the dashboard binds 0.0.0.0 in the
+				// Left empty: the dashboard binds 0.0.0.0 in the
 				// container image but the native default is not documented,
 				// so an unset key means "ask ss", not "assume exposed".
 				BindDefault:  "",
@@ -308,7 +308,7 @@ func runtimes() []Runtime {
 			Danger: []DangerRule{
 				{
 					ID: "agent.exec-unrestricted", Key: "GOOSE_MODE", Bad: []string{"auto"},
-					// The documented default. A host where nobody chose a
+					// The documented default. A host where no one chose a
 					// mode is running the one that approves everything.
 					Unset: "auto",
 					Good:  []any{"approve", "smart_approve"},

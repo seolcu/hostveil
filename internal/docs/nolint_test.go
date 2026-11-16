@@ -18,7 +18,7 @@ var nolintDirective = regexp.MustCompile(`//nolint:([a-z0-9,]+)`)
 // enabledLinter matches one entry of a YAML list in .golangci.yaml.
 var enabledLinter = regexp.MustCompile(`(?m)^\s*-\s*(\w+)\s*$`)
 
-// Every //nolint has to name a linter that actually runs.
+// Every //nolint has to name a linter that runs.
 //
 // Twenty of them did not. gosec, errcheck and nilerr were suppressed all over
 // the tree while none of the three was enabled in .golangci.yaml or run

@@ -79,7 +79,7 @@ func TestTraceNeverLogsCommandOutput(t *testing.T) {
 }
 
 // Arguments must survive a round trip through a shell, or the trace is half
-// a diagnostic: nobody can rerun the command it describes.
+// a diagnostic: no one can rerun the command it describes.
 func TestTraceQuotesArgumentsThatNeedIt(t *testing.T) {
 	got := trace(t, scriptRunner{}, func(r CommandRunner) {
 		_, _ = r.Run(context.Background(), "docker", "version", "--format", "{{.Server.Version}}")

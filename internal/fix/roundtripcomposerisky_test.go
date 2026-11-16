@@ -96,7 +96,7 @@ func TestEveryRiskyComposeFixClearsItsFindingAndNoOther(t *testing.T) {
 
 // Every one of these is offered only on its own. A reviewed batch applies the
 // first alternative of anything Review without asking, and these are Review
-// precisely because somebody has to ask.
+// because somebody has to ask.
 func TestRiskyComposeFixesAreReviewAndIndividualOnly(t *testing.T) {
 	checker := composeRiskyHost(t, t.TempDir())
 	found := runRisky(t, checker)

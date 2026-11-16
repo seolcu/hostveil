@@ -72,7 +72,7 @@ func (r Rule) paths() ([]string, error) {
 	if _, err := os.ReadDir(dir); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("cannot read %s; the files it holds were not checked", dir)
 	}
-	// The directory is absent or genuinely empty of matches. Nothing to judge.
+	// The directory is absent or empty of matches. Nothing to judge.
 	return nil, nil
 }
 

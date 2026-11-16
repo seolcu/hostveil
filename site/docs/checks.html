@@ -31,12 +31,12 @@
       //
       // GitHub Pages serves files, not content negotiation, so the only place
       // this decision can be made is here, and the risk of making it here is
-      // trapping someone: a reader who deliberately clicked "English" must not
+      // trapping someone: a reader who clicked "English" must not
       // be bounced back on the next click. So the switcher records that choice
       // and this defers to it forever after.
       //
       // Only from the English page, only when the browser's own preference
-      // list actually leads with Korean, and never when a crawler is reading
+      // list leads with Korean, and never when a crawler is reading
       // (they do not run this): the hreflang links above are what they read.
       (function () {
         try {
@@ -125,7 +125,7 @@
           <article class="docs-prose">
             <p class="docs-breadcrumb"><a href="../">Hostveil</a> / <a href="./">Docs</a> / What it checks</p>
             <h1>What it checks</h1>
-            <p class="lead">Hostveil checks the highest-impact paths that actually get self-hosters breached, then merges everything into one 0–100 score. Each finding has a stable ID of the form <code>domain.rule</code>. Use it with <code>explain</code>, <code>fix</code>, and <code>rollback</code>.</p>
+            <p class="lead">Hostveil checks the highest-impact paths that get self-hosters breached, then merges everything into one 0–100 score. Each finding has a stable ID of the form <code>domain.rule</code>. Use it with <code>explain</code>, <code>fix</code>, and <code>rollback</code>.</p>
 
             <h2>Domains at a glance</h2>
             <div class="docs-table-wrap">
@@ -219,7 +219,7 @@
               </table>
             </div>
             <h3 id="coverage">When a domain can't be fully checked</h3>
-            <p>"I couldn't look" and "there was nothing there" produce the same empty list, and they mean opposite things. Hostveil never lets one pass for the other, so every domain reports how much ground it actually covered:</p>
+            <p>"I couldn't look" and "there was nothing there" produce the same empty list, and they mean opposite things. Hostveil never lets one pass for the other, so every domain reports how much ground it covered:</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>State</th><th>What it means</th><th>Effect on the score</th></tr></thead>
@@ -236,7 +236,7 @@
             <p><code>hostveil scan</code> exits non-zero when any unfixed finding is <span class="sev high">HIGH</span>, which makes it usable as a CI or cron gate.</p>
 
             <h2 id="ssh">SSH <code>ssh.</code></h2>
-            <p>Parsed natively from <code>sshd_config</code>, following <code>Include</code> directives into <code>sshd_config.d/</code>. That matters on Debian and Ubuntu, which put the <code>Include</code> at the top of the file: <code>sshd</code> keeps the first value it obtains for each keyword, so a drop-in wins over the lines below it. Reading these needs root, which <code>hostveil</code> obtains by auto-elevating with <code>sudo</code>. A fix edits the file the winning directive actually lives in.</p>
+            <p>Parsed natively from <code>sshd_config</code>, following <code>Include</code> directives into <code>sshd_config.d/</code>. That matters on Debian and Ubuntu, which put the <code>Include</code> at the top of the file: <code>sshd</code> keeps the first value it obtains for each keyword, so a drop-in wins over the lines below it. Reading these needs root, which <code>hostveil</code> obtains by auto-elevating with <code>sudo</code>. A fix edits the file the winning directive lives in.</p>
             <p>Reading stops at the first <code>Match</code>. sshd applies what follows only to connections that match, so a directive there does not describe the host the way a global one does. Leaving it unread is still a gap in coverage, so the domain is reported <a href="troubleshooting#degraded">Degraded</a> with the file named. <code>Match Address 0.0.0.0/0</code> followed by <code>PasswordAuthentication yes</code> puts passwords back for every connection there is, and a scan that called that host fully audited would be claiming something it never looked at.</p>
             <div class="docs-table-wrap">
               <table>
@@ -356,7 +356,7 @@
 
             <h2 id="accounts">Accounts <code>accounts.</code></h2>
             <p>One question asked three ways: who can become root, and what stands in their way. The first two answers come out of <code>/etc/passwd</code> and <code>/etc/shadow</code>, parsed natively. Reading <code>/etc/shadow</code> needs root, which <code>hostveil</code> obtains by auto-elevating with <code>sudo</code>; without it, the empty-password check is skipped and the UID-0 check still runs.</p>
-            <p>The third answer does not come from a file. sudo rules are a layered configuration with aliases, group specs that may resolve through LDAP, and include ordering, so Hostveil asks sudo itself what each account may actually run. That needs root too: without it the domain reports the gap.</p>
+            <p>The third answer does not come from a file. sudo rules are a layered configuration with aliases, group specs that may resolve through LDAP, and include ordering, so Hostveil asks sudo itself what each account may run. That needs root too: without it the domain reports the gap.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
@@ -378,7 +378,7 @@
 
             <h2 id="proxy">Reverse proxy <code>proxy.</code></h2>
             <p>The component this audience is most likely to have and least likely to have configured: everything else here sits behind whatever answers on 443. Two surfaces, because there are two ways people run one: nginx and Caddy from a package, read out of <code>/etc/nginx</code> and <code>/etc/caddy</code> and following <code>include</code> and <code>import</code> into the files they pull in; and Traefik and Caddy as containers, read out of the Compose files the container domain already discovers, with a container's Caddyfile read through its bind mount. A Caddy configured in JSON is reported as not audited. Deprecated TLS versions are checked for nginx only, because Caddy accepts nothing older than TLS 1.2.</p>
-            <p>Three things are left out on purpose. A proxy serving plain HTTP, because a vhost whose only job is to redirect to HTTPS and a proxy behind something that already terminates TLS are both correct and neither is distinguishable from the config. Missing security headers, because they are worth having and are not what gets somebody breached. And anything about certificates, because expiry and issuer are facts about the network.</p>
+            <p>Three things are left out. A proxy serving plain HTTP, because a vhost whose only job is to redirect to HTTPS and a proxy behind something that already terminates TLS are both correct and neither is distinguishable from the config. Missing security headers, because they are worth having and are not what gets somebody breached. And anything about certificates, because expiry and issuer are facts about the network.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
@@ -399,7 +399,7 @@
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
-                  <tr><td><code>proxmox.webui-open</code></td><td>The web interface and API on 8006 accept a login from any address: no <code>LISTEN_IP</code>, and no allow-list that a deny rule or policy actually enforces</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
+                  <tr><td><code>proxmox.webui-open</code></td><td>The web interface and API on 8006 accept a login from any address: no <code>LISTEN_IP</code>, and no allow-list that a deny rule or policy enforces</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>proxmox.root-no-tfa</code></td><td>root@pam has no enabled second factor (TOTP, WebAuthn, U2F or Yubico); recovery keys alone do not count</td><td><span class="sev medium">MEDIUM</span></td><td>Manual</td></tr>
                   <tr><td><code>proxmox.enterprise-repo-unsubscribed</code></td><td>An enterprise repository (PVE or Ceph) is enabled without an active subscription, so <code>apt update</code> is refused and Proxmox's own packages stop receiving updates while Debian's keep arriving</td><td><span class="sev medium">MEDIUM</span></td><td><a href="#fix-proxmox.enterprise-repo-unsubscribed">Review</a></td></tr>
                 </tbody>
@@ -478,7 +478,7 @@
             <h2 id="sysctl">Kernel hardening <code>sysctl.</code></h2>
             <p>Read directly from <code>/proc/sys</code>, with no <code>sysctl</code> binary needed. These are the quiet knobs whose safe value is the same on essentially every server: none of them is the hole an attacker comes in through, each is what stops a foothold from becoming root or a spoofed packet from becoming a route. A parameter this kernel does not have (Yama not built in, say) is simply skipped.</p>
             <p>Unambiguous settings are <strong>Auto</strong>: Hostveil writes one reversible drop-in under <code>/etc/sysctl.d</code> and leaves the running kernel untouched. The change takes effect at the next boot, or when you explicitly run <code>sysctl --system</code>. Rollback removes or restores that file and refuses if it has since been edited.</p>
-            <p>Router-, relay-, and multi-homing-dependent settings remain <strong>Review</strong>. For example, strict reverse-path filtering can break asymmetric routing and disabling Proxy ARP breaks a host deliberately acting as a relay. Those retain the persistent and immediate alternatives so the operator makes the topology-dependent choice.</p>
+            <p>Router-, relay-, and multi-homing-dependent settings remain <strong>Review</strong>. For example, strict reverse-path filtering can break asymmetric routing and disabling Proxy ARP breaks a host acting as a relay. Those retain the persistent and immediate alternatives so the operator makes the topology-dependent choice.</p>
             <p><code>net.ipv4.ip_forward</code> is left unaudited: Docker, WireGuard, Tailscale exit nodes, and virtualization hosts all legitimately enable it, and Hostveil cannot tell those apart from an accident.</p>
             <div class="docs-table-wrap">
               <table>
@@ -529,9 +529,9 @@
             </div>
 
             <h2 id="dockerd">Docker daemon <code>dockerd.</code></h2>
-            <p>The Compose audit judges what your services declare and the CVE scan judges the images they run. This domain judges the daemon underneath both, which is the part of the stack that actually holds root.</p>
+            <p>The Compose audit judges what your services declare and the CVE scan judges the images they run. This domain judges the daemon underneath both, which is the part of the stack that holds root.</p>
             <p>It is worth being blunt about the worst finding here, because it is the worst finding Hostveil has. A daemon listening on a TCP port without TLS client verification is root on the host for anyone who can reach that port: no password, no vulnerability, one HTTP request that starts a container with your filesystem mounted inside it. Membership in the socket's group is the same authority from a local account, and unlike <code>sudo</code> it asks for nothing and logs nothing.</p>
-            <p><strong>Three sources, and they disagree.</strong> Docker's settings live in <code>/etc/docker/daemon.json</code>, in flags on the service unit, and in the running daemon. After an edit without a restart those are different answers. So the daemon defaults are read from <code>docker info</code>, which is what the daemon actually loaded; the socket and TLS settings are read from the file and the unit together, because <code>docker info</code> does not report them at all; and <code>ss</code> supplies the endpoint you can go and verify, without ever deciding whether a finding exists.</p>
+            <p><strong>Three sources, and they disagree.</strong> Docker's settings live in <code>/etc/docker/daemon.json</code>, in flags on the service unit, and in the running daemon. After an edit without a restart those are different answers. So the daemon defaults are read from <code>docker info</code>, which is what the daemon loaded; the socket and TLS settings are read from the file and the unit together, because <code>docker info</code> does not report them at all; and <code>ss</code> supplies the endpoint you can go and verify, without ever deciding whether a finding exists.</p>
             <p><strong>Every finding here is Manual, on purpose.</strong> The checker reads the running daemon, but a fix would edit a file the daemon does not read again until it restarts, and restarting Docker stops every container on the host. A fix that marked the finding resolved and raised your score while changing nothing an attacker can see would be worse than no fix, so the how-to-fix text carries the exact change and you choose the moment.</p>
             <div class="docs-table-wrap">
               <table>
@@ -552,7 +552,7 @@
 
             <h2 id="systemd">Service hardening <code>systemd.</code></h2>
             <p>Roughly half of a self-hosted server is not in a container. The Compose domain reads what your containers declare (privileged, running as root, no-new-privileges off) and a service started by a unit file has exactly the same decisions made about it. Until this domain existed, nothing looked at them.</p>
-            <p>systemd already knows the answers. <code>systemctl show</code> reports the <strong>effective</strong> value of each property after the unit file, every drop-in, and every default have been merged, so what Hostveil reads is what the service will actually run with.</p>
+            <p>systemd already knows the answers. <code>systemctl show</code> reports the <strong>effective</strong> value of each property after the unit file, every drop-in, and every default have been merged, so what Hostveil reads is what the service will run with.</p>
             <p><strong>Only your own units are audited.</strong> A unit counts if its file lives under <code>/etc/systemd/system</code> or <code>/usr/local/lib/systemd/system</code>: the ones you wrote or installed by hand. Your distribution hardens its own units on its own schedule, and second-guessing them means taking on maintenance of somebody else&rsquo;s service. Reporting on them would also bury your services under dozens of findings about software you did not choose, which is how a domain stops being read.</p>
             <div class="docs-table-wrap">
               <table>
@@ -581,7 +581,7 @@
 
             <h2 id="agent">AI agent runtimes <code>agent.</code></h2>
             <p>Self-hosted AI agents (<a href="https://docs.openclaw.ai/">OpenClaw</a>, <a href="https://hermes-agent.nousresearch.com/docs/">Hermes Agent</a> and <a href="https://goose-docs.ai/">Goose</a>) run a network gateway and keep API keys on disk in your home directory. Misconfigured, the worst case is someone reaching that gateway and driving an agent that can read your files and run commands as you.</p>
-            <p>This domain is <strong>skipped entirely</strong> unless one of those runtimes is actually installed, so a host that has never run an agent is not scored on it. Hostveil looks up home directories in <code>/etc/passwd</code> and stats only the paths listed below. It never walks your home.</p>
+            <p>This domain is <strong>skipped entirely</strong> unless one of those runtimes is installed, so a host that has never run an agent is not scored on it. Hostveil looks up home directories in <code>/etc/passwd</code> and stats only the paths listed below. It never walks your home.</p>
             <p>These projects ship their own config auditors (<code>openclaw security audit</code>), which cover their settings far more thoroughly than Hostveil tries to. What Hostveil adds is the part those tools cannot see: whether the gateway is <em>actually</em> listening on a reachable address, whether a firewall stands behind it, and whether your credential files are readable by other accounts on the box.</p>
             <div class="docs-table-wrap">
               <table>
@@ -605,13 +605,13 @@
 
             <h2 id="cve">Image CVEs <code>cve.</code> <em>(optional)</em></h2>
             <p>When Trivy is installed, Hostveil scans the images your Compose services run for known Critical, High, and Medium vulnerabilities. Findings are reported <strong>per image</strong>: a single image routinely ships hundreds of CVEs, and they all share one remediation.</p>
-            <p>Each scanned image produces up to two findings, split by what you can actually do about them:</p>
+            <p>Each scanned image produces up to two findings, split by what you can do about them:</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>What it flags</th><th>Severity</th><th>Fix</th></tr></thead>
                 <tbody>
                   <tr><td><code>cve.outdated-image</code></td><td>Vulnerabilities that are already fixed upstream</td><td>Worst in that group</td><td><a href="#fix-cve.outdated-image">Review</a></td></tr>
-                  <tr><td><code>cve.unpatched-image</code></td><td>Vulnerabilities nobody has published a fix for</td><td>Worst in that group</td><td>Unavailable</td></tr>
+                  <tr><td><code>cve.unpatched-image</code></td><td>Vulnerabilities with no published fix</td><td>Worst in that group</td><td>Unavailable</td></tr>
                   <tr><td><code>cve.unpatched-host</code></td><td>Vulnerabilities in the host's own packages that your distribution has not fixed</td><td>Worst in that group</td><td>Unavailable</td></tr>
                 </tbody>
               </table>
@@ -627,7 +627,7 @@
               <p>Vulnerabilities with no available patch get their own finding. Aggregating them away would let an image whose vulnerabilities are <em>all</em> unfixed disappear from the report entirely, and Hostveil would be claiming a host is clean when it is only stuck. The state is modelled as a first-class <strong>Unavailable</strong>.</p>
             </div>
 
-            <h2 id="fix-actions">What each fix actually does</h2>
+            <h2 id="fix-actions">What each fix does</h2>
             <p>Every finding above with an <code>Auto</code> or <code>Review</code> in its Fix column has a fix registered for it in <code>internal/fix</code>, and this is exactly what that fix does. It is generated from the current build, so it can never say something the code doesn't do. A <code>Review</code> finding with more than one entry lists every alternative it offers; the first is the one preselected everywhere, including <code>fix --all --review</code>.</p>
                       <h3>Container</h3>
           <dl class="fix-actions">
@@ -653,13 +653,13 @@
             <dd>
               <p lang="en">Delete <code>privileged: true</code></p>
               <p class="fix-benefit" lang="en">✓ A compromise of this container stops being a compromise of the host: it loses direct access to every device and almost every kernel capability root has.</p>
-              <p class="fix-warning" lang="en">⚠ If the service really does need host devices or kernel access; a VPN client, a hardware monitor, Docker-in-Docker; it will fail to start or quietly lose that function. Check its logs after recreating it, and if it needs one specific capability, grant just that with cap_add. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ If the service really does need host devices or kernel access; a VPN client, a hardware monitor, Docker-in-Docker; it will fail to start or silently lose that function. Check its logs after recreating it, and if it needs one specific capability, grant just that with cap_add. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds005"><code>compose.ds005</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Remove SYS_ADMIN from cap_add</p>
               <p class="fix-benefit" lang="en">✓ Takes away a capability that can be escalated into a container escape, so a compromise of this service stays inside it.</p>
-              <p class="fix-warning" lang="en">⚠ Services add capabilities on purpose: NET_ADMIN for a VPN or a firewall container, SYS_ADMIN for FUSE mounts, SYS_PTRACE for a debugger. If this one needs SYS_ADMIN, it will fail the operation that uses it once recreated. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Services add capabilities intentionally: NET_ADMIN for a VPN or a firewall container, SYS_ADMIN for FUSE mounts, SYS_PTRACE for a debugger. If this one needs SYS_ADMIN, it will fail the operation that uses it once recreated. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds006"><code>compose.ds006</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -742,7 +742,7 @@
             <dd>
               <p lang="en">Delete <code>ipc: host</code></p>
               <p class="fix-benefit" lang="en">✓ The container can no longer read or tamper with shared memory that host processes and other containers use.</p>
-              <p class="fix-warning" lang="en">⚠ If the service shares memory with a process on the host on purpose, that sharing stops; if it only needs to share with one other container, <code>ipc: "service:NAME"</code> is the narrower setting. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ If the service shares memory with a process on the host intentionally, that sharing stops; if it only needs to share with one other container, <code>ipc: "service:NAME"</code> is the narrower setting. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds022"><code>compose.ds022</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -774,7 +774,7 @@
             <dt id="fix-ssh.allowagentforwarding"><code>ssh.allowagentforwarding</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Disable SSH agent forwarding</p>
-              <p class="fix-benefit" lang="en">✓ Stops a compromised host from riding a forwarded SSH agent to authenticate elsewhere as the user, using credentials that were never actually stored here.</p>
+              <p class="fix-benefit" lang="en">✓ Stops a compromised host from riding a forwarded SSH agent to authenticate elsewhere as the user, using credentials that were never stored here.</p>
               <p class="fix-warning" lang="en">⚠ Existing workflows that hop through this host using a forwarded agent will stop working.</p>
             </dd>
             <dt id="fix-ssh.allowtcpforwarding"><code>ssh.allowtcpforwarding</code> <span class="fix-kind review">Review</span></dt>
@@ -876,7 +876,7 @@
               <ul>
                 <li>
               <p lang="en">Allow root only with an SSH key (prohibit-password) (recommended)</p>
-              <p class="fix-benefit" lang="en">✓ Keeps key-based root access working while removing the one thing root logins are actually dangerous for: a guessable or stolen password.</p>
+              <p class="fix-benefit" lang="en">✓ Keeps key-based root access working while removing the one thing root logins are dangerous for: a guessable or stolen password.</p>
               <p class="fix-warning" lang="en">⚠ Keep a working key for root, or use a sudo user instead.</p>
                 </li>
                 <li>
@@ -900,7 +900,7 @@
             <dt id="fix-ssh.usedns"><code>ssh.usedns</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Disable SSH reverse-DNS lookups</p>
-              <p class="fix-benefit" lang="en">✓ Removes a DNS lookup from the login path: both a minor timing/DoS surface and a spoofing vector, for a lookup the login never actually needed.</p>
+              <p class="fix-benefit" lang="en">✓ Removes a DNS lookup from the login path: both a minor timing/DoS surface and a spoofing vector, for a lookup the login never needed.</p>
             </dd>
             <dt id="fix-ssh.x11forwarding"><code>ssh.x11forwarding</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -925,7 +925,7 @@
             <dt id="fix-firewall.inactive"><code>firewall.inactive</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Allow SSH on 22/tcp, then enable ufw with a default-deny inbound policy</p>
-              <p class="fix-benefit" lang="en">✓ Turns on default-deny, so only the ports Hostveil confirmed sshd is actually listening on stay reachable; everything else stops accepting connections from off this host.</p>
+              <p class="fix-benefit" lang="en">✓ Turns on default-deny, so only the ports Hostveil confirmed sshd is listening on stay reachable; everything else stops accepting connections from off this host.</p>
               <p class="fix-warning" lang="en">⚠ Every inbound port except 22/tcp stops being reachable the moment this runs, including anything a container publishes. There is no rollback checkpoint: exec fixes are not file-backed, so undoing it means <code>ufw disable</code> by hand.</p>
             </dd>
           </dl>
@@ -989,7 +989,7 @@
             <dd>
               <p lang="en">Refresh apt metadata and fully upgrade installed packages</p>
               <p class="fix-benefit" lang="en">✓ Applies whatever security patches are already sitting unapplied right now: closes today's already-known gaps rather than waiting for the next automatic run.</p>
-              <p class="fix-warning" lang="en">⚠ Upgrading packages can restart the services they belong to, including sshd and the Docker daemon, and a container whose compose file has no restart policy in force stays down until <code>docker compose up -d</code> brings it back. A kernel or libc update may also need a reboot to actually take effect. There is no rollback checkpoint; undoing this means downgrading the affected packages by hand.</p>
+              <p class="fix-warning" lang="en">⚠ Upgrading packages can restart the services they belong to, including sshd and the Docker daemon, and a container whose compose file has no restart policy in force stays down until <code>docker compose up -d</code> brings it back. A kernel or libc update may also need a reboot to take effect. There is no rollback checkpoint; undoing this means downgrading the affected packages by hand.</p>
             </dd>
             <dt id="fix-updates.process-accounting"><code>updates.process-accounting</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -1000,7 +1000,7 @@
             <dt id="fix-updates.reboot-required"><code>updates.reboot-required</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Reboot in one minute (<code>shutdown -r +1</code>)</p>
-              <p class="fix-benefit" lang="en">✓ The host starts running the patched kernel and libraries it already has on disk, which is the only way the vulnerabilities those updates fixed actually stop applying to it.</p>
+              <p class="fix-benefit" lang="en">✓ The host starts running the patched kernel and libraries it already has on disk, which is the only way the vulnerabilities those updates fixed stop applying to it.</p>
               <p class="fix-warning" lang="en">⚠ Every service on this host goes down until the machine is back, and this session is disconnected. Services without a restart policy, and anything started by hand, stay down after the boot. If the new kernel fails to boot, getting the machine back needs console access. Run <code>shutdown -c</code> within the minute to cancel. There is no checkpoint: a reboot cannot be rolled back.</p>
             </dd>
             <dt id="fix-updates.rkhunter"><code>updates.rkhunter</code> <span class="fix-kind review">Review</span></dt>
@@ -1018,7 +1018,7 @@
             <dt id="fix-updates.sysstat-disabled"><code>updates.sysstat-disabled</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Set ENABLED to true</p>
-              <p class="fix-benefit" lang="en">✓ Turns on the data collection the sysstat package already has installed, so historical resource data actually starts accumulating instead of the package sitting present but silent.</p>
+              <p class="fix-benefit" lang="en">✓ Turns on the data collection the sysstat package already has installed, so historical resource data starts accumulating instead of the package sitting present but silent.</p>
             </dd>
           </dl>
           <h3>CVEs</h3>
@@ -1099,7 +1099,7 @@
             <dt id="fix-accounts.password-aging"><code>accounts.password-aging</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Harden password aging defaults</p>
-              <p class="fix-benefit" lang="en">✓ Forces credentials to actually expire and blocks changing a password back to itself immediately, so a leaked password has a shelf life instead of being valid forever.</p>
+              <p class="fix-benefit" lang="en">✓ Forces credentials to expire and blocks changing a password back to itself immediately, so a leaked password has a shelf life instead of being valid forever.</p>
             </dd>
             <dt id="fix-accounts.password-rounds"><code>accounts.password-rounds</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -1118,7 +1118,7 @@
                 <li>
               <p lang="en">Lock and expire alice (<code>usermod --lock --expiredate 1</code>) (recommended)</p>
               <p class="fix-benefit" lang="en">✓ The account can no longer log in by any route (password, SSH key or su) so a backdoor planted under it stops working, while the entry, its files and its history stay in place for you to investigate.</p>
-              <p class="fix-warning" lang="en">⚠ If something on this host deliberately logs in as alice; a recovery procedure, a monitoring agent, a second admin name for root; it stops working. There is no checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this. To reverse it: <code>usermod --unlock --expiredate '' alice</code>.</p>
+              <p class="fix-warning" lang="en">⚠ If something on this host logs in as alice; a recovery procedure, a monitoring agent, a second admin name for root; it stops working. There is no checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this. To reverse it: <code>usermod --unlock --expiredate '' alice</code>.</p>
                 </li>
                 <li>
               <p lang="en">Delete alice (<code>userdel</code>), keeping its home directory</p>
@@ -1211,7 +1211,7 @@
             <dd>
               <p lang="en">Set the owning user of each file to root, keeping its group</p>
               <p class="fix-benefit" lang="en">✓ The account that owned these files loses the access ownership gave it; every password hash, in /etc/shadow's case, and the permission bits mean what they appear to again.</p>
-              <p class="fix-warning" lang="en">⚠ If a service runs as that account and reads one of these files on purpose, it stops being able to. And if several files changed owner at once, something put them there: a restore run as the wrong user, an archive extracted with its own uids, and other files are likely affected too. The previous owner is checkpointed and a rollback restores it.</p>
+              <p class="fix-warning" lang="en">⚠ If a service runs as that account and reads one of these files intentionally, it stops being able to. And if several files changed owner at once, something put them there: a restore run as the wrong user, an archive extracted with its own uids, and other files are likely affected too. The previous owner is checkpointed and a rollback restores it.</p>
             </dd>
             <dt id="fix-fileperms.passwd"><code>fileperms.passwd</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -1265,7 +1265,7 @@
             <dt id="fix-agent.control-ui-insecure"><code>agent.control-ui-insecure</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Set kernel.kptr_restrict to 1</p>
-              <p class="fix-benefit" lang="en">✓ Closes the agent's control UI to unauthenticated access, so reaching it requires being someone the operator actually let in.</p>
+              <p class="fix-benefit" lang="en">✓ Closes the agent's control UI to unauthenticated access, so reaching it requires being someone the operator let in.</p>
             </dd>
             <dt id="fix-agent.elevated-enabled"><code>agent.elevated-enabled</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -1305,7 +1305,7 @@
             <dt id="fix-sysctl.accept-redirects"><code>sysctl.accept-redirects</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-accept-redirects.conf</p>
-              <p class="fix-benefit" lang="en">✓ Stops the kernel trusting ICMP redirects, closing an easy way for something on the local network to quietly re-route this host's outbound traffic through itself.</p>
+              <p class="fix-benefit" lang="en">✓ Stops the kernel trusting ICMP redirects, closing an easy way for something on the local network to silently re-route this host's outbound traffic through itself.</p>
             </dd>
             <dt id="fix-sysctl.accept-source-route"><code>sysctl.accept-source-route</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -1531,11 +1531,11 @@
               <ul>
                 <li>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-send-redirects.conf (recommended)</p>
-              <p class="fix-benefit" lang="en">✓ Stops this host sending ICMP redirects itself, which it should not be doing unless it is actually a router; removes a route-injection tool a compromised host could use against its neighbors.</p>
+              <p class="fix-benefit" lang="en">✓ Stops this host sending ICMP redirects itself, which it should not be doing unless it is a router; removes a route-injection tool a compromised host could use against its neighbors.</p>
                 </li>
                 <li>
               <p lang="en">Apply it now: kernel.kptr_restrict</p>
-              <p class="fix-benefit" lang="en">✓ Stops this host sending ICMP redirects itself, which it should not be doing unless it is actually a router; removes a route-injection tool a compromised host could use against its neighbors.</p>
+              <p class="fix-benefit" lang="en">✓ Stops this host sending ICMP redirects itself, which it should not be doing unless it is a router; removes a route-injection tool a compromised host could use against its neighbors.</p>
               <p class="fix-warning" lang="en">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
                 </li>
               </ul>
@@ -1670,7 +1670,7 @@
             <dd>
               <p lang="en">Set NoNewPrivileges=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Closes the setuid escalation path out of this unit: a compromised process cannot gain more privilege than the service already had, the same protection compose.ds006 gives a container.</p>
-              <p class="fix-warning" lang="en">⚠ Closes the setuid path out of this service. A service that deliberately escalates (anything calling a setuid helper) stops working, and it stops at the next restart rather than now.</p>
+              <p class="fix-warning" lang="en">⚠ Closes the setuid path out of this service. A service that escalates (anything calling a setuid helper) stops working, and it stops at the next restart rather than now.</p>
             </dd>
             <dt id="fix-systemd.private-devices"><code>systemd.private-devices</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -1718,7 +1718,7 @@
             <dd>
               <p lang="en">Set ProtectKernelTunables=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Makes /proc/sys and /sys read-only for the service, so a compromise of it cannot change kernel networking or security settings.</p>
-              <p class="fix-warning" lang="en">⚠ A service that manages kernel settings on purpose (a VPN enabling IP forwarding, a network manager, a container runtime) cannot after the restart. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
+              <p class="fix-warning" lang="en">⚠ A service that manages kernel settings intentionally (a VPN enabling IP forwarding, a network manager, a container runtime) cannot after the restart. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
             </dd>
             <dt id="fix-systemd.protect-system"><code>systemd.protect-system</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -1751,7 +1751,7 @@
             <dd>
               <p lang="en">Set every <code>autoindex on;</code> in /etc/ssh/sshd_config to off, then reload nginx</p>
               <p class="fix-benefit" lang="en">✓ Directories without an index file stop listing what is in them, so a stray backup or .env beside the site is no longer one click away.</p>
-              <p class="fix-warning" lang="en">⚠ A directory somebody meant to be browsable (a download mirror, a shared folder) stops listing and answers 403 instead. Listing is sometimes on for one location on purpose; if so, put it back for that location alone. If the proxy refuses the new configuration, Hostveil puts the original file back and reloads again. The edit has a checkpoint and rolls back exactly.</p>
+              <p class="fix-warning" lang="en">⚠ A directory somebody meant to be browsable (a download mirror, a shared folder) stops listing and answers 403 instead. Listing is sometimes on for one location intentionally; if so, put it back for that location alone. If the proxy refuses the new configuration, Hostveil puts the original file back and reloads again. The edit has a checkpoint and rolls back exactly.</p>
             </dd>
             <dt id="fix-proxy.no-scan-jail"><code>proxy.no-scan-jail</code> <span class="fix-kind review">Review</span></dt>
             <dd>

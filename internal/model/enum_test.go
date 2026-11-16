@@ -11,7 +11,7 @@ import "testing"
 //
 // These tests are the ones that walk the *const range* instead, from the
 // first constant to the sentinel. They are the only guard that a new
-// constant was actually described.
+// constant was described.
 
 // The domain enum, which has the most tables behind it and the worst
 // failure when one of them is missed: a Source with no description scores

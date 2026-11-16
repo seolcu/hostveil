@@ -137,8 +137,8 @@ func TestBackupsWithoutAHashStillRestore(t *testing.T) {
 }
 
 // An unreadable checkpoint used to vanish from the list with no message, so
-// a fix that had genuinely been applied looked like it never was, and it
-// also dropped out of recordedWrites, which can turn an honest rollback into
+// a fix that had been applied looked like it never was, and it
+// also dropped out of recordedWrites, which can turn an accurate rollback into
 // a false external-edit refusal.
 func TestUnreadableCheckpointIsReportedNotHidden(t *testing.T) {
 	s, _, good := savedCheckpoint(t)
@@ -216,7 +216,7 @@ func TestSaveRecordsTheBackupHash(t *testing.T) {
 
 // A checkpoint directory with no meta.json is not a damaged checkpoint. It is
 // the residue of a Save that never finished, and writeMeta's own comment says
-// so: metadata is written last precisely so "an interrupted Save leaves a
+// so: metadata is written last so "an interrupted Save leaves a
 // directory nothing will try to restore from".
 //
 // List tried anyway, and reported it as unreadable recovery history; a

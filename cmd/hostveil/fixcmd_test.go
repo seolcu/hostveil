@@ -191,7 +191,7 @@ func TestFixAllReportsFailureWhenNothingCouldBeApplied(t *testing.T) {
 	path := fixtureHost(t)
 
 	// The fix writes through a temp file beside the target, so a directory
-	// nobody may write to is what stops it, and it stops it at the write,
+	// no account may write to is what stops it, and it stops it at the write,
 	// after the backup, which is the failure shape that matters.
 	dir := filepath.Dir(path)
 	if err := os.Chmod(dir, 0o555); err != nil {
@@ -267,7 +267,7 @@ func TestRollbackDeclinesOverAnExternalEdit(t *testing.T) {
 	}
 }
 
-// --force is the escape hatch, and it must actually work: a decline the
+// --force is the escape hatch, and it must work: a decline the
 // user cannot override is just a failure.
 func TestRollbackForceOverridesTheDecline(t *testing.T) {
 	path := fixtureHost(t)

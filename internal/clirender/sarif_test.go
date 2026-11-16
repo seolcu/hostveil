@@ -170,7 +170,7 @@ func TestSARIFLevelsStillMeanWhatTheyMeant(t *testing.T) {
 //
 // It asserts the property rather than three literals: each level's score is
 // well-formed, inside the scale, and strictly greater than the level below
-// it. Pinning the exact numbers would fail the day somebody deliberately
+// it. Pinning the exact numbers would fail the day somebody
 // retunes them, which is a choice rather than a defect; ordering is not.
 func TestEverySeverityCarriesASecurityScore(t *testing.T) {
 	prev := 11.0

@@ -150,7 +150,7 @@ func printScanHistory() int {
 		p := points[i]
 		// N/A, not 0. A scan where every domain was skipped or failed has
 		// no score, and printing a number for it would draw a cliff where
-		// the truth is that nobody could look.
+		// the truth is that the scan could not look.
 		score := "  N/A"
 		if p.Applicable {
 			score = fmt.Sprintf("%3d/100", p.Overall)

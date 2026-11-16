@@ -49,7 +49,7 @@ func modeModels(w, h int) map[string]*appModel {
 // behind the enum: modeForceConfirm and modeLayout were never built, so
 // "every mode" meant eight of ten and the two screens most likely to be
 // reached in a bad moment (a declined rollback, and the picker) were
-// composed by nobody.
+// that no code composes.
 var modeNames = map[mode]string{
 	modeScanning:        "scanning",
 	modeList:            "list",
@@ -145,7 +145,7 @@ func TestUnsetSizeRenders(t *testing.T) {
 	}
 }
 
-// The compact header is one row at every width, that is the whole point of
+// The compact header is one row at every width, that is the purpose of
 // it. The full strip costs three to five rows and is worth it on the list;
 // repeating it over a detail view is what left an 80x24 terminal with half a
 // screen of chrome.

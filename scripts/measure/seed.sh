@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Put a throwaway host into the `seeded` profile: the deliberately
+# Put a throwaway host into the `seeded` profile: the
 # misconfigured self-hosted server the published measurements were taken on.
 #
 #   scripts/measure/seed.sh [--user NAME] [--no-instruments] [--force]
@@ -7,7 +7,7 @@
 #
 # This exists because the measurements page told a reader to clone the repo and
 # run the harness, and the harness measures whatever host it is pointed at. The
-# seeding lived in a script nobody could see, so the published figures were not
+# seeding lived in an unpublished script, so the published figures were not
 # reproducible by the instructions published beside them, and the fixture drifted
 # from the product without anything noticing: an earlier copy of it wrote the
 # OpenClaw config to ~/.config/openclaw/, which is not a path the agent checker
@@ -45,7 +45,7 @@ say() { printf '\n==> %s\n' "$*"; }
 
 [ "$(id -u)" = 0 ] || { echo "seed: needs root" >&2; exit 1; }
 
-# --- what this host was actually made to look like -------------------------
+# --- what this host was made to look like -------------------------
 #
 # The measurement is only comparable across distributions if the fixture means
 # the same thing on each of them, and it cannot always: Alpine has no
@@ -57,7 +57,7 @@ say() { printf '\n==> %s\n' "$*"; }
 # read as an all-clear) so it is recorded rather than left to be inferred from
 # a score. Every weakness declares itself as it is seeded, the manifest goes
 # where run.sh can put it in the measurement JSON, and a `require` that does
-# not arrive stops the script instead of producing a host nobody can interpret.
+# not arrive stops the script instead of producing a host that cannot be interpreted.
 MANIFEST=${SEED_MANIFEST:-/var/lib/hostveil-measure/seeded.json}
 DOCKER_BENCH_REV=154869da6418089decf7e1ab0cfca0e1cdfc5c49
 TRIVY_INSTALL_REV=dcbadb7b15076c405ce7d59f04cde9991b90da22
@@ -288,7 +288,7 @@ case "$PKG" in
   apt) ufw --force disable >/dev/null 2>&1 || true; require firewall-off have_firewall ufw ;;
   dnf) svc_disable firewalld || true; require firewall-off have_firewall firewall-cmd ;;
   # Alpine has no ufw and no firewalld. iptables with an empty ruleset is the
-  # honest equivalent: a firewall mechanism present and not filtering anything,
+  # accurate equivalent: a firewall mechanism present and not filtering anything,
   # which is the state firewall.inactive describes.
   apk) require firewall-off have_firewall iptables ;;
 esac
@@ -421,12 +421,12 @@ EOF
 esac
 
 say "AI agent runtime configs (OpenClaw + Hermes) under $SEED_HOME"
-# Neither project is packaged, and neither ships a daemon this could honestly
+# Neither project is packaged, and neither ships a daemon this could accurately
 # run, so this seeds their *configuration*. That is what the agent domain
 # judges: a runtime is detected by its home-directory layout, and the findings
 # are about the config's contents and the file modes around it.
 #
-# The paths are load-bearing and are pinned by internal/docs/seed_test.go
+# The paths matter and are pinned by internal/docs/seed_test.go
 # against internal/check/agent's own runtime table. A fixture that writes
 # somewhere the checker does not look produces "no agent runtime found" on a
 # host seeded to have two, and reads as a clean domain rather than a broken

@@ -16,7 +16,7 @@
 # Three outcomes, not two. A port that answers, a port that refuses, and a
 # port whose packets vanish are three different states, and collapsing the
 # last two into "closed" would erase the difference between "the service
-# stopped listening" and "the firewall now drops it", which is precisely the
+# stopped listening" and "the firewall now drops it", which is the
 # distinction between two of the fixes being measured.
 set -euo pipefail
 

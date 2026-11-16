@@ -136,7 +136,7 @@ func TestKbdInteractiveFlaggedOnlyWhenPasswordsAreOff(t *testing.T) {
 // ChallengeResponseAuthentication is the pre-8.7 alias for the same option,
 // and sshd keeps the first value it sees for either keyword. The finding
 // must respect an alias-based opt-out, and when the alias is the keyword in
-// force, name it so the fix edits the directive that actually wins.
+// force, name it so the fix edits the directive that wins.
 func TestChallengeResponseAliasIsRespected(t *testing.T) {
 	got := idsOf(auditConfig(parseConfig([]byte("PasswordAuthentication no\nChallengeResponseAuthentication no\n")), "x"))
 	if _, ok := got["ssh.kbdinteractive"]; ok {

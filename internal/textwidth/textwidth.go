@@ -1,5 +1,5 @@
 // Package textwidth fits text to a terminal measured in the unit a
-// terminal actually uses: display columns.
+// terminal uses: display columns.
 //
 // It exists because three notions of "how wide is this" were in use at
 // once, and only one of them was right. The TUI's padRight measured
@@ -34,7 +34,7 @@ import (
 )
 
 // narrow measures with East Asian Ambiguous characters counted as one
-// column, and it is deliberately not runewidth's package default.
+// column, and it is not runewidth's package default.
 //
 // That default is chosen from the environment: runewidth reads LANG and
 // LC_ALL at init and sets EastAsianWidth when the locale is an East Asian
@@ -52,7 +52,7 @@ import (
 // TestTextwidthAgreesWithLipgloss in internal/ui/tui pins that.
 //
 // Which is why RUNEWIDTH_EASTASIAN is honoured here rather than ignored.
-// Neutralizing the *locale* is the point above; the same binary must not
+// Neutralizing the *locale* is the goal above; the same binary must not
 // lay out differently in Seoul and Berlin. That variable is a different
 // thing: it is the operator saying their terminal renders ambiguous
 // characters wide, and lipgloss honours it, in a package init that mutates
@@ -75,7 +75,7 @@ var narrow = func() *runewidth.Condition {
 // process environment, which is global and read at init anyway.
 const eastAsianEnv = "RUNEWIDTH_EASTASIAN"
 
-// eastAsianWidth is x/ansi's rule, kept identical on purpose: a value that
+// eastAsianWidth is x/ansi's rule, kept identical: a value that
 // does not parse as a bool leaves the setting alone, and only a true value
 // turns it on.
 func eastAsianWidth(v string) bool {

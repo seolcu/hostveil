@@ -17,7 +17,7 @@ go test ./...</code></pre></div>
             <p>The engine lives in <code>internal/core</code>; the CLI, TUI, and web UIs are thin layers over it. An import-lint <strong>test</strong> enforces that <code>ui/*</code> never imports <code>fix</code>, <code>history</code>, <code>check</code>, or <code>compose</code>. That is what keeps the three interfaces behaving identically. The full repository layout and architecture notes are in <a href="https://github.com/seolcu/hostveil/blob/main/docs/DEVELOPMENT.md"><code>DEVELOPMENT.md</code></a>.</p>
 
             <h2 id="extending">Extending it</h2>
-            <p>There is no plugin system, no rule file and no config file, and that is deliberate. The axis weights have to sum to 100 for the score to mean anything; every finding has to carry a remediation someone argued about, and the register of findings left unfixed on purpose is <em>prose in a doc comment</em> that tests parse; and the distribution story is one signed static binary. A rule format would put all three behind an unsigned file.</p>
+            <p>There is no plugin system, no rule file and no config file, and that is deliberate. The axis weights have to sum to 100 for the score to mean anything; every finding has to carry a remediation someone argued about, and the register of findings left unfixed is <em>prose in a doc comment</em> that tests parse; and the distribution story is one signed static binary. A rule format would put all three behind an unsigned file.</p>
             <p>So extending Hostveil means writing Go and rebuilding, and the three things you might want to add differ in size by an order of magnitude.</p>
             <div class="docs-table-wrap">
               <table>

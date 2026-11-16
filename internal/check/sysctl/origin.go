@@ -172,7 +172,7 @@ func parseAssignment(line string) (key string, value int64, ok bool) {
 
 // originOf returns the assignment responsible for the values a rule flagged.
 //
-// It only accepts an assignment whose value is the one actually running. A
+// It only accepts an assignment whose value is the one running. A
 // file that sets a *different* value is not why the parameter is weak
 // (something set it at runtime instead) and naming it would send the operator
 // to edit a line that already says the right thing.

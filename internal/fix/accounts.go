@@ -19,7 +19,7 @@ func registerAccounts(r *Registry) {
 			"easiest way a stray world-readable file leaks something it shouldn't.",
 		[]loginDefault{{"UMASK", "027"}}))
 	r.Register("accounts.password-aging", buildLoginDefaults("Harden password aging defaults",
-		"Forces credentials to actually expire and blocks changing a password back to itself "+
+		"Forces credentials to expire and blocks changing a password back to itself "+
 			"immediately, so a leaked password has a shelf life instead of being valid forever.",
 		[]loginDefault{{"PASS_MIN_DAYS", "1"}, {"PASS_MAX_DAYS", "365"}}))
 	r.Register("accounts.core-dumps", buildCoreDumpLimit)

@@ -46,7 +46,7 @@ func TestLookPathFindsAToolThatOnlyLivesInAnAdminDir(t *testing.T) {
 		t.Errorf("LookPath(%q) = %q, want %q", name, got, want)
 	}
 	if !Has(DefaultRunner{}, name) {
-		t.Error("Has disagrees with LookPath; Has is what the firewall probe actually calls")
+		t.Error("Has disagrees with LookPath; Has is what the firewall probe calls")
 	}
 }
 
@@ -95,7 +95,7 @@ func TestLookPathDoesNotRewriteAPathTheCallerGave(t *testing.T) {
 }
 
 // PATH still wins. The admin directories are appended, so a host that
-// deliberately shadows a tool earlier on PATH keeps its own answer.
+// shadows a tool earlier on PATH keeps its own answer.
 func TestPathStillWinsOverTheAdminDirs(t *testing.T) {
 	const name = "hostveil-test-shadowed"
 	adminBin(t, name, 0o755)

@@ -26,7 +26,7 @@ func FromEnv() Explainer {
 	}
 }
 
-// unknownProvider reports itself Available so the engine actually calls
+// unknownProvider reports itself Available so the engine calls
 // Explain and surfaces which value was wrong, rather than the generic
 // "no AI provider is reachable" message every other misconfiguration
 // produces: a typo in HOSTVEIL_AI_PROVIDER is a configuration error, not

@@ -17,7 +17,7 @@ import (
 	"github.com/seolcu/hostveil/internal/ui/theme"
 )
 
-// The palettes are written as 24-bit hex and almost nobody sees them that way.
+// The palettes are written as 24-bit hex and almost no terminal shows them that way.
 //
 // Hostveil's subject is servers, and a server is reached over SSH, which does
 // not forward COLORTERM. Without it colorprofile degrades the TUI to the
@@ -39,7 +39,7 @@ import (
 // The severity that means "reachable now, from off-host, by someone holding
 // nothing" was drawn in the color that means "this is the part you can skip".
 //
-// So the palettes are held to what the terminal actually renders, on both
+// So the palettes are held to what the terminal renders, on both
 // profiles, and this test is the only place that asks.
 //
 // It lives here rather than in internal/ui/theme because that package is pure
@@ -66,7 +66,7 @@ func chromaticRoles(p theme.Palette) map[string]string {
 // beside, or as the body text.
 //
 // Manual and Unavail join Low here for the same reason, not chromaticRoles:
-// both are deliberately muted rather than heats (see the Palette doc
+// both are muted rather than heats (see the Palette doc
 // comment), so a 256-color terminal collapsing one to a cube greyscale entry
 // is acceptable; it just may not be the *same* entry as Low, Slate, Bone, or
 // each other, which is exactly the collision the two used to share when both
@@ -81,7 +81,7 @@ func distinctRoles(p theme.Palette) map[string]string {
 	return m
 }
 
-// index256 is the palette entry a terminal without truecolor will actually
+// index256 is the palette entry a terminal without truecolor will
 // draw for a hex, through the same code path the TUI renders with.
 func index256(hex string) int {
 	return int(ansi.Convert256(lipgloss.Color(hex)))
@@ -125,7 +125,7 @@ func TestNoTwoRolesCollapseOntoOneColor(t *testing.T) {
 	}
 }
 
-// The truecolor path is the one nobody was worried about, which is exactly why
+// The truecolor path is the one no one was worried about, which is exactly why
 // it is worth a line: a hex nudged until it clears the quantiser is still the
 // color a modern terminal draws, and moving one far enough to fix 256 colors
 // while wrecking 24-bit would be trading one operator's screen for another's.
@@ -145,14 +145,14 @@ func TestNudgingForThe256PathLeavesTruecolorAlone(t *testing.T) {
 
 // The two tests above hold the palette to the quantiser. This one holds the
 // *rendering* to the palette, which is a different claim and the one that
-// actually broke: a correct color is worth nothing if the row draws something
+// broke: a correct color is worth nothing if the row draws something
 // else with it. The screenshot that started this had 42 High findings on it
 // and not one red pixel, and no test in this package noticed, because they all
 // compare rendered output against rendered output: both sides built from the
 // same styles, so both sides are wrong together.
 //
 // So this renders a real row and puts it through colorprofile's writer at
-// ANSI256, which is the code path an SSH session's bytes actually take, then
+// ANSI256, which is the code path an SSH session's bytes take, then
 // reads the escape sequence back off the wire.
 func TestAHighRowIsDrawnInAColorOverSSH(t *testing.T) {
 	m := modeModels(200, 40)["list"]

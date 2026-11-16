@@ -48,7 +48,7 @@ func send(m tea.Model, msg tea.Msg) tea.Model {
 // y and a now batch that command together with a ticker (see
 // keyPreview/startBatch) so the screen can show a ticking elapsed clock
 // while the apply is in flight, so cmd() answers with a tea.BatchMsg rather
-// than the appliedMsg/batchAppliedMsg Update actually branches on. The apply
+// than the appliedMsg/batchAppliedMsg Update branches on. The apply
 // command is always first in that batch; the ticker is never run here: its
 // function blocks for a real wall-clock second, and these tests only want
 // to know what the apply did.
@@ -65,8 +65,8 @@ func applyMsg(cmd tea.Cmd) tea.Msg {
 // all.
 //
 // 150x31 and the three-pane console arrangement, because that is what the
-// page has room for and what a terminal wide enough to use Hostveil actually
-// shows. The fixture is deliberately a mixed host rather than a wrecked one
+// page has room for and what a terminal wide enough to use Hostveil
+// shows. The fixture is a mixed host rather than a wrecked one
 // (a degraded domain, a skipped one, findings at all three levels, and a
 // couple marked for a batch fix) so the picture carries the claims the page
 // makes beside it instead of just looking alarming.
@@ -98,7 +98,7 @@ func siteFrame(t *testing.T) string {
 //
 // A file path gets the one frame the website uses (site/assets/tui.png, at
 // its published 96x34); a directory gets every mode, one .ans per screen, for
-// eyeballing a change across the whole interface. There is deliberately one
+// eyeballing a change across the whole interface. There is one
 // hook rather than two: a second dumper drifts out of step with the first.
 func TestSnapshotDump(t *testing.T) {
 	path := os.Getenv("HOSTVEIL_SNAPSHOT")
@@ -160,7 +160,7 @@ func TestDetailAIExplanation(t *testing.T) {
 // are more findings than fit on screen.
 func TestListScrolls(t *testing.T) {
 	// One real finding across twenty services, which is what a compose host
-	// with twenty services actually looks like, and it keeps the fixture from
+	// with twenty services looks like, and it keeps the fixture from
 	// naming twenty findings Hostveil cannot report. The rows are told apart
 	// by service, so the scroll assertions below read those rather than the id.
 	var fs []model.Finding

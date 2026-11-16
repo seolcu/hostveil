@@ -31,9 +31,9 @@ func TestEveryRegisteredFixIsValid(t *testing.T) {
 		// would silently skip this test's coverage. Nothing registers one
 		// today, and the CVE decision depends on that staying true: a
 		// "cve.*" pattern would sweep up every per-CVE finding the registry
-		// deliberately declines. Make introducing one a visible act.
+		// declines. Make introducing one a visible act.
 		if strings.ContainsAny(id, "*?") {
-			t.Errorf("glob pattern %q has no representative finding; register an exact ID, or extend this test deliberately", id)
+			t.Errorf("glob pattern %q has no representative finding; register an exact ID, or extend this test", id)
 			continue
 		}
 		f := representative(id)
@@ -76,10 +76,10 @@ func TestUnregisteredFindingHasNoFix(t *testing.T) {
 }
 
 // TestKnownUnregisteredFindings pins the findings that are fixable in
-// principle but deliberately have no builder, each for a reason recorded
+// principle but have no builder, each for a reason recorded
 // in Default's doc comment. Registering one of these means deleting an
-// assertion here, which is the point: the decision should be argued with,
-// not quietly reversed.
+// assertion here, so that the decision should be argued with,
+// not silently reversed.
 func TestKnownUnregisteredFindings(t *testing.T) {
 	// The list is declineReasons, the one users read through WhyNoFix. A
 	// copy of it here was a third place to edit for every fix registered,
@@ -94,7 +94,7 @@ func TestKnownUnregisteredFindings(t *testing.T) {
 }
 
 // Every entry in checkerDeclaresReview must name a registered fix; one that
-// does not is a stale entry quietly claiming a checker's caution for nothing.
+// does not is a stale entry silently claiming a checker's caution for nothing.
 func TestCheckerDeclaresReviewNamesRegisteredFixes(t *testing.T) {
 	r := Default()
 	for id := range checkerDeclaresReview {
@@ -113,7 +113,7 @@ func TestCheckerDeclaresReviewNamesRegisteredFixes(t *testing.T) {
 }
 
 // TestCVERollupIsFixableButPerCVEIsNot asserts both halves of the CVE
-// decision at once, which is the point of having it in one test: a "cve.*"
+// decision at once, which is why it is one test: a "cve.*"
 // glob would satisfy the first assertion and break the second. Per-CVE
 // findings stay unfixable because a package version is not an image tag;
 // the per-image rollup is fixable because re-pulling a mutable tag needs no
@@ -310,7 +310,7 @@ func TestExecFixTransformsPure(t *testing.T) {
 }
 
 // The property that makes this fix safe to apply unattended: it only ever
-// removes permission bits. Assigning the rule's MaxMode outright would GRANT
+// removes permission bits. Assigning the rule's MaxMode directly would GRANT
 // access: /etc/shadow at 0604 violates a 0640 rule, and setting it to 0640
 // hands the shadow group a read bit the file never had.
 func TestTightenOnlyRemovesBits(t *testing.T) {
@@ -443,11 +443,11 @@ func TestFilePermsFixHandlesPathsContainingTheHumanSeparator(t *testing.T) {
 }
 
 // buildRepullImage's Benefit must not promise more than a re-pulled floating
-// tag can actually deliver: re-resolving the tag *may* pick up a fix for the
+// tag can deliver: re-resolving the tag *may* pick up a fix for the
 // CVE that triggered the finding, but Hostveil has no way to confirm it did,
 // since the same tag can move for unrelated reasons too. This mirrors
 // internal/check/cve's own HowToFix, which carries the identical caveat,
-// and it is the property the whole feature exists to state honestly, per the
+// and it is the property the whole feature exists to state accurately, per the
 // user's original example: fast patches are attractive on a self-hosted box
 // and risky on a stable one, and a Benefit that oversold "this fixes it"
 // would hide the second half of that trade-off.

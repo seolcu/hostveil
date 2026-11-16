@@ -32,12 +32,12 @@
       //
       // GitHub Pages serves files, not content negotiation, so the only place
       // this decision can be made is here, and the risk of making it here is
-      // trapping someone: a reader who deliberately clicked "English" must not
+      // trapping someone: a reader who clicked "English" must not
       // be bounced back on the next click. So the switcher records that choice
       // and this defers to it forever after.
       //
       // Only from the English page, only when the browser's own preference
-      // list actually leads with Korean, and never when a crawler is reading
+      // list leads with Korean, and never when a crawler is reading
       // (they do not run this): the hreflang links above are what they read.
       (function () {
         try {
@@ -654,13 +654,13 @@
             <dd>
               <p lang="en">Delete <code>privileged: true</code></p>
               <p class="fix-benefit" lang="en">✓ A compromise of this container stops being a compromise of the host: it loses direct access to every device and almost every kernel capability root has.</p>
-              <p class="fix-warning" lang="en">⚠ If the service really does need host devices or kernel access; a VPN client, a hardware monitor, Docker-in-Docker; it will fail to start or quietly lose that function. Check its logs after recreating it, and if it needs one specific capability, grant just that with cap_add. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ If the service really does need host devices or kernel access; a VPN client, a hardware monitor, Docker-in-Docker; it will fail to start or silently lose that function. Check its logs after recreating it, and if it needs one specific capability, grant just that with cap_add. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds005"><code>compose.ds005</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Remove SYS_ADMIN from cap_add</p>
               <p class="fix-benefit" lang="en">✓ Takes away a capability that can be escalated into a container escape, so a compromise of this service stays inside it.</p>
-              <p class="fix-warning" lang="en">⚠ Services add capabilities on purpose: NET_ADMIN for a VPN or a firewall container, SYS_ADMIN for FUSE mounts, SYS_PTRACE for a debugger. If this one needs SYS_ADMIN, it will fail the operation that uses it once recreated. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Services add capabilities intentionally: NET_ADMIN for a VPN or a firewall container, SYS_ADMIN for FUSE mounts, SYS_PTRACE for a debugger. If this one needs SYS_ADMIN, it will fail the operation that uses it once recreated. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds006"><code>compose.ds006</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -743,7 +743,7 @@
             <dd>
               <p lang="en">Delete <code>ipc: host</code></p>
               <p class="fix-benefit" lang="en">✓ The container can no longer read or tamper with shared memory that host processes and other containers use.</p>
-              <p class="fix-warning" lang="en">⚠ If the service shares memory with a process on the host on purpose, that sharing stops; if it only needs to share with one other container, <code>ipc: "service:NAME"</code> is the narrower setting. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ If the service shares memory with a process on the host intentionally, that sharing stops; if it only needs to share with one other container, <code>ipc: "service:NAME"</code> is the narrower setting. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds022"><code>compose.ds022</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -775,7 +775,7 @@
             <dt id="fix-ssh.allowagentforwarding"><code>ssh.allowagentforwarding</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Disable SSH agent forwarding</p>
-              <p class="fix-benefit" lang="en">✓ Stops a compromised host from riding a forwarded SSH agent to authenticate elsewhere as the user, using credentials that were never actually stored here.</p>
+              <p class="fix-benefit" lang="en">✓ Stops a compromised host from riding a forwarded SSH agent to authenticate elsewhere as the user, using credentials that were never stored here.</p>
               <p class="fix-warning" lang="en">⚠ Existing workflows that hop through this host using a forwarded agent will stop working.</p>
             </dd>
             <dt id="fix-ssh.allowtcpforwarding"><code>ssh.allowtcpforwarding</code> <span class="fix-kind review">Review</span></dt>
@@ -877,7 +877,7 @@
               <ul>
                 <li>
               <p lang="en">Allow root only with an SSH key (prohibit-password) (recommended)</p>
-              <p class="fix-benefit" lang="en">✓ Keeps key-based root access working while removing the one thing root logins are actually dangerous for: a guessable or stolen password.</p>
+              <p class="fix-benefit" lang="en">✓ Keeps key-based root access working while removing the one thing root logins are dangerous for: a guessable or stolen password.</p>
               <p class="fix-warning" lang="en">⚠ Keep a working key for root, or use a sudo user instead.</p>
                 </li>
                 <li>
@@ -901,7 +901,7 @@
             <dt id="fix-ssh.usedns"><code>ssh.usedns</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Disable SSH reverse-DNS lookups</p>
-              <p class="fix-benefit" lang="en">✓ Removes a DNS lookup from the login path: both a minor timing/DoS surface and a spoofing vector, for a lookup the login never actually needed.</p>
+              <p class="fix-benefit" lang="en">✓ Removes a DNS lookup from the login path: both a minor timing/DoS surface and a spoofing vector, for a lookup the login never needed.</p>
             </dd>
             <dt id="fix-ssh.x11forwarding"><code>ssh.x11forwarding</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -926,7 +926,7 @@
             <dt id="fix-firewall.inactive"><code>firewall.inactive</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Allow SSH on 22/tcp, then enable ufw with a default-deny inbound policy</p>
-              <p class="fix-benefit" lang="en">✓ Turns on default-deny, so only the ports Hostveil confirmed sshd is actually listening on stay reachable; everything else stops accepting connections from off this host.</p>
+              <p class="fix-benefit" lang="en">✓ Turns on default-deny, so only the ports Hostveil confirmed sshd is listening on stay reachable; everything else stops accepting connections from off this host.</p>
               <p class="fix-warning" lang="en">⚠ Every inbound port except 22/tcp stops being reachable the moment this runs, including anything a container publishes. There is no rollback checkpoint: exec fixes are not file-backed, so undoing it means <code>ufw disable</code> by hand.</p>
             </dd>
           </dl>
@@ -990,7 +990,7 @@
             <dd>
               <p lang="en">Refresh apt metadata and fully upgrade installed packages</p>
               <p class="fix-benefit" lang="en">✓ Applies whatever security patches are already sitting unapplied right now: closes today's already-known gaps rather than waiting for the next automatic run.</p>
-              <p class="fix-warning" lang="en">⚠ Upgrading packages can restart the services they belong to, including sshd and the Docker daemon, and a container whose compose file has no restart policy in force stays down until <code>docker compose up -d</code> brings it back. A kernel or libc update may also need a reboot to actually take effect. There is no rollback checkpoint; undoing this means downgrading the affected packages by hand.</p>
+              <p class="fix-warning" lang="en">⚠ Upgrading packages can restart the services they belong to, including sshd and the Docker daemon, and a container whose compose file has no restart policy in force stays down until <code>docker compose up -d</code> brings it back. A kernel or libc update may also need a reboot to take effect. There is no rollback checkpoint; undoing this means downgrading the affected packages by hand.</p>
             </dd>
             <dt id="fix-updates.process-accounting"><code>updates.process-accounting</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -1001,7 +1001,7 @@
             <dt id="fix-updates.reboot-required"><code>updates.reboot-required</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Reboot in one minute (<code>shutdown -r +1</code>)</p>
-              <p class="fix-benefit" lang="en">✓ The host starts running the patched kernel and libraries it already has on disk, which is the only way the vulnerabilities those updates fixed actually stop applying to it.</p>
+              <p class="fix-benefit" lang="en">✓ The host starts running the patched kernel and libraries it already has on disk, which is the only way the vulnerabilities those updates fixed stop applying to it.</p>
               <p class="fix-warning" lang="en">⚠ Every service on this host goes down until the machine is back, and this session is disconnected. Services without a restart policy, and anything started by hand, stay down after the boot. If the new kernel fails to boot, getting the machine back needs console access. Run <code>shutdown -c</code> within the minute to cancel. There is no checkpoint: a reboot cannot be rolled back.</p>
             </dd>
             <dt id="fix-updates.rkhunter"><code>updates.rkhunter</code> <span class="fix-kind review">Review</span></dt>
@@ -1019,7 +1019,7 @@
             <dt id="fix-updates.sysstat-disabled"><code>updates.sysstat-disabled</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Set ENABLED to true</p>
-              <p class="fix-benefit" lang="en">✓ Turns on the data collection the sysstat package already has installed, so historical resource data actually starts accumulating instead of the package sitting present but silent.</p>
+              <p class="fix-benefit" lang="en">✓ Turns on the data collection the sysstat package already has installed, so historical resource data starts accumulating instead of the package sitting present but silent.</p>
             </dd>
           </dl>
           <h3>CVE</h3>
@@ -1100,7 +1100,7 @@
             <dt id="fix-accounts.password-aging"><code>accounts.password-aging</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Harden password aging defaults</p>
-              <p class="fix-benefit" lang="en">✓ Forces credentials to actually expire and blocks changing a password back to itself immediately, so a leaked password has a shelf life instead of being valid forever.</p>
+              <p class="fix-benefit" lang="en">✓ Forces credentials to expire and blocks changing a password back to itself immediately, so a leaked password has a shelf life instead of being valid forever.</p>
             </dd>
             <dt id="fix-accounts.password-rounds"><code>accounts.password-rounds</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -1119,7 +1119,7 @@
                 <li>
               <p lang="en">Lock and expire alice (<code>usermod --lock --expiredate 1</code>) (recommended)</p>
               <p class="fix-benefit" lang="en">✓ The account can no longer log in by any route (password, SSH key or su) so a backdoor planted under it stops working, while the entry, its files and its history stay in place for you to investigate.</p>
-              <p class="fix-warning" lang="en">⚠ If something on this host deliberately logs in as alice; a recovery procedure, a monitoring agent, a second admin name for root; it stops working. There is no checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this. To reverse it: <code>usermod --unlock --expiredate '' alice</code>.</p>
+              <p class="fix-warning" lang="en">⚠ If something on this host logs in as alice; a recovery procedure, a monitoring agent, a second admin name for root; it stops working. There is no checkpoint: exec fixes are not file-backed, so Hostveil cannot undo this. To reverse it: <code>usermod --unlock --expiredate '' alice</code>.</p>
                 </li>
                 <li>
               <p lang="en">Delete alice (<code>userdel</code>), keeping its home directory</p>
@@ -1212,7 +1212,7 @@
             <dd>
               <p lang="en">Set the owning user of each file to root, keeping its group</p>
               <p class="fix-benefit" lang="en">✓ The account that owned these files loses the access ownership gave it; every password hash, in /etc/shadow's case, and the permission bits mean what they appear to again.</p>
-              <p class="fix-warning" lang="en">⚠ If a service runs as that account and reads one of these files on purpose, it stops being able to. And if several files changed owner at once, something put them there: a restore run as the wrong user, an archive extracted with its own uids, and other files are likely affected too. The previous owner is checkpointed and a rollback restores it.</p>
+              <p class="fix-warning" lang="en">⚠ If a service runs as that account and reads one of these files intentionally, it stops being able to. And if several files changed owner at once, something put them there: a restore run as the wrong user, an archive extracted with its own uids, and other files are likely affected too. The previous owner is checkpointed and a rollback restores it.</p>
             </dd>
             <dt id="fix-fileperms.passwd"><code>fileperms.passwd</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -1266,7 +1266,7 @@
             <dt id="fix-agent.control-ui-insecure"><code>agent.control-ui-insecure</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Set kernel.kptr_restrict to 1</p>
-              <p class="fix-benefit" lang="en">✓ Closes the agent's control UI to unauthenticated access, so reaching it requires being someone the operator actually let in.</p>
+              <p class="fix-benefit" lang="en">✓ Closes the agent's control UI to unauthenticated access, so reaching it requires being someone the operator let in.</p>
             </dd>
             <dt id="fix-agent.elevated-enabled"><code>agent.elevated-enabled</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -1306,7 +1306,7 @@
             <dt id="fix-sysctl.accept-redirects"><code>sysctl.accept-redirects</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-accept-redirects.conf</p>
-              <p class="fix-benefit" lang="en">✓ Stops the kernel trusting ICMP redirects, closing an easy way for something on the local network to quietly re-route this host's outbound traffic through itself.</p>
+              <p class="fix-benefit" lang="en">✓ Stops the kernel trusting ICMP redirects, closing an easy way for something on the local network to silently re-route this host's outbound traffic through itself.</p>
             </dd>
             <dt id="fix-sysctl.accept-source-route"><code>sysctl.accept-source-route</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -1532,11 +1532,11 @@
               <ul>
                 <li>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-send-redirects.conf (recommended)</p>
-              <p class="fix-benefit" lang="en">✓ Stops this host sending ICMP redirects itself, which it should not be doing unless it is actually a router; removes a route-injection tool a compromised host could use against its neighbors.</p>
+              <p class="fix-benefit" lang="en">✓ Stops this host sending ICMP redirects itself, which it should not be doing unless it is a router; removes a route-injection tool a compromised host could use against its neighbors.</p>
                 </li>
                 <li>
               <p lang="en">Apply it now: kernel.kptr_restrict</p>
-              <p class="fix-benefit" lang="en">✓ Stops this host sending ICMP redirects itself, which it should not be doing unless it is actually a router; removes a route-injection tool a compromised host could use against its neighbors.</p>
+              <p class="fix-benefit" lang="en">✓ Stops this host sending ICMP redirects itself, which it should not be doing unless it is a router; removes a route-injection tool a compromised host could use against its neighbors.</p>
               <p class="fix-warning" lang="en">⚠ Changes the running kernel immediately and has no rollback checkpoint.</p>
                 </li>
               </ul>
@@ -1671,7 +1671,7 @@
             <dd>
               <p lang="en">Set NoNewPrivileges=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Closes the setuid escalation path out of this unit: a compromised process cannot gain more privilege than the service already had, the same protection compose.ds006 gives a container.</p>
-              <p class="fix-warning" lang="en">⚠ Closes the setuid path out of this service. A service that deliberately escalates (anything calling a setuid helper) stops working, and it stops at the next restart rather than now.</p>
+              <p class="fix-warning" lang="en">⚠ Closes the setuid path out of this service. A service that escalates (anything calling a setuid helper) stops working, and it stops at the next restart rather than now.</p>
             </dd>
             <dt id="fix-systemd.private-devices"><code>systemd.private-devices</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -1719,7 +1719,7 @@
             <dd>
               <p lang="en">Set ProtectKernelTunables=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Makes /proc/sys and /sys read-only for the service, so a compromise of it cannot change kernel networking or security settings.</p>
-              <p class="fix-warning" lang="en">⚠ A service that manages kernel settings on purpose (a VPN enabling IP forwarding, a network manager, a container runtime) cannot after the restart. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
+              <p class="fix-warning" lang="en">⚠ A service that manages kernel settings intentionally (a VPN enabling IP forwarding, a network manager, a container runtime) cannot after the restart. The drop-in is a new file with a checkpoint, so rolling it back deletes it; restart the service while you are watching.</p>
             </dd>
             <dt id="fix-systemd.protect-system"><code>systemd.protect-system</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -1752,7 +1752,7 @@
             <dd>
               <p lang="en">Set every <code>autoindex on;</code> in /etc/ssh/sshd_config to off, then reload nginx</p>
               <p class="fix-benefit" lang="en">✓ Directories without an index file stop listing what is in them, so a stray backup or .env beside the site is no longer one click away.</p>
-              <p class="fix-warning" lang="en">⚠ A directory somebody meant to be browsable (a download mirror, a shared folder) stops listing and answers 403 instead. Listing is sometimes on for one location on purpose; if so, put it back for that location alone. If the proxy refuses the new configuration, Hostveil puts the original file back and reloads again. The edit has a checkpoint and rolls back exactly.</p>
+              <p class="fix-warning" lang="en">⚠ A directory somebody meant to be browsable (a download mirror, a shared folder) stops listing and answers 403 instead. Listing is sometimes on for one location intentionally; if so, put it back for that location alone. If the proxy refuses the new configuration, Hostveil puts the original file back and reloads again. The edit has a checkpoint and rolls back exactly.</p>
             </dd>
             <dt id="fix-proxy.no-scan-jail"><code>proxy.no-scan-jail</code> <span class="fix-kind review">Review</span></dt>
             <dd>

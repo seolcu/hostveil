@@ -26,7 +26,7 @@ import (
 // have no documented way to grow", so mirroring them in app.js was fine and
 // generating them would be ceremony. One screen away, app.js held a *second*
 // hand-written label table (keyed by axis ID this time) which had fallen
-// two domains behind and was quietly substituting the long scoring labels
+// two domains behind and was silently substituting the long scoring labels
 // into a column sized for short ones.
 //
 // So the argument is retired. Whether a table drifts does not turn on

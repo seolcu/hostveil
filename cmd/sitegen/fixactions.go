@@ -59,12 +59,12 @@ func domainHeading(lang string, src model.Source) (string, error) {
 	return label, nil
 }
 
-// renderFixActions builds the "what each fix actually does" section of the
+// renderFixActions builds the "what each fix does" section of the
 // checks page: for every finding with a registered fix, what fix.Default()
-// actually builds for it, read straight from the registry rather than typed
+// builds for it, read straight from the registry rather than typed
 // out by hand. The checks table's Fix column ("Auto"/"Review", or their
 // Korean names) already says whether a finding is fixed unattended; this
-// says what running it would actually change, so a reader can decide
+// says what running it would change, so a reader can decide
 // whether "Auto" means safe enough for their own host before a single one
 // ever runs.
 //

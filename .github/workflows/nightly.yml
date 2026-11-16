@@ -3,7 +3,7 @@ name: Nightly
 # The checks that are worth running against time rather than against a diff.
 #
 # govulncheck gates every pull request, but a new advisory against a
-# dependency lands on a schedule nobody controls, so with PR-only triggers a
+# dependency lands on a schedule outside this repository, so with PR-only triggers a
 # vulnerability in a shipped release stays invisible until somebody happens
 # to open a pull request. For a tool whose entire job is telling operators
 # about vulnerabilities, that is the wrong way round.
@@ -95,7 +95,7 @@ jobs:
           apt-get update -qq
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
             curl ca-certificates tar coreutils >/dev/null
-          # Deliberately no sudo installed and no shim standing in for it.
+          # No sudo installed and no shim standing in for it.
           # This container is root, which is what the installer has to handle
           # on its own; Debian's default is root-only administration, and
           # every `docker run … | bash` is the same shape. A fake sudo here

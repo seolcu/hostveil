@@ -12,7 +12,7 @@ import (
 // scripts/e2e/individual.sh names the fixes it applies on a real host. A name
 // that stops matching a registered fix does not fail the script the way it
 // should: `hostveil fix` on an unknown ID errors, but a step that only
-// asserts a finding is gone would pass vacuously on an ID nobody reports. So
+// asserts a finding is gone would pass vacuously on an ID no checker reports. So
 // every finding ID the script mentions must be one the registry can fix.
 func TestTheIndividualFixE2ENamesRealFixes(t *testing.T) {
 	script := readRepoFile(t, filepath.Join("scripts", "e2e", "individual.sh"))

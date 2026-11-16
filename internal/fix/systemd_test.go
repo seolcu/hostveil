@@ -138,7 +138,7 @@ func TestTheFixSaysWhatHasToHappenForItToTakeEffect(t *testing.T) {
 		t.Error("the drop-in does not exist yet; without CreateIfMissing the fix fails on the read")
 	}
 	if a.Warning == "" {
-		t.Error("a service that deliberately escalates stops coming back, and nothing says so")
+		t.Error("a service that escalates stops coming back, and nothing says so")
 	}
 	if a.Path != "/etc/systemd/system/gitea.service.d/50-hostveil.conf" {
 		t.Errorf("writes to %q, not the path the checker named", a.Path)

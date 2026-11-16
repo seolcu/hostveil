@@ -148,7 +148,7 @@ func TestRollingBackACreationDeclinesWhenTheOperatorHasEditedIt(t *testing.T) {
 		t.Error("the operator's edit did not survive the refusal")
 	}
 
-	// --force is the escape hatch, and it must actually delete.
+	// --force is the escape hatch, and it must delete.
 	if _, err := s.RollbackForce(cp.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -314,7 +314,7 @@ func TestAPartialRestoreNamesBothHalves(t *testing.T) {
 	if len(partial.Failed) != 1 || partial.Failed[0] != b {
 		t.Errorf("failed = %v, want just %s", partial.Failed, b)
 	}
-	// And the half that could be restored actually was: stopping at the
+	// And the half that could be restored was: stopping at the
 	// first error would have left this one untouched if it sorted second.
 	if got, _ := os.ReadFile(a); string(got) != "before\n" {
 		t.Errorf("the restorable file was not restored: %q", got)
@@ -322,7 +322,7 @@ func TestAPartialRestoreNamesBothHalves(t *testing.T) {
 }
 
 // A mode-only entry whose file the operator deleted is not a failed rollback.
-// The Created branch tolerates exactly this, deliberately; the chmod did not.
+// The Created branch tolerates exactly this; the chmod did not.
 func TestRestoringTheModeOfADeletedFileIsNotAFailure(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStore(dir)

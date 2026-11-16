@@ -32,7 +32,7 @@ func TestSnapshotDump(t *testing.T) {
 	rep := uitest.PublishedReport()
 
 	// Colour on and off, plain and Nerd glyphs, terse and verbose: the four
-	// shapes the CLI actually prints. --json is deliberately not here: it has
+	// shapes the CLI prints. --json is not here: it has
 	// its own tests and a screenshot of it says nothing a `jq` output would not.
 	for _, c := range []struct {
 		name string

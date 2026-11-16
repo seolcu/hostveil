@@ -32,7 +32,7 @@ func TestReportEndsWithActionableCommands(t *testing.T) {
 	}
 }
 
-// fix --all is only worth naming when something can actually use it, and the
+// fix --all is only worth naming when something can use it, and the
 // count has to be the number of Auto findings, not the total.
 func TestFixAllOfferedOnlyWithAutoFindings(t *testing.T) {
 	withAuto := Text(report(

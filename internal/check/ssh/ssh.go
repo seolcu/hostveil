@@ -76,7 +76,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 	}
 	if gaps.matchIn != "" {
 		// Zero units: a Match block has no denominator. The directives inside
-		// it are precisely the ones that were not counted, so there is no
+		// it are the ones that were not counted, so there is no
 		// number to add without inventing one.
 		cov.Missed(0, "stopped at a Match block in "+gaps.matchIn+
 			": directives inside conditional blocks were not evaluated, and one there may "+
@@ -94,7 +94,7 @@ type coverageGaps struct {
 
 // sshdConfig is the effective configuration: the first value seen for each
 // keyword, plus the file that value came from. The origin matters as much
-// as the value: a fix has to edit the file that actually wins, not the
+// as the value: a fix has to edit the file that wins, not the
 // top-level sshd_config, or it writes a directive that stays overridden.
 type sshdConfig struct {
 	values    map[string]string
@@ -176,7 +176,7 @@ func (p *includeParser) parse(data []byte, path string, depth int) {
 	defer func() {
 		if sc.Err() != nil {
 			// The caller counted this file as read before handing it over;
-			// take that back, so Covered/Total describes what was actually
+			// take that back, so Covered/Total describes what was
 			// covered rather than crediting a file we only half-parsed.
 			p.cfg.filesRead--
 			p.unread = append(p.unread, path)
@@ -228,7 +228,7 @@ func (p *includeParser) include(val string, depth int) {
 		}
 		matches, err := filepath.Glob(pattern)
 		if err != nil {
-			continue // malformed pattern; sshd would reject the config outright
+			continue // malformed pattern; sshd would reject the config completely
 		}
 		sort.Strings(matches)
 		for _, m := range matches {
@@ -294,7 +294,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 	if effective(cfg, "PermitRootLogin", "prohibit-password") == "yes" {
 		out = append(out, model.NewFinding("ssh.rootlogin", "SSH permits root login with a password",
 			model.SeverityHigh, model.SourceSSH, model.RemediationReview,
-			model.WithDescription("Allowing root to log in over SSH with a password makes the most powerful account a direct brute-force target. A single guessed password is a full host compromise."),
+			model.WithDescription("Allowing root to log in over SSH with a password makes the account with full control a direct brute-force target. A single guessed password is a full host compromise."),
 			model.WithHowToFix("Set `PermitRootLogin prohibit-password` (key-only) or `no`, and log in as a normal user with sudo instead."),
 			configFor(cfg, path, "PermitRootLogin")))
 	}
@@ -332,7 +332,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 	}
 
 	// sshd's own default is 120 seconds, so this fires on an untouched
-	// config: deliberately, like ssh.passwordauth. The fix is Auto because
+	// config, like ssh.passwordauth. The fix is Auto because
 	// shortening the window cannot lock anyone out: it only bounds how long
 	// an unauthenticated connection may sit there. 0 means no limit at all.
 	grace := effective(cfg, "LoginGraceTime", "120")
@@ -348,7 +348,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 		out = append(out, model.NewFinding("ssh.gatewayports", "SSH exposes remote-forwarded ports to the network",
 			model.SeverityMedium, model.SourceSSH, model.RemediationReview,
 			model.WithDescription("With GatewayPorts enabled, a port forwarded with `ssh -R` listens on all interfaces instead of loopback, so anyone who can reach this host can use the tunnel; effectively publishing whatever the tunnel reaches."),
-			model.WithHowToFix("Set `GatewayPorts no` so remote-forwarded ports bind to loopback only. If a tunnel genuinely must be public, front it with a reverse proxy that authenticates."),
+			model.WithHowToFix("Set `GatewayPorts no` so remote-forwarded ports bind to loopback only. If a tunnel must be public, front it with a reverse proxy that authenticates."),
 			model.WithEvidence("value", v), configFor(cfg, path, "GatewayPorts")))
 	}
 
@@ -429,7 +429,7 @@ func auditConfig(cfg sshdConfig, path string) []model.Finding {
 	if kbd == "yes" && effective(cfg, "PasswordAuthentication", "yes") == "no" {
 		out = append(out, model.NewFinding("ssh.kbdinteractive", "SSH still accepts interactive password prompts",
 			model.SeverityMedium, model.SourceSSH, model.RemediationReview,
-			model.WithDescription("PasswordAuthentication is off, but keyboard-interactive authentication is still on, and on most systems it asks PAM for the very same password. The brute-force protection you configured is not actually in force."),
+			model.WithDescription("PasswordAuthentication is off, but keyboard-interactive authentication is still on, and on most systems it asks PAM for the very same password. The brute-force protection you configured is not in force."),
 			model.WithHowToFix("Set `KbdInteractiveAuthentication no`. Careful: PAM-based one-time codes (2FA prompts) also use this mechanism, so keep it if your logins go through one."),
 			model.WithEvidence("directive", kbdKey), configFor(cfg, path, kbdKey)))
 	}

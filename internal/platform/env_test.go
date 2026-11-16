@@ -83,7 +83,7 @@ func TestAMissingOSReleaseIsEmptyNotFatal(t *testing.T) {
 	}
 }
 
-// Order is load-bearing: Debian and Ubuntu ship both apt-get and (on some
+// Order matters: Debian and Ubuntu ship both apt-get and (on some
 // images) other tools, so the most specific has to win. Getting this
 // backwards sends the updates checker down the wrong branch entirely.
 func TestDetectPackageManager(t *testing.T) {

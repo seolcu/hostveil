@@ -15,7 +15,7 @@ import (
 // lists by hand. Nothing connects that list to the targets that exist, so a
 // Fuzz function added tomorrow is never fuzzed, and the failure is silent in
 // the worst way: nightly stays green, the matrix still names four targets, and
-// the new parser is the one nobody is throwing bytes at.
+// the new parser is the one no fuzz target exercises.
 //
 // This is the same shape as the shellcheck step that named two of thirteen
 // scripts, and as the E2E selection that matched no domain: a claim living

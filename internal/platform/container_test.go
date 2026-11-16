@@ -6,7 +6,7 @@ import (
 )
 
 // The rule, over the runtimes this build will not be running under. Each case
-// is the marker that runtime actually leaves, which is the whole reason the
+// is the marker that runtime leaves, which is the whole reason the
 // evidence is a value rather than four reads inlined into the decision.
 func TestContainerRuntimeReadsEachRuntimesOwnMarker(t *testing.T) {
 	for _, tc := range []struct {

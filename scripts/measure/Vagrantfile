@@ -4,13 +4,13 @@
 # and every published measurement was taken on Ubuntu, not a decision, just
 # the only host the fixture had ever been built on. This is the other hosts.
 #
-# Deliberately not demo/Vagrantfile. That VM is the *demo*: it is pinned to
+# Not demo/Vagrantfile. That VM is the *demo*: it is pinned to
 # Ubuntu, its provisioning seeds Ubuntu-specific stacks, and it is what
 # `demo/run.sh up` gives somebody who wants to try hostveil. These are
-# disposable measurement hosts and nobody should be pointed at them.
+# disposable measurement hosts and no one should be pointed at them.
 #
 # Provisioning stops at "Go is installed and Hostveil is built". Seeding and
-# measuring are separate commands on purpose, because the interesting failures
+# measuring are separate commands, because the interesting failures
 # are in seed.sh and watching them scroll past inside a provisioner is how a
 # first run of anything gets misread.
 #
@@ -20,7 +20,7 @@
 #   vagrant ssh fedora -c 'sudo /hostveil/scripts/measure/run.sh -c /tmp/m.json'
 #   vagrant destroy -f fedora
 #
-# It edits the host it runs on, irreversibly. That is the whole point of the
+# It edits the host it runs on, irreversibly. That is the purpose of the
 # host being disposable, and it is why this file exists rather than a note
 # telling somebody to find a Fedora box themselves.
 

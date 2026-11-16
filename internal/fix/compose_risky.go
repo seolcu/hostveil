@@ -10,14 +10,14 @@ import (
 
 // The compose findings below were in the declined register until Review was
 // allowed a single action. Each has exactly one mechanical remediation, and
-// each can break a deployment that set the key on purpose, which is why none
+// each can break a deployment that set the key intentionally, which is why none
 // of them is Auto and every one of them says so in its Warning. What changed
 // is not the risk, it is who decides: the operator reads the Warning and the
 // diff, and presses the button or does not.
 //
 // None of them is applied by a batch, not even `fix --all --review`: each is
 // IndividualOnly, because the person who has to read the Warning is the one
-// who knows whether this service set the key on purpose.
+// who knows whether this service set the key intentionally.
 //
 // They are all file edits, so every one leaves a checkpoint and rolls back
 // exactly. None of them is in force until the service is recreated, and
@@ -105,7 +105,7 @@ func buildRemovePrivileged(f model.Finding) (Fix, error) {
 		"A compromise of this container stops being a compromise of the host: it loses direct access to "+
 			"every device and almost every kernel capability root has.",
 		"If the service really does need host devices or kernel access; a VPN client, a hardware "+
-			"monitor, Docker-in-Docker; it will fail to start or quietly lose that function. Check its "+
+			"monitor, Docker-in-Docker; it will fail to start or silently lose that function. Check its "+
 			"logs after recreating it, and if it needs one specific capability, grant just that with cap_add.",
 		func(d *compose.Doc, svc string) error { return d.RemoveKey(svc, "privileged") })
 }
@@ -127,7 +127,7 @@ func buildRemoveCapability(f model.Finding) (Fix, error) {
 		"Remove "+capability+" from cap_add",
 		"Takes away a capability that can be escalated into a container escape, so a compromise of "+
 			"this service stays inside it.",
-		"Services add capabilities on purpose: NET_ADMIN for a VPN or a firewall container, SYS_ADMIN "+
+		"Services add capabilities intentionally: NET_ADMIN for a VPN or a firewall container, SYS_ADMIN "+
 			"for FUSE mounts, SYS_PTRACE for a debugger. If this one needs "+capability+", it will fail "+
 			"the operation that uses it once recreated.",
 		func(d *compose.Doc, svc string) error { return d.RemoveCapAdd(svc, capability) })
@@ -163,7 +163,7 @@ func buildRemoveHostIpc(f model.Finding) (Fix, error) {
 		"Delete `ipc: host`",
 		"The container can no longer read or tamper with shared memory that host processes and other "+
 			"containers use.",
-		"If the service shares memory with a process on the host on purpose, that sharing stops; if it "+
+		"If the service shares memory with a process on the host intentionally, that sharing stops; if it "+
 			"only needs to share with one other container, `ipc: \"service:NAME\"` is the narrower setting.",
 		func(d *compose.Doc, svc string) error { return d.RemoveKey(svc, "ipc") })
 }

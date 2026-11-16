@@ -49,7 +49,7 @@ type FixOutcome struct {
 	// Verified is what re-running the finding's own domain found, and
 	// VerifyNote carries the reason when it could not be established.
 	// Applying a fix marks the finding Fixed either way; these say whether
-	// anything actually confirmed it.
+	// anything confirmed it.
 	Verified FixVerification `json:"verified"`
 	// VerifyMessage is the sentence every interface shows, rendered once by
 	// the engine from Verified and RestartHint. The three outcome summaries
@@ -62,7 +62,7 @@ type FixOutcome struct {
 	VerifyNote string `json:"verify_note,omitempty"`
 
 	// Pending reports that the fix is written and not in force, so the score
-	// in NewScore has deliberately not moved for it. See Finding.Pending.
+	// in NewScore has not moved for it. See Finding.Pending.
 	Pending bool `json:"pending,omitempty"`
 	// TakesEffectOn is what has to happen for a pending fix to reach the
 	// host, copied from the action that declared it. Empty when Pending is
@@ -81,7 +81,7 @@ type BatchOutcome struct {
 	Skipped []string          `json:"skipped"` // needed a choice or had no auto fix
 	Failed  map[string]string `json:"failed"`  // finding ID -> error
 	// Interrupted reports that the batch stopped early because the run was
-	// cancelled, so Skipped holds findings nobody decided against; they were
+	// cancelled, so Skipped holds findings no one decided against; they were
 	// simply never reached. A UI must say so: the checkpoints for whatever
 	// did land are on disk, and an operator who thinks the batch completed
 	// has no reason to go looking for them.
@@ -113,7 +113,7 @@ type BatchOutcome struct {
 
 // Summary renders the outcome as one sentence.
 //
-// It deliberately stops before saying where to look. "press h" and
+// It stops before saying where to look. "press h" and
 // "hostveil history" are directions to a place only one interface has, and
 // an interface appends its own; what may not vary is the claim about what
 // happened.
@@ -194,11 +194,11 @@ type Checkpoint struct {
 // that. That is the same gap Action.VerifyCmd closes before a write: this
 // closes the one after it.
 //
-// It deliberately does not change whether the finding is marked Fixed. A
+// It does not change whether the finding is marked Fixed. A
 // persisted sysctl drop-in is correct and complete and the running kernel
 // still reports the old value until the next boot, so a checker that still
 // sees the finding is not evidence the fix failed. Reporting the two facts
-// separately is honest; collapsing them would either call that fix broken
+// separately is accurate; collapsing them would either call that fix broken
 // or call an unverified one confirmed.
 type FixVerification int
 
@@ -219,10 +219,10 @@ const (
 	// VerifyPending means the domain was re-checked, no longer reports the
 	// finding, and the host has not changed yet.
 	//
-	// It is the case VerifyGone was quietly covering, and it covered it in
+	// It is the case VerifyGone was silently covering, and it covered it in
 	// the dangerous direction. A compose checker reads the project file; the
 	// compose fix edits it; so the re-check finds nothing and the operator is
-	// told "the finding is gone" while the container that is actually running
+	// told "the finding is gone" while the container that is running
 	// still publishes the port on every interface. The score moves, the
 	// confirmation is positive, and nothing anywhere says the change is not
 	// in force.
@@ -257,7 +257,7 @@ func (v FixVerification) String() string {
 // distinction subtle enough that three attempts at it would produce three
 // different meanings.
 //
-// "Still present" is deliberately not phrased as a failure. The commonest
+// "Still present" is not phrased as a failure. The commonest
 // case is a change that is correct and not yet in force: a sysctl drop-in
 // applies at the next boot, and sshd serves from the config it already
 // loaded until it restarts.

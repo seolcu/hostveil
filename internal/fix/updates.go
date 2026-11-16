@@ -105,7 +105,7 @@ func buildEnableSysstat(f model.Finding) (Fix, error) {
 	return Fix{Label: "Enable sysstat activity collection", Kind: model.RemediationAuto, Actions: []Action{{
 		Label: "Set ENABLED to true",
 		Benefit: "Turns on the data collection the sysstat package already has installed, so historical " +
-			"resource data actually starts accumulating instead of the package sitting present but silent.",
+			"resource data starts accumulating instead of the package sitting present but silent.",
 		Kind: ActionEdit, Path: path, Transform: func(in []byte) ([]byte, error) {
 			re := regexp.MustCompile(`(?m)^ENABLED=.*$`)
 			if re.Match(in) {
@@ -124,7 +124,7 @@ func buildEnableSysstat(f model.Finding) (Fix, error) {
 // -d` by hand.
 const pendingSecurityWarning = "Upgrading packages can restart the services they belong to, including sshd " +
 	"and the Docker daemon, and a container whose compose file has no restart policy in force stays down " +
-	"until `docker compose up -d` brings it back. A kernel or libc update may also need a reboot to actually " +
+	"until `docker compose up -d` brings it back. A kernel or libc update may also need a reboot to " +
 	"take effect. There is no rollback checkpoint; undoing this means downgrading the affected packages by hand."
 
 func buildApplySecurityUpdates(f model.Finding) (Fix, error) {
@@ -148,7 +148,7 @@ func buildApplySecurityUpdates(f model.Finding) (Fix, error) {
 }
 
 // hardeningPackageBenefit names what each package installed by
-// buildInstallHardeningPackage actually buys, since one generic builder is
+// buildInstallHardeningPackage buys, since one generic builder is
 // shared across every package below.
 var hardeningPackageBenefit = map[string]string{
 	"acct": "Installs a forensic record of every command run on this host after the fact; turns " +
@@ -161,11 +161,11 @@ var hardeningPackageBenefit = map[string]string{
 		"checksums on demand; how a tampered binary gets noticed instead of trusted.",
 	"rkhunter": "Installs a rootkit and backdoor scanner, giving the host a second opinion on itself " +
 		"beyond what its own compromised binaries might report.",
-	"pam-pwquality": "Installs the PAM module that lets password-strength rules actually be enforced " +
+	"pam-pwquality": "Installs the PAM module that lets password-strength rules be enforced " +
 		"at login time, not only at account creation.",
 	"apt-show-versions": "Lets the operator ask, per package, whether a security update is pending " +
 		"from a specific origin; the same query Hostveil's own updates domain depends on.",
-	"apt-listchanges": "Shows what actually changed before an upgrade lands, so a package upgrade is " +
+	"apt-listchanges": "Shows what changed before an upgrade lands, so a package upgrade is " +
 		"something the operator reads rather than something that just happens to them.",
 	"pam-tmpdir": "Gives every login session its own private /tmp, closing the shared-/tmp race and " +
 		"symlink-attack class of local privilege escalation.",
@@ -388,7 +388,7 @@ func setAptPeriodic(in []byte) ([]byte, error) {
 
 // execFix builds a single-action Auto exec fix. EffectiveKind floors every
 // caller to Review since the action is exec, so warning is what a person
-// reviewing it actually reads before deciding: the same job
+// reviewing it reads before deciding: the same job
 // firewall.go's hand-written Warnings do, and this package's calls were
 // missing entirely until a demo-VM rehearsal of the Review workflow found the
 // preview for updates.pending-security carrying no warning at all next to

@@ -381,7 +381,7 @@ func TestScoreIsMonotonic(t *testing.T) {
 	}
 }
 
-// A finding nobody can fix still counts: claiming otherwise would be its
+// A finding with no fix still counts: claiming otherwise would be its
 // own lie. RemediationUnavailable used to be discounted (a fixed divisor on its
 // weight, on the argument that every image ships some CVE with no upstream
 // patch and charging those in full pins the axis at 0 for a well-maintained
@@ -404,7 +404,7 @@ func TestScoreChargesUnavailableAtFullWeight(t *testing.T) {
 }
 
 // A small cap used to be its own bug: fileperms caps at 6, so one High
-// (penalty 8) clamped past the cap and zeroed the axis outright.
+// (penalty 8) clamped past the cap and zeroed the axis completely.
 func TestScoreSmallCapAxisIsNotZeroedByOneFinding(t *testing.T) {
 	sb := ScoreReport([]Finding{
 		NewFinding("fileperms.shadow", "world-readable", SeverityHigh, SourceFilePerms, RemediationManual),
@@ -418,7 +418,7 @@ func TestScoreSmallCapAxisIsNotZeroedByOneFinding(t *testing.T) {
 
 // A score with no axis behind it is not a perfect score. Every axis is
 // excluded when no domain ran, leaving nothing to renormalize over, and
-// the arithmetic fell out at 100, so a host nobody could look at was
+// the arithmetic fell out at 100, so a host the scan could not look at was
 // reported as flawless. That is the same lie the per-axis N/A exists to
 // prevent, surviving in the one number the whole tool is judged on.
 func TestAScoreWithNoDomainsIsNotApplicable(t *testing.T) {

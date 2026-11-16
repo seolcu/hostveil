@@ -98,7 +98,7 @@ implements the `Checker` interface and registering it.
 
 ## Running it for real: the demo VM
 
-`demo/` is a code-defined, deliberately vulnerable Ubuntu server you can
+`demo/` is a code-defined, vulnerable Ubuntu server you can
 bring up on any machine. Hostveil is built from your working tree, which is
 rsync-synced *into* the VM, so a freshly booted VM reflects your current code.
 (After editing code, re-sync before rebuilding: the repo syncs on `up`/`reload`
@@ -120,7 +120,7 @@ live in [demo/README.md](../demo/README.md).
 
 ### Checking a UI change without sitting at the keyboard
 
-A screenshot is the only honest way to review a colour, a layout, or anything
+A screenshot is the only accurate way to review a colour, a layout, or anything
 that reflows. All three of these run against the demo VM, so nothing is aimed
 at your own machine:
 
@@ -133,7 +133,7 @@ vagrant ssh -c 'tmux send-keys -t 0 t; sleep 1; tmux capture-pane -p -t 0'   # -
 firefox --headless --no-remote --profile "$(mktemp -d)" \
         --window-size=1400,900 --screenshot out.png http://localhost:8787/
 
-# What actually reaches the terminal, escape sequence by escape sequence.
+# What reaches the terminal, escape sequence by escape sequence.
 # stty is not optional: `vagrant ssh -c` has no terminal for script(1) to copy
 # a size from, so the pty it builds is 0x0 and bubbletea draws nothing into it;
 # you get the altscreen and cursor setup, not one glyph. Feed it a quit key,
@@ -145,7 +145,7 @@ vagrant ssh -c "grep -o '38;5;[0-9]*' /tmp/raw.log | sort | uniq -c | sort -rn"
 Use `tmux capture-pane` when you want to *read* the screen and the raw log
 when you want to know which palette entry drew something: the palettes are
 24-bit hex and SSH does not forward `COLORTERM`, so what a remote session
-actually receives is the quantised 256-colour index and not the hex
+receives is the quantised 256-colour index and not the hex
 (`internal/ui/tui/quantize_test.go` holds every theme to that).
 
 ### Capturing the whole interface
@@ -244,7 +244,7 @@ HOSTVEIL_UPDATE_STAMP=1 go test ./internal/ui/web -run TestDashboardScreenshotSt
 ```
 
 Neither check can tell you the picture is *good*. What they guarantee is that
-nobody ships an interface change without being told the picture is now a
+an interface change cannot ship without being told the picture is now a
 picture of something else.
 
 ### Measuring Hostveil with tools that are not Hostveil

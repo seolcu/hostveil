@@ -192,9 +192,9 @@
       "ogType": "article",
       "en": {
         "title": "Roadmap; Hostveil docs",
-        "description": "Where Hostveil's detection coverage is headed, and what stays out of scope on purpose: no plugin system, no AI that applies fixes on its own, no hosted dashboard or account.",
+        "description": "Where Hostveil's detection coverage is headed, and what stays out of scope: no plugin system, no AI that applies fixes on its own, no hosted dashboard or account.",
         "ogTitle": "Roadmap; Hostveil docs",
-        "ogDescription": "How detection coverage has grown so far, what's next, what's under exploration, and what's not planned on purpose.",
+        "ogDescription": "How detection coverage has grown so far, what's next, what's under exploration, and what's not planned.",
         "nav": "Roadmap"
       },
       "ko": {

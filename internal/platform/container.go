@@ -6,12 +6,12 @@ import (
 )
 
 // AssumeHostEnv makes Hostveil treat this filesystem as a host even when it is
-// plainly a container.
+// a container.
 //
-// It exists for one honest use: a disposable container used *as* a host
+// It exists for one legitimate use: a disposable container used *as* a host
 // filesystem, which is what .github/workflows/e2e.yml does and says it does;
 // "A container gives a disposable root filesystem." That job writes
-// /etc/ssh/sshd_config and chmods files under /etc precisely because doing it
+// /etc/ssh/sshd_config and chmods files under /etc because doing it
 // to the runner would be rude and unrepeatable, and the domains gated below
 // are ones it means to exercise.
 //
@@ -79,7 +79,7 @@ type ContainerEvidence struct {
 }
 
 // cgroupMarkers are runtime names that appear in a cgroup path only inside a
-// container. Deliberately not "container", which appears in ordinary paths on
+// container. The word is not "container", which appears in ordinary paths on
 // a host running containers: pid 1 of the *host* is not in one of them, but a
 // substring test that loose is one rename away from calling every Docker host
 // a container.

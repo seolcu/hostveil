@@ -59,7 +59,7 @@ func columnOf[T any, C any](defs []T, col func(T) C) []C {
 // Note for anything added later: encoding/json uses Marshaler for values and
 // TextMarshaler for map keys, and only Marshaler is implemented here. No
 // serialized type in this package is keyed by an enum today (Report.Domains
-// is a slice precisely because it is a wire format), and a future one would
+// is a slice because it is a wire format), and a future one would
 // need MarshalText as well.
 
 // nameIndex builds the reverse of an enum table: name to value.
@@ -78,7 +78,7 @@ func marshalEnum(name string) ([]byte, error) { return json.Marshal(name) }
 // integer this package used to emit.
 //
 // An unrecognised value is an error rather than a fallback. The two answers
-// are not interchangeable: quietly resolving to a zero value would turn a
+// are not interchangeable: silently resolving to a zero value would turn a
 // snapshot Hostveil cannot read into one it reads wrongly, which is the same
 // trade the scanner refuses everywhere else. Callers that survive a bad
 // snapshot (ScoreHistory skips one that will not unmarshal) already handle

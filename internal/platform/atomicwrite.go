@@ -13,7 +13,7 @@ import (
 // os.WriteFile truncates and then writes, so a crash or power loss between
 // the two leaves a half-written or empty file. For the files Hostveil edits
 // that is not a cosmetic failure: a truncated /etc/ssh/sshd_config can mean
-// sshd refuses to start and nobody can log in to the host to repair it. The
+// sshd refuses to start and no one can log in to the host to repair it. The
 // checkpoint still holds the original, but reaching it requires the access
 // the truncated file just took away. rename(2) is atomic within a
 // filesystem, so a reader sees either the old file or the new one.
@@ -43,7 +43,7 @@ func WriteFileAtomic(path string, data []byte, mode os.FileMode) error {
 	// ownership rather than the original's. Hostveil runs as root, so without
 	// this a fix to a compose file owned by the operator's own account would
 	// hand it to root and lock them out of editing their own file. Failing to
-	// preserve ownership is an error, not something to do quietly.
+	// preserve ownership is an error, not something to do silently.
 	if err := preserveOwner(tmp, path); err != nil {
 		_ = tmp.Close()
 		return err

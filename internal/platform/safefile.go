@@ -25,7 +25,7 @@ import (
 // normally. The fstat check happens on the open descriptor, so there is no
 // gap for the file to be swapped between the check and the read.
 func ReadFileNoFollow(path string, limit int64) ([]byte, error) {
-	// G304: the variable path is the point, and this function is the
+	// G304: the variable path is intended, and this function is the
 	// hardened way to open one; O_NOFOLLOW refuses a symlink, O_NONBLOCK
 	// refuses to hang on a FIFO, and the checks below run on the descriptor
 	// rather than on the name. Flagging the safe opener while the plain
@@ -57,7 +57,7 @@ func ReadFileNoFollow(path string, limit int64) ([]byte, error) {
 
 // ReadFileBounded reads a regular file without allowing a FIFO or device to
 // block the caller and without holding more than limit bytes in memory.
-// Symlinks are followed deliberately; system configuration commonly uses
+// Symlinks are followed; system configuration commonly uses
 // them (for example /etc/sysctl.d/99-sysctl.conf on Ubuntu).
 func ReadFileBounded(path string, limit int64) ([]byte, error) {
 	//nolint:gosec // G304: this is the bounded, type-checked opener for variable paths
@@ -96,7 +96,7 @@ func readLimited(r io.Reader, path string, limit int64) ([]byte, error) {
 // opened and nothing else. A symlink at path fails with ELOOP rather than
 // chmod'ing its target.
 func ChmodNoFollow(path string, mode os.FileMode) error {
-	// G304: the variable path is the point, and this function is the
+	// G304: the variable path is intended, and this function is the
 	// hardened way to open one; O_NOFOLLOW refuses a symlink, O_NONBLOCK
 	// refuses to hang on a FIFO, and the checks below run on the descriptor
 	// rather than on the name. Flagging the safe opener while the plain

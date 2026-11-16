@@ -7,8 +7,8 @@ import (
 )
 
 // registerProxy wires the proxy-domain fixes into the registry. The first
-// one: every other proxy.* finding is deliberately declined (register.go)
-// because its remediation is either genuinely ambiguous (Traefik's
+// one: every other proxy.* finding is declined (register.go)
+// because its remediation is either ambiguous (Traefik's
 // dashboard) or a fact about a config whose syntax and structure varies too
 // much per vhost to edit safely (deprecated TLS protocols, directory
 // listing). Enabling a single, named, upstream-shipped fail2ban jail has
@@ -75,7 +75,7 @@ func scanJailAction(label, benefit, warning, logLines, extra string) Action {
 // the log files, at which point a scripted probe past maxretry produced a
 // real ban within seconds. logpath names both files, not just one: the
 // filter matches an access-log-style 404 line as well as an error-log-style
-// failed-open line, and which one a given host actually populates depends
+// failed-open line, and which one a given host populates depends
 // on whether the request reaches a static-file lookup at all; a bare vhost
 // returning its own 404 never does, so only the access log carries it.
 //

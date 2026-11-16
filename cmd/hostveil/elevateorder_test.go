@@ -29,7 +29,7 @@ func TestABadFlagCostsNoPassword(t *testing.T) {
 
 	for _, args := range [][]string{
 		{"--no-such-flag"},         // routed to scan, which is root-benefiting
-		{"scan", "--no-such-flag"}, // and named outright
+		{"scan", "--no-such-flag"}, // and named explicitly
 		{"fix", "--no-such-flag"},
 		{"serve", "--no-such-flag"},
 	} {

@@ -194,7 +194,7 @@ func TestEngineSkipsComposeWithoutDocker(t *testing.T) {
 // TestEngineSkipsDockerDomainsWhenDaemonUnreachable is the regression guard
 // for the bug that motivated PartialError and the daemon probe: running
 // without access to the Docker socket (no sudo, not in the docker group) used
-// to leave the CLI on PATH, so Available() said yes, every check quietly found
+// to leave the CLI on PATH, so Available() said yes, every check silently found
 // nothing, and the domain reported Done. Its axis was then scored a perfect
 // 100: the CVE scan in particular claiming a clean bill of health for a host
 // it had never looked at.
@@ -328,7 +328,7 @@ func TestClassifyTakesTheMoreCautiousKind(t *testing.T) {
 	}
 }
 
-// tallyRunner counts how many times each command actually reached the host.
+// tallyRunner counts how many times each command reached the host.
 type tallyRunner struct {
 	mu       sync.Mutex
 	calls    map[string]int

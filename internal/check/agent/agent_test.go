@@ -432,7 +432,7 @@ func TestMissingSsDoesNotDegrade(t *testing.T) {
 
 // auth.mode: none on a loopback gateway is upstream's documented single-user
 // default. Flagging it would put a High on a correct install: a score
-// nobody could improve by doing everything right.
+// no operator could improve by doing everything right.
 func TestAuthDisabledIsSilentOnALoopbackGateway(t *testing.T) {
 	h := newHost(t, "alice")
 	h.write("alice", ".openclaw/openclaw.json", `{"gateway":{"bind":"loopback","auth":{"mode":"none"}}}`, 0o600)
@@ -572,7 +572,7 @@ func TestDangerFindingKindFollowsTheSafeValues(t *testing.T) {
 }
 
 // A rule with no known safe value must carry no values at all. Evidence a fix
-// could read is evidence a fix will read, and a rule is Manual precisely
+// could read is evidence a fix will read, and a rule is Manual
 // because nothing here knows what to write. No shipped rule is like that any
 // more, so the rule is built here.
 func TestManualDangerFindingCarriesNoValuesToWrite(t *testing.T) {
@@ -726,7 +726,7 @@ func TestReadableEnvWithoutCredentialsIsNotASecretFinding(t *testing.T) {
 	}
 }
 
-// The load-bearing guarantee of the whole domain: Hostveil reads secrets to
+// The main guarantee of the whole domain: Hostveil reads secrets to
 // judge them and must never carry one back out. Evidence is rendered by every
 // UI and persisted to disk, so a value that reaches a Finding has leaked.
 func TestSecretValuesNeverReachAFinding(t *testing.T) {

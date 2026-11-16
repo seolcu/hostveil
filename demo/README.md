@@ -1,7 +1,7 @@
 # Hostveil demo: a vulnerable home server in one command
 
 This directory is a **reproducible, code-defined test/demo environment** for
-Hostveil: a real Ubuntu 24.04 server, deliberately misconfigured the way a
+Hostveil: a real Ubuntu 24.04 server, misconfigured the way a
 non-expert self-hoster's box would be, running inside a VM.
 
 It exists so you can try Hostveil (and demo it) **without touching a real
@@ -250,7 +250,7 @@ another five-minute timeout:
   a reboot, and Docker sets the policy again the moment it starts, so the
   problem comes back looking brand new.
 - **Inbound is replies only.** This VM publishes an *unauthenticated Docker
-  API* on 2375, that is the point of `dockerd.api-unauthenticated`, so
+  API* on 2375, which `dockerd.api-unauthenticated` detects, so
   nothing should be able to open a connection *to* it. Outbound plus
   `RELATED,ESTABLISHED` is all the provisioning needs. `vagrant ssh` and the
   forwarded 8787 are unaffected either way: the host sits on that bridge
@@ -261,7 +261,7 @@ No masquerade rule is needed. The `vagrant-libvirt` network is
 in the way is the forwarding policy. And none of this affects teammates on
 VirtualBox (macOS/Windows), whose NAT is independent of the host firewall.
 
-## What's deliberately vulnerable
+## What's vulnerable
 
 | Domain | Seeded problem | Example finding |
 |---|---|---|
@@ -288,13 +288,13 @@ The stacks live in `stacks/`, the weak SSH snippet and the agent configs in
 > add a forwarded port for 2375, you have published root on your laptop's
 > network. The three daemon *defaults* (`no-new-privileges`, `userns-remap`,
 > `live-restore`) need no seeding at all: they are off on a stock install,
-> which is the whole point of those rules. `dockerd.api-tls-unverified` is
+> which is why those rules exist. `dockerd.api-tls-unverified` is
 > the one finding the demo does not show, because it needs a server keypair;
 > the unit tests cover it instead.
 
 > **On the agent fixtures**: unlike everything else here, OpenClaw and Hermes
-> are not actually *installed*; neither is packaged for apt, and neither
-> ships a daemon the demo could honestly run. `provision.sh` seeds their
+> are not *installed*; neither is packaged for apt, and neither
+> ships a daemon the demo could accurately run. `provision.sh` seeds their
 > configuration and file layout instead, which is what the agent domain
 > inspects anyway. The one part this cannot show is the listener
 > cross-check. The finding is **High** either way (the firewall and the

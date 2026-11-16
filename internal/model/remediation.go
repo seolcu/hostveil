@@ -2,7 +2,7 @@ package model
 
 // RemediationKind classifies how a finding can be fixed.
 //
-// The zero value is RemediationUnset: deliberately inert. In Hostveil v2
+// The zero value is RemediationUnset: inert. In Hostveil v2
 // the zero value was "Auto", so any Finding built without setting the
 // field silently presented a fix button it never had. Here an
 // unclassified finding is NOT fixable, and a validation pass rejects any
@@ -38,7 +38,7 @@ type remediationDef struct {
 // RemediationUnset has a row so the zero value has a name and a label of
 // its own rather than falling out of a default arm. Its false fixability
 // is not a judgement about the finding: an unclassified finding is not
-// "known to have no fix", it is one nobody has classified, and both must
+// "known to have no fix", it is one that was never classified, and both must
 // refuse to offer a fix button.
 var remediationDefs = []remediationDef{
 	{RemediationUnset, "unset", "Unclassified", "?", false},
