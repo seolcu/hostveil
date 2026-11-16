@@ -123,7 +123,7 @@ func TestAQuotedExecStartIsNotReRendered(t *testing.T) {
 		"execstart": `/usr/bin/dockerd -H tcp://0.0.0.0:2375 --label "a b"`,
 	}, nil)
 	if _, err := buildDockerdRemoveTCP(f); err == nil {
-		t.Fatal("a command line with quoting must be declined, not re-rendered by splitting on spaces")
+		t.Fatal("a command line with quoting must be declined; splitting it on spaces would corrupt it")
 	}
 }
 

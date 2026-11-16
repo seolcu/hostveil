@@ -11,9 +11,9 @@ import (
 
 // registerFilePerms wires the file-permission fixes into the registry.
 //
-// Exact IDs, not a "fileperms.*" glob: TestEveryRegisteredFixIsValid rejects
-// globs so that introducing one is a deliberate act rather than a silent
-// widening of what the registry claims to fix.
+// Exact IDs: TestEveryRegisteredFixIsValid rejects globs so that
+// introducing one is an explicit decision, and the registry never claims
+// more than it fixes without someone noticing.
 func registerFilePerms(r *Registry) {
 	r.Register("fileperms.owner", buildRestoreRootOwner)
 	for _, id := range []string{
@@ -118,7 +118,7 @@ func buildTightenMode(f model.Finding) (Fix, error) {
 	if raw == "" {
 		return Fix{}, fmt.Errorf("finding %s has no paths to tighten", f.ID)
 	}
-	// Split on PathListSeparator, not EvidenceSeparator: the checker writes
+	// Split on PathListSeparator: the checker writes
 	// this entry for exactly this reader, and ", " occurs inside real paths.
 	// No TrimSpace either; leading and trailing whitespace are part of a
 	// filename, and trimming would target a different file or none at all.
@@ -137,7 +137,7 @@ func buildTightenMode(f model.Finding) (Fix, error) {
 		return Fix{}, fmt.Errorf("finding %s has no expected mode", f.ID)
 	}
 	// The checker formats it with %#o, so "0640"; parse as octal explicitly
-	// rather than relying on the leading zero being honoured.
+	// so the leading zero does not matter.
 	n, err := strconv.ParseUint(strings.TrimPrefix(expected, "0o"), 8, 32)
 	if err != nil {
 		return Fix{}, fmt.Errorf("finding %s has an unparseable expected mode %q: %w", f.ID, expected, err)

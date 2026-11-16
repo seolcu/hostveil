@@ -10,8 +10,7 @@ import (
 )
 
 // dropInDir is where a persistent kernel parameter belongs on any systemd
-// distribution. Hostveil writes one file per finding rather than appending
-// to a shared one, which is what keeps the fixes independent: applying the
+// distribution. Hostveil writes one file per finding, which is what keeps the fixes independent: applying the
 // second never has to read what the first wrote, and rolling one back
 // cannot take another's line with it.
 const dropInDir = "/etc/sysctl.d/"
@@ -99,14 +98,14 @@ var sysctlBenefit = map[string]string{
 // Unambiguous sysctl findings are Auto: one reversible drop-in records the
 // desired value without changing the running kernel underneath an unattended
 // operator. Topology-dependent findings are Review, with two
-// independent alternatives rather than two halves of one procedure:
+// independent alternatives:
 //
 //   - write a drop-in; persistent, and takes effect at the next boot or
 //     the next `sysctl --system`;
 //   - `sysctl -w`; takes effect immediately, and is lost at the next boot.
 //
 // Neither is strictly better for those topology-dependent controls, which is
-// what makes this a choice rather than a sequence. Offering only "do both, in
+// what makes this a choice. Offering only "do both, in
 // order" would be the sequential shape Review exists to refuse.
 //
 // This is the arrangement fix.Default's register anticipated: the blocker
@@ -167,7 +166,7 @@ func registerSysctl(r *Registry) {
 	}
 }
 
-// moduleBlockBenefit is keyed by finding ID rather than module name, since
+// moduleBlockBenefit is keyed by finding ID, since
 // usbstorage's benefit (physical media) is a different story from the other
 // four (rarely-used network protocols with a history of local kernel bugs).
 var moduleBlockBenefit = map[string]string{
@@ -301,8 +300,7 @@ func persistSysctl(f model.Finding, pairs []string, benefit string) Action {
 			TakesEffectOn: sysctlEffect,
 			Kind:          ActionEdit,
 			Path:          origin,
-			// No VerifyCmd: `sysctl -p` would *apply* the file rather than
-			// check it, and the transform below only ever rewrites the value
+			// No VerifyCmd: `sysctl -p` would *apply* the file, and the transform below only ever rewrites the value
 			// of an existing assignment or appends a well-formed line, so it
 			// cannot produce syntax the loader would reject.
 			Transform: func(in []byte) ([]byte, error) {
@@ -332,7 +330,7 @@ func persistSysctl(f model.Finding, pairs []string, benefit string) Action {
 		CreateIfMissing: true,
 		Transform: func(in []byte) ([]byte, error) {
 			// Idempotent: a drop-in this fix already wrote is
-			// returned unchanged rather than doubled. Applying a
+			// returned unchanged. Applying a
 			// fix twice is not an error the user should have to
 			// avoid, and a file with the line twice is not wrong
 			// so much as it is evidence of a tool that does not
@@ -383,10 +381,9 @@ func operatorOwned(path string) bool {
 // setSysctlAssignments rewrites each pair's value where the file already
 // assigns that key, and appends the ones it does not.
 //
-// Every assignment of a key is rewritten, not just the last: the last is the
+// Every assignment of a key is rewritten: the last is the
 // one that wins today, but leaving an earlier line contradicting it turns the
-// file into something whose effect an operator has to derive rather than
-// read. The left-hand side is preserved byte for byte, which keeps the
+// file into something whose effect an operator has to derive. The left-hand side is preserved byte for byte, which keeps the
 // slash-separated spelling and systemd's leading "-" marker intact.
 func setSysctlAssignments(in []byte, pairs []string, stamp string) []byte {
 	lines := strings.Split(string(in), "\n")
@@ -413,7 +410,7 @@ func setSysctlAssignments(in []byte, pairs []string, stamp string) []byte {
 	if len(missing) == 0 {
 		return []byte(out)
 	}
-	// Appended rather than inserted: this file is read last, so the end of it
+	// Appended: this file is read last, so the end of it
 	// is the one position guaranteed to win.
 	if out != "" && !strings.HasSuffix(out, "\n") {
 		out += "\n"
@@ -462,7 +459,7 @@ func sysctlStamp(f model.Finding) string {
 
 // sysctlPairs reads the key=value list the checker recorded.
 //
-// A finding without it is an error rather than a fix built from a guess:
+// A finding without it is an error. Hostveil builds no fix from a guess:
 // the alternative would be deriving the values from the finding ID, which
 // is exactly the kind of invented mapping the CVE fixes are declined for.
 func sysctlPairs(f model.Finding) ([]string, error) {

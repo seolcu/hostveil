@@ -42,7 +42,7 @@ import (
 // So the palettes are held to what the terminal renders, on both
 // profiles, and this test is the only place that asks.
 //
-// It lives here rather than in internal/ui/theme because that package is pure
+// It lives here because that package is pure
 // data and string formatting by design (no lipgloss, no image/color) which
 // is what lets the web dashboard depend on it. The quantiser is lipgloss's.
 
@@ -65,8 +65,8 @@ func chromaticRoles(p theme.Palette) map[string]string {
 // purpose; it just may not be *the same* grey as the muted text it sits
 // beside, or as the body text.
 //
-// Manual and Unavail join Low here for the same reason, not chromaticRoles:
-// both are muted rather than heats (see the Palette doc
+// Manual and Unavail join Low here for the same reason:
+// both are muted colours (see the Palette doc
 // comment), so a 256-color terminal collapsing one to a cube greyscale entry
 // is acceptable; it just may not be the *same* entry as Low, Slate, Bone, or
 // each other, which is exactly the collision the two used to share when both
@@ -99,7 +99,7 @@ func TestEveryHeatSurvivesA256ColorTerminal(t *testing.T) {
 					"a grey. Over SSH, where COLORTERM is not forwarded, that is what "+
 					"the operator sees. Raise its chroma until the cube beats the "+
 					"greyscale ramp; the hue is what the theme is recognised by, so "+
-					"move lightness and saturation rather than hue.",
+					"move lightness and saturation and keep the hue.",
 					th.ID, role, hex, i)
 			}
 		}

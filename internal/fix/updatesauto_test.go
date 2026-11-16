@@ -50,7 +50,7 @@ func TestAutoUpdatesIsAnEditWhenTheMechanismIsAlreadyInstalled(t *testing.T) {
 		}
 	}
 
-	// An existing assignment is rewritten, not appended to: apt reads the last
+	// An existing assignment is rewritten: apt reads the last
 	// one, so appending leaves the file saying both things.
 	out, err = fx.Actions[0].Transform([]byte("APT::Periodic::Update-Package-Lists \"0\";\nAPT::Periodic::Unattended-Upgrade \"0\";\n"))
 	if err != nil {

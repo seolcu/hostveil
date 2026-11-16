@@ -15,7 +15,7 @@ import (
 // is not the risk, it is who decides: the operator reads the Warning and the
 // diff, and presses the button or does not.
 //
-// None of them is applied by a batch, not even `fix --all --review`: each is
+// None of them is applied by a batch, `fix --all --review` included: each is
 // IndividualOnly, because the person who has to read the Warning is the one
 // who knows whether this service set the key intentionally.
 //

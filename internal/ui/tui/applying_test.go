@@ -46,10 +46,10 @@ func TestConfirmingAFixEntersApplyingImmediately(t *testing.T) {
 		t.Fatal("y should issue a command batching the apply with a ticker")
 	}
 	if _, ok := cmd().(tea.BatchMsg); !ok {
-		t.Error("y's command should batch the apply and a ticker, not just the apply")
+		t.Error("y's command should batch the apply together with a ticker")
 	}
 
-	// The screen itself must already read "applying", not the frame the
+	// The screen itself must already read "applying" in place of the frame the
 	// preview left behind: this checks that it does not wait for
 	// appliedMsg to say so.
 	if view := am.View().Content; !strings.Contains(view, "APPLYING") {

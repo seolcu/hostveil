@@ -18,7 +18,7 @@ func firewallFinding(opts ...model.FindingOption) model.Finding {
 
 // The order is the fix. Enabling a default-deny policy first and allowing SSH
 // second is the lockout this refused to risk for years, so the commands are
-// asserted in sequence rather than as a set.
+// asserted in sequence.
 func TestTheFirewallFixOpensSSHBeforeItClosesEverything(t *testing.T) {
 	fx, err := buildEnableFirewall(firewallFinding(model.WithEvidence("ssh_port", "2222")))
 	if err != nil {

@@ -84,7 +84,7 @@ func TestEveryPlannedDomainHasARowBeforeItStarts(t *testing.T) {
 // size, and whether the vulnerability database has to be downloaded first.
 // Nearly the whole of the unknown sits in the one domain nothing can predict,
 // so a figure would be confidently wrong for most of the wait: the same
-// reason a skipped domain is scored N/A rather than 100.
+// reason a skipped domain is scored N/A.
 //
 // Pinned because it is a decision, and an unwritten decision is one the
 // next person re-litigates by adding the feature.
@@ -109,7 +109,7 @@ func TestTheScanScreenReadsTheClockThroughTheModel(t *testing.T) {
 	first := m.View().Content
 	time.Sleep(2 * time.Millisecond)
 	if second := m.View().Content; first != second {
-		t.Error("two renders of one model differ, so something in the scanning screen is reading the clock rather than the model")
+		t.Error("two renders of one model differ, so something in the scanning screen is reading the clock")
 	}
 
 	// And the ticker is what moves it.
@@ -133,7 +133,7 @@ func TestTheScanClockStopsWhenTheScanDoes(t *testing.T) {
 }
 
 // With no engine to ask there is no plan, and the screen falls back to what it
-// drew before rather than to nothing. Every model built as a bare struct
+// drew before. Every model built as a bare struct
 // literal in this package is in that state.
 func TestTheScanScreenStillRendersWithNoPlan(t *testing.T) {
 	m := &appModel{mode: modeScanning, width: 96, height: 34, selected: map[string]bool{},

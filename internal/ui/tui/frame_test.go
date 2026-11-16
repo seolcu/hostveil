@@ -84,7 +84,7 @@ func TestEveryModeIsNamedForTheFrameTests(t *testing.T) {
 // The frame must be exactly the terminal, in both axes, in every mode. This
 // one table is the regression net for the whole composer: a mode that forgets
 // to pad, one that overruns its budget, and one that emits a trailing newline
-// all show up here rather than on someone's terminal.
+// all show up here before they reach a terminal.
 func TestEveryModeFillsExactlyTheTerminal(t *testing.T) {
 	sizes := []struct{ w, h int }{{200, 40}, {120, 34}, {100, 34}, {80, 24}, {60, 24}, {44, 20}}
 	for _, sz := range sizes {
@@ -118,7 +118,7 @@ func TestFooterIsPinned(t *testing.T) {
 		// Compared without styling: the key in each hint is drawn in the
 		// accent and its description in slate, so the row is a run of escape
 		// sequences with the words spread through it. What is being asserted
-		// is where the hints are, not what colour they came out.
+		// is where the hints are; their colour is ignored.
 		last := plain(lines[len(lines)-1])
 		if !strings.Contains(last, want[name]) {
 			t.Errorf("%s: last row should end the key hints (%q), got %q", name, want[name], last)
@@ -164,7 +164,7 @@ func TestCompactHeaderIsOneRow(t *testing.T) {
 
 // The after-fixes number is useful context, but it is optional context. On a
 // 60-column terminal it used to be clipped to "61 after f", which reads as a
-// rendering failure rather than as a deliberate compact header.
+// rendering failure.
 func TestHeadroomIsEitherWholeOrOmitted(t *testing.T) {
 	for _, w := range []int{44, 60, 80, 120} {
 		m := modeModels(w, 24)["list"]

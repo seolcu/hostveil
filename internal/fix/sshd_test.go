@@ -53,7 +53,7 @@ func TestAppendGoesAboveATrailingMatchBlock(t *testing.T) {
 	}
 	if global > match {
 		t.Errorf("the directive was appended inside the trailing Match block, so it "+
-			"applies to that block only rather than globally:\n%s", out)
+			"applies to that block only:\n%s", out)
 	}
 }
 

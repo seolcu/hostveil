@@ -33,8 +33,7 @@ const (
 	modeHistory
 	modeRollbackConfirm
 	// modeForceConfirm is shown when a rollback was declined because the
-	// file changed after the fix wrote it. It is its own mode rather than a
-	// message because the answer is destructive and one-way.
+	// file changed after the fix wrote it. It is its own mode because the answer is destructive and one-way.
 	modeForceConfirm
 	modeTheme
 	// modeExport is the export-format picker, and modeExportPath is the
@@ -142,7 +141,7 @@ type appModel struct {
 	cpCursor    int
 	cpOffset    int
 	// historyWarning names checkpoints that could not be read, shown above
-	// the list rather than instead of it.
+	// the list, which is still shown.
 	historyWarning string
 
 	th          theme.Theme // active color theme; the zero value renders as the default
@@ -154,7 +153,7 @@ type appModel struct {
 	// Export picker + free-text path input. exportCursor indexes
 	// core.ExportFormats(); exportFormat is fixed once the picker's Enter
 	// carries the model into modeExportPath. exportPath is a rune buffer
-	// rather than a string because every keystroke inserts or deletes at
+	// because every keystroke inserts or deletes at
 	// exportPathCursor, and Go strings are not mutated in place.
 	exportCursor     int
 	exportFormat     string
@@ -169,7 +168,7 @@ type appModel struct {
 	// is a rune buffer for the same reason exportPath is (every keystroke
 	// mutates it in place) prefilled from Engine.AIContext() when the
 	// editor opens and written back with Engine.SetAIContext on Enter,
-	// straight through the engine rather than an injected callback: unlike
+	// straight through the engine: unlike
 	// theme/layout, internal/core is not layering-restricted, so it can
 	// already reach the state directory itself.
 	advice          model.Advice
@@ -188,7 +187,7 @@ type appModel struct {
 // ThemeOpts carries the color theme into the TUI.
 //
 // Save records a theme chosen in the picker so the next run starts in it. It
-// is a callback rather than a directory because the TUI must not know where
+// is a callback because the TUI must not know where
 // Hostveil keeps its state: that lives in internal/history, which the
 // layering test forbids this package from importing. cmd/hostveil, which may
 // import it, wires the two together.
@@ -207,7 +206,7 @@ type ExportOpts struct {
 }
 
 // Opts is everything the TUI is told before it starts. It is one struct
-// rather than three parameters because the third would have been the one
+// because the third would have been the one
 // that tipped the signature into being read wrong at a call site.
 type Opts struct {
 	Theme  ThemeOpts
@@ -309,8 +308,7 @@ const scanEventBuffer = 32
 // scanCmd runs a scan and reports it, feeding progress events into ch.
 //
 // The channel is closed here, by the only goroutine that writes to it, so
-// waitForScanEvent's receive ends cleanly when the scan does rather than
-// blocking forever on a channel that will never be written to again.
+// waitForScanEvent's receive ends cleanly when the scan does.
 func scanCmd(ctx context.Context, e *core.Engine, ch chan model.ScanEvent) tea.Cmd {
 	return func() tea.Msg {
 		report := e.Scan(ctx, ch)
@@ -377,8 +375,7 @@ func (m *appModel) startScan() tea.Cmd {
 //
 // Same reading as the CLI renderer: ScanRunning means a checker started,
 // and any other state is that checker finishing; Skipped and Degraded are
-// outcomes, not failures to report. Counting terminal events rather than
-// tracking a total keeps this correct when a scan runs fewer than every
+// outcomes. Counting terminal events keeps this correct when a scan runs fewer than every
 // domain.
 func (m *appModel) noteScanEvent(ev model.ScanEvent) {
 	if m.scanRunning == nil {
@@ -420,7 +417,7 @@ func (m *appModel) scanDomains() []model.Source {
 
 // scanStatus is the line the scanning screen shows.
 //
-// It names the domains still working rather than the ones finished,
+// It names the domains still working,
 // because the question the screen has to answer is "is this hung, and on
 // what", and on a real host the answer is almost always the CVE scan,
 // which can take minutes. Sorted, because map order would make the line
@@ -500,7 +497,7 @@ func explainCmd(ctx context.Context, e *core.Engine, f model.Finding) tea.Cmd {
 type advisedMsg struct{ adv model.Advice }
 
 // adviseCmd asks the engine to judge every fixable finding in findings at
-// once, same "degrades to an AIError rather than failing" contract
+// once, same "degrades to an AIError" contract
 // explainCmd has.
 func adviseCmd(ctx context.Context, e *core.Engine, findings []model.Finding) tea.Cmd {
 	return func() tea.Msg {
@@ -529,11 +526,9 @@ func historyCmd(e *core.Engine) tea.Cmd {
 	return func() tea.Msg {
 		cps, err := e.ListCheckpoints()
 		// Unreadable checkpoints leave a usable list behind, so the view still
-		// opens and carries the warning rather than replacing the history with
-		// an error screen. What is missing cannot be rolled back at all, which
+		// opens and carries the warning. What is missing cannot be rolled back at all, which
 		// is not something to discover only on trying.
-		// A trend that cannot be read costs the trend line, not the
-		// history screen. The checkpoints are what the operator opened
+		// A trend that cannot be read costs the trend line only. The checkpoints are what the operator opened
 		// this for, and they are still there.
 		trend, _ := e.ScoreHistory()
 		if core.IsIncompleteHistory(err) {
@@ -576,8 +571,8 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case scanProgressMsg:
 		// Progress arriving after the report is stale by definition; the
-		// scan is over and the list is already drawn. Drop it rather than
-		// overwrite the screen the user is now reading.
+		// scan is over and the list is already drawn. Drop it so the
+		// screen the user is now reading stays put.
 		if m.mode != modeScanning {
 			return m, nil
 		}
@@ -614,8 +609,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case explainedMsg:
 		m.aiBusy = false
-		// A slow answer for a finding the user has already left is dropped
-		// rather than rendered under whatever is on screen now.
+		// A slow answer for a finding the user has already left is dropped.
 		if m.mode == modeDetail && len(m.active) > 0 && m.active[m.cursor].Key() == msg.key {
 			m.aiText, m.aiErr = msg.exp.AI, msg.exp.AIError
 		}
@@ -624,8 +618,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case advisedMsg:
 		m.adviceBusy = false
 		// A slow answer landing after the user has already left the
-		// advice screen (esc, or a fresh scan) is dropped rather than
-		// rendered under whatever is on screen now.
+		// advice screen (esc, or a fresh scan) is dropped.
 		if m.mode == modeAdvice {
 			m.advice = msg.adv
 		}
@@ -688,7 +681,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case rolledBackMsg:
 		if msg.err != nil {
-			// A declined rollback is a question, not a failure. The file
+			// A declined rollback is a question. The file
 			// changed after Hostveil wrote it, so restoring the backup
 			// would discard whatever was done in between, and rollback
 			// keeps no checkpoint of its own, so there is no way back from
@@ -820,7 +813,7 @@ func (m *appModel) openExportPicker() {
 }
 
 // keyExport drives the format picker. Enter carries the choice into
-// modeExportPath rather than exporting immediately: a format with no
+// modeExportPath and exports nothing yet: a format with no
 // destination is not yet a complete request.
 func (m *appModel) keyExport(key string) (tea.Model, tea.Cmd) {
 	formats := core.ExportFormats()
@@ -846,8 +839,7 @@ func (m *appModel) keyExport(key string) (tea.Model, tea.Cmd) {
 
 // keyExportPath drives the free-text destination field: hand-rolled rather
 // than a general-purpose text-input component, since the whole need is a
-// single-line path buffer with basic editing. A rune slice rather than a
-// string because every keystroke inserts or deletes at exportPathCursor.
+// single-line path buffer with basic editing. A rune slice because every keystroke inserts or deletes at exportPathCursor.
 func (m *appModel) keyExportPath(key string) (tea.Model, tea.Cmd) {
 	switch key {
 	case "esc":
@@ -926,7 +918,7 @@ func (m *appModel) keyAdvice(key string) (tea.Model, tea.Cmd) {
 }
 
 // openAIContextEditor prefills the buffer from whatever is already saved,
-// so editing means changing it rather than retyping it from nothing.
+// so editing starts from the saved text.
 func (m *appModel) openAIContextEditor() {
 	m.aiContextText = []rune(m.aiContext)
 	m.aiContextCursor = len(m.aiContextText)
@@ -935,7 +927,7 @@ func (m *appModel) openAIContextEditor() {
 
 // keyAIContext is modeExportPath's exact editing shape, applied to a
 // different field: see that function's comment for why this is
-// hand-rolled rather than a general-purpose text-input component. Enter
+// hand-rolled. Enter
 // saves and returns to modeAdvice, re-firing adviseCmd so the screen
 // reflects the new context; esc discards and returns unchanged.
 func (m *appModel) keyAIContext(key string) (tea.Model, tea.Cmd) {
@@ -978,10 +970,10 @@ func (m *appModel) keyAIContext(key string) (tea.Model, tea.Cmd) {
 }
 
 // openThemePicker remembers the current theme so cancelling can restore it,
-// and starts the cursor on the theme in use rather than at the top.
+// and starts the cursor on the theme in use.
 func (m *appModel) openThemePicker() {
 	// Resolve the zero value first, so "what was active" is a real theme and
-	// cancelling restores it rather than blanking the palette.
+	// cancelling restores it and never blanks the palette.
 	m.setTheme(m.th)
 	m.themePrev = m.th
 	m.themeCursor = 0
@@ -1131,8 +1123,7 @@ func (m *appModel) presentSources() []model.Source {
 // cycleSeverity advances the minimum-severity filter: off → the most severe
 // level → each one below it → off.
 //
-// It walks model.AllSeverities rather than naming the levels, which is what
-// it used to do. A hand-written chain has to be edited every time the scale
+// It walks model.AllSeverities. It used to name the levels. A hand-written chain has to be edited every time the scale
 // changes, and the failure of forgetting is a level the filter simply skips:
 // invisible, because the key still appears to work.
 func cycleSeverity(cur *model.Severity) *model.Severity {
@@ -1221,13 +1212,13 @@ func clamp(v, lo, hi int) int {
 	return v
 }
 
-// The three summaries below are methods rather than package functions so they
+// The three summaries below are methods so they
 // can reach the glyph set. As functions they could not, so each wrote a
 // literal "✓", and with --glyphs nerd every other tick on the screen was a
 // patched glyph while these three were not, which is the drift internal/glyph
 // exists to make impossible.
 //
-// Each returns lines rather than one sentence. They used to concatenate
+// Each returns lines. They used to concatenate
 // clauses into a paragraph, which the message screen then word-wrapped: the
 // result broke wherever the column happened to fall ("You may need to /
 // restart 'redis'."), and four separate facts (what happened, what it cost,

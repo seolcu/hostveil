@@ -11,7 +11,7 @@ import (
 // remediation is an exec action with consequences a checker cannot weigh:
 // rebooting the host, disabling an account that something might depend on. Each
 // is Review because it is exec, and IndividualOnly because the consequence
-// is the operator's to accept, not a batch's.
+// is the operator's to accept.
 func registerHostRisky(r *Registry) {
 	r.Register("updates.reboot-required", buildScheduleReboot)
 	r.Register("accounts.uid0", buildDisableRogueRoot)

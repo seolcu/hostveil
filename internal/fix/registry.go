@@ -31,8 +31,7 @@ type Action struct {
 
 	// Benefit is one sentence stating what applying this action
 	// gets the operator, shown in preview beside Warning so the payoff and
-	// the risk are read together: a medicine label states efficacy next
-	// to side effects, not side effects alone. Required on every action
+	// the risk are read together. Required on every action
 	// (see Validate), unlike Warning, which stays optional: not every fix
 	// has a real side effect, but every registered fix is worth doing, so
 	// it should be able to say why.
@@ -44,7 +43,7 @@ type Action struct {
 	Transform func(in []byte) (out []byte, err error)
 
 	// CreateIfMissing lets an edit action target a file that does not exist
-	// yet: Transform is handed nil rather than the read failing, and the
+	// yet: Transform is handed nil, and the
 	// checkpoint records that undoing the fix means deleting the file.
 	//
 	// Without it an edit action could only ever modify something already on
@@ -53,7 +52,7 @@ type Action struct {
 	// definition is not there, if it were, the value would already be set
 	// and the finding would not have fired.
 	//
-	// It is opt-in per action, not the default, because for every other fix
+	// It is opt-in per action because for every other fix
 	// a missing target is a real error worth reporting: an sshd_config that
 	// is not there means the finding was stale or the path was wrong, and
 	// silently creating one would be worse than failing.
@@ -67,7 +66,7 @@ type Action struct {
 	// link to a root-only file between the scan and the fix would have root
 	// read that file and render it into a preview diff for anyone at the
 	// dashboard. The write side is already safe (WriteFileAtomic renames
-	// over the link rather than through it) so the read is the whole
+	// over the link) so the read is the whole
 	// exposure, and refusing it is the discipline the mode fixes in
 	// register.go committed every later home-directory fix to.
 	//
@@ -99,8 +98,7 @@ type Action struct {
 	//
 	// This is also the whole of the objection register.go raises against the
 	// dockerd and systemd domains: "a fix would edit a file the running
-	// daemon will not read again until it restarts": stated as a field
-	// rather than as a reason to have no fix at all.
+	// daemon will not read again until it restarts": stated as a field.
 	TakesEffectOn string
 
 	// VerifyCmd is an optional argv that validates an edit action's *result*
@@ -125,10 +123,10 @@ type Action struct {
 	// checkpoint saved: the restart or reload that puts the edit in force.
 	//
 	// It is what lets an edit to a file a daemon reads only at start be one
-	// action rather than a fix plus a chore. The edit is still the checkpoint:
+	// action. The edit is still the checkpoint:
 	// if a command fails, the engine restores the original file and runs the
 	// commands again, so a daemon that will not start under the new file is
-	// brought back under the old one rather than left down. The checkpoint
+	// brought back under the old one. The checkpoint
 	// records the commands too, and a rollback re-runs them for the same
 	// reason. An action with AfterWrite leaves TakesEffectOn empty, because
 	// once the commands succeed the edit is in force.
@@ -146,7 +144,7 @@ type Action struct {
 
 	// Irreversible marks an edit whose effect outlives the file: the history
 	// records it, but there is no rollback, and a failed AfterWrite is
-	// reported where it stopped rather than undone.
+	// reported where it stopped. Nothing is undone.
 	//
 	// k3s Secrets encryption is the case. Once a key rotation has rewritten
 	// Secrets encrypted, removing the setting and restarting (what a rollback
@@ -253,11 +251,11 @@ type Fix struct {
 // `apt-get install` was the checker independently declaring Review.
 //
 // One checker declaring Auto for a finding whose fix happens to be exec is
-// all it would take, and nothing would report it. Review rather than Manual:
+// all it would take, and nothing would report it. It becomes Review:
 // the fix is still correct and still worth offering, it just needs a human to
 // say go.
 //
-// It lives here rather than in the engine because it is a statement about
+// It lives here because it is a statement about
 // the fix's shape and nothing else, which is what lets the docs tests ask
 // the registry what a user will be shown.
 func (f Fix) EffectiveKind() model.RemediationKind {
@@ -311,8 +309,7 @@ func (r *Registry) Build(f model.Finding) (Fix, bool, error) {
 }
 
 // Patterns returns every registered pattern. Tests enumerate the registry
-// through this rather than a hand-maintained list of IDs, which silently
-// drifts out of date the moment a registration is added without one.
+// through this, so a new registration is always included.
 func (r *Registry) Patterns() []string {
 	out := make([]string, 0, len(r.regs))
 	for _, reg := range r.regs {

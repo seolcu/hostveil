@@ -32,7 +32,7 @@ func WhyNoFix(id string) string {
 }
 
 // DeclinedIDs lists every pattern with a decline reason. Tests enumerate this
-// rather than a copy.
+// list directly.
 func DeclinedIDs() []string {
 	out := make([]string, 0, len(declineReasons))
 	for id := range declineReasons {

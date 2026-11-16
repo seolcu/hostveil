@@ -68,8 +68,7 @@ var recommendedFirst = map[string]struct{ label, why string }{
 	},
 }
 
-// The sysctl fixes all share one shape, so they share one entry rather than
-// eight copies of it.
+// The sysctl fixes all share one shape, so they share one entry.
 const sysctlRecommendedWhy = "the drop-in is file-backed, so it leaves a checkpoint and survives a reboot; `sysctl -w` does neither. " +
 	"register.go argues that neither dominates for a person, and it is right, but a batch is not a person, and only one of the two can be undone."
 

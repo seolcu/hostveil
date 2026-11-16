@@ -150,8 +150,8 @@ func TestEveryRuleMeetsTheColumnsItCrosses(t *testing.T) {
 	}
 }
 
-// The grid has to survive every width, not the two a screenshot was taken
-// at. This sweeps each arrangement across the sizes a terminal is
+// The grid has to survive every width, including ones no screenshot was
+// taken at. This sweeps each arrangement across the sizes a terminal is
 // dragged through and holds three things at once:
 //
 //   - the frame is exactly the terminal, in both directions. A row one column
@@ -234,7 +234,7 @@ func TestEveryArrangementHoldsItsGridAtEveryWidth(t *testing.T) {
 // stopped short of the pane separator on exactly the rows whose title nearly
 // filled the space.
 //
-// Checked through the rendered frame rather than findingRow, because the
+// Checked through the rendered frame, because the
 // caller is where the column width comes from and a row that lines up in
 // isolation is not the claim.
 func TestEveryFindingRowPutsItsColumnsInTheSamePlace(t *testing.T) {
@@ -335,7 +335,7 @@ func TestTheRailKeepsTheMeterAndTheNumberApart(t *testing.T) {
 	m := layoutModel(100, 40)
 	var seen bool
 	for _, row := range m.railRows(railWidth, 40) {
-		// Runes, not bytes: the meter is drawn in block elements, so a byte
+		// Runes: the meter is drawn in block elements, so a byte
 		// index one past the last one lands inside it.
 		rs := []rune(plain(row))
 		bar := -1

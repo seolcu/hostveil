@@ -40,7 +40,7 @@ func TestTheDropInEndsWithOneAssignmentInTheRightSection(t *testing.T) {
 			want: "[Service]\nNoNewPrivileges=yes\n",
 		},
 		{
-			// Replaced, not appended. systemd takes the last assignment so
+			// Replaced. systemd takes the last assignment so
 			// appending would work and read as a tool that cannot see.
 			name: "explicitly says no",
 			in:   "[Service]\nNoNewPrivileges=no\n",
@@ -59,7 +59,7 @@ func TestTheDropInEndsWithOneAssignmentInTheRightSection(t *testing.T) {
 			want: "[Unit]\nDescription=x\n\n[Service]\nNoNewPrivileges=yes\n",
 		},
 		{
-			// Under [Service], not at the end of the file; the end of the
+			// Under [Service]; the end of the
 			// file is inside [Install], where systemd would ignore it. The
 			// SSH domain learned this about Match blocks.
 			name: "a section follows [Service]",
@@ -92,8 +92,8 @@ func TestTheDropInEndsWithOneAssignmentInTheRightSection(t *testing.T) {
 	}
 }
 
-// The path travels with the finding rather than being recomputed here, so a
-// finding without it is a bug worth failing on rather than a path to guess.
+// The path travels with the finding, so a finding without it is a bug
+// worth failing on.
 func TestTheFixRefusesAFindingThatCarriesNoPath(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -141,6 +141,6 @@ func TestTheFixSaysWhatHasToHappenForItToTakeEffect(t *testing.T) {
 		t.Error("a service that escalates stops coming back, and nothing says so")
 	}
 	if a.Path != "/etc/systemd/system/gitea.service.d/50-hostveil.conf" {
-		t.Errorf("writes to %q, not the path the checker named", a.Path)
+		t.Errorf("writes to %q, which is not the path the checker named", a.Path)
 	}
 }
