@@ -88,7 +88,7 @@ func TestFirewallFixActuallyClearsTheFinding(t *testing.T) {
 }
 
 // runFirewallChecker mirrors roundtrip_test.go's runChecker, except it takes
-// the environment rather than building a fresh one: this loop needs to
+// the environment as an argument: this loop needs to
 // re-run the same checker against a runner that changed state mid-test.
 func runFirewallChecker(t *testing.T, c check.Checker, env platform.Env) map[string]model.Finding {
 	t.Helper()

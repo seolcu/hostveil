@@ -24,7 +24,7 @@ import (
 // particular service needs it.
 //
 // The reason this domain was declined whole has expired. It read "a drop-in
-// plus a restart is one procedure in two steps rather than two alternatives",
+// plus a restart is one procedure in two steps with no alternatives",
 // and Action.TakesEffectOn is exactly the shape that objection describes:
 // write the artifact now, name what has to happen for it to be in force.
 // Every compose fix runs on it. The sentence was written before it existed.
@@ -91,7 +91,7 @@ const systemdRollbackNote = "The drop-in is a new file with a checkpoint, so rol
 
 func (d riskyDirective) build(f model.Finding) (Fix, error) {
 	fx, err := systemdDropIn(f, d.key, d.value, d.benefit, d.warning+" "+systemdRollbackNote)
-	// Declared Review here rather than left to the checker: the shape is
+	// Declared Review here: the shape is
 	// Auto's, one edit, but the reason these were declined is exactly the
 	// one Auto excludes, and a registry that says Auto about them is a
 	// registry the docs and every other reader of it would believe.
@@ -120,8 +120,8 @@ func buildSystemdNoNewPrivileges(f model.Finding) (Fix, error) {
 // Five of the remaining thirteen protections registered below, alongside
 // no-new-privileges: chosen because the failure mode is narrow enough for an
 // operator reading the finding to assess it, the way ssh.passwordauth
-// asks "do I have SSH keys set up" rather than "does something on this host
-// depend on an invisible property of the unit". The other eight collide with
+// asks "do I have SSH keys set up". Asking whether something on this host
+// depends on an invisible property of the unit would not help. The other eight collide with
 // workloads this project's own audience runs (container runtimes needing
 // namespaces and cgroups, GPU passthrough and VPN tunnels needing /dev and
 // /proc/sys, JIT runtimes needing writable executable memory, and three whose
@@ -174,7 +174,7 @@ func buildSystemdProtectKernelModules(f model.Finding) (Fix, error) {
 
 // systemdDropIn builds the edit that turns one [Service] directive on.
 //
-// The path is the finding's, not one computed here: internal/check/systemd
+// The path is the finding's: internal/check/systemd
 // works it out from the unit id and carries it, and a second computation here
 // would be a second answer to a question that has one. It is also the path
 // that checker's own how-to tells the operator to create, which is what makes
@@ -230,8 +230,7 @@ func systemdDropIn(f model.Finding, key, value, benefit, warning string) (Fix, e
 // Four shapes reach it. An absent file arrives as nil and gets a whole
 // drop-in. A file that already says the right thing is returned untouched:
 // applying a fix twice is not an error the operator should have to avoid. A
-// file that assigns the key differently has that line replaced rather than
-// another appended: systemd takes the last assignment so appending would
+// file that assigns the key differently has that line replaced: systemd takes the last assignment so appending would
 // work, and a file carrying both is not wrong so much as evidence of a tool
 // that does not know what it has done. A file with no [Service] section at
 // all gets one, because a bare directive in a drop-in belongs to no section

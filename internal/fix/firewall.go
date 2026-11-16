@@ -19,14 +19,13 @@ import (
 // port.
 //
 // It records one now, read from the kernel's socket table: the port sshd is
-// serving on, not the one its config claims. That is the whole
-// difference. The fix allows that port and only then enables the firewall,
+// serving on, which may differ from the one its config claims. The fix allows that port and only then enables the firewall,
 // as two commands of a single action, in that order.
 //
 // It stays Review. The commands cannot be rolled back, the host's other
 // services stop being reachable the moment the policy takes effect, and both
-// of those are things an operator should decide rather than discover. What
-// changes is that Hostveil can now carry it out, instead of describing it.
+// of those are things an operator should decide in advance. Hostveil can
+// now carry the change out.
 func registerFirewall(r *Registry) {
 	r.Register("firewall.inactive", buildEnableFirewall)
 	r.Register("firewall.default-allow", buildFixDefaultAllow)
@@ -36,7 +35,7 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 	// No port, no fix. A firewall enabled without knowing which port to keep
 	// open is the lockout this refused to risk for years, and "I could not
 	// tell" must not silently become "22".
-	// Every port sshd is listening on, not the first. Two at once is how an
+	// Every port sshd is listening on. Two at once is how an
 	// operator changes the SSH port without locking themselves out (the old
 	// and the new both open until the new one is proven) and allowing one of
 	// them before a default-deny policy severs the other, with no checkpoint.
@@ -80,7 +79,7 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 		// EffectiveKind because it is exec, which is the same route
 		// updates.disabled takes. Validate reserves the Review kind for
 		// fixes with two or more *alternatives* to choose between, and this
-		// has one procedure whose steps are ordered, not a choice.
+		// has one procedure whose steps are ordered.
 		Kind: model.RemediationAuto,
 		Actions: []Action{{
 			Label: "Allow SSH on " + spelled + "/tcp, then enable ufw with a default-deny inbound policy",
@@ -97,7 +96,7 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 
 // buildFixDefaultAllow flips a running firewall's default inbound policy
 // from allow to deny. It is buildEnableFirewall's fix applied to a firewall
-// that is already running rather than absent (same evidence, same ordering
+// that is already running (same evidence, same ordering
 // (allow SSH first, then tighten the policy), same reason it stays Review)
 // restricted to ufw for the same reason: firewalld's target flip has no
 // registered fix yet.

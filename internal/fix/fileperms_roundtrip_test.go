@@ -18,11 +18,10 @@ import (
 // from an earlier draft of this list.
 //
 // fileperms.compiler's production rule targets two absolute glob Patterns
-// (/usr/bin/*-linux-gnu-as, /usr/bin/*-linux-gnu-ld.bfd) rather than one
-// Path, which cannot resolve inside a temp dir. Like the other glob-backed
+// (/usr/bin/*-linux-gnu-as, /usr/bin/*-linux-gnu-ld.bfd), which cannot resolve inside a temp dir. Like the other glob-backed
 // IDs here (sudoers-dropins, cron, systemd-units, hostkey), the fixture
 // substitutes a plain single path: glob expansion itself is
-// fileperms_test.go's job, not this one's.
+// fileperms_test.go's job.
 func filepermsRoundTripIDs() []string {
 	return []string{
 		"fileperms.shadow", "fileperms.passwd", "fileperms.group",
@@ -61,8 +60,8 @@ func TestFilepermsRoundTripCoversEveryRegisteredID(t *testing.T) {
 	}
 }
 
-// Every registered ID uses buildTightenMode (ActionMode, not ActionEdit),
-// so this uses applyFirstAlternativeMode rather than applyFirstAlternative.
+// Every registered ID uses buildTightenMode (ActionMode),
+// so this uses applyFirstAlternativeMode.
 //
 // Each case is a single-rule fileperms.Checker over one temp file chmod'd to
 // 0666, which is a superset of every registered MaxMode's r/w bits (none set

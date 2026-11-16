@@ -17,7 +17,7 @@ import (
 // config file, which became possible when internal/json5 arrived: see
 // Default's doc comment for what that unblocked and what it did not.
 //
-// Exact IDs, not an "agent.*" glob, for the same reason registerFilePerms
+// Exact IDs, for the same reason registerFilePerms
 // spells its five out: TestEveryRegisteredFixIsValid rejects globs so that
 // widening what the registry claims to fix is a deliberate act. It matters
 // more here than anywhere: three of this domain's findings are still
@@ -112,13 +112,12 @@ var agentAltBenefit = map[string]string{
 //
 // Everything it needs comes from evidence: "config" is the file, "set" is the
 // assignment list that settles the finding, and "set-alt" is a second,
-// independent alternative where the safe value is a choice rather than a
-// single answer. The values are not re-derived here, because internal/fix
+// independent alternative where the safe value is a choice. The values are not re-derived here, because internal/fix
 // cannot import the checker and a second table of what "safe" means is a
 // second answer to the question.
 //
-// A finding whose evidence carries no "set" is an error rather than a fix
-// assembled from a guess. That is the same refusal sysctlPairs makes, and it
+// A finding whose evidence carries no "set" is an error. Hostveil never
+// assembles a fix from a guess. That is the same refusal sysctlPairs makes, and it
 // is what keeps agent.sandbox-off (whose safe value nothing in Hostveil
 // knows) from being handed a value invented at this layer.
 func buildAgentConfigKey(f model.Finding) (Fix, error) {

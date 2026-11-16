@@ -16,8 +16,8 @@ import (
 // drawing two alphabets, which is the drift internal/glyph exists to make
 // impossible.
 //
-// The assertion is that the plain and Nerd renderings differ, not that either
-// is a particular character: naming the codepoint here would make this test
+// The assertion is that the plain and Nerd renderings differ. Neither
+// is pinned to a particular character: naming the codepoint here would make this test
 // agree with the table by copying it.
 func TestEverySummaryDrawsItsTickFromTheGlyphTable(t *testing.T) {
 	outcome := model.FixOutcome{Success: true, CheckpointID: "cp1", RestartHint: "redis"}
@@ -61,7 +61,7 @@ func TestTheMessageScreenKeepsTheFactsApart(t *testing.T) {
 	})
 
 	// From the message's own first line, so the header and the footer (which
-	// are the frame's, not the message's) do not count as facts.
+	// belong to the frame) do not count as facts.
 	var found []string
 	for _, line := range strings.Split(plain(m.View().Content), "\n") {
 		s := strings.TrimSpace(line)
@@ -88,9 +88,9 @@ func TestTheMessageScreenKeepsTheFactsApart(t *testing.T) {
 
 // The screen an operator reads immediately before pressing y.
 //
-// It showed the diff and the fix's label and nothing else, not the finding it
-// repairs, not whether Hostveil considers the fix safe to apply unattended,
-// not the file it edits, and not whether it can be undone. The rollback
+// It showed the diff and the fix's label and nothing else. It left out the
+// finding it repairs, whether Hostveil considers the fix safe to apply
+// unattended, the file it edits and whether it can be undone. The rollback
 // confirmation, which asks a strictly smaller question, said all of that.
 //
 // The reversibility line matters most in pairs: an exec action already carries

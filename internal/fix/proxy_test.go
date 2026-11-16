@@ -133,8 +133,7 @@ func TestScanJailTransformIsIdempotent(t *testing.T) {
 // TestScanJailAlwaysNamesBothLogFiles pins the other half of the same bug:
 // a bare vhost that returns nginx's own 404 for an unmatched path never
 // reaches a static-file lookup, so only the access log carries it; the
-// error log stays empty. Both must always be named, not just the one
-// jail.conf's own default points at.
+// error log stays empty. Both must always be named.
 func TestScanJailAlwaysNamesBothLogFiles(t *testing.T) {
 	fx, err := buildEnableScanJail(scanJailFinding("", ""))
 	if err != nil {

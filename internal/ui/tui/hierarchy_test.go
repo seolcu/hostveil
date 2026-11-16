@@ -58,7 +58,7 @@ func TestEverySecondRailRowIsBranchedUnderItsDomain(t *testing.T) {
 }
 
 // isRailHead reports whether a rail row is a domain's own line: it ends in a
-// score or N/A rather than in a mix or a reason.
+// score or N/A. Mix and reason rows end otherwise.
 func isRailHead(txt string) bool {
 	fields := strings.Fields(txt)
 	if len(fields) == 0 {
@@ -77,7 +77,7 @@ func isRailHead(txt string) bool {
 	return last != ""
 }
 
-// The branch is measured in columns, not runes.
+// The branch is measured in columns.
 //
 // "└" is East Asian Ambiguous, so under RUNEWIDTH_EASTASIAN it is two columns
 // and the prefix is five. Three budgets are keyed to it (the one that decides
@@ -89,8 +89,7 @@ func TestTheRailBranchIsBudgetedInColumns(t *testing.T) {
 		t.Errorf("railBranchW = %d, want %d columns", got, lipgloss.Width(railBranch))
 	}
 	// The branched rows only. A domain's own row carries a meter, and the
-	// meter is built from block elements by rune count rather than to a column
-	// budget, so under this variable every one of them is over-wide for a
+	// meter is built from block elements by rune count, so under this variable every one of them is over-wide for a
 	// reason that predates the branch and belongs to its own fix. See the skip
 	// in TestTheHeaderComposesRowsThatFitBeforeTheFrameClipsThem.
 	m := layoutModel(100, 44)

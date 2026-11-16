@@ -17,7 +17,7 @@ import (
 
 // Column geometry. The dashboard collapses to one column below 820px; a
 // terminal has to make the same call in characters, and the numbers below
-// are what the regions need rather than a scaled-down guess.
+// are what the regions need.
 //
 // minListWidth is the one that decides: a findings row is a severity label,
 // a 13-column id and a title, and under about forty columns the title is
@@ -44,13 +44,13 @@ const (
 // run. They had different indents, two columns and four, so the rail carried
 // two depths of hierarchy at once, which is no hierarchy.
 //
-// A literal, not a glyph row. internal/glyph writes down why it has no arrow
+// A literal. internal/glyph writes down why it has no arrow
 // (a row nothing asks for goes stale unnoticed) and the rail's own "→" follows
 // that rule; every grid character in this package (│ ┬ ┴ ├ ┤ ┼ ─ ▌ █ ░) is a
 // literal too. The table is for marks that mean something; this is structure.
 const railBranch = "  └ "
 
-// railBranchW is the branch in columns, not runes. "└" is East Asian
+// railBranchW is the branch measured in columns. "└" is East Asian
 // Ambiguous, so under RUNEWIDTH_EASTASIAN it is two columns and the prefix is
 // five, and the three budgets keyed to it have to move together or
 // mixIsCompact decides the spelling against a width the render does not have.
@@ -125,7 +125,7 @@ func (m *appModel) joinColumns(n int, widths []int, cols [][]string) []string {
 // beside them. Drawn as a plain │ the result is a line that visibly stops one
 // column short of the one it is supposed to meet: the terminal equivalent of
 // a border that does not quite reach the corner, and the thing that made this
-// interface look drawn rather than composed.
+// interface look drawn by hand.
 func junction(left, right string) string {
 	l := endsWithRule(left)
 	r := beginsWithRule(right)
@@ -227,8 +227,7 @@ func (m *appModel) railRows(w, budget int) []string {
 	//
 	// Only when the rows are there. This is the third tier of the
 	// same budget the two above it come out of, so a terminal that cannot
-	// afford it keeps every domain and loses the gaps rather than the other
-	// way round: head + 2 rows each + one gap between each pair.
+	// afford it keeps every domain and loses the gaps: head + 2 rows each + one gap between each pair.
 	airy := dense && 3*len(axes) <= budget
 
 	// Built per domain and flattened afterwards, so a rail that does not fit
@@ -277,7 +276,7 @@ func (m *appModel) railRows(w, budget int) []string {
 			row += s.dim.Render(nm)
 		}
 		if meterW > 0 {
-			// An axis that did not run gets an empty bar, not a bar of its
+			// An axis that did not run gets an empty bar. A bar of its
 			// score: a skipped domain carries whatever Score a zero value
 			// leaves behind, and drawn it came out full; a solid meter beside
 			// the letters N/A, which is the "I could not look" / "nothing
@@ -288,7 +287,7 @@ func (m *appModel) railRows(w, budget int) []string {
 			}
 			row += " " + s.meterAtLeastOne(pct, meterW, c, ax.Applicable)
 		}
-		// The number takes its band's color rather than plain bone. A meter
+		// The number takes its band's color. A meter
 		// six cells wide cannot separate 0 from 8, and those are the domains
 		// worth looking at first; the digits can, and they are already there.
 		if ax.Applicable {
@@ -302,14 +301,13 @@ func (m *appModel) railRows(w, budget int) []string {
 			block = append(block, s.dim.Render(truncate(railBranch+strings.ToLower(state[ax.Source].String())+
 				": "+reasonOr(reason[ax.Source], "did not run"), w)))
 		case dense:
-			// The per-axis headroom rides on the mix row rather than the
-			// score row: the rail is about twenty columns wide and the score
+			// The per-axis headroom rides on the mix row: the rail is about twenty columns wide and the score
 			// row has none to spare, while the mix row is usually eight
 			// characters of "3H·1M·6L" in twenty. Compact, because this
 			// column is a glance and the exact arithmetic is a keypress away.
 			mix := m.severityMix(byDomain[ax.Source], w-railBranchW, compactMix)
 			if after, show := ax.Headroom(); show {
-				// A literal arrow, not a glyph row: internal/glyph records why
+				// A literal arrow: internal/glyph records why
 				// it has none, and "›" is already the rail's own marker for
 				// the domain the list is filtered to. One symbol meaning two
 				// things in one column is worse than a character the plain
@@ -324,7 +322,7 @@ func (m *appModel) railRows(w, budget int) []string {
 	}
 
 	// The dashboard's rail head reads "Domains · 15 findings", and the count
-	// is the findings rather than the domains, which is worth keeping,
+	// is the findings, which is worth keeping,
 	// because the rail is a list of domains and a header counting them again
 	// would say nothing the rows below it do not.
 	head := fmt.Sprintf("DOMAINS · %d findings", len(all))
@@ -351,7 +349,7 @@ func (m *appModel) railRows(w, budget int) []string {
 
 // severityMix is a domain's findings as one line of counts, in the model's
 // most-severe-first order, each in its own color. A domain with none says so
-// rather than rendering an empty row that reads as a rendering fault.
+// so the row never looks like a rendering fault.
 //
 // Two spellings of the same line. The dashboard writes "3 high · 1 med · 2
 // low" and that is what goes here wherever it fits, at the rail's 24 columns
@@ -434,15 +432,14 @@ func (m *appModel) severityMixParts(fs []model.Finding, compact bool) []string {
 	return parts
 }
 
-// mixIsCompact decides the spelling once for the whole rail, rather than each
-// domain choosing for itself.
+// mixIsCompact decides the spelling once for the whole rail.
 //
 // Deciding per domain is what shipped, and it made the rail's *first* row the
 // odd one out on every host that has one: the busiest domain has the widest
 // counts, so it was the one that overflowed and fell back, and the top of the
 // column read "9H·16M·28L" over eleven rows of "2 high · 1 med · 3 low". The
 // eye reads a column by its shape, and one row in a different shape reads as a
-// different kind of thing rather than as the same thing abbreviated.
+// different kind of thing.
 func (m *appModel) mixIsCompact(byDomain map[model.Source][]model.Finding, w int) bool {
 	for _, fs := range byDomain {
 		if len(fs) == 0 {

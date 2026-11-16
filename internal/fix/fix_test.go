@@ -13,7 +13,7 @@ import (
 // representative builds a finding with the metadata/evidence each fix
 // builder needs, so the registry can be exercised without a live scan.
 //
-// It lives in fixtest rather than here because cmd/sitegen needs the same
+// It lives in fixtest because cmd/sitegen needs the same
 // thing: pinning the docs' Fix column against what a user is offered means
 // building the fix, and building it means having a finding to build from.
 func representative(id string) model.Finding { return fixtest.Finding(id) }
@@ -22,7 +22,7 @@ func representative(id string) model.Finding { return fixtest.Finding(id) }
 // representative finding and asserts it passes Validate: Auto has exactly
 // one action, Review has independent alternatives, every edit has a
 // Transform, every exec has commands.
-// It enumerates the registry itself rather than a hand-kept list, so a new
+// It enumerates the registry itself, so a new
 // registration cannot slip in unvalidated.
 func TestEveryRegisteredFixIsValid(t *testing.T) {
 	r := Default()
@@ -151,8 +151,7 @@ func TestReviewIntentSurvivesAnAutoShapedFix(t *testing.T) {
 	}
 }
 
-// The two alternatives must be independent choices, not two halves of one
-// procedure: action 1 is the zero-downtime option for anyone who cannot
+// The two alternatives must be independent choices: action 1 is the zero-downtime option for anyone who cannot
 // take an unplanned restart, at the cost of not remediating yet.
 func TestRepullFixHasTwoIndependentAlternatives(t *testing.T) {
 	fx, ok, err := Default().Build(representative("cve.outdated-image"))
@@ -273,8 +272,7 @@ func TestMemLimitFixOffersSeveralValues(t *testing.T) {
 		if !strings.Contains(string(out), "mem_limit") {
 			t.Errorf("action %d did not set mem_limit: %s", i, out)
 		}
-		// Each alternative must be a distinct choice, not the same edit
-		// relabelled; the loop variable capture bug this guards is easy to
+		// Each alternative must be a distinct edit; the loop variable capture bug this guards is easy to
 		// reintroduce.
 		if seen[string(out)] {
 			t.Errorf("action %d produced an output identical to an earlier alternative", i)

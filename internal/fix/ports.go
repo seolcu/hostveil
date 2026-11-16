@@ -91,8 +91,7 @@ func buildUFWDenyPort(f model.Finding) (Fix, error) {
 // the zone's ports and services, which is what lets it close a port the
 // zone opened, the case this finding fires on. On a real Fedora 44 the port
 // answered from outside with the zone opening it and stopped with this rule.
-// It goes in at runtime and permanently rather than through a reload, which
-// would drop any rule somebody added without --permanent.
+// It goes in at runtime and permanently. A reload would drop any rule somebody added without --permanent.
 func firewalldRejectPort(f model.Finding, port string) (Fix, error) {
 	zone := f.Evidence["zone"]
 	if zone == "" {

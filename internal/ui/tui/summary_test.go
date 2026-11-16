@@ -83,7 +83,7 @@ func TestChipRowOmitsAnEmptySeverity(t *testing.T) {
 	}
 }
 
-// The counts describe the host, not the filter. Counts that shrank with the
+// The counts describe the host and ignore the filter. Counts that shrank with the
 // list would be answering a question the list already answers, and the
 // number a narrowed list most needs beside it is what it was narrowed from.
 func TestChipCountsDoNotMoveWithTheFilter(t *testing.T) {
@@ -142,7 +142,7 @@ func TestTheChipRowDropsWholeChipsAndSaysHowMany(t *testing.T) {
 			t.Errorf("w=%d: the row is %d columns wide", w, got)
 		}
 		// Every count that survived must be the number it was in the full row,
-		// digits and all. A trailing "+N" is the marker, not a count.
+		// digits and all. A trailing "+N" is the marker.
 		body, _, _ := strings.Cut(plain(row), "  +")
 		for _, chip := range strings.Fields(strings.TrimSpace(body)) {
 			if _, err := strconv.Atoi(chip); err != nil {
@@ -200,7 +200,7 @@ func TestSeverityChipsAboveTheThresholdAreAllActive(t *testing.T) {
 	m.filter.MinSeverity = &medium
 	m.active = m.report.Select(m.filter)
 
-	// The counts are the fixture's, read off it rather than written out, so
+	// The counts are read off the fixture, so
 	// this test says something about the threshold and nothing about how
 	// many findings summaryReport happens to build.
 	counts := map[model.Severity]int{}
@@ -246,7 +246,7 @@ func TestListScreenNamesWhyADomainDidNotFullyRun(t *testing.T) {
 
 // A host that could scan almost nothing produces a notice per domain, which
 // is a header taller than the list it heads. The region is capped, and the
-// cap says how much it is hiding rather than silently dropping it.
+// cap says how much it is hiding.
 func TestCoverageNoticesAreCappedAndSayHowManyAreHidden(t *testing.T) {
 	m := summaryModel(120, 40)
 	var doms []model.DomainResult
@@ -287,10 +287,9 @@ func TestCoverageNoticesRunMostSevereFirst(t *testing.T) {
 	}
 }
 
-// The notices vary with the host, not with the design: a laptop with Docker
+// The notices vary with the host: a laptop with Docker
 // and Trivy has none and a bare container has four. They are given up before
-// the axes strip they annotate, rather than taking the whole header down to
-// the one-line tier with them.
+// the axes strip they annotate, so the header keeps its full tier.
 //
 // Height 12 is the band where this is a real choice: the header still fits
 // without the notices (2 rows of it, plus the rule and footer, leaves the
@@ -332,8 +331,7 @@ func TestFrameHeightHoldsWithCoverageAndChips(t *testing.T) {
 	}
 }
 
-// A clean host still says "Clean." rather than "No findings match the
-// filter." The chip row is drawn from the unfiltered report, so it is there
+// A clean host still says "Clean.". The chip row is drawn from the unfiltered report, so it is there
 // whenever the host has findings at all: using it to detect a filter would
 // have turned every empty filtered list into the wrong message, and every
 // clean host into the other wrong one.
@@ -391,7 +389,7 @@ func TestTheBatchBarSaysWhatTheBatchKeyWouldDo(t *testing.T) {
 	if !strings.Contains(got, "esc") {
 		t.Errorf("the bar does not say how to clear the marks: %q", got)
 	}
-	// And it has to reach the screen, not just exist.
+	// And it has to reach the screen.
 	if !strings.Contains(plain(strings.Join(m.listRows(24), "\n")), "2 marked") {
 		t.Error("the batch bar is not drawn on the list screen")
 	}
@@ -460,7 +458,7 @@ func TestTheServiceIsSetFlushRightWhenThereIsRoom(t *testing.T) {
 // score they arrived identical: Container at 0 and a skipped CVE domain both
 // drew six empty cells.
 //
-// Asserted on the string rather than through the model, because the bug was
+// Asserted on the string, because the bug was
 // never in the arithmetic. 0 of 6 is correctly zero cells; it is the drawing
 // that had to change.
 func TestAMeterSeparatesAZeroScoreFromADomainThatDidNotRun(t *testing.T) {
@@ -479,10 +477,10 @@ func TestAMeterSeparatesAZeroScoreFromADomainThatDidNotRun(t *testing.T) {
 		t.Errorf("an axis that did not run drew %d filled cells, want 0; a skipped "+
 			"domain with ink in its meter reads as a score", got)
 	}
-	// And the floor is a floor, not a rewrite: a real score still fills what
+	// And the floor only raises an empty meter: a real score still fills what
 	// it earned.
 	//
-	// Against meterCells(w) rather than w, because w is a budget in terminal
+	// Against meterCells(w), because w is a budget in terminal
 	// columns and a block is not always one of them; under
 	// RUNEWIDTH_EASTASIAN it is two. Asserting six blocks in a six-column
 	// meter is the exact conflation the meter itself used to make.
@@ -501,7 +499,7 @@ func TestAMeterSeparatesAZeroScoreFromADomainThatDidNotRun(t *testing.T) {
 // "9 high · 16 med · 28", which says the host has 28 low findings when it has
 // 28 of them and something else entirely about the rest.
 //
-// The spelling is also chosen once for the whole rail rather than per domain,
+// The spelling is also chosen once for the whole rail,
 // because the busiest domain has the widest counts, so deciding row by row
 // abbreviated exactly the first row and left the eleven under it long.
 func TestTheSeverityMixIsNeverCutMidCount(t *testing.T) {

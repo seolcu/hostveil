@@ -26,7 +26,7 @@ func registerProxyRisky(r *Registry) {
 // to validate an included fragment, and then reloads. A failure at either
 // step brings the original file back.
 //
-// try-reload-or-restart rather than reload: on a host where nginx is installed
+// try-reload-or-restart: on a host where nginx is installed
 // and stopped, reload fails and the fix would be undone for nothing, while
 // reload-or-restart would start a service somebody stopped. This reloads a
 // running nginx and leaves a stopped one stopped, with the file fixed for when

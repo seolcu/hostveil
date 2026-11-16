@@ -14,7 +14,7 @@ import (
 )
 
 // The compose round trip, on the layout internal/compose/discover.go calls
-// "the ordinary case, not an exotic one": a base file and an override.
+// "the ordinary case": a base file and an override.
 //
 // The checker resolves the merge by asking docker, which is the reason for
 // effectiveProject; "a checker that re-implements somebody else's precedence
@@ -43,7 +43,7 @@ const composeOverride = `services:
 `
 
 // merged is what `docker compose -f base -f override config` prints: compose
-// APPENDS port mappings rather than replacing them, so the same publication
+// APPENDS port mappings across files, so the same publication
 // appears twice and the effective state is published on every interface.
 const composeMerged = `services:
   redis:

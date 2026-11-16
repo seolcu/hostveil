@@ -30,7 +30,7 @@ func TestScanProgressNamesTheDomainsStillWorking(t *testing.T) {
 	}
 
 	// A finished checker leaves the line and joins the count. Skipped and
-	// Degraded are outcomes, not failures to report, so they finish too.
+	// Degraded are outcomes, so they finish too.
 	m.noteScanEvent(model.ScanEvent{Source: model.SourceSSH, State: model.ScanDone})
 	if strings.Contains(m.status, model.SourceSSH.Label()) {
 		t.Errorf("a finished domain is still listed as running: %q", m.status)
@@ -48,7 +48,7 @@ func TestScanProgressNamesTheDomainsStillWorking(t *testing.T) {
 	}
 }
 
-// The wiring, not just the fold: an event has to reach the model through
+// The wiring as well as the fold: an event has to reach the model through
 // Update. The TUI's scan already emitted these into a nil channel, so a
 // version of this that only exercised noteScanEvent would pass against the
 // exact bug being fixed.
@@ -76,7 +76,7 @@ func TestScanProgressReachesTheModelThroughUpdate(t *testing.T) {
 }
 
 // Map iteration order would make the line jitter on every redraw, which
-// reads as the screen malfunctioning rather than as work progressing.
+// reads as the screen malfunctioning.
 func TestScanProgressIsStablyOrdered(t *testing.T) {
 	build := func() string {
 		m := &appModel{mode: modeScanning, scanRunning: map[model.Source]bool{}}
@@ -93,7 +93,7 @@ func TestScanProgressIsStablyOrdered(t *testing.T) {
 	}
 }
 
-// A declined rollback is a question, not a failure. The engine refuses when
+// A declined rollback is a question. The engine refuses when
 // the file changed after Hostveil wrote it, the CLI has offered --force
 // since 3.4, and the dashboard's server has accepted it since the token
 // landed, but in the TUI the answer was "Rollback failed" and a dead end.

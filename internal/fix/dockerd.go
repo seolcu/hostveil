@@ -17,7 +17,7 @@ import (
 // part of the action, and a daemon that refuses the new file gets the old one
 // back) so each of these is now a fix that is in force when it reports
 // success. They are all IndividualOnly: restarting Docker is the operator's
-// outage to schedule, not a batch's.
+// outage to schedule.
 func registerDockerd(r *Registry) {
 	r.Register("dockerd.no-new-privileges", buildDockerdNoNewPrivileges)
 	r.Register("dockerd.userns-remap", buildDockerdUsernsRemap)
@@ -30,8 +30,8 @@ func registerDockerd(r *Registry) {
 
 // dockerdValidate is `dockerd --validate`, Docker 23's own check of a config
 // file. Older daemons do not have it, fail it on the original file as well,
-// and runEditValidator's control run then sets it aside rather than letting
-// it block a good edit.
+// and runEditValidator's control run then sets it aside so it cannot
+// block a good edit.
 var dockerdValidate = []string{"dockerd", "--validate", "--config-file", VerifyPathToken}
 
 var restartDocker = [][]string{{"systemctl", "restart", "docker"}}

@@ -13,7 +13,7 @@ import "github.com/seolcu/hostveil/internal/model"
 // Finding returns a finding for id carrying the union of the metadata and
 // evidence every registered builder reads.
 //
-// One finding with every key rather than a per-domain table: a builder that
+// One finding with every key: a builder that
 // starts reading a new key fails loudly here (its Build errors) instead of
 // being silently skipped, and no caller has to know which domain an ID
 // belongs to. The source and severity are placeholders (no builder reads
@@ -23,7 +23,7 @@ import "github.com/seolcu/hostveil/internal/model"
 // Several builders interpolate a value straight into the Action.Label or
 // .Warning a user reads, and cmd/sitegen's fix-actions page renders those
 // strings verbatim on the public docs site, so a path here is picked to
-// read as a plausible real one, not as test scaffolding. That is why "file"
+// read as a plausible real one. That is why "file"
 // and "dropin" are not under /tmp: cmd/sitegen/fixactions_test.go fails the
 // build if a rendered action text contains "/tmp/", specifically to catch a
 // value added here without that in mind.

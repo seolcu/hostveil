@@ -17,8 +17,7 @@ import (
 // screenshot is the only accurate review of, and neither is visible in the one
 // arrangement the dumper used to be hardwired to.
 //
-// An unknown ID is a hard failure rather than a silent fall back to the
-// default: a typo would otherwise produce a full set of frames that look
+// An unknown ID is a hard failure: a typo would otherwise produce a full set of frames that look
 // right, are named after the theme asked for, and are drawn in another one.
 const (
 	snapshotThemeEnv = "HOSTVEIL_SNAPSHOT_THEME"
@@ -41,7 +40,7 @@ func snapshotTheme(t *testing.T) theme.Theme {
 // meets them. Reached from TestSnapshotDump when HOSTVEIL_SNAPSHOT names a
 // directory; see that test for why there is only the one hook.
 //
-// The fixture is a plausible host rather than a minimal one: a
+// The fixture is a plausible host: a
 // full nine domains, one of them degraded, findings at every severity, a
 // couple marked, and enough of them to scroll. A layout only misbehaves when
 // there is something in it.
@@ -97,7 +96,7 @@ func dumpEveryMode(t *testing.T, dir string) {
 	}
 
 	// A scan part way through, driven by the same events a real one emits
-	// rather than posed. It used to be the bare model with status set, which
+	// in the same order. It used to be the bare model with status set, which
 	// is a state no run ever reaches: the screen draws the plan and the
 	// per-domain progress, and a model that has heard nothing draws neither.
 	// So the one frame claiming to show a scan showed the empty fallback, and
@@ -178,8 +177,8 @@ func dumpEveryMode(t *testing.T, dir string) {
 	}
 	dump("06-preview-exec", pv2)
 
-	// Composed by the code that composes it in a real run, not written out
-	// here. A hand-written string is a picture of what somebody thought the
+	// Composed by the code that composes it in a real run.
+	// A hand-written string is a picture of what somebody thought the
 	// message said, which is how this frame went on showing a single wrapped
 	// paragraph after the summaries had been split into lines, and how the
 	// scanning frame showed a state no run reaches.

@@ -86,7 +86,7 @@ func buildK3sSecretsEncryption(f model.Finding) (Fix, error) {
 	// The restart returns when the unit reports ready, which is before the
 	// server will take a key rotation: rotate-keys straight after it failed on
 	// a real cluster with "runtime core not ready". Waiting for the node is a
-	// command, not a sleep, so it is as long as it needs and no longer.
+	// command, so it takes as long as it needs and no longer.
 	waitReady := []string{"k3s", "kubectl", "wait", "--for=condition=Ready", "node", "--all", "--timeout=180s"}
 	// A Ready node is not enough either: rotate-keys reads the encryption
 	// hash k3s annotates the node with after it starts, and refused with
@@ -104,7 +104,7 @@ func buildK3sSecretsEncryption(f model.Finding) (Fix, error) {
 	}
 	a.Timeout = 10 * time.Minute
 	a.Irreversible = true
-	// Set whole rather than through k3sDropIn's: that one ends by promising
+	// Set whole here: k3sDropIn's version ends by promising
 	// to remove the file if k3s will not start, which this fix does not do.
 	a.Warning = "This cannot be rolled back: once Secrets are rewritten encrypted, removing the setting leaves " +
 		"them unreadable, so the way back is `k3s secrets-encrypt disable` and a rotation, by hand. It restarts " +

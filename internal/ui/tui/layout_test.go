@@ -26,7 +26,7 @@ func visibleWidth(s string) int {
 		b.WriteString(s[i : i+size])
 		i += size
 	}
-	// Columns, not runes. Counting runes here made this helper agree with
+	// Columns. Counting runes here made this helper agree with
 	// the rune-counting truncate it was supposed to be checking, so a cell
 	// twice as wide as its budget measured as exactly fitting.
 	return textwidth.Of(b.String())
@@ -45,7 +45,7 @@ func decodeRune(s string) (rune, int) {
 // made the axes strip too wide for any ordinary terminal: the reason the
 // arrangements exist at all.
 //
-// Derived from AllSources rather than listed. The list was written out by
+// Derived from AllSources. A hand-written list was written out by
 // hand at nine and stayed there while three more domains arrived, so the
 // frame-width tests that lean on this fixture were measuring a strip three
 // cells narrower than the one a user sees, and the sentence above it said
@@ -60,7 +60,7 @@ func layoutReport() model.Report {
 	axes[2].Applicable = false // an N/A axis
 	axes[4].Degraded = true    // and a degraded one
 	// Far more findings than fit any viewport under test: with a short list
-	// the frame is bounded by the content rather than by the reservation, and
+	// the frame is bounded by the content, and
 	// a wrong reservation never shows up.
 	var fs []model.Finding
 	for i := 0; i < 60; i++ {
@@ -73,7 +73,7 @@ func layoutReport() model.Report {
 }
 
 // The frame must fit the terminal it is drawn into. In alt-screen mode a line
-// wider than the screen does not merely look wrong: it wraps, pushing every
+// wider than the screen wraps, pushing every
 // row below it down and off the bottom of the frame.
 //
 // Three separate defects violated this. The axes strip joined all nine
@@ -99,13 +99,13 @@ func TestFrameFitsTerminalWidth(t *testing.T) {
 	}
 }
 
-// The frame is exactly as tall as the terminal, not merely no taller.
+// The frame is exactly as tall as the terminal.
 //
 // "No taller" was the old assertion, and it let the footer float: a short
 // list drew its key hints directly under the last row and left the bottom
 // third of the alt screen empty, which reads as a half-drawn program. Exact
 // height is what pins the footer to the last line, so the composer pads the
-// body rather than stopping early.
+// body to the full height.
 //
 // It also has to stay exact from the other direction: the count is
 // separators + 1, so a single trailing newline makes the frame h+1 rows and
@@ -184,7 +184,7 @@ var ansiSeq = regexp.MustCompile("\x1b\\[[0-9;]*m")
 // The theme picker is drawn with the widest fixed-width row in the interface
 // (a padded name plus a five-color swatch) so it is the mode most likely to
 // overrun a narrow terminal. It must fit every width like the rest, and the
-// swatch must be dropped rather than clipped when it does not.
+// swatch must be dropped whole when it does not.
 func TestThemePickerFitsTerminalWidth(t *testing.T) {
 	for _, w := range []int{120, 80, 72, 60, 44, 30, 20} {
 		m := &appModel{mode: modeTheme, width: w, height: 30, report: layoutReport(), selected: map[string]bool{}}

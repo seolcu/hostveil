@@ -68,12 +68,11 @@ func TestTheCursorRowStillNamesItsService(t *testing.T) {
 // happens to be.
 //
 // The cursor row is padded to the full width (the selection bar
-// has to span the column rather than stopping where the text does) so the
-// two are not the same length, and the invariant is the ceiling rather than
-// equality. The ceiling is the one that matters: a row wider than its column
+// has to span the column) so the two are not the same length, and the
+// invariant is the ceiling. The ceiling is the one that matters: a row wider than its column
 // pushes every column right of it off the screen, and the service name is
 // host-supplied so it has no safe upper bound.
-// Measured with lipgloss.Width, not len([]rune(...)).
+// Measured with lipgloss.Width.
 //
 // A rune count used as a column budget is the exact fault this test exists to
 // catch, and it was how this test measured: under RUNEWIDTH_EASTASIAN the
@@ -109,7 +108,7 @@ func TestNoRowOverrunsItsColumn(t *testing.T) {
 // meters had, on the screen that carries the history.
 //
 // Measured with lipgloss.Width in whichever mode the test runs in, so it is a
-// real assertion under RUNEWIDTH_EASTASIAN rather than a tautology.
+// real assertion under RUNEWIDTH_EASTASIAN.
 func TestTheTrendLineFitsTheTerminal(t *testing.T) {
 	var trend []model.ScorePoint
 	for i := range 200 {

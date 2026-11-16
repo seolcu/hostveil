@@ -38,7 +38,7 @@ import (
 // itself looking at the wrong file passes here. internal/check/updates is
 // exactly that shape (it reads one file out of apt.conf.d while apt reads the
 // whole directory, last assignment winning) and it is absent
-// from the table below rather than added to it green.
+// from the table below.
 //
 // SSH is where this starts because internal/fix/register.go names it as the
 // accurate case: "the ssh checker reads sshd_config, which is the same artifact
@@ -208,8 +208,7 @@ func applyFirstAlternative(t *testing.T, f model.Finding) (before, after []byte)
 
 // applyFirstAlternativeMode is applyFirstAlternative's ActionMode twin: the
 // fileperms and agent mode findings carry a Mode transform (a permission
-// bits in, permission bits out function) rather than a Transform over file
-// contents, so there is no diff to read back; chmod is the whole write.
+// bits in, permission bits out function), so there is no diff to read back; chmod is the whole write.
 //
 // Same contract as applyFirstAlternative otherwise: builds the real
 // registered fix, drives its first action, and fails loudly if that action

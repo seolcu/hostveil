@@ -27,8 +27,8 @@ func registerUpdates(r *Registry) {
 }
 
 // allowOriginsPath is Hostveil's own drop-in for origin patterns. It is a
-// file of its own rather than an edit to 50unattended-upgrades, which the
-// package owns and replaces on upgrade, and its list is appended to the
+// file of its own. 50unattended-upgrades belongs to the
+// package, which owns it and replaces on upgrade, and its list is appended to the
 // distribution's because apt merges list values across fragments.
 const allowOriginsPath = "/etc/apt/apt.conf.d/52hostveil-origins"
 
@@ -67,7 +67,7 @@ func buildAllowOrigins(f model.Finding) (Fix, error) {
 
 // addOriginPatterns renders the drop-in with every pattern it already lists
 // plus the new ones, in a stable order, so applying the same fix twice is
-// a no-op and a later finding adds to the file rather than replacing it.
+// a no-op and a later finding adds to the file.
 func addOriginPatterns(in []byte, add []string) ([]byte, error) {
 	seen := map[string]bool{}
 	var all []string
@@ -116,8 +116,7 @@ func buildEnableSysstat(f model.Finding) (Fix, error) {
 }
 
 // pendingSecurityWarning is shown before either package manager's upgrade
-// runs. Docker is named specifically, not just "the services they belong
-// to": a demo-VM rehearsal of this exact fix upgraded the Docker package,
+// runs. Docker is named specifically: a demo-VM rehearsal of this exact fix upgraded the Docker package,
 // which restarted the daemon, which took every container with it, and the
 // ones with no restart policy (or one written but not yet in force, see
 // model.Finding.Pending) stayed down until something ran `docker compose up
@@ -292,7 +291,7 @@ func enableDnfAutomatic(f model.Finding) (Fix, error) {
 // setDnfApplyUpdates sets apply_updates = yes in [commands], in place where
 // the key is already there and after the section header where it is not. A
 // file created here also gets upgrade_type = security, so a host that never
-// configured dnf-automatic gets security updates rather than every update;
+// configured dnf-automatic gets security updates only;
 // an existing file keeps whatever upgrade_type its operator chose.
 func setDnfApplyUpdates(in []byte) ([]byte, error) {
 	if strings.TrimSpace(string(in)) == "" {
@@ -345,7 +344,7 @@ var aptPeriodicKeys = []struct{ key, value string }{
 // file when it is not there, which is the ordinary case, because a host that
 // has never had automatic updates configured has no 20auto-upgrades at all.
 //
-// Existing values are rewritten in place rather than appended to. apt reads
+// Existing values are rewritten in place. apt reads
 // the last assignment, so appending would work and would leave a file with the
 // same key twice, one of them a lie; and the rollback would restore a file
 // whose meaning depended on line order.

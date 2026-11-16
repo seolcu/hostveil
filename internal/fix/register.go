@@ -13,9 +13,9 @@ package fix
 //  1. Reversible. The action leaves a checkpoint that restores exactly what
 //     it changed: an edit stores the original bytes, a mode change stores
 //     the original permission bits. Exec actions are never Auto, and the
-//     reason is that nothing about them can be recorded to undo, not that
-//     they fail to be file edits: applyExec has no checkpoint at all.
-//  2. Recoverable in practice, not just on disk. If the change is wrong,
+//     reason is that nothing about them can be recorded to undo:
+//     applyExec has no checkpoint at all.
+//  2. Recoverable in practice as well as on disk. If the change is wrong,
 //     the user must still be able to reach the machine to roll it back.
 //     Anything that can sever the operator's own access (SSH
 //     authentication, firewall policy) fails this even though the file
@@ -44,7 +44,7 @@ package fix
 // no checkpoint to undo it. With the port in evidence the fix allows it first
 // and enables the policy second, as two commands of one action, and stays
 // Review: the change cannot be rolled back and it takes every other inbound
-// port with it, both of which an operator should decide rather than discover.
+// port with it, both of which an operator should decide in advance.
 //
 // firewall.default-allow reuses the same evidence and the same fix, applied
 // to a firewall that happens to already be running: allow SSH first, then
@@ -69,7 +69,7 @@ package fix
 // a Docker socket mount) and Hostveil cannot tell a setting something depends on
 // from a cargo-culted one. That reason is still true. What it no longer
 // decides is whether there is a button. A fix that might break a deployment
-// is Review rather than Auto, carries a Warning that names what it might
+// is Review, carries a Warning that names what it might
 // break, and is IndividualOnly so no batch: `fix --all --review` included:
 // applies it unattended. Each is a file edit with a checkpoint, so
 // the operator who presses it and finds the service broken rolls it back
@@ -100,7 +100,7 @@ package fix
 //
 //   - cve.<vulnerability-id>: no longer emitted at all, and must never
 //     become fixable if it returns. Trivy's fixed_version is the OS package
-//     version inside the image (`3.0.11-1~deb12u2`), not an image tag.
+//     version inside the image (`3.0.11-1~deb12u2`). Image tags use a different scheme.
 //     There is no mapping from one to the other; treating them as
 //     interchangeable is what issue #473 was. Nothing Hostveil can compute
 //     turns "openssl must reach 3.0.11-1~deb12u2" into an image reference,
@@ -148,7 +148,7 @@ package fix
 //     below, disclosed through a Warning instead of declined. What
 //     stops this one is that the finding has nowhere to point an edit.
 //     passwordlessSudoers asks `sudo -n -l -U <user>` for the *effective*
-//     grant rather than reading /etc/sudoers: the rule
+//     grant: the rule
 //     granting NOPASSWD could be a line naming the account, a line naming a
 //     group it belongs to (%sudo, %wheel), or reach it through an alias or
 //     an nsswitch-resolved group, across /etc/sudoers and every file
@@ -157,7 +157,7 @@ package fix
 //     the finding names the account, never a file or a line, and there is
 //     structurally nothing for an Edit action to target. Cloud and VM images
 //     shipping this rule because the account they create has no password is
-//     why the finding is common, not why it is declined; the how-to-fix
+//     why the finding is common. It is declined for another reason: the how-to-fix
 //     tells the operator to set that password and confirm it in a second
 //     session before removing the rule themselves.
 //
@@ -183,7 +183,7 @@ package fix
 //
 // A path under a home carries one more obligation that /etc never did: the
 // account that owns it can shape it, so "safe to apply unattended" must hold
-// against an adversarial layout, not just a mistaken one. Every step from
+// against an adversarial layout as well as a mistaken one. Every step from
 // detection to apply therefore refuses to follow a symlink (the checker
 // Lstats and skips non-regular files, planModes re-vets the type, and the
 // chmod itself goes through a descriptor opened O_NOFOLLOW) because a
@@ -193,10 +193,10 @@ package fix
 // owes the same discipline.
 //
 // That obligation came due immediately: the agent config-key fixes below are
-// the first edits (writes, not chmods) aimed at a path inside a home, and
+// the first edits (writes) aimed at a path inside a home, and
 // they carry Action.NoFollow so the read refuses a symlink the way the chmod
 // already did. The write never needed it, because WriteFileAtomic renames
-// over a link rather than through it; the read did, because a preview
+// over a link and never writes through it; the read did, because a preview
 // renders the file it read into a diff, and root reading an arbitrary file
 // for somebody is the whole of the exposure.
 //
@@ -225,8 +225,7 @@ package fix
 // remediation kind off them: one safe value is Auto, two are Review.
 // agent.exec-unrestricted is the Review case; tools.exec.security is deny
 // or ask, and which is right depends on whether the agent is meant to run
-// commands at all, so they are independent alternatives rather than a
-// sequence. agent.elevated-enabled, agent.control-ui-insecure and
+// commands at all, so they are independent alternatives. agent.elevated-enabled, agent.control-ui-insecure and
 // agent.ssrf-private-network each have exactly one correct value, are one
 // mechanical file edit, and cannot sever anyone's access to the host.
 //
@@ -309,8 +308,7 @@ package fix
 //
 // Neither dominates for those controls. An operator hardening a box they are
 // about to reboot wants the first; one who cannot restart a production host
-// today wants the second now and the first later. That is a choice, not a
-// sequence.
+// today wants the second now and the first later. That is a choice.
 //
 // They are Review and not Auto, and the reason is not the shape. Writing
 // the drop-in is one mechanical, reversible file edit and would otherwise
@@ -360,9 +358,9 @@ package fix
 // RestrictSUIDSGID, ProtectKernelLogs, and ProtectKernelModules followed for
 // the same reason each other: the exception class is narrow and identifiable
 // (a time-sync daemon, an emulation layer, an installer, a diagnostics tool,
-// a service that loads modules at runtime rather than at boot), the way
-// ssh.passwordauth's Warning asks "do I have SSH keys set up" rather than
-// naming an invisible property of the host.
+// a service that loads modules at runtime), the way
+// ssh.passwordauth's Warning asks "do I have SSH keys set up". Neither names
+// an invisible property of the host.
 //
 // This paragraph used to argue the whole domain away, on two legs that no
 // longer hold for these six. One was about shape: "a drop-in and a restart
@@ -380,7 +378,7 @@ package fix
 // screen the same way.
 //
 // The re-check after applying any of the six will still report the finding,
-// and that is correct rather than a failure. This checker asks systemd for
+// and that is correct. This checker asks systemd for
 // each unit's effective configuration, and systemd has not re-read the file;
 // VerifyStillPresent says so in the sentence it was written for: "the
 // change may not take effect until '<unit>' restarts". For the same reason
@@ -415,10 +413,10 @@ package fix
 // One thing Pending does not do, so that no one reads it as more than it is:
 // it corrects the score between an apply and the next scan, and nothing more.
 // A rescan builds findings from the checkers, so for a domain whose checker
-// reads the artifact rather than the running state (compose above all) the
+// reads the artifact (compose above all) the
 // scan after a fix still reports the finding gone while the container runs the
 // old configuration. That gap is older than this and is what TakesEffectOn was
-// introduced to describe rather than to close; it is why
+// introduced to describe; it does not close it, which is why
 // scripts/measure/run.sh has a separate phase for after the services are
 // restarted. Closing it would mean the compose checker reading containers, and
 // that is a different change.
@@ -426,8 +424,7 @@ package fix
 // # The one CVE finding that does have a fix
 //
 // cve.outdated-image, the per-image rollup, IS registered, because its
-// remediation differs in kind from the per-CVE one rather than being a
-// softer version of it. Re-pulling a mutable tag needs no version mapping
+// remediation differs in kind from the per-CVE one. Re-pulling a mutable tag needs no version mapping
 // at all (only the tag the user already chose) and it claims nothing
 // about which CVEs the new image happens to fix. Its how-to-fix says only
 // that it re-resolves the tag, which is the whole of what it can promise.
@@ -447,7 +444,7 @@ package fix
 // Its sibling cve.unpatched-image is Unavailable and has no fix by
 // construction: it collects exactly the vulnerabilities no vendor has
 // published a fix for. It exists so that an image whose vulnerabilities are
-// all unfixed still produces a finding rather than vanishing into a clean
+// all unfixed still produces a finding and never vanishes into a clean
 // report.
 func Default() *Registry {
 	r := NewRegistry()

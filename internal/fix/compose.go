@@ -95,7 +95,7 @@ func composeScalarTarget(f model.Finding) (string, error) {
 
 // composePortTarget is the file to edit when rebinding a published port, and
 // it is a different question from the scalar one because compose *appends*
-// port mappings rather than replacing them. A wide binding in any one file
+// port mappings across files. A wide binding in any one file
 // exposes the service however the others bind it, so rewriting one file while
 // another still publishes 0.0.0.0 changes nothing docker will do.
 //
@@ -180,7 +180,7 @@ func buildAddRestart(f model.Finding) (Fix, error) {
 
 // memLimits are the alternatives offered for ds010. Hostveil cannot know
 // what a service uses, so it offers defensible starting points and
-// lets the user pick rather than inventing a number.
+// lets the user pick.
 //
 // The typical container leads, because Actions[0] is the recommendation and
 // `fix --all --review` applies it without asking. This list used to lead with
@@ -237,7 +237,7 @@ func buildRepullImage(f model.Finding) (Fix, error) {
 	if err != nil {
 		return Fix{}, err
 	}
-	// The bare service name, not f.Service: CVE image findings qualify the
+	// The bare service name: CVE image findings qualify the
 	// service with its compose project to keep two projects' same-named
 	// services distinct in Finding.Key(), and `docker compose -f <file>` wants
 	// the name as written in that file.
