@@ -1599,7 +1599,7 @@ func (m *appModel) adviceRows() []string {
 	desc := m.aiContext
 	if desc == "" {
 		out = append(out, styledRows(s.dim, wrap("No host description saved; press c to add one so a "+
-			"verdict can be judged for this host specifically, not in general.", w))...)
+			"verdict can be judged for this host specifically.", w))...)
 	} else {
 		out = append(out, s.accent.Render("THIS HOST"))
 		out = append(out, styledRows(s.bone, wrap(desc, w))...)
@@ -1641,7 +1641,7 @@ func (m *appModel) aiContextRows() []string {
 	row := s.bone.Render(before) + s.sel.Render(at) + s.bone.Render(after)
 	out = append(out, "  "+row)
 	out = append(out, "")
-	out = append(out, styledRows(s.dim, wrap("Used by every AI explanation from here on, not just this screen.",
+	out = append(out, styledRows(s.dim, wrap("Used by every AI explanation from here on, on every screen.",
 		min(m.width-2, 78)))...)
 	return out
 }

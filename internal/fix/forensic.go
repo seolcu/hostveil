@@ -133,7 +133,7 @@ func buildServiceExecAudit(f model.Finding) (Fix, error) {
 		Actions: []Action{{
 			Label: "Write an execve rule for uid " + uid + " to " + auditRulesPath + " and load it",
 			Benefit: "Every program the web server's account starts is recorded with its time and arguments, so a " +
-				"webshell's first command is evidence rather than a guess.",
+				"webshell's first command is on record.",
 			Warning: "A web application that legitimately starts programs; an image converter, a PDF renderer, a " +
 				"git-backed wiki; writes an audit record each time it does; watch `ausearch -k " + auditKey +
 				"` for a day after applying. The rule file is a checkpoint; rolling it back removes the rule and reloads.",

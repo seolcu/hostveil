@@ -43,12 +43,12 @@ var checkerDeclaresReview = map[string]string{
 	"sysctl.module-rds":              "the host may use RDS",
 	"sysctl.module-tipc":             "the host may use TIPC",
 	"sysctl.module-usbstorage":       "the host may need USB storage",
-	"systemd.no-new-privileges":      "a service that escalates stops coming back, and it stops at the next restart rather than now; the drop-in is one edit, which is Auto's shape and nothing more",
-	"systemd.protect-clock":          "only time-sync daemons legitimately need this off, and it stops at the next restart rather than now; the drop-in is one edit, which is Auto's shape and nothing more",
-	"systemd.lock-personality":       "needing an alternate execution personality is rare, and it stops at the next restart rather than now; the drop-in is one edit, which is Auto's shape and nothing more",
-	"systemd.restrict-suid-sgid":     "only a service that itself creates setuid/setgid files needs this off, and it stops at the next restart rather than now; the drop-in is one edit, which is Auto's shape and nothing more",
-	"systemd.protect-kernel-logs":    "only a service that reads kernel logs directly needs this off, and it stops at the next restart rather than now; the drop-in is one edit, which is Auto's shape and nothing more",
-	"systemd.protect-kernel-modules": "only a service that loads kernel modules at runtime needs this off, and it stops at the next restart rather than now; the drop-in is one edit, which is Auto's shape and nothing more",
+	"systemd.no-new-privileges":      "a service that escalates stops coming back, and it stops at the next restart; the drop-in is one edit, which is Auto's shape and nothing more",
+	"systemd.protect-clock":          "only time-sync daemons legitimately need this off, and it stops at the next restart; the drop-in is one edit, which is Auto's shape and nothing more",
+	"systemd.lock-personality":       "needing an alternate execution personality is rare, and it stops at the next restart; the drop-in is one edit, which is Auto's shape and nothing more",
+	"systemd.restrict-suid-sgid":     "only a service that itself creates setuid/setgid files needs this off, and it stops at the next restart; the drop-in is one edit, which is Auto's shape and nothing more",
+	"systemd.protect-kernel-logs":    "only a service that reads kernel logs directly needs this off, and it stops at the next restart; the drop-in is one edit, which is Auto's shape and nothing more",
+	"systemd.protect-kernel-modules": "only a service that loads kernel modules at runtime needs this off, and it stops at the next restart; the drop-in is one edit, which is Auto's shape and nothing more",
 }
 
 // floorReview makes every fix in checkerDeclaresReview declare Review. It

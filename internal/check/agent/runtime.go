@@ -222,7 +222,7 @@ func runtimes() []Runtime {
 					Good:     []any{"non-main", "all"},
 					Sev:      model.SeverityHigh,
 					Title:    "Agent tools run unsandboxed on the host",
-					Desc:     "With the sandbox off, the agent's tools run directly on the gateway host rather than in an isolated container, so a tool call that goes wrong reaches your real filesystem and network.",
+					Desc:     "With the sandbox off, the agent's tools run directly on the gateway host with no isolated container, so a tool call that goes wrong reaches your real filesystem and network.",
 					HowToFix: "Enable the sandbox (`agents.defaults.sandbox.mode`) and keep `workspaceAccess` at `none` or `ro` unless the agent needs to write.",
 				},
 				{

@@ -214,7 +214,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 	}
 	saved, err := save()
 	if err != nil {
-		return model.FixOutcome{}, fmt.Errorf("backup failed, not applying: %w", err)
+		return model.FixOutcome{}, fmt.Errorf("backup failed, so the fix was not applied: %w", err)
 	}
 
 	mode := os.FileMode(0o644)
@@ -476,7 +476,7 @@ func (e *Engine) applyMode(f model.Finding, fx fix.Fix, a fix.Action) (model.Fix
 	}
 	saved, err := e.store.SaveModesAndOwners(cp, prior, owners)
 	if err != nil {
-		return model.FixOutcome{}, fmt.Errorf("backup failed, not applying: %w", err)
+		return model.FixOutcome{}, fmt.Errorf("backup failed, so the fix was not applied: %w", err)
 	}
 
 	for i, c := range changes {

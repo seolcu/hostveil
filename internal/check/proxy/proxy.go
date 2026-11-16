@@ -411,7 +411,7 @@ func weakTLSFinding(weak map[string][]string) model.Finding {
 				"it only widens what an attacker in the middle can negotiate the connection down to."),
 		model.WithHowToFix(
 			"Set `ssl_protocols TLSv1.2 TLSv1.3;` in "+strings.Join(files, ", ")+", then `nginx -t` to check the file parses and `systemctl reload nginx` to apply it. "+
-				"Reload rather than restart: nginx keeps serving from the configuration it already loaded, so a broken file looks like nothing at all until the next restart."),
+				"Run a reload: nginx keeps serving from the configuration it already loaded, so a broken file looks like nothing at all until the next restart."),
 		model.WithEvidence("protocols", strings.Join(protos, ", ")),
 		model.WithEvidence("config", strings.Join(files, ", ")),
 	)
@@ -438,10 +438,10 @@ func directoryListingFinding(nginx, caddy []string) model.Finding {
 		model.WithDescription(
 			strings.Join(what, ", and ")+" generate a browsable listing for any directory with no index file. "+
 				"Everything in the directory is then enumerable by anyone who can reach it: backups left beside the site, a stray .env, a database dump, the file somebody meant to delete. "+
-				"It is a disclosure of what exists rather than of one file, which is what makes it worth more than the single file anybody had in mind."),
+				"It discloses everything that exists in the directory, which is worth more to an attacker than the single file anybody had in mind."),
 		model.WithHowToFix(
 			strings.Join(fix, " ")+
-				" If a directory really is meant to be browsable, keep listing on for that path alone rather than for the whole site."),
+				" If a directory really is meant to be browsable, keep listing on for that path alone."),
 		model.WithEvidence("config", strings.Join(files, ", ")),
 	)
 }

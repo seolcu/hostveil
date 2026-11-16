@@ -139,7 +139,7 @@ func composePortTarget(f model.Finding, port string) (string, error) {
 		return "", fmt.Errorf("finding %s: port %s is published by the merge of %d files and by none of them alone, so Hostveil cannot tell which one decides it",
 			f.ID, port, len(files))
 	default:
-		return "", fmt.Errorf("finding %s: port %s is published on every interface by %s, and compose appends port mappings rather than replacing them; rewriting one would leave the others binding 0.0.0.0",
+		return "", fmt.Errorf("finding %s: port %s is published on every interface by %s, and compose appends port mappings across files; rewriting one would leave the others binding 0.0.0.0",
 			f.ID, port, strings.Join(publishes, " and "))
 	}
 }
@@ -319,6 +319,6 @@ func buildBindLoopback(f model.Finding) (Fix, error) {
 // did, on the least severe finding in it. The port-rebinding fixes said the
 // opposite.
 func recreateNote(svc string) string {
-	return "This edits the file, not the running container: `docker compose up -d " + svc +
+	return "This edits the file. The running container changes only after `docker compose up -d " + svc +
 		"` is what puts the change into force."
 }

@@ -73,7 +73,7 @@ func cmdServe(ctx context.Context, args []string) int {
 	// on the operator's laptop is the laptop. Say so, and say what to run.
 	where := "Then open this exact URL"
 	if hint := sshHint(os.Getenv, addr); hint != "" {
-		fmt.Printf("\nYou are connected over SSH, so that address is this machine, not yours.\n"+
+		fmt.Printf("\nYou are connected over SSH, so that address is this machine. Your own computer is a different one.\n"+
 			"Run this on your own machine and leave it open:\n\n  %s\n", hint)
 		where = "\nThen open this exact URL there"
 	}

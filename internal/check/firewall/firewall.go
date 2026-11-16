@@ -153,7 +153,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	if platform.Has(env.Runner, "pve-firewall") {
 		// ufw or firewalld on a hypervisor would fight the firewall the
 		// platform ships, over the same chains.
-		how = "On Proxmox VE, enable the datacenter firewall rather than installing another one: Datacenter → Firewall → Options → Firewall, or `enable: 1` under [OPTIONS] in /etc/pve/firewall/cluster.fw. " +
+		how = "On Proxmox VE, enable the datacenter firewall and do not install another one: Datacenter → Firewall → Options → Firewall, or `enable: 1` under [OPTIONS] in /etc/pve/firewall/cluster.fw. " +
 			"Its default inbound policy is DROP, with the web interface (8006) and SSH still allowed from the management network: check that the address you connect from is in it before enabling."
 	}
 	findings := []model.Finding{

@@ -163,7 +163,7 @@ func redisFindings(data []byte, path string) []model.Finding {
 			model.WithDescription(desc), model.WithHowToFix(how), model.WithEvidence("config", path)))
 	}
 	if !regexpLine(text, `bind\s+(127\.0\.0\.1|localhost)(\s|$)`) {
-		add("ports.redis-bind", "Redis is configured to listen beyond loopback", "Redis should normally be reached by local applications or a private proxy, not every network attached to the host.", "Bind Redis to 127.0.0.1 in "+path+" after confirming no remote client connects directly.", model.RemediationReview)
+		add("ports.redis-bind", "Redis is configured to listen beyond loopback", "Redis should normally be reached by local applications or a private proxy. Every other network attached to the host should not reach it.", "Bind Redis to 127.0.0.1 in "+path+" after confirming no remote client connects directly.", model.RemediationReview)
 	}
 	if !regexpLine(text, `protected-mode\s+yes(\s|$)`) {
 		// Unlike its siblings, this carries no caveat: protected-mode yes is

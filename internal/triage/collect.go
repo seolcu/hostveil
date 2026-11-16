@@ -277,7 +277,7 @@ func (c *collector) files(phase int, name string, patterns ...string) {
 			a.Error = err.Error()
 			data = nil
 		case len(data) > maxFileCopy:
-			a.Error = fmt.Sprintf("larger than %d bytes; not copied rather than copied in part", maxFileCopy)
+			a.Error = fmt.Sprintf("larger than %d bytes; not copied, so no partial copy exists", maxFileCopy)
 			data = nil
 		}
 		c.record(a, data)

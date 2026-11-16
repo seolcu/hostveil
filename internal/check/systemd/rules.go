@@ -223,7 +223,7 @@ func howToFix(u unit, r rule) string {
 	}
 	return fmt.Sprintf(
 		"Create %s containing:\n\n    [Service]\n    %s\n\nThen run `systemctl daemon-reload` and `systemctl restart %s`. "+
-			"Restart it while you are watching: these protections change what the service can reach, and a service that needs what one of them hides fails at start rather than misbehaving silently. "+
+			"Restart it while you are watching: these protections change what the service can reach, and a service that needs what one of them hides fails at start, where you will see it. "+
 			"Remove the file to undo it.",
 		dropIn, r.directive, u.ID)
 }

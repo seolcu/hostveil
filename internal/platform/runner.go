@@ -149,7 +149,7 @@ func (r DefaultRunner) Run(ctx context.Context, name string, args ...string) ([]
 	// tests on: a partial look reported as a finished one.
 	if stdout.overflow {
 		return nil, fmt.Errorf("%s produced more than %d bytes of output and was not read; "+
-			"this domain is reported as failed rather than judged on part of it", name, cap_)
+			"this domain is reported as failed so it is not judged on part of it", name, cap_)
 	}
 	return stdout.buf, describeContext(ctx, name, limit, withStderr(err, stderr.buf))
 }
