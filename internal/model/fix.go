@@ -58,7 +58,7 @@ type FixOutcome struct {
 	// claims.
 	VerifyMessage string `json:"verify_message,omitempty"`
 	// VerifyNote is the checker's own reason when the re-check could not
-	// run; shown under the message, not instead of it.
+	// run; shown under the message.
 	VerifyNote string `json:"verify_note,omitempty"`
 
 	// Pending reports that the fix is written and not in force, so the score
@@ -154,7 +154,7 @@ type RollbackOutcome struct {
 	// files and could not write the others; a disk that filled, a path that
 	// vanished between the pre-flight check and the write.
 	//
-	// It is on the outcome rather than only in the error because that state
+	// It is on the outcome as well as in the error because that state
 	// is the one an operator most needs described: rollback keeps no backup
 	// of its own, so there is nothing to retry from and nothing to undo, and
 	// the only useful thing left is to say which files are which.
@@ -170,7 +170,7 @@ type RollbackOutcome struct {
 // Files carries only the restored paths; the backup blobs behind them are
 // the history package's business and must not reach a client.
 //
-// Reversible is a field rather than a method so it survives JSON: the web
+// Reversible is a field so it survives JSON: the web
 // UI needs it to decide whether to offer a rollback button, and deriving
 // the rule browser-side would put fix logic back in a UI.
 type Checkpoint struct {
@@ -284,7 +284,7 @@ func (v FixVerification) Note(restartHint string) string {
 	}
 }
 
-// MarshalJSON emits the name rather than the integer, so a consumer of
+// MarshalJSON emits the name, so a consumer of
 // --json is not left mapping ordinals the way the dashboard once had to.
 func (v FixVerification) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + v.String() + `"`), nil

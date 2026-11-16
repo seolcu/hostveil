@@ -32,7 +32,7 @@ func TestSparklineBucketsAgainstTheFullRange(t *testing.T) {
 		}
 	}
 	if low == high {
-		t.Errorf("4 and 42 render identically (%q); the scale is relative, not absolute", low)
+		t.Errorf("4 and 42 render identically (%q); the scale must be relative", low)
 	}
 
 	// A near-flat climb at the top must not look like a climb from nothing.
@@ -64,7 +64,7 @@ func TestSparklineSpansTheWholeRamp(t *testing.T) {
 	}
 }
 
-// A scan that could not be scored is a gap, not a bar. It is not a zero: the
+// A scan that could not be scored is a gap. It is not a zero: the
 // aggregate score already refuses to say so, and a chart must not say it
 // either.
 func TestSparklineDrawsAGapForAnUnscorableScan(t *testing.T) {

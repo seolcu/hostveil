@@ -50,7 +50,7 @@ func TestEverySourceConstHasATableRow(t *testing.T) {
 	}
 	// The sentinel is not a domain and must never pass for one.
 	if sourceCount.Valid() || sourceCount.Label() != "" {
-		t.Error("sourceCount is a sentinel, not a domain")
+		t.Error("sourceCount is a sentinel and must not be a domain")
 	}
 }
 

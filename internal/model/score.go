@@ -15,8 +15,7 @@ type ScoreBreakdown struct {
 	// Applicable is false when no domain ran at all, in which case Overall
 	// carries no information and must not be shown as a number.
 	//
-	// The per-axis Applicable flag exists so a skipped domain is reported N/A
-	// rather than 100; without this the same lie survived in the aggregate.
+	// The per-axis Applicable flag exists so a skipped domain is reported N/A; without this the same lie survived in the aggregate.
 	// With every axis excluded there is nothing to renormalize over, and the
 	// arithmetic falls out at a perfect 100; a host the scan could not look at,
 	// scored as flawless. It takes an unusual host (no package manager, no
@@ -34,11 +33,11 @@ type ScoreBreakdown struct {
 	// when what happened is that the findings still standing are
 	// Manual by design: a Docker socket mounted into Portainer, a second UID 0
 	// account, host networking. The number was right and it was being read as
-	// a verdict on the effort rather than on the host.
+	// a verdict on the effort.
 	//
 	// The alternative was to charge Manual findings less, and it is the wrong
 	// trade in the exact place it looks tempting. Manual means Hostveil will
-	// not do it unattended, not that it cannot be done: the operator can
+	// not do it unattended. It can still be done: the operator can
 	// delete the account or drop the socket mount this afternoon. Discounting
 	// a risk the operator is fully able to remove is the flattery this
 	// scoring model was rebuilt to refuse, and it is no longer a special
@@ -46,20 +45,19 @@ type ScoreBreakdown struct {
 	// are charged in full too, for the same reason.
 	//
 	// So the risk is charged in full and the headroom is published beside it.
-	// Named for what it is rather than "achievable": the difference between
+	// Named for what it is: the difference between
 	// this and 100 is what Hostveil will not fix for you, which is not the
 	// same as what cannot be fixed.
 	//
 	// Equal to Overall when nothing is fixable, which is the case every UI
-	// must render as nothing at all rather than as an arrow to the same
-	// number.
+	// must render as nothing at all.
 	AfterFixes uint8 `json:"after_fixes"`
 }
 
 // ScoreAxis is one scoring dimension. Applicable is false when the axis's
 // domain did not run (e.g. the optional CVE checker was skipped); such an
 // axis is reported as N/A and excluded from the overall renormalization
-// rather than counted as a misleading perfect 100.
+// so it never counts as a misleading perfect 100.
 //
 // Degraded marks an axis whose domain ran but covered only part of its
 // ground (ScanDegraded). Such an axis *is* scored (partial evidence still
@@ -105,7 +103,7 @@ func (b ScoreBreakdown) Headroom() (uint8, bool) {
 // domain did not run, the score with a "~" when it ran but covered only part
 // of its ground, and the bare number otherwise.
 //
-// It is here rather than in each renderer because it was in each renderer;
+// It is here because it used to be in each renderer;
 // the same three-arm decision in the CLI, twice in the terminal's
 // arrangements, once more in its axes strip, and again in the dashboard's
 // JavaScript. Nothing compared them.
@@ -261,7 +259,7 @@ func axisDefsFromSources() []axisDef {
 //
 // The numbers now live in sourceDefs' cap column; what follows is the
 // argument behind them, which stays here because a cap is a claim about
-// weight rather than a fact about a domain's identity.
+// weight.
 //
 // A cap is the axis's share of the overall score and nothing else: it is
 // purely how much this domain matters, never a threshold. The caps sum to
@@ -303,7 +301,7 @@ func axisDefsFromSources() []axisDef {
 // outside its own data, can it read every home directory) so on a host that
 // runs its services natively it is doing the work "container" does elsewhere.
 // It is one step below that band because none of its findings is by itself an
-// entry: each one widens what a compromise reaches rather than granting it.
+// entry: each one widens what a compromise reaches.
 // Six axes funded it, each giving one. "container" and "ssh" gave from the
 // top because they are the only two large enough that a point does not change
 // what they can express. "cve", "ports", "firewall" and "agent" gave because
@@ -318,7 +316,7 @@ var axisDefs = axisDefsFromSources()
 // follows from it, since a finding's weight is its severity penalty over
 // this constant (High 8/16 = 0.5, Medium 0.125, Low 0.0625).
 //
-// Named for the position rather than for the level, because the levels have
+// Named for the position, because the levels have
 // been renamed twice and this constant is about the top of the scale
 // whatever the top is called.
 const topHalves = 16
@@ -327,12 +325,12 @@ const topHalves = 16
 //
 // nth is which instance of this finding's ID it is on this axis, counting
 // from 1, and it divides the weight: the same mistake made four times costs
-// 1 + 1/2 + 1/3 + 1/4 of one, not four of one.
+// 1 + 1/2 + 1/3 + 1/4 of one.
 //
 // The instances are not independent risks. A compose file where four services
 // all lack `user:` is one mistake written four times, and a self-hoster runs
 // many services from one template, so the old arithmetic buried an axis for
-// having more services rather than worse ones: four Mediums of a single ID
+// having more services: four Mediums of a single ID
 // took 41% of what was left, and on a twenty-service host the axis was pinned
 // at zero by one line missing from a file.
 //
@@ -363,7 +361,7 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 	// And again, over the same findings with everything Hostveil offers a
 	// button for marked fixed. See ScoreBreakdown.AfterFixes.
 	//
-	// Two calls rather than a second scoring rule: the loop below already
+	// Two calls: the loop below already
 	// skips a Fixed finding, so "what this would be after the fixes" is the
 	// same arithmetic on a different input, and there is no way for the two
 	// numbers to drift apart into two answers about one host.
@@ -378,12 +376,12 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 // withOfferedFixesApplied returns findings with every one Hostveil can
 // remediate marked Fixed.
 //
-// Review counts, not only Auto. The operator who wants to know what fixing
+// Review counts as well as Auto. The operator who wants to know what fixing
 // everything gets them is going to accept the Review fixes too, that is the
 // path scripts/measure/run.sh calls `reviewed`, and it exists
 // because measuring only the unattended half measures half the tool.
 //
-// Remediation is read here rather than the registry being consulted, and that
+// Remediation is read here, and that
 // is only correct because Engine.classify runs before scoring
 // (internal/core/engine.go), so the value on the finding is already resolved
 // between the checker and the registry, which is to say it is exactly what
@@ -424,7 +422,7 @@ func scoreOnce(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 	}
 
 	// remaining[i] is the share of axis i still standing. Findings erode it
-	// multiplicatively rather than adding up: each one takes a share of what
+	// multiplicatively: each one takes a share of what
 	// is left, so the tenth High still hurts but cannot hurt more than there
 	// is left to lose.
 	//
@@ -498,8 +496,7 @@ func scoreOnce(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 	ranCapSum := 0
 	for i := range axes {
 		lost := 1 - remaining[i]
-		// Score comes from the fraction directly, not from the rounded
-		// penalty. Deriving it from penalty/cap would give a cap-6 axis
+		// Score comes from the fraction directly. Deriving it from penalty/cap would give a cap-6 axis
 		// only seven distinct scores.
 		axes[i].Score = uint8(math.Round(100 * remaining[i])) // remaining is 0-1
 		axes[i].Penalty = int(math.Round(float64(axes[i].MaxPenalty) * lost))
@@ -520,8 +517,7 @@ func scoreOnce(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 // ran, yielding a 0-100 score even when some axes are N/A.
 func renormalize(penalty float64, ranCapSum int) uint8 {
 	if ranCapSum <= 0 {
-		// Callers must check ScoreBreakdown.Applicable rather than reading
-		// this; the value is arbitrary because there is nothing to average.
+		// Callers must check ScoreBreakdown.Applicable; the value is arbitrary because there is nothing to average.
 		return 0
 	}
 	scaled := math.Round(penalty * 100 / float64(ranCapSum))

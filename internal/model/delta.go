@@ -192,7 +192,7 @@ func onlyDomains(r Report, keep map[Source]bool) Report {
 	return out
 }
 
-// All three of these ask Finding.Active rather than testing Fixed, so a fix
+// All three of these ask Finding.Active, so a fix
 // that is applied and not yet in force reads as what it is: still there. A
 // delta that counted it under Fixed would announce the risk resolved one scan
 // before anything on the host had changed, and then have nothing to say at the
