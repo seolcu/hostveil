@@ -82,14 +82,14 @@ button:disabled { opacity: .45; cursor: default; }
 /* The right padding is not symmetric: the browser draws the
    dropdown arrow inside the control, and with uppercase + letter-spacing the
    longest name ("Catppuccin Mocha") ran right into it. */
-#theme, #sort {
+#lang, #theme, #sort {
   font: 600 11px/1 var(--mono); letter-spacing: .8px; text-transform: uppercase;
   background: transparent; color: var(--bone); border: 1px solid var(--line-2);
   border-radius: 0; padding: 8px 18px 8px 12px; cursor: pointer;
 }
-#theme:hover, #sort:hover { border-color: var(--bone); }
-#theme:focus-visible, #sort:focus-visible { outline: 2px solid var(--safe); outline-offset: 1px; }
-#theme option, #sort option { background: var(--ink-2); color: var(--bone); text-transform: none; }
+#lang:hover, #theme:hover, #sort:hover { border-color: var(--bone); }
+#lang:focus-visible, #theme:focus-visible, #sort:focus-visible { outline: 2px solid var(--safe); outline-offset: 1px; }
+#lang option, #theme option, #sort option { background: var(--ink-2); color: var(--bone); text-transform: none; }
 /* #sort sits in the findings pane's own header, so it is smaller than its
    top-bar siblings; it is a list-scoped control. */
 #sort { padding: 5px 16px 5px 10px; font-size: 10px; }
@@ -323,8 +323,9 @@ padding: 6px 4px; color: var(--slate); }
 .checkfirst { margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line-2); }
 .checkfirst label { display: block; cursor: pointer; color: var(--bone); }
 .checkfirst input { accent-color: var(--safe); }
-.change { margin: 0 0 12px; }
-.change summary { cursor: pointer; color: var(--accent); font-size: 12px; margin: 0 0 8px; }
+.change, .original { margin: 0 0 12px; }
+.change summary, .original summary { cursor: pointer; color: var(--accent); font-size: 12px; margin: 0 0 8px; }
+.original p { color: var(--slate); font-size: 12px; }
 .fixbox .row button:disabled { opacity: .45; cursor: not-allowed; }
 .alts { margin: 0 0 12px; }
 .alts label { display: block; margin: 3px 0; cursor: pointer; }
