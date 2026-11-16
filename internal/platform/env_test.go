@@ -71,7 +71,7 @@ func TestParseOSReleaseID(t *testing.T) {
 	}
 }
 
-// A host with no readable os-release is not an error — Detect is documented
+// A host with no readable os-release is not an error: Detect is documented
 // as tolerant, and an unknown distro must degrade rather than fail the scan.
 func TestAMissingOSReleaseIsEmptyNotFatal(t *testing.T) {
 	orig := osReleasePath
@@ -142,7 +142,7 @@ func TestDetectServiceManager(t *testing.T) {
 }
 
 // Detect must fill in what it can and leave the rest empty rather than
-// failing, and it must carry the runner through — checkers construct no
+// failing, and it must carry the runner through: checkers construct no
 // runner of their own, so an Env without one is a nil dereference waiting
 // in every domain.
 func TestDetectIsTolerantAndCarriesTheRunner(t *testing.T) {

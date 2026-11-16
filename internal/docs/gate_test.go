@@ -9,7 +9,7 @@ import (
 // scripts/gate.sh is the local copy of CI's gate, so the two tools whose
 // versions are pinned in both places must name the same version. A gate that
 // lints with a different golangci-lint than CI is the gate that passes while
-// CI fails — the outcome the script exists to prevent.
+// CI fails: the outcome the script exists to prevent.
 func TestTheLocalGatePinsWhatCIPins(t *testing.T) {
 	gate := readRepoFile(t, filepath.Join("scripts", "gate.sh"))
 	ci := readRepoFile(t, filepath.Join(".github", "workflows", "ci.yml"))

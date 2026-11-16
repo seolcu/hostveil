@@ -1,4 +1,4 @@
-# A "management" stack — the containers people add to make life easier,
+# A "management" stack: the containers people add to make life easier,
 # and which quietly hand an attacker the whole host.
 services:
   portainer:

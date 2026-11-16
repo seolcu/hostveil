@@ -150,7 +150,7 @@ func TestNeedsRootExcludesPrintOnlyCommands(t *testing.T) {
 }
 
 // The dispatch bug: a leading flag set explicit=false, which on a terminal
-// picked the TUI — and cmdTUI ignores its arguments entirely. So `hostveil
+// picked the TUI, and cmdTUI ignores its arguments entirely. So `hostveil
 // --json` opened the TUI and printed no JSON, and `hostveil --bogus` opened
 // the TUI and reported no error, while both behaved correctly when piped.
 func TestResolveCommand(t *testing.T) {
@@ -190,7 +190,7 @@ func TestResolveCommand(t *testing.T) {
 	}
 }
 
-// TTY-ness must never change whether a flag is honored — only what happens
+// TTY-ness must never change whether a flag is honored: only what happens
 // when there are no arguments at all.
 func TestFlagHandlingDoesNotDependOnTTY(t *testing.T) {
 	for _, args := range [][]string{{"--json"}, {"--bogus"}, {"-v", "--no-color"}, {"scan"}} {
@@ -244,7 +244,7 @@ func TestResolveThemeReadsTheEnvironment(t *testing.T) {
 // change makes to everyone running `hostveil scan` in CI.
 //
 // The gate is documented in two languages as "exit 1 when any unfixed finding
-// is Critical or High". Those two levels became one — now called High — and the
+// is Critical or High". Those two levels became one (now called High) and the
 // promise is that the *set* did not move: everything that gated before gates
 // now, and nothing that did not has started to. A pipeline that has been
 // green stays green for the same reasons.
@@ -275,7 +275,7 @@ func TestTheGateStillMeansWhatItMeant(t *testing.T) {
 			want = 1
 		}
 		if got := exitCode(model.Report{Findings: []model.Finding{finding(sev, false)}}); got != want {
-			t.Errorf("a finding that was %s exits %d, and used to exit %d — the CI gate moved",
+			t.Errorf("a finding that was %s exits %d, and used to exit %d; the CI gate moved",
 				tc.name, got, want)
 		}
 	}

@@ -13,7 +13,7 @@ import (
 // default incoming policy decides a port no rule names.
 type UFWView struct {
 	// Active is false when ufw is not installed, not running, or its status
-	// could not be read — in every one of those cases nothing here can say a
+	// could not be read, in every one of those cases nothing here can say a
 	// port is blocked.
 	Active bool
 
@@ -42,7 +42,7 @@ func ReadUFW(ctx context.Context, r platform.CommandRunner) UFWView {
 }
 
 // Blocks reports whether inbound TCP to port is refused for both address
-// families. Any allow that comes first — from anywhere or from one subnet —
+// families. Any allow that comes first (from anywhere or from one subnet)
 // means somebody can reach it, so the answer is no.
 func (v UFWView) Blocks(port int) bool {
 	if !v.Active {

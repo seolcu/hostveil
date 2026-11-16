@@ -12,8 +12,8 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// The docs restate things the code decides — axis weights, which findings
-// have a fix button — and nothing has ever checked that the restatement is
+// The docs restate things the code decides (axis weights, which findings
+// have a fix button) and nothing has ever checked that the restatement is
 // still true. It was not: the checks table labelled thirteen findings
 // "Review" that had no registered fix and were shown as Manual, and the
 // scoring section described an additive penalty model two releases after
@@ -23,7 +23,7 @@ import (
 var (
 	// <tr><td><code>compose.ds016</code></td>…<td>Manual</td></tr>
 	findingRow = regexp.MustCompile(`<tr><td><code>([a-z0-9.\-]+)</code></td>.*?<td>([^<]*)</td></tr>`)
-	// <tr><td>Container exposure</td><td>20</td></tr> — a whole-cell number,
+	// <tr><td>Container exposure</td><td>20</td></tr>: a whole-cell number,
 	// so the severity-share table ("1/2 of what remains") cannot match.
 	weightRow = regexp.MustCompile(`<tr><td>([^<]+)</td><td>(\d+)</td></tr>`)
 	// <span class="sev high">HIGH</span>, wherever one appears.
@@ -53,7 +53,7 @@ func docsPage(t *testing.T, lang, slug string) string {
 // registry reports the kind a user is shown and this list does not have to
 // repeat it. What is left is the case the registry cannot settle on its own:
 // agent.exec-unrestricted reads its safe values out of the finding, so how
-// many alternatives it has — and so whether it is Review — depends on which
+// many alternatives it has (and so whether it is Review) depends on which
 // config key tripped, and fixtest builds a finding carrying neither.
 var checkerAsksForMore = map[string]string{
 	"agent.exec-unrestricted": "deny and ask are both correct and the operator picks, so the checker declares Review whenever tools.exec.security is what tripped",
@@ -79,7 +79,7 @@ func TestDocumentedFixKindsMatchTheRegistry(t *testing.T) {
 				continue
 			}
 			if documented.IsFixable() != registry.Has(id) {
-				t.Errorf("%s: docs list %s as %q but a fix is registered=%v — a UI would %s",
+				t.Errorf("%s: docs list %s as %q but a fix is registered=%v; a UI would %s",
 					lang, id, col, registry.Has(id),
 					map[bool]string{true: "show no button where the docs promise one", false: "show a button the docs deny"}[documented.IsFixable()])
 				continue
@@ -91,7 +91,7 @@ func TestDocumentedFixKindsMatchTheRegistry(t *testing.T) {
 			// EffectiveKind, not Kind: an Auto-shaped fix that runs a command
 			// reaches the user as Review, and the column has to say so. This
 			// is the half of the resolution the docs used to bake in from the
-			// wrong side — updates.disabled is registered Auto and documented
+			// wrong side: updates.disabled is registered Auto and documented
 			// Review, and nothing checked that the two agreed for the reason
 			// they do.
 			fx, ok, err := registry.Build(fixtest.Finding(id))
@@ -101,12 +101,12 @@ func TestDocumentedFixKindsMatchTheRegistry(t *testing.T) {
 			}
 			switch effective := fx.EffectiveKind(); {
 			case documented < effective:
-				t.Errorf("%s: docs list %s as %q, but the registered fix resolves to %v — "+
+				t.Errorf("%s: docs list %s as %q, but the registered fix resolves to %v; "+
 					"the column is less cautious than the fix a user is handed",
 					lang, id, col, effective)
 			case documented > effective:
 				if _, deliberate := checkerAsksForMore[id]; !deliberate {
-					t.Errorf("%s: docs list %s as %q while the registry shapes it %v — "+
+					t.Errorf("%s: docs list %s as %q while the registry shapes it %v; "+
 						"if a checker declares the stricter kind, say so in checkerAsksForMore; "+
 						"otherwise the column is wrong", lang, id, col, effective)
 				}
@@ -139,7 +139,7 @@ func TestNoStaleCheckerAsksForMoreEntries(t *testing.T) {
 				continue
 			}
 			if doc <= fx.EffectiveKind() {
-				t.Errorf("%s: %s is no longer documented stricter than its fix (%v vs %v) — drop the "+
+				t.Errorf("%s: %s is no longer documented stricter than its fix (%v vs %v); drop the "+
 					"checkerAsksForMore entry so the exact check applies again", lang, id, doc, fx.EffectiveKind())
 			}
 		}
@@ -177,8 +177,8 @@ func TestDocumentedAxisWeightsMatchTheCode(t *testing.T) {
 // writing a `jq` filter against it.
 //
 // It went stale silently. The severity levels were renamed and the page went
-// on listing the previous names — beside a sample payload that also carried
-// one — while the prose two paragraphs up had already been updated, so the
+// on listing the previous names (beside a sample payload that also carried
+// one) while the prose two paragraphs up had already been updated, so the
 // page contradicted itself and still built green. Nothing read these values
 // because they are prose in a <code> tag rather than a table row.
 func TestTheDocumentedJSONValuesAreTheOnesTheModelEmits(t *testing.T) {
@@ -224,7 +224,7 @@ func jsonEnumNames() []string {
 // Two tests read the finding table and neither looked at this cell:
 // findingRow captures the last column (the fix kind) and weightRow avoids the
 // severity table on purpose. So roughly a hundred and twenty cells across two
-// languages restated a model enum with nothing checking the restatement — and
+// languages restated a model enum with nothing checking the restatement, and
 // when the four-level scale became three, a missed cell would have gone on
 // naming a level that no longer exists, styled by a CSS class that no longer
 // exists, which renders as unstyled text rather than as an error.
@@ -243,7 +243,7 @@ func TestEverySeverityChipNamesARealLevel(t *testing.T) {
 		for _, c := range chips {
 			class, text := c[1], c[2]
 			if !known[class] {
-				t.Errorf("%s: severity chip has class %q, which is not one of %v — "+
+				t.Errorf("%s: severity chip has class %q, which is not one of %v; "+
 					"site/docs.css styles the levels by name, so this renders unstyled",
 					lang, class, model.AllSeverities())
 				continue
@@ -307,7 +307,7 @@ func TestProseCitesOnlyRealFindings(t *testing.T) {
 // capTableRow matches a row of the scoring page's cap table: an axis label,
 // its cap, and an argument cell. Anchored on three cells, because the funding
 // tables on the same page are three-cell too and their middle column is also
-// a number — a looser pattern reads point transfers as caps.
+// a number: a looser pattern reads point transfers as caps.
 var capTableRow = regexp.MustCompile(`<tr><td>([^<]+)</td><td>(\d+)</td><td>`)
 
 // TestScoringPageCapsMatchTheCode pins the second place the axis weights are
@@ -316,7 +316,7 @@ var capTableRow = regexp.MustCompile(`<tr><td>([^<]+)</td><td>(\d+)</td><td>`)
 // TestDocumentedAxisWeightsMatchTheCode covers the checks page and cannot
 // cover this one: its weightRow pattern requires a two-cell row ending the
 // <tr>, and these rows carry an argument column. So the twelve caps could
-// drift from sourceDefs here with a green build — on the page that presents
+// drift from sourceDefs here with a green build, on the page that presents
 // itself as the whole model, which is the worst place for them to be wrong.
 //
 // It reads the table by its id rather than the whole page, because the same
@@ -352,7 +352,7 @@ func TestScoringPageCapsMatchTheCode(t *testing.T) {
 		slices.Sort(got)
 
 		// The Total row is part of the table and is the claim most worth
-		// checking — it is the one number a reader will take on trust.
+		// checking: it is the one number a reader will take on trust.
 		if !strings.Contains(table, ">"+strconv.Itoa(total)+"<") {
 			t.Errorf("%s: the scoring page's cap table does not state the total %d", lang, total)
 		}

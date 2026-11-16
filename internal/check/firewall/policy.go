@@ -11,8 +11,8 @@ import (
 
 // The probe answers "is a firewall running", and for two of the four
 // front-ends that was the whole test. nftables and iptables have to show a
-// base chain whose default policy drops or rejects — hasHostFirewall and
-// hasDropPolicy both insist on it — while ufw was accepted on the strength
+// base chain whose default policy drops or rejects (hasHostFirewall and
+// hasDropPolicy both insist on it) while ufw was accepted on the strength
 // of "Status: active" and firewalld on `--state` exiting 0.
 //
 // So Hostveil held a hand-written ruleset to a stricter standard than the
@@ -23,8 +23,8 @@ import (
 // running and permitting is not a firewall; it is a log.
 //
 // This closes that. It asks the same question of the two managed
-// front-ends that the other two already had to answer, and — like every
-// other probe here — reports "cannot tell" rather than guessing when the
+// front-ends that the other two already had to answer, and (like every
+// other probe here) reports "cannot tell" rather than guessing when the
 // query fails.
 
 // inboundPolicy is what the active front-end does with a packet no rule
@@ -122,7 +122,7 @@ func parsePVEPolicyIn(body string) inboundPolicy {
 //	Default: deny (incoming), allow (outgoing), disabled (routed)
 //
 // Only the incoming direction is read. Outgoing defaults to allow on
-// essentially every host and denying it is a deliberate, unusual choice —
+// essentially every host and denying it is a deliberate, unusual choice:
 // flagging it would accuse the overwhelming majority of correct
 // configurations.
 func parseUFWDefault(out string) inboundPolicy {
@@ -145,7 +145,7 @@ func parseUFWDefault(out string) inboundPolicy {
 	}
 	// The line is there on every ufw version that supports `status verbose`.
 	// Its absence means the output is not what this parser was written for,
-	// which is "cannot tell" — not "allow".
+	// which is "cannot tell", not "allow".
 	return policyUnknown
 }
 
@@ -174,7 +174,7 @@ func parseFirewalldTarget(out string) inboundPolicy {
 // defaultAllowFinding reports a firewall that runs and permits.
 //
 // It carries the same level as firewall.inactive, because it is the same
-// posture — the difference is only that this one looks fixed. The level says
+// posture: the difference is only that this one looks fixed. The level says
 // the backstop is missing, not that an exposure is confirmed: the host may
 // well be behind a router or a cloud security group, which is why the
 // description says so rather than the severity pretending to know.
@@ -182,22 +182,22 @@ func parseFirewalldTarget(out string) inboundPolicy {
 // The fix carries the same reason firewall.inactive's does, and the same
 // resolution: with the port sshd is actually listening on in evidence, it
 // can allow that port first and only then flip the default policy, as two
-// commands of one action. It stays Review — the change cannot be rolled back
+// commands of one action. It stays Review: the change cannot be rolled back
 // and it takes every other inbound port with it, which an operator should
 // decide rather than discover. It is buildable for ufw and for firewalld,
 // whose fix flips the default zone's target.
 func defaultAllowFinding(which string) model.Finding {
-	how := "Run `ufw default deny incoming`, then `ufw reload`. Make sure your SSH port is allowed first (`ufw allow OpenSSH`) — the deny policy takes effect immediately and an unallowed session is the one you are using."
+	how := "Run `ufw default deny incoming`, then `ufw reload`. Make sure your SSH port is allowed first (`ufw allow OpenSSH`): the deny policy takes effect immediately and an unallowed session is the one you are using."
 	if which == "pve-firewall" {
-		how = "Set `policy_in: DROP` under [OPTIONS] in /etc/pve/firewall/cluster.fw (Datacenter → Firewall → Options → Input Policy), after adding rules for anything that must stay reachable — the management network keeps the web interface and SSH through the built-in management IP set."
+		how = "Set `policy_in: DROP` under [OPTIONS] in /etc/pve/firewall/cluster.fw (Datacenter → Firewall → Options → Input Policy), after adding rules for anything that must stay reachable; the management network keeps the web interface and SSH through the built-in management IP set."
 	}
 	if which == "firewalld" {
-		how = "Set the default zone's target to something other than ACCEPT (`firewall-cmd --permanent --zone=<zone> --set-target=default`, then `firewall-cmd --reload`). Make sure the ssh service is allowed in that zone first — the new target takes effect immediately."
+		how = "Set the default zone's target to something other than ACCEPT (`firewall-cmd --permanent --zone=<zone> --set-target=default`, then `firewall-cmd --reload`). Make sure the ssh service is allowed in that zone first: the new target takes effect immediately."
 	}
 	return model.NewFinding("firewall.default-allow",
 		"Firewall is running but accepts everything by default",
 		model.SeverityHigh, model.SourceFirewall, model.RemediationReview,
-		model.WithDescription("A firewall is active, but its default policy for inbound traffic is to accept. Every port a service binds to a non-loopback address is reachable from any network this host is on, exactly as if no firewall were running — the difference is that `"+which+"` reports it as active, so the host looks protected. A firewall is only a backstop if what it does with traffic no rule matched is refuse it."),
+		model.WithDescription("A firewall is active, but its default policy for inbound traffic is to accept. Every port a service binds to a non-loopback address is reachable from any network this host is on, exactly as if no firewall were running: the difference is that `"+which+"` reports it as active, so the host looks protected. A firewall is only a backstop if what it does with traffic no rule matched is refuse it."),
 		model.WithHowToFix(how),
 		model.WithEvidence("firewall", which),
 		model.WithEvidence("default_inbound", "allow"),

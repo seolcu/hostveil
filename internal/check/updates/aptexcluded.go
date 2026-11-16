@@ -20,8 +20,8 @@ import (
 //
 // It installs only from repositories its origin patterns allow, and the
 // distribution's default allows the distribution and nothing else. Every
-// repository added by hand — Tailscale, Docker, a web server's own repo, and
-// on a Raspberry Pi the archive that ships the kernel, libc and openssl —
+// repository added by hand (Tailscale, Docker, a web server's own repo, and
+// on a Raspberry Pi the archive that ships the kernel, libc and openssl)
 // is left out unless someone writes a pattern for it. Nothing reports that:
 // the timer runs, the log says it found nothing to do, and the packages wait.
 // A Pi measured for this sat 55 packages and one kernel line behind for 96
@@ -33,8 +33,8 @@ import (
 // record apt keeps for each source, every test must pass, values are
 // fnmatch globs after ${distro_id} and ${distro_codename} are substituted,
 // and the legacy Allowed-Origins form "origin:archive" means o=…,a=….
-// apt itself is asked for every input — the patterns through apt-config, the
-// release records and each package's candidate source through apt-cache —
+// apt itself is asked for every input (the patterns through apt-config, the
+// release records and each package's candidate source through apt-cache)
 // so the answer follows the layered configuration the same way
 // aptorigin.go's does.
 
@@ -107,8 +107,8 @@ func excludedOrigins(ctx context.Context, r platform.CommandRunner, upgradable, 
 		// the repository it is waiting in.
 		rel := rels[0]
 		if distroOwn(rel.Origin, distroIDName(distroID)) {
-			// The distribution's own pockets outside the default — Ubuntu's
-			// -updates, Debian's stable-updates — are left out on purpose by
+			// The distribution's own pockets outside the default (Ubuntu's
+			// -updates, Debian's stable-updates) are left out on purpose by
 			// the distribution, and only security fixes are this domain's
 			// business; updates.pending-security counts those.
 			continue
@@ -315,8 +315,8 @@ func fnmatch(pattern, s string) bool {
 	return re.MatchString(s)
 }
 
-// policyReleases maps each source line of `apt-cache policy` — "URL dist/comp
-// arch Packages", the same text a package's version table prints — to the
+// policyReleases maps each source line of `apt-cache policy` ("URL dist/comp
+// arch Packages", the same text a package's version table prints) to the
 // release record printed under it.
 func policyReleases(out string) map[string]aptRelease {
 	rels := map[string]aptRelease{}
@@ -517,7 +517,7 @@ func excludedFinding(groups []excludedGroup) model.Finding {
 	return model.NewFinding("updates.origin-excluded",
 		fmt.Sprintf("%d waiting update(s) come from repositories automatic updates never install from", total),
 		model.SeverityMedium, model.SourceUpdates, model.RemediationReview,
-		model.WithDescription("unattended-upgrades is enabled, but it only installs from repositories its origin patterns allow, and by default that is the distribution alone. These updates come from repositories added later — a vendor's own repo, or on a Raspberry Pi the archive that ships its kernel and libraries — so they will wait until someone installs them by hand, while the timer runs every day and reports nothing to do. They are not counted as security updates because these repositories have no -security suite to tell them apart."+core),
+		model.WithDescription("unattended-upgrades is enabled, but it only installs from repositories its origin patterns allow, and by default that is the distribution alone. These updates come from repositories added later (a vendor's own repo, or on a Raspberry Pi the archive that ships its kernel and libraries) so they will wait until someone installs them by hand, while the timer runs every day and reports nothing to do. They are not counted as security updates because these repositories have no -security suite to tell them apart."+core),
 		model.WithHowToFix("Decide which of these repositories you trust to update unattended, and add a line for each to `Unattended-Upgrade::Origins-Pattern` in a file under /etc/apt/apt.conf.d, e.g. `\""+patterns[0]+"\";`. Check with `sudo unattended-upgrade --dry-run --debug`. Or install them now: `sudo apt update && sudo apt full-upgrade`."),
 		model.WithEvidence("repositories", strings.Join(desc, model.EvidenceSeparator)),
 		model.WithEvidence("patterns", strings.Join(patterns, "\n")),

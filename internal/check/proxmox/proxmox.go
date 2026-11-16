@@ -11,9 +11,9 @@
 //
 // **The datacenter firewall.** It is off by default and that matters, but a
 // host with no filtering is already the firewall domain's finding. What that
-// domain lacked was the other half — a PVE firewall that *is* on filters
+// domain lacked was the other half (a PVE firewall that *is* on filters
 // through its own chains under an INPUT policy of ACCEPT, which read as no
-// firewall at all — and the fix for that lives there, in the probe, rather
+// firewall at all) and the fix for that lives there, in the probe, rather
 // than as a second finding here about the same missing filter.
 //
 // **SSH root login.** PVE clusters use root SSH between nodes, so the ssh
@@ -67,7 +67,7 @@ func (c *Checker) Available(context.Context, platform.Env) (bool, string) {
 	if fi, err := os.Stat(c.path("/etc/pve")); err == nil && fi.IsDir() {
 		return true, ""
 	}
-	return false, "not a Proxmox VE host — no /etc/pve"
+	return false, "not a Proxmox VE host; no /etc/pve"
 }
 
 // Check reads the three surfaces and reports what each could not cover.
@@ -107,7 +107,7 @@ const pveproxyDefaults = "/etc/default/pveproxy"
 // auditWebUI decides whether pveproxy answers anyone who can route to it.
 //
 // Upstream's defaults are the finding: listen on the wildcard address, and a
-// POLICY of allow when no ACL matches. Either of two settings narrows it —
+// POLICY of allow when no ACL matches. Either of two settings narrows it:
 // LISTEN_IP, or an allow-list that something actually enforces. ALLOW_FROM on
 // its own enforces nothing, because what it does is win over a DENY_FROM, and
 // with the default policy an address that matches neither is let in anyway.
@@ -121,7 +121,7 @@ func (c *Checker) auditWebUI() ([]model.Finding, string) {
 	case os.IsNotExist(err):
 		// Absent is the package default, which is a complete answer.
 	default:
-		return nil, "could not read " + pveproxyDefaults + " — the web interface's access list was not audited"
+		return nil, "could not read " + pveproxyDefaults + "; the web interface's access list was not audited"
 	}
 
 	if strings.TrimSpace(vars["LISTEN_IP"]) != "" {
@@ -136,12 +136,12 @@ func (c *Checker) auditWebUI() ([]model.Finding, string) {
 
 	opts := []model.FindingOption{
 		model.WithDescription(
-			"The Proxmox VE web interface and API (pveproxy, port 8006) listen on every address and accept a login from anywhere that can route to them — the package default. " +
+			"The Proxmox VE web interface and API (pveproxy, port 8006) listen on every address and accept a login from anywhere that can route to them; the package default. " +
 				"Behind that login is every guest, every disk and the host's own shell, and the usual account is root@pam with the host's root password, " +
 				"so the only thing between the LAN (or wherever else 8006 reaches) and the whole hypervisor is one password."),
 		model.WithHowToFix(
 			"Restrict who can reach it in " + pveproxyDefaults + ": `ALLOW_FROM=\"192.168.1.0/24\"`, `DENY_FROM=\"all\"` and `POLICY=\"allow\"` with your management network, then `systemctl restart pveproxy`. " +
-				"On a single node `LISTEN_IP` on the management address works too — but not on a cluster, where the nodes reach each other's pveproxy on addresses that may be in other subnets. " +
+				"On a single node `LISTEN_IP` on the management address works too, but not on a cluster, where the nodes reach each other's pveproxy on addresses that may be in other subnets. " +
 				"A firewall rule for 8006 does the same job from the other side."),
 		model.WithEvidence("port", "8006"),
 	}
@@ -248,13 +248,13 @@ func (c *Checker) auditRootTFA() ([]model.Finding, string) {
 			Users map[string]tfaUser `json:"users"`
 		}
 		if jerr := json.Unmarshal(b, &cfg); jerr != nil {
-			return nil, "could not parse " + tfaConfig + " — root's second factor was not audited"
+			return nil, "could not parse " + tfaConfig + "; root's second factor was not audited"
 		}
 		users = cfg.Users
 	case os.IsNotExist(err):
 		// Written on the first enrolment, so no file means nobody has one.
 	default:
-		return nil, "could not read " + tfaConfig + " — root's second factor was not audited; re-run with sudo"
+		return nil, "could not read " + tfaConfig + "; root's second factor was not audited; re-run with sudo"
 	}
 	if users["root@pam"].factors() > 0 {
 		return nil, ""
@@ -263,7 +263,7 @@ func (c *Checker) auditRootTFA() ([]model.Finding, string) {
 		"root@pam logs in to Proxmox VE with a password alone",
 		model.SeverityMedium, model.SourceProxmox, model.RemediationManual,
 		model.WithDescription(
-			"root@pam has no enabled second factor — no TOTP, WebAuthn, U2F or Yubico entry in "+tfaConfig+". "+
+			"root@pam has no enabled second factor; no TOTP, WebAuthn, U2F or Yubico entry in "+tfaConfig+". "+
 				"It is the account that can do everything on the hypervisor, it cannot be renamed, and its password is the host's own root password, "+
 				"so a guessed, reused or phished password is the whole of the host and every guest on it."),
 		model.WithHowToFix(
@@ -285,12 +285,12 @@ const enterpriseHost = "enterprise.proxmox.com"
 // the worst direction: `apt update` gets a 401 from the enterprise mirror,
 // prints an error most people learn to ignore, and the host stops receiving
 // Proxmox's own security updates while Debian's keep arriving and make it look
-// patched. The updates domain cannot see this — it counts pending updates from
+// patched. The updates domain cannot see this: it counts pending updates from
 // the lists apt did manage to fetch.
 func (c *Checker) auditRepos(ctx context.Context, r platform.CommandRunner) ([]model.Finding, string) {
 	enabled, unread := c.enterpriseSources()
 	if len(unread) > 0 {
-		return nil, "could not read " + strings.Join(unread, ", ") + " — the package sources were not audited"
+		return nil, "could not read " + strings.Join(unread, ", ") + "; the package sources were not audited"
 	}
 	if len(enabled) == 0 {
 		return nil, ""
@@ -301,7 +301,7 @@ func (c *Checker) auditRepos(ctx context.Context, r platform.CommandRunner) ([]m
 	}
 	outb, err := r.Run(ctx, "pvesubscription", "get")
 	if err != nil {
-		return nil, "`pvesubscription get` failed — whether the enterprise repository is usable was not audited"
+		return nil, "`pvesubscription get` failed, whether the enterprise repository is usable was not audited"
 	}
 	status := ""
 	for _, line := range strings.Split(string(outb), "\n") {
@@ -310,14 +310,14 @@ func (c *Checker) auditRepos(ctx context.Context, r platform.CommandRunner) ([]m
 		}
 	}
 	if status == "" {
-		return nil, "`pvesubscription get` printed no status — whether the enterprise repository is usable was not audited"
+		return nil, "`pvesubscription get` printed no status, whether the enterprise repository is usable was not audited"
 	}
 	if status == "active" {
 		return nil, ""
 	}
 	// One file is one edit: the enterprise source rewritten to the
-	// no-subscription one, which is signed by the same key. Two — PVE's and
-	// Ceph's — are two edits, and a fix makes one.
+	// no-subscription one, which is signed by the same key. Two (PVE's and
+	// Ceph's) are two edits, and a fix makes one.
 	kind, why := model.RemediationReview, ""
 	if len(enabled) != 1 {
 		kind, why = model.RemediationManual, "The enterprise repository is enabled in "+strconv.Itoa(len(enabled))+
@@ -328,7 +328,7 @@ func (c *Checker) auditRepos(ctx context.Context, r platform.CommandRunner) ([]m
 		model.SeverityMedium, model.SourceProxmox, kind, model.WithWhyNoFix(why),
 		model.WithDescription(
 			"The enterprise repository is enabled ("+strings.Join(enabled, ", ")+") but the subscription status is \""+status+"\", "+
-				"so every `apt update` is refused by "+enterpriseHost+" and the Proxmox packages — the kernel, QEMU, the management stack — stop receiving updates. "+
+				"so every `apt update` is refused by "+enterpriseHost+" and the Proxmox packages (the kernel, QEMU, the management stack) stop receiving updates. "+
 				"Debian's own updates keep arriving, which is what makes the host look patched while the part that runs every guest is not."),
 		model.WithHowToFix(
 			"Either add a subscription (`pvesubscription set <key>`), or disable the enterprise repository and enable the no-subscription one: "+
@@ -340,7 +340,7 @@ func (c *Checker) auditRepos(ctx context.Context, r platform.CommandRunner) ([]m
 }
 
 // enterpriseSources returns the apt source files that enable a Proxmox
-// enterprise repository — PVE's own or Ceph's, in either the one-line format
+// enterprise repository: PVE's own or Ceph's, in either the one-line format
 // PVE 8 ships or the deb822 format PVE 9 does.
 func (c *Checker) enterpriseSources() (enabled, unread []string) {
 	files := []string{c.path("/etc/apt/sources.list")}

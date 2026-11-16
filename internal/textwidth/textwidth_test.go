@@ -42,7 +42,7 @@ func TestTruncateNeverExceedsItsBudget(t *testing.T) {
 		for _, max := range []int{0, 1, 2, 3, 4, 5, 10, 20, 40, 200} {
 			got := Truncate(s, max)
 			if w := Of(got); w > max {
-				t.Errorf("Truncate(%q, %d) = %q, %d columns — over budget", s, max, got, w)
+				t.Errorf("Truncate(%q, %d) = %q, %d columns; over budget", s, max, got, w)
 			}
 		}
 	}
@@ -56,7 +56,7 @@ func TestTruncateKeepsWhatFits(t *testing.T) {
 		t.Errorf("Truncate shortened a string that already fits")
 	}
 	if got := Truncate("abc", 0); got != "" {
-		t.Errorf("Truncate(_, 0) = %q, want empty — no room means nothing to say", got)
+		t.Errorf("Truncate(_, 0) = %q, want empty; no room means nothing to say", got)
 	}
 	// An ellipsis is only worth a column when there is room for it.
 	if got := Truncate("abcdefgh", 10); got != "abcdefgh" {
@@ -81,7 +81,7 @@ func TestWrapFillsTheWidthItIsGiven(t *testing.T) {
 		}
 	}
 	// Every line but the last must be within one word of full, or the
-	// wrapping is leaving the terminal empty — which is what counting bytes
+	// wrapping is leaving the terminal empty, which is what counting bytes
 	// did.
 	for i, l := range lines[:len(lines)-1] {
 		next := strings.Fields(lines[i+1])[0]
@@ -156,13 +156,13 @@ func TestWrapHasAMinimumWidth(t *testing.T) {
 // package-level StringWidth reports two columns for the ambiguous class under
 // ko_KR.UTF-8 and one under en_US.UTF-8. Every one of those glyphs is drawn by
 // Hostveil, so using that default would lay the same screen out differently
-// for two operators with the same terminal — and would disagree with lipgloss,
+// for two operators with the same terminal, and would disagree with lipgloss,
 // which the TUI already uses to measure and pad the same rows.
 //
 // RUNEWIDTH_EASTASIAN is a different thing and is honoured: it is the operator
 // saying their terminal draws that class wide, which is a fact about the
 // terminal rather than about their language. This is the distinction the
-// package doc argues for, and it is checked here directly — the seam exists
+// package doc argues for, and it is checked here directly: the seam exists
 // (eastAsianEnv, eastAsianWidth) precisely so a test does not have to mutate a
 // process-wide setting that was read at init.
 func TestOnlyTheVariableTurnsOnEastAsianWidth(t *testing.T) {
@@ -182,7 +182,7 @@ func TestOnlyTheVariableTurnsOnEastAsianWidth(t *testing.T) {
 
 // And what Of does with the ambiguous class, in whichever mode this process is
 // running in. Written against the rule rather than a constant, so it asserts
-// something real under RUNEWIDTH_EASTASIAN=1 instead of being skipped there —
+// something real under RUNEWIDTH_EASTASIAN=1 instead of being skipped there,
 // which is how a whole class of layout defect stayed invisible until #711.
 func TestAmbiguousWidthFollowsTheVariable(t *testing.T) {
 	want := 1
@@ -198,7 +198,7 @@ func TestAmbiguousWidthFollowsTheVariable(t *testing.T) {
 		}
 	}
 	// And these are not, which is worth pinning because they look like they
-	// should be. ✓ ⚠ ▚ are one column in both modes — and so is ░, while █ is
+	// should be. ✓ ⚠ ▚ are one column in both modes, and so is ░, while █ is
 	// two, which is why internal/ui/tui builds a meter in columns rather than
 	// dividing by one cell size. A change here would move that layout.
 	for _, s := range []string{"✓", "⚠", "▚", "░"} {
@@ -207,7 +207,7 @@ func TestAmbiguousWidthFollowsTheVariable(t *testing.T) {
 		}
 	}
 	if got := Of("█"); got != want {
-		t.Errorf("Of(%q) = %d, want %d — the filled block is ambiguous and the empty one "+
+		t.Errorf("Of(%q) = %d, want %d; the filled block is ambiguous and the empty one "+
 			"is not, which is the asymmetry the meter is laid out around", "█", got, want)
 	}
 	// Genuinely wide characters are still wide; the condition narrows only

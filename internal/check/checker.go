@@ -22,18 +22,18 @@ type Checker interface {
 	Source() model.Source
 	// Available reports whether the checker can run here. When a
 	// dependency is absent (e.g. Docker or Trivy not installed) it returns
-	// (false, reason) and the orchestrator records the domain as Skipped —
+	// (false, reason) and the orchestrator records the domain as Skipped:
 	// never an error.
 	Available(ctx context.Context, env platform.Env) (ok bool, reason string)
 	// Check runs detection and returns findings. "Nothing found" is
 	// (nil, nil); an error signals a genuine failure. To report findings
 	// that cover only part of the domain, return them alongside a
-	// *PartialError — the orchestrator records Degraded and keeps them.
+	// *PartialError: the orchestrator records Degraded and keeps them.
 	Check(ctx context.Context, env platform.Env) ([]model.Finding, error)
 }
 
 // PartialError is returned by a Checker that ran and produced usable
-// findings but could not cover everything it should have — for example a CVE
+// findings but could not cover everything it should have, for example a CVE
 // scan where some images were unreadable. The orchestrator maps it to
 // model.ScanDegraded and keeps the findings.
 //
@@ -51,9 +51,9 @@ type PartialError struct {
 // Error appends the coverage fraction only when it says something the reason
 // does not: that some countable unit went unexamined.
 //
-// The test is Covered < Total, not Total > 0. A gap with no unit of its own —
+// The test is Covered < Total, not Total > 0. A gap with no unit of its own:
 // "cannot enumerate the containers started outside Compose", where the units
-// missed are by definition the ones that could not be counted — leaves the
+// missed are by definition the ones that could not be counted: leaves the
 // two equal, and the domain reported "audited compose projects only (covered
 // 1 of 1)" in every UI: a claim of partial coverage and a claim of complete
 // coverage in one sentence.
@@ -85,7 +85,7 @@ type Result struct {
 	Findings []model.Finding
 	// Stack is set only when State is ScanError because the checker panicked,
 	// so core.ScanWith can hand it to internal/diagnostics without re-parsing
-	// Reason — which stays the short "panic: %v" summary every UI already
+	// Reason, which stays the short "panic: %v" summary every UI already
 	// renders and must not grow a multi-line trace inside.
 	Stack string
 }
@@ -115,7 +115,7 @@ func runOne(ctx context.Context, c Checker, env platform.Env, events chan<- mode
 
 	// A panic in one checker degrades only that domain. debug.Stack() is
 	// called right here, in the recover, rather than by whatever eventually
-	// reads Stack — a stack captured anywhere else would show that caller's
+	// reads Stack: a stack captured anywhere else would show that caller's
 	// frames instead of the ones that actually panicked.
 	defer func() {
 		if r := recover(); r != nil {

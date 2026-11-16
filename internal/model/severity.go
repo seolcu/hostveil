@@ -14,7 +14,7 @@ import "encoding/json"
 // definitions below are the whole taxonomy; the names only have to carry
 // the order.
 //
-// The four levels this replaced — Critical/High/Medium/Low — came from
+// The four levels this replaced (Critical/High/Medium/Low) came from
 // Trivy, and Hostveil kept them so a CVE's rating could pass straight
 // through. That reason is gone: vulnerabilities are rolled up per image, so
 // what reaches a finding is one level for the whole image rather than a
@@ -25,11 +25,11 @@ import "encoding/json"
 // this problem right now.
 //
 // The levels were briefly called Exposed/Weak/Hardening, and those names
-// stated their definitions rather than their order — which is what a name
+// stated their definitions rather than their order, which is what a name
 // on a chip, in a SARIF level, or in one line of --json cannot afford.
 // Nothing about which finding lands where changed when they were renamed:
 // High is exactly the set that was Exposed, and before that Critical ∪
-// High. "Hardening" was the clearest failure — it reads as something done
+// High. "Hardening" was the clearest failure: it reads as something done
 // well rather than as the bottom of a scale.
 type Severity int
 
@@ -61,7 +61,7 @@ type severityDef struct {
 }
 
 // severityDefs describes the enum once. Unlike the other tables here this
-// one happens to start at 0, so its rows do line up with their values —
+// one happens to start at 0, so its rows do line up with their values,
 // which is exactly why the lookup is still keyed by the value column. Two
 // tables in one package, one offset by a zero-value constant and one not,
 // is how an index-by-position habit turns into a silent off-by-one.
@@ -94,7 +94,7 @@ func (s Severity) String() string {
 	return "unknown"
 }
 
-// Abbr returns the short lowercase form for surfaces with a width budget —
+// Abbr returns the short lowercase form for surfaces with a width budget:
 // the TUI's finding rows (which upper-case it) and the dashboard's chips.
 // Every abbreviation is at most four characters, because the TUI pads the
 // column to that width and a longer one would shift every row.
@@ -153,7 +153,7 @@ var severityByName = nameIndex(severityDefs,
 // it is lossy in one place: critical and high were merged, which is what
 // keeps `scan`'s exit code meaning what it always did. Note that "high" and
 // "medium" and "low" appear in *both* generations and mean the same level
-// in each — high folds to the top either way — so the collision is
+// in each (high folds to the top either way) so the collision is
 // harmless, which is the only reason one table can serve both.
 //
 // The integer path cannot be folded into this. A name is unambiguous; an

@@ -190,7 +190,7 @@ func TestInlineSecretDetected(t *testing.T) {
 }
 
 // The same file written the other way. compose accepts a list of KEY=value
-// as well as a map, and the fixtures here only ever used the map — so the
+// as well as a map, and the fixtures here only ever used the map, so the
 // list branch of the parser was executed by no test in the repository, and a
 // break in it would not fail: the service would come back with no environment
 // and a compose file full of passwords would audit clean.
@@ -319,6 +319,6 @@ func TestEmittedFindingsCarryWhatTheirFixNeeds(t *testing.T) {
 		}
 	}
 	if checked == 0 {
-		t.Fatal("no findings with registered fixes were exercised — the check is vacuous")
+		t.Fatal("no findings with registered fixes were exercised; the check is vacuous")
 	}
 }

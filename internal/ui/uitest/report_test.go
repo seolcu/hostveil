@@ -11,7 +11,7 @@ import (
 //
 // This is the test that was missing when SourceDockerd fell out of the
 // fixture. A Source absent from the states map reads as the zero-value
-// ScanPending, so the axis renders N/A — and with no matching DomainResult
+// ScanPending, so the axis renders N/A, and with no matching DomainResult
 // there is no reason beside it. Both published pictures carried a domain in
 // that state, which is precisely the "I could not look, and I will not say
 // why" the rail was built to prevent.

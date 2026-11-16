@@ -18,7 +18,7 @@ import (
 // every file in /etc/apt/apt.conf.d in lexical order and the last assignment
 // wins. Cloud images and several hardening guides ship
 // 99-disable-auto-upgrades setting `APT::Periodic::Unattended-Upgrade "0";`.
-// Hostveil read 20auto-upgrades alone — and so did its fix, which wrote "1"
+// Hostveil read 20auto-upgrades alone, and so did its fix, which wrote "1"
 // into that file, after which the checker re-read the same file, saw "1", and
 // reported the finding fixed. apt went on reading "0".
 //
@@ -74,7 +74,7 @@ func aptEffective(ctx context.Context, r platform.CommandRunner) (value string, 
 // case there is nothing outranking the conventional one.
 //
 // Lexical order over the directory, which is apt's own rule. Files apt ignores
-// — anything with an extension other than .conf, and dpkg's backup suffixes —
+// (anything with an extension other than .conf, and dpkg's backup suffixes)
 // are skipped, because naming one as the winner would send a fix to edit a
 // file apt never opens.
 func aptOrigin(dir string) string {
@@ -113,15 +113,15 @@ func aptOrigin(dir string) string {
 }
 
 // aptReadsFragment follows apt's own rule for which files in apt.conf.d it
-// parses: a plain name, or one ending in .conf. Everything else — dpkg's
-// .dpkg-dist and .ucf-old leftovers, editor backups — is ignored, and a fix
+// parses: a plain name, or one ending in .conf. Everything else (dpkg's
+// .dpkg-dist and .ucf-old leftovers, editor backups) is ignored, and a fix
 // sent to edit one of those would change nothing.
 func aptReadsFragment(name string) bool {
 	if name == "" || strings.HasPrefix(name, ".") {
 		return false
 	}
 	// apt accepts a bare name or one ending in .conf, built from alphanumerics
-	// with hyphens and underscores. Everything else it skips — which is what
+	// with hyphens and underscores. Everything else it skips, which is what
 	// keeps 99-disable.dpkg-dist and 99-backup~ out, and both of those sit in
 	// apt.conf.d on real hosts.
 	base := strings.TrimSuffix(name, ".conf")

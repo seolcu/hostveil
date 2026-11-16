@@ -41,7 +41,7 @@ const (
 // that nobody did. When the sysctl domain landed, the two display tables
 // that then lived in the UIs were missed, and the dashboard dropped a whole
 // domain's filter chip while announcing its failures as "10". Those were
-// pulled back here — and the dashboard immediately grew a *seventh* copy,
+// pulled back here, and the dashboard immediately grew a *seventh* copy,
 // keyed by axis ID this time, which fell behind by two domains before
 // anyone noticed.
 //
@@ -56,7 +56,7 @@ type sourceDef struct {
 	// the first field of Finding.Key(), and the fix registry matches globs
 	// against it. Changing one renames things on disk.
 	name string
-	// label is the short display name every interface shows — the filter
+	// label is the short display name every interface shows: the filter
 	// chip in the dashboard, the filter line in the TUI. It is shorter
 	// than axisLabel on purpose: an axis names a subject in a table with
 	// room for it, a chip sits in a row of eleven and has to stay narrow.
@@ -79,7 +79,7 @@ type sourceDef struct {
 // dashboard's live progress list, and the same order drives the scoring
 // axes down the page. Both are "most consequential first", which is why
 // they have agreed through eleven domains. If a future change needs the
-// axes displayed in some other order — worst-first, say — that is a
+// axes displayed in some other order (worst-first, say) that is a
 // projection to add here, not a reason to keep two hand-maintained lists.
 //
 // A third copy of this order lives in cmd/hostveil/app.go, where the
@@ -90,8 +90,8 @@ type sourceDef struct {
 // must never be found by position: SourceUnset owns 0, so this table's
 // rows sit one off from their values, while the severity table's do not.
 // These values are serialized as bare integers into on-disk scan
-// snapshots, so an off-by-one here would survive every test — they all
-// round-trip through this same table — and would surface only as a
+// snapshots, so an off-by-one here would survive every test (they all
+// round-trip through this same table) and would surface only as a
 // previous scan whose findings had all changed domain, which reads to a
 // user as "everything on this host is new and everything old is fixed".
 var sourceDefs = []sourceDef{
@@ -177,7 +177,7 @@ func AllSources() []Source {
 // sourceByName carries a row sourceDefs does not: SourceUnset owns the zero
 // value and has no table entry, but String() renders it "unset", and a
 // marshaller that writes a name it cannot read back is a one-way door. It is
-// the only enum here needing this — RemediationKind gives its Unset a real
+// the only enum here needing this: RemediationKind gives its Unset a real
 // row, and Severity's and ScanState's zero values are ordinary members.
 var sourceByName = func() map[string]Source {
 	m := nameIndex(sourceDefs,

@@ -9,7 +9,7 @@ import (
 //
 // systemd.unit(5): "Multiple drop-in files with different names are applied in
 // lexicographic order, regardless of which of the directories they reside in."
-// The /etc-over-/usr rule applies only to files with the *same* name — so a
+// The /etc-over-/usr rule applies only to files with the *same* name, so a
 // vendor's /usr/lib/.../90-vendor.conf beats /etc/.../50-hostveil.conf, and a
 // fix that wrote the second would be overridden at the next daemon-reload
 // having reported success and taken a checkpoint.

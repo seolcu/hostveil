@@ -22,7 +22,7 @@ import (
 //
 // downloadClient must follow them: a release asset URL answers 302 and sends
 // the caller on to objects.githubusercontent.com. One shared no-redirect
-// client made every download fail with "returned 302 Found" — on the one path
+// client made every download fail with "returned 302 Found", on the one path
 // a `--check` smoke test never reaches.
 func resolveClient() *http.Client {
 	return &http.Client{

@@ -130,7 +130,7 @@ vim/jammy-updates 2:8.2.3995-1ubuntu2.15 amd64 [upgradable from: 2:8.2.3995-1ubu
 }
 
 // A large backlog means automatic updates are configured but failing, which
-// is worse than merely switched off — the operator believes it is handled.
+// is worse than merely switched off: the operator believes it is handled.
 func TestLargeSecurityBacklogIsHigh(t *testing.T) {
 	var b strings.Builder
 	b.WriteString("Listing...\n")
@@ -311,7 +311,7 @@ func TestCheckRejectsUnsupportedPackageManager(t *testing.T) {
 	for _, pm := range []platform.PackageManager{platform.PMApk, platform.PMPacman, platform.PMUnknown} {
 		fs, err := New().Check(context.Background(), platform.Env{PackageManager: pm})
 		if err == nil {
-			t.Errorf("%q: Check returned nil error — a silent clean result", pm)
+			t.Errorf("%q: Check returned nil error; a silent clean result", pm)
 		}
 		if len(fs) != 0 {
 			t.Errorf("%q: Check returned findings %v alongside the error", pm, fs)
@@ -322,7 +322,7 @@ func TestCheckRejectsUnsupportedPackageManager(t *testing.T) {
 // needs-restarting ships in dnf-utils, which a stock minimal Fedora, RHEL,
 // or Rocky does not install. The reboot probe then came back unknown, the
 // function returned right there, and `dnf updateinfo list security` never
-// ran — so pending security updates went uncounted on every such host, while
+// ran, so pending security updates went uncounted on every such host, while
 // the domain reported only that a reboot could not be determined.
 func TestMissingNeedsRestartingStillCountsSecurityUpdates(t *testing.T) {
 	out := dnfClean()
@@ -336,7 +336,7 @@ FEDORA-2026-bbbb Moderate/Sec.  curl-8.6.0-1.fc41.x86_64
 
 	fs, err := dnfChecker(t, dnfApplies).Check(context.Background(), env)
 
-	// Still degraded — a reboot genuinely cannot be determined.
+	// Still degraded: a reboot genuinely cannot be determined.
 	var partial *check.PartialError
 	if !errors.As(err, &partial) {
 		t.Fatalf("want a PartialError, got %v", err)
@@ -377,7 +377,7 @@ func TestBothDnfProbesFailingAreBothReported(t *testing.T) {
 //
 // `systemctl is-enabled` exits non-zero for a disabled unit and for a host
 // with no systemd alike, and the checker read both as the positive claim that
-// updates are switched off — on a machine where nothing had been consulted.
+// updates are switched off, on a machine where nothing had been consulted.
 // That is the confusion the whole scanner is built to refuse, made in a
 // domain whose finding is one of the most commonly acted on.
 func TestNoSystemctlIsACoverageGapNotADisabledTimer(t *testing.T) {
@@ -420,7 +420,7 @@ func TestAnAbsentTimerIsStillReportedAsDisabled(t *testing.T) {
 }
 
 // An apt config that cannot be read is not a config that says "off". An
-// absent one is, though — nothing has configured unattended upgrades.
+// absent one is, though: nothing has configured unattended upgrades.
 func TestAnUnreadableAptConfigIsACoverageGap(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root reads through a mode-000 file")

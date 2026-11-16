@@ -25,7 +25,7 @@ func adminBin(t *testing.T, name string, mode os.FileMode) string {
 //
 // On Debian and its derivatives /usr/sbin is not on a non-root user's PATH, and
 // ufw, nft and iptables all live there. exec.LookPath therefore fails for a
-// firewall that is installed and running — and the firewall domain reads a
+// firewall that is installed and running, and the firewall domain reads a
 // front-end it cannot find as one that is not installed, then reads every
 // front-end missing as "no firewall is active". A real Debian 13 host scored
 // 50/100 with a High finding unprivileged and 100/100 clean as root, minutes
@@ -51,7 +51,7 @@ func TestLookPathFindsAToolThatOnlyLivesInAnAdminDir(t *testing.T) {
 }
 
 // A file that is not executable is not a tool. Returning it would hand the
-// caller a path that fails at exec, which reads as "the tool errored" — a
+// caller a path that fails at exec, which reads as "the tool errored": a
 // coverage gap where there is really nothing installed at all.
 func TestLookPathIgnoresANonExecutableFileInAnAdminDir(t *testing.T) {
 	const name = "hostveil-test-notabin"

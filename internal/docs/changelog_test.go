@@ -9,7 +9,7 @@ import (
 // that goes stale.
 //
 // Nothing structural stops a release being written up in English and merged,
-// and there is no moment afterwards when anybody is reminded — the release is
+// and there is no moment afterwards when anybody is reminded: the release is
 // already out, the tag is immutable, and the missing Korean entry looks
 // exactly like a release that had nothing to say. That is the same failure the
 // measurement figures had: a second copy of something, with no check that the

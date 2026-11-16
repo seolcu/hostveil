@@ -16,8 +16,8 @@ import (
 // published number.
 //
 // A figure off a measurement run is checked against the committed JSON. A
-// figure about the *program* — how many findings it can report, how many of
-// them it can fix, how many fuzz targets run nightly — had nowhere to be
+// figure about the *program* (how many findings it can report, how many of
+// them it can fix, how many fuzz targets run nightly) had nowhere to be
 // checked against, so it was published nowhere: the fix coverage appeared only
 // inside a release note, and the testing regime appeared in no README and on no
 // page. Those are among the strongest things here and a visitor could not find
@@ -36,7 +36,7 @@ var countedCell = regexp.MustCompile(`<[^<>]*data-counted="([^"]+)"[^<>]*>([^<]*
 //
 // Nothing here is a literal. The whole point is that adding a checker, or
 // registering a fix for a finding that did not have one, moves these numbers
-// and fails the build until the pages move with them — which is the mechanism
+// and fails the build until the pages move with them, which is the mechanism
 // that has caught the domain table, the axis labels and the fuzz matrix
 // falling behind, applied to the figures that had no mechanism at all.
 func counts(t *testing.T) map[string]int {
@@ -89,7 +89,7 @@ func counts(t *testing.T) map[string]int {
 func TestTheCountsAreNotAccidentallyZero(t *testing.T) {
 	for name, n := range counts(t) {
 		if n == 0 {
-			t.Errorf("%s counted 0 — either the harvester broke or the claim is not worth "+
+			t.Errorf("%s counted 0; either the harvester broke or the claim is not worth "+
 				"publishing; both fail here rather than reaching a page", name)
 		}
 	}
@@ -132,7 +132,7 @@ func countedPages() []string {
 // sentence a README makes, in its own words, with the figures filled in.
 //
 // Markdown has no attributes, and the READMEs are where most people read any
-// of this. Requiring the phrase verbatim is stricter than checking the digits —
+// of this. Requiring the phrase verbatim is stricter than checking the digits:
 // it fails a README that quotes a right number inside a sentence that has
 // stopped being true around it.
 type countClaim struct {

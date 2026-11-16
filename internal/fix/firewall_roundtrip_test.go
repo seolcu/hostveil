@@ -17,7 +17,7 @@ import (
 //
 // applyFirstAlternative there only closes the loop for ActionEdit: read the
 // file, run Transform, write it back, ask the same checker again. firewall's
-// fix is ActionExec — two ufw commands with no file to read back — so it has
+// fix is ActionExec (two ufw commands with no file to read back) so it has
 // never been run through a real checker at all, only through hand-built
 // findings asserting the commands themselves (firewall_test.go).
 //
@@ -25,8 +25,8 @@ import (
 // against a real firewall. What it can prove is the thing that has never been
 // checked: that the exact evidence and finding shape firewall.Checker emits is
 // what fix.Default() accepts, that the commands it builds are the ones a real
-// ufw would need to run, and that once ufw has done what those commands say —
-// scripted here as ufw's own documented output for "allow then enable" — the
+// ufw would need to run, and that once ufw has done what those commands say;
+// scripted here as ufw's own documented output for "allow then enable"; the
 // same checker that raised firewall.inactive no longer does.
 func TestFirewallFixActuallyClearsTheFinding(t *testing.T) {
 	r := checktest.New().
@@ -61,8 +61,8 @@ func TestFirewallFixActuallyClearsTheFinding(t *testing.T) {
 	}
 
 	// Run every command the fix built against the fake, exactly as the
-	// engine's applyExec would — proving the argv is well-formed and
-	// self-consistent — then bring the fake's state up to what real ufw
+	// engine's applyExec would (proving the argv is well-formed and
+	// self-consistent) then bring the fake's state up to what real ufw
 	// documents these two commands as leaving behind: active, with SSH still
 	// allowed and everything else denied by default.
 	for _, cmd := range a.Commands {
@@ -88,7 +88,7 @@ func TestFirewallFixActuallyClearsTheFinding(t *testing.T) {
 }
 
 // runFirewallChecker mirrors roundtrip_test.go's runChecker, except it takes
-// the environment rather than building a fresh one — this loop needs to
+// the environment rather than building a fresh one: this loop needs to
 // re-run the same checker against a runner that changed state mid-test.
 func runFirewallChecker(t *testing.T, c check.Checker, env platform.Env) map[string]model.Finding {
 	t.Helper()

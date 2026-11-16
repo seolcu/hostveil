@@ -107,7 +107,7 @@ func TestChmodNoFollowRefusesASymlink(t *testing.T) {
 	}
 	fi, _ := os.Stat(victim)
 	if fi.Mode().Perm() != 0o644 {
-		t.Errorf("the symlink's target changed mode to %#o — the chmod followed the link", fi.Mode().Perm())
+		t.Errorf("the symlink's target changed mode to %#o; the chmod followed the link", fi.Mode().Perm())
 	}
 }
 
@@ -158,7 +158,7 @@ func TestWriteFileAtomicBeneathDetectsAnExternalEdit(t *testing.T) {
 	}
 }
 
-// WriteFileAtomic must be able to create a file that does not exist yet —
+// WriteFileAtomic must be able to create a file that does not exist yet,
 // that is the checkpoint store writing a fresh backup blob. Preserving the
 // owner of a file with no prior owner is not an error.
 func TestWriteFileAtomicCreatesANewFile(t *testing.T) {

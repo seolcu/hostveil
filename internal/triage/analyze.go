@@ -126,8 +126,8 @@ func Analyze(dir string) (*Result, *Manifest, error) {
 	return &an.res, &b.m, nil
 }
 
-// IDPrefix namespaces every indicator. An indicator is not a finding — it
-// is a conclusion about the past, not a setting to fix — so no indicator ID
+// IDPrefix namespaces every indicator. An indicator is not a finding (it
+// is a conclusion about the past, not a setting to fix) so no indicator ID
 // may read as one: none starts with, or contains, a detection domain's name
 // followed by a dot (login.*, not ssh.*), which internal/docs enforces.
 const IDPrefix = "triage."
@@ -334,7 +334,7 @@ func (an *analysis) ssh() {
 		if fp != "" && len(keys) > 0 && !keys[fp] {
 			an.add(Indicator{ID: "login.key-not-authorized-now", Verdict: Suspicious,
 				Title:  "A login used a key that is no longer in any authorized_keys",
-				Detail: fmt.Sprintf("%s logged in from %s with key %s, which no authorized_keys file on this host now contains. Either the key was removed since — which is ordinary — or it was added, used, and removed.", user, ip, fp),
+				Detail: fmt.Sprintf("%s logged in from %s with key %s, which no authorized_keys file on this host now contains. Either the key was removed since (which is ordinary) or it was added, used, and removed.", user, ip, fp),
 				First:  l.t, Evidence: []Evidence{ev}})
 		}
 	}
@@ -557,7 +557,7 @@ func (an *analysis) web() {
 	if scanners > 0 {
 		an.add(Indicator{ID: "web.scanning", Verdict: Attempt,
 			Title: "Automated scanning of the web server",
-			Detail: fmt.Sprintf("%d addresses produced %d client errors (4xx) between them — requests for files that are not there, the shape of a vulnerability scanner. "+
+			Detail: fmt.Sprintf("%d addresses produced %d client errors (4xx) between them; requests for files that are not there, the shape of a vulnerability scanner. "+
 				"On its own it shows only that someone looked.", scanners, probes),
 			Count: probes, Evidence: ev})
 	}
@@ -686,7 +686,7 @@ func (an *analysis) audit() {
 		an.add(Indicator{ID: "audit.webuser-exec", Verdict: Compromise,
 			Title: "The web server's account started programs",
 			Detail: fmt.Sprintf("The audit log recorded %d programs started by a web server account. Unless your web application is known to run programs, "+
-				"these are commands run through it — the first ones an attacker types after a remote-code-execution bug.", n),
+				"these are commands run through it: the first ones an attacker types after a remote-code-execution bug.", n),
 			Count: n, First: first, Last: last, Evidence: ev})
 	}
 }
@@ -805,7 +805,7 @@ func (an *analysis) loadPackages() {
 	}
 }
 
-// packaged reports whether the package manager installed p unchanged —
+// packaged reports whether the package manager installed p unchanged,
 // which explains an old mtime under a new ctime, and a recent change made
 // by an upgrade.
 func (an *analysis) packaged(p string) bool {

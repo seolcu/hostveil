@@ -12,8 +12,8 @@ import (
 //
 // `el.hidden = true` is how app.js puts one away, and on its own that does
 // not work here. The UA stylesheet declares [hidden] at the specificity of a
-// single class, so `.delta { display: flex }` — later in app.css, same
-// specificity — simply wins, and the element stays laid out. What that
+// single class, so `.delta { display: flex }` (later in app.css, same
+// specificity) simply wins, and the element stays laid out. What that
 // produced was not a broken page but a quieter thing: a band of empty
 // padding with a border under it, once for every band the host had nothing
 // to say in, in every arrangement. On a first scan that was three rules of
@@ -45,7 +45,7 @@ func TestEveryBandThatStartsHiddenStaysHidden(t *testing.T) {
 	tag := regexp.MustCompile(`<[a-z]+ class="([a-z0-9 -]+)"[^>]*\shidden\s*>`)
 	found := tag.FindAllStringSubmatch(string(html), -1)
 	if len(found) == 0 {
-		t.Fatal("no elements with a hidden attribute in index.html — has the markup moved?")
+		t.Fatal("no elements with a hidden attribute in index.html; has the markup moved?")
 	}
 
 	for _, m := range found {

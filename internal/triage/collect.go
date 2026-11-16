@@ -336,7 +336,7 @@ func (c *collector) homeLinks(phase int) {
 }
 
 // shadowSummary records which accounts have a password, none, or a locked
-// one — never the hashes, which have no place in a bundle that may be
+// one: never the hashes, which have no place in a bundle that may be
 // handed to someone else.
 func (c *collector) shadowSummary(phase int) {
 	a := Artifact{Name: "shadow-summary", Path: c.next("shadow-summary", "tsv"), Phase: phase, Kind: "derived", Source: "/etc/shadow"}

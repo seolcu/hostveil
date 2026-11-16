@@ -15,7 +15,7 @@ permissions:
 
 # One run per pull request at a time: pushing twice in a minute used to leave
 # both runs queued for a runner, and the answer everyone waits for is the one
-# for the newest commit. Cancelling is scoped to pull requests — a push to
+# for the newest commit. Cancelling is scoped to pull requests: a push to
 # main and the release workflow's call of this gate must never be cancelled by
 # anything, least of all by each other.
 concurrency:
@@ -59,7 +59,7 @@ jobs:
           version: v2.12.2
 
       # The release workflow calls this one, and a broken `uses:` path or a
-      # dangling `needs:` in that wiring is invisible until a tag is pushed —
+      # dangling `needs:` in that wiring is invisible until a tag is pushed,
       # by which time the thing that was supposed to gate the release is the
       # thing that is broken. actionlint catches both statically. Pinned for
       # the same reason golangci-lint is: a floating version can start
@@ -74,7 +74,7 @@ jobs:
       # A tool that reports other people's vulnerabilities should not ship
       # its own. govulncheck reports only vulnerabilities in code paths this
       # binary actually reaches, so a finding here is real rather than a
-      # dependency-graph coincidence — which is why it gates the build
+      # dependency-graph coincidence, which is why it gates the build
       # instead of merely warning.
       - name: Check dependencies for known vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
@@ -111,7 +111,7 @@ jobs:
       # The cross-compile below covers what goreleaser *builds*; this covers
       # what it is *told* to build. Archives, checksums, SBOM hooks and the
       # ldflags that stamp the version live in .goreleaser.yaml, and nothing
-      # reads that file until a tag exists — by which time the release has
+      # reads that file until a tag exists, by which time the release has
       # already been published, because a maintainer creates it to make the
       # tag. A config error there therefore surfaces as a live release with no
       # artifacts, which is the situation demote-on-failure exists to clean up
@@ -124,7 +124,7 @@ jobs:
 
       # goreleaser builds linux and darwin on amd64 and arm64, and until this
       # existed the first compile of three of those four targets happened
-      # during a release — where a failure demotes the release to a draft
+      # during a release, where a failure demotes the release to a draft
       # rather than being caught on the pull request that caused it.
       # Compiling is enough: the tests only pass meaningfully on the platform
       # they run on, and a build break is what actually escapes review.
@@ -154,7 +154,7 @@ jobs:
       # is root and edits the host it measures, and instruments/rollback.sh
       # computes the rollback-fidelity claim check.py fails the run over. All
       # of them were already clean, so naming two was costing coverage and
-      # buying nothing — and a hand-kept list is how the next script joins the
+      # buying nothing, and a hand-kept list is how the next script joins the
       # repo unchecked.
       - name: Lint shell scripts
         run: find . -name '*.sh' -not -path './.git/*' -print0 | xargs -0 shellcheck
@@ -166,7 +166,7 @@ jobs:
       # own audience is most likely to be in.
       #
       # RUNEWIDTH_EASTASIAN=1 is an operator saying their terminal draws the
-      # East Asian Ambiguous class two columns wide, and Hostveil honours it —
+      # East Asian Ambiguous class two columns wide, and Hostveil honours it:
       # internal/textwidth explains why it must, and lipgloss reads the same
       # variable. Every glyph the frame and the meters are drawn from is in
       # that class, so the whole layout is a different arithmetic there, and
@@ -184,7 +184,7 @@ jobs:
 
       # Reported, not gated. A threshold on a repository this size mostly
       # teaches people to write tests that move the number, and the useful
-      # signal is which package dropped — which is visible right here in the
+      # signal is which package dropped, which is visible right here in the
       # job summary next to the diff that caused it.
       - name: Coverage by package
         run: |

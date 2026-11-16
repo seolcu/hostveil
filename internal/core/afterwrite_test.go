@@ -255,7 +255,7 @@ func TestTheRetryClearsSystemdsFailedState(t *testing.T) {
 }
 
 // resetAwareRunner fails the first restart, then refuses every restart until
-// reset-failed has run — systemd's start limit, in miniature.
+// reset-failed has run: systemd's start limit, in miniature.
 type resetAwareRunner struct {
 	ran      []string
 	failed   bool

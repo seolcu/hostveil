@@ -1,5 +1,5 @@
 <!--
-Title: conventional and with a scope from the allowlist — e.g. `fix(check): ...`,
+Title: conventional and with a scope from the allowlist, e.g. `fix(check): ...`,
 `feat(ui): ...`. The title becomes the squashed commit subject and drives the
 version bump and changelog, so put the component in the SCOPE, never the type.
 See AGENTS.md for the allowlist and the reasoning. CI enforces it.
@@ -15,4 +15,4 @@ See AGENTS.md for the allowlist and the reasoning. CI enforces it.
 - [ ] Ran `scripts/gate.sh` locally and it passes.
 - [ ] For a new or changed detection rule: added the case that must **not** trigger it, not just the one that must.
 - [ ] For a UI change: included a screenshot, or confirmed the TUI/web layering tests still pass.
-- [ ] The score stays honest — a checker that can't look reports skipped/degraded, it never passes "couldn't look" off as "nothing there" (see AGENTS.md invariants).
+- [ ] The score stays honest; a checker that can't look reports skipped/degraded, it never passes "couldn't look" off as "nothing there" (see AGENTS.md invariants).

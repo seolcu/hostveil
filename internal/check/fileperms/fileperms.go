@@ -2,7 +2,7 @@
 // decide who can read and write a sensitive host file: its permission bits
 // and its owner. A world-writable /etc/passwd or a group-readable SSH host
 // key is a quiet but serious hole, and so is a mode-0600 /etc/shadow that
-// belongs to somebody other than root — 0600 says "only the owner", and the
+// belongs to somebody other than root: 0600 says "only the owner", and the
 // whole question is who that is.
 package fileperms
 
@@ -39,8 +39,8 @@ type Rule struct {
 // rule could not be evaluated at all, which is a coverage gap and not a pass.
 //
 // The glob is the reason this exists. filepath.Glob reports a directory it
-// cannot read as zero matches and a nil error — indistinguishable from a host
-// that simply has no SSH host keys — so an /etc/ssh the scan cannot enter
+// cannot read as zero matches and a nil error (indistinguishable from a host
+// that simply has no SSH host keys) so an /etc/ssh the scan cannot enter
 // would silently clear a High-severity rule about private keys being readable.
 // Asking the directory directly is the only way to tell the two apart.
 //
@@ -70,7 +70,7 @@ func (r Rule) paths() ([]string, error) {
 	}
 	dir := filepath.Dir(r.Path)
 	if _, err := os.ReadDir(dir); err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("cannot read %s — the files it holds were not checked", dir)
+		return nil, fmt.Errorf("cannot read %s; the files it holds were not checked", dir)
 	}
 	// The directory is absent or genuinely empty of matches. Nothing to judge.
 	return nil, nil
@@ -82,7 +82,7 @@ func (r Rule) paths() ([]string, error) {
 // stopped there, which is only half the question: mode 0600 grants
 // everything to the owner and nothing to anyone else, so a /etc/shadow at
 // 0600 owned by an ordinary user hands that user every password hash on the
-// host — and the mode check calls it clean, because 0600 is exactly what it
+// host, and the mode check calls it clean, because 0600 is exactly what it
 // wants to see. Ownership is the other half, and every file in this table
 // belongs to root on every distribution.
 //
@@ -94,7 +94,7 @@ const ownerFindingID = "fileperms.owner"
 
 // rootUID is the owner every file in the rule table must have on a real
 // host. These are paths whose ownership is fixed by the system, not by
-// preference — Checker.OwnerUID exists only so a test can assert both
+// preference: Checker.OwnerUID exists only so a test can assert both
 // directions without caring which account runs the suite.
 const rootUID = 0
 
@@ -117,7 +117,7 @@ func New() *Checker { return &Checker{Rules: defaultRules(), OwnerUID: rootUID} 
 // package: internal/fix's roundtrip tests need the same MaxMode table
 // production uses, the same reason agent.DefaultRuntimes is exported. A
 // fixture holding its own copy of these masks does not fail when the two
-// drift apart — it silently tests a mode that is no longer the one shipped,
+// drift apart: it silently tests a mode that is no longer the one shipped,
 // and nothing catches that except a test that can read this table.
 func DefaultRules() []Rule { return defaultRules() }
 
@@ -177,7 +177,7 @@ func (*Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 // A rule it could not evaluate is recorded as a coverage gap rather than
 // passed over. "This file is not here" and "I was not allowed to look at it"
 // both used to arrive as a non-nil error from Stat and both were skipped, so
-// a rule that could not run reported exactly like a rule that passed — on a
+// a rule that could not run reported exactly like a rule that passed, on a
 // domain whose whole job is noticing that a sensitive file is readable by the
 // wrong people.
 func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, error) {
@@ -208,7 +208,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 			case !fi.Mode().IsRegular():
 				// Every rule names a file whose contents are the risk, and
 				// Stat follows symlinks. A masked systemd unit is a symlink
-				// to /dev/null — `systemctl mask` makes exactly that — and
+				// to /dev/null: `systemctl mask` makes exactly that, and
 				// /dev/null is 0666 by design, so judging it read every
 				// masked service on the host as a world-writable root unit:
 				// High, on hosts that had masked rpcbind to shrink their
@@ -233,7 +233,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		if len(unstattable) > 0 {
 			sort.Strings(unstattable)
 			cov.Missed(0, "cannot read "+strings.Join(unstattable, ", ")+
-				" — their permissions were not checked")
+				"; their permissions were not checked")
 		}
 		if len(badPaths) == 0 {
 			continue
@@ -253,7 +253,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 			// alone, and parsing them back out of "/etc/shadow (0644), …"
 			// breaks on any path containing ", " or " (". The separator is
 			// PathListSeparator rather than EvidenceSeparator for the second
-			// half of that reason — ", " is legal inside a path too.
+			// half of that reason: ", " is legal inside a path too.
 			model.WithEvidence("paths", strings.Join(badPaths, model.PathListSeparator)),
 			model.WithEvidence("expected", fmt.Sprintf("%#o", rule.MaxMode)),
 		))
@@ -264,8 +264,8 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		findings = append(findings, model.NewFinding(ownerFindingID,
 			"A sensitive system file is not owned by root",
 			model.SeverityHigh, model.SourceFilePerms, model.RemediationReview,
-			model.WithDescription("These files are owned by an account other than root. Permission bits are only half of who can read and write a file — the other half is who the owner is. A mode-0600 /etc/shadow grants everything to its owner and nothing to anyone else, so if that owner is an ordinary user, they hold every password hash on the host while the permissions look exactly right."),
-			model.WithHowToFix("Restore root ownership of the user and leave the group as it is, e.g. `chown root "+strings.SplitN(wrongOwner[0], " ", 2)[0]+"`. Check the group too — /etc/shadow is usually root:shadow on Debian and root:root elsewhere. If this happened to several files at once, something restored them as the wrong user; look at how they got there before assuming a chown is the whole fix."),
+			model.WithDescription("These files are owned by an account other than root. Permission bits are only half of who can read and write a file: the other half is who the owner is. A mode-0600 /etc/shadow grants everything to its owner and nothing to anyone else, so if that owner is an ordinary user, they hold every password hash on the host while the permissions look exactly right."),
+			model.WithHowToFix("Restore root ownership of the user and leave the group as it is, e.g. `chown root "+strings.SplitN(wrongOwner[0], " ", 2)[0]+"`. Check the group too: /etc/shadow is usually root:shadow on Debian and root:root elsewhere. If this happened to several files at once, something restored them as the wrong user; look at how they got there before assuming a chown is the whole fix."),
 			model.WithEvidence("files", strings.Join(wrongOwner, model.EvidenceSeparator)),
 			model.WithEvidence("owner-paths", strings.Join(sortedCopy(wrongOwnerPaths), model.PathListSeparator)),
 		))
@@ -276,7 +276,7 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 // fileUID reports the owning uid, and whether the platform gave one.
 //
 // ok is false where the stat result carries no Unix owner. That reads as
-// "could not tell", and the caller flags nothing — the same rule the rest of
+// "could not tell", and the caller flags nothing: the same rule the rest of
 // this tool follows, because an unowned-looking file is a gap in what we can
 // see rather than evidence about the host.
 func fileUID(fi os.FileInfo) (int, bool) {

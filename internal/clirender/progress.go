@@ -27,7 +27,7 @@ const ProgressBufferSize = 64
 //
 // The output is one line, rewritten in place with a carriage return, naming
 // the domains still running. It is cleared before returning so whatever the
-// caller prints next starts on a clean line — the progress display is
+// caller prints next starts on a clean line: the progress display is
 // scaffolding for the wait, not part of the report.
 //
 // Callers send this to stderr. Progress on stdout would corrupt `--json` and

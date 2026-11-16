@@ -10,7 +10,7 @@ import (
 )
 
 // The fix writes a drop-in this checker reads back, under the same
-// precedence k3s applies — so the loop closes here, with the fake root.
+// precedence k3s applies, so the loop closes here, with the fake root.
 func TestTheK3sFixesClearTheirFindings(t *testing.T) {
 	for _, id := range []string{"kube.anonymous-auth", "kube.secrets-unencrypted"} {
 		t.Run(id, func(t *testing.T) {

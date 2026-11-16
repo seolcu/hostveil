@@ -41,7 +41,7 @@ jobs:
             chore
             revert
           # The habit this list exists to break is putting the component in
-          # the type slot — `site:`, `model:`, `check/cve:`. Conventional
+          # the type slot; `site:`, `model:`, `check/cve:`. Conventional
           # commits accepts those as types, finds no bump rule for them, and
           # silently versions the change as a patch while dropping it from the
           # changelog. Components belong in the scope: `feat(site):`.

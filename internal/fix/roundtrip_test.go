@@ -29,15 +29,15 @@ import (
 // real checker read a real fix's output.
 //
 // What it catches: a fix that edits the wrong key, the wrong file, or nothing
-// at all — anything that leaves the finding standing, and anything that clears
+// at all; anything that leaves the finding standing, and anything that clears
 // it by reaching further than it claimed to.
 //
 // What it cannot catch, and the limit is worth writing down because it is not
 // obvious: a checker reading the wrong artifact in the first place. The loop
 // uses one oracle at both ends, so a fix that satisfies a checker which is
 // itself looking at the wrong file passes here. internal/check/updates is
-// exactly that shape — it reads one file out of apt.conf.d while apt reads the
-// whole directory, last assignment winning — and it is deliberately absent
+// exactly that shape (it reads one file out of apt.conf.d while apt reads the
+// whole directory, last assignment winning) and it is deliberately absent
 // from the table below rather than added to it green.
 //
 // SSH is where this starts because internal/fix/register.go names it as the
@@ -55,7 +55,7 @@ type roundTrip struct {
 	// unlocks names findings this fix is expected to *reveal*, with the
 	// reason. A fix that uncovers the next door is not a fix that broke
 	// something, but the two are indistinguishable to a test that simply
-	// forbids new findings — so each one is written down and argued rather
+	// forbids new findings, so each one is written down and argued rather
 	// than allowed in general.
 	unlocks map[string]string
 }
@@ -84,7 +84,7 @@ func roundTripCases() []roundTrip {
 		// says so: "PasswordAuthentication no is meant to end password
 		// guessing, but keyboard-interactive runs the same PAM password
 		// prompt through a different door." So it cannot be reported until
-		// the passwordauth fix has been applied — the second door is not a
+		// the passwordauth fix has been applied; the second door is not a
 		// finding while the first is standing open.
 		"ssh.passwordauth": {"ssh.kbdinteractive": "PasswordAuthentication no is what makes keyboard-interactive the remaining password path"},
 	}
@@ -209,7 +209,7 @@ func applyFirstAlternative(t *testing.T, f model.Finding) (before, after []byte)
 // applyFirstAlternativeMode is applyFirstAlternative's ActionMode twin: the
 // fileperms and agent mode findings carry a Mode transform (a permission
 // bits in, permission bits out function) rather than a Transform over file
-// contents, so there is no diff to read back — chmod is the whole write.
+// contents, so there is no diff to read back; chmod is the whole write.
 //
 // Same contract as applyFirstAlternative otherwise: builds the real
 // registered fix, drives its first action, and fails loudly if that action
@@ -256,7 +256,7 @@ func runChecker(t *testing.T, c check.Checker) map[string]model.Finding {
 	}
 	fs, err := c.Check(context.Background(), env)
 	// A partial result still carries findings, and a domain that covered only
-	// part of its ground is not a failed run — the same reading the scan uses.
+	// part of its ground is not a failed run; the same reading the scan uses.
 	var pe *check.PartialError
 	if err != nil && !errors.As(err, &pe) {
 		t.Fatalf("the checker failed: %v", err)

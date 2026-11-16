@@ -25,7 +25,7 @@ const ufwDockerBegin = "# BEGIN UFW AND DOCKER"
 
 // ufwDockerBlock is the ufw-docker project's after.rules block. It sends
 // forwarded traffic through ufw's own forward chain, lets the private ranges
-// through, and drops new connections from anywhere else to a container — so
+// through, and drops new connections from anywhere else to a container, so
 // a published port is reachable from outside only where a `ufw route allow`
 // rule says so, which is what an operator reading `ufw status` already
 // believed.
@@ -68,7 +68,7 @@ func buildUFWDocker(f model.Finding) (Fix, error) {
 				"they are reachable only where a `ufw route allow` rule says so, which is what `ufw status` " +
 				"already claims.",
 			Warning: "Every port a container publishes stops being reachable from the internet the moment ufw " +
-				"reloads — " + published + " included — until you allow it with " +
+				"reloads; " + published + " included, until you allow it with " +
 				"`ufw route allow proto tcp from any to any port <container port>`. Traffic from 10/8, " +
 				"172.16/12 and 192.168/16 is still let through. If ufw refuses the rules, Hostveil puts the " +
 				"original file back and reloads again. The edit has a checkpoint; rolling it back reloads ufw and empties " +
@@ -133,8 +133,8 @@ func buildTightenEnvFiles(f model.Finding) (Fix, error) {
 			Label: "Remove group and other access from " + strings.Join(paths, ", "),
 			Benefit: "The credentials in the env_file stop being readable by every other account on the host, " +
 				"which is the easiest way a secret leaks off a shared machine.",
-			Warning: "Another account that runs `docker compose` against this project — a deploy user, a CI " +
-				"runner — can no longer read the file and fails to start the service. Checking that the file is " +
+			Warning: "Another account that runs `docker compose` against this project; a deploy user, a CI " +
+				"runner; can no longer read the file and fails to start the service. Checking that the file is " +
 				"out of git and off-host backups is still yours to do. The old mode is checkpointed.",
 			Kind: ActionMode, Paths: paths, SafeRoot: safeRoot,
 			Mode: func(cur fs.FileMode) fs.FileMode { return tighten(cur, 0o700) },
@@ -191,7 +191,7 @@ func buildTightenKubeconfig(f model.Finding) (Fix, error) {
 			Label: "chmod " + p + " to " + mode,
 			Benefit: "Local accounts and services lose the cluster-admin credentials, and with them the " +
 				"privileged pod that is root on this host.",
-			Warning: "kubectl stops working for anyone who used this file without sudo — give them a " +
+			Warning: "kubectl stops working for anyone who used this file without sudo; give them a " +
 				"kubeconfig of their own. " + durable + " The old mode is checkpointed.",
 			Kind: ActionMode, Paths: []string{p},
 			Mode: func(cur fs.FileMode) fs.FileMode { return tighten(cur, mask) },

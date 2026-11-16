@@ -19,14 +19,14 @@ import (
 //
 // Neither Georgia nor the monospace stack has a Hangul glyph, so until
 // site/korean.css existed every Korean character on the site was drawn by
-// whatever the reader's machine fell back to — and on Fedora that was a
+// whatever the reader's machine fell back to, and on Fedora that was a
 // *monospace* CJK face for every label, button, nav link and finding title,
 // because the stack asked for "Noto Sans KR" (the Google Fonts name, which no
 // distribution registers) and fell through to the generic at the end of a
 // monospace list. The fix is the two faces scripts/korean-subset.py builds.
 //
-// They carry the site's own repertoire — 766 of Korean's 11,172 syllables,
-// which is what gets a serif weight to 112KB instead of megabytes — and that
+// They carry the site's own repertoire (766 of Korean's 11,172 syllables,
+// which is what gets a serif weight to 112KB instead of megabytes) and that
 // is precisely the risk. Write one new Korean sentence containing one syllable
 // that was not on the site when the subset was built, and nothing breaks:
 // that single character falls back to a system font in the middle of a word,
@@ -192,7 +192,7 @@ func TestEveryKoreanSyllableOnTheSiteHasAGlyph(t *testing.T) {
 	}
 	t.Errorf("%d Hangul codepoint(s) on the Korean site have no glyph in the shipped subset:%s\n\n"+
 		"  Each of these renders in the reader's system font, alone, in the middle of a\n"+
-		"  word — a different face at a size nobody chose, with correct characters on\n"+
+		"  word; a different face at a size nobody chose, with correct characters on\n"+
 		"  either side of it.\n\n"+
 		"  Rebuild the fonts:  pip install fonttools brotli && python3 scripts/korean-subset.py\n"+
 		"  and commit site/assets/fonts/ along with the Korean copy that needed them.",
@@ -290,8 +290,8 @@ func wideTrackedSelectors(t *testing.T, file string, min float64) []trackedSelec
 }
 
 // Tracking is the measurement that transfers worst between the two scripts.
-// The Latin design letterspaces its uppercase micro-labels — 0.14em on the
-// eyebrow, 0.11em on the kickers — because capitals set tight without it.
+// The Latin design letterspaces its uppercase micro-labels (0.14em on the
+// eyebrow, 0.11em on the kickers) because capitals set tight without it.
 // Hangul is square and carries its own sidebearings, so the same numbers push
 // a Korean label apart into loose syllables, and the eyebrow on the Korean
 // landing page is a full sentence of them.
@@ -303,7 +303,7 @@ func wideTrackedSelectors(t *testing.T, file string, min float64) []trackedSelec
 func TestKoreanTypographyRetracksEveryWideLabel(t *testing.T) {
 	const threshold = 0.05
 
-	// .hero-panel::before's text is a CSS string — "SCAN SHEET" — so it is
+	// .hero-panel::before's text is a CSS string; "SCAN SHEET", so it is
 	// Latin on the Korean pages too, and retracking it would only loosen the
 	// one label on the page that is not translated.
 	exempt := map[string]string{
@@ -333,8 +333,8 @@ func TestKoreanTypographyRetracksEveryWideLabel(t *testing.T) {
 	}
 }
 
-// The English pages carry exactly three Hangul syllables — 한국어, the language
-// switcher — and linking korean.css from them would have every English reader
+// The English pages carry exactly three Hangul syllables (한국어, the language
+// switcher) and linking korean.css from them would have every English reader
 // fetch a 112KB Korean serif to draw them. The Korean pages, conversely, are
 // unreadable-as-designed without it: they fall back to whatever the reader's
 // system has, which is the problem the file exists to solve.

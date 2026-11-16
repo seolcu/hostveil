@@ -79,7 +79,7 @@ func cmdScan(ctx context.Context, args []string) int {
 		rendered = out + "\n"
 	default:
 		// A report written to a file is read later, without the terminal it
-		// was produced on — never color it.
+		// was produced on; never color it.
 		opts := clirender.Options{
 			Color: output == "" && !noColor && colorEnabled(), Verbose: verbose, Glyphs: gl,
 		}
@@ -142,7 +142,7 @@ func writeReport(path string, data []byte) error {
 // The display goes to stderr and only when stderr is a terminal, so `--json`,
 // a redirect, and a cron run all produce exactly the bytes they did before.
 // When there is nowhere useful to draw, the scan runs with a nil channel and
-// no goroutine — the same path as before this existed.
+// no goroutine: the same path as before this existed.
 func scanWithProgress(ctx context.Context, engine *core.Engine, opts core.ScanOptions) model.Report {
 	if !isCharDevice(os.Stderr) {
 		return engine.ScanWith(ctx, nil, opts)
@@ -155,7 +155,7 @@ func scanWithProgress(ctx context.Context, engine *core.Engine, opts core.ScanOp
 		// A panic in the progress bar's own rendering must not take the scan
 		// with it: this goroutine has no caller left to catch one, and the
 		// caller below is blocked on <-done, which the deferred close still
-		// delivers even mid-panic — recovering here is what keeps that from
+		// delivers even mid-panic; recovering here is what keeps that from
 		// continuing to unwind and killing the process once it does.
 		defer func() { _ = recover() }()
 		clirender.Progress(os.Stderr, events)
@@ -235,13 +235,13 @@ const (
 // Findings come first: an unfixed High finding is the answer the gate
 // exists for, and it stays 1 whatever else happened.
 //
-// High is exactly the set the old Critical and High were together — both
-// folded into it when the scale went to three levels — so a pipeline that has
+// High is exactly the set the old Critical and High were together (both
+// folded into it when the scale went to three levels) so a pipeline that has
 // been gating on this code sees no change.
 //
 // A domain in ScanError is the second answer, and it used to have none.
 // The code was derived from findings alone, and a failed domain contributes
-// zero findings — so an unreachable Docker socket silenced the two heaviest
+// zero findings, so an unreachable Docker socket silenced the two heaviest
 // axes and the pipeline saw exit 0. A blind scan and a clean host were
 // indistinguishable to the one consumer that cannot look at the output.
 //
@@ -254,8 +254,8 @@ func exitCode(r model.Report) int {
 	for _, f := range r.Findings {
 		// Active, not !Fixed, so the gate keeps meaning what it says: a High
 		// whose fix is written and not yet in force has not been dealt with.
-		// Defensive today — cmdScan always renders a fresh scan and ScanWith
-		// replaces the report wholesale, so neither flag survives into here —
+		// Defensive today (cmdScan always renders a fresh scan and ScanWith
+		// replaces the report wholesale, so neither flag survives into here)
 		// which is exactly why it is worth spelling out rather than leaving
 		// the next caller to discover the distinction.
 		if !f.Active() {

@@ -6,10 +6,10 @@ depth see [demo/README.md](../demo/README.md).
 
 ## Prerequisites
 
-- **Go** — the version in [`go.mod`](../go.mod) (currently 1.26.x) or newer.
+- **Go**: the version in [`go.mod`](../go.mod) (currently 1.26.x) or newer.
   Install from your package manager or <https://go.dev/dl/>.
 - **git**.
-- **(Optional) the demo VM** — [Vagrant](https://developer.hashicorp.com/vagrant/install)
+- **(Optional) the demo VM**: [Vagrant](https://developer.hashicorp.com/vagrant/install)
   plus a provider (libvirt on Linux, VirtualBox on macOS/Windows). Needed
   only to *run* Hostveil against a realistic host; not needed to build/test.
 
@@ -32,7 +32,7 @@ scripts/gate.sh             # -fast skips the race detector and cross-compile
 > (`/etc/ssh/sshd_config`), inspects Docker Compose projects, and shells out
 > to `ufw`/`firewalld`/`trivy`. It **builds and its tests pass on any OS**
 > (macOS, Windows), but running the binary meaningfully requires Linux with
-> those tools present — use the demo VM below rather than running it against
+> those tools present: use the demo VM below rather than running it against
 > your own machine.
 
 ## Repository layout
@@ -42,7 +42,7 @@ AGENTS.md            architecture + invariants, written for AI coding agents
 cmd/hostveil/        entry point + subcommand wiring
 cmd/sitegen/         static-site generator for site/ (templates + content + pages.json)
 internal/
-  core/              the shared engine — the only thing the UIs call
+  core/              the shared engine (the only thing the UIs call
   check/             detection domains (compose, ssh, firewall, updates, cve,
                      ports, accounts, fileperms, agent, sysctl, dockerd)
   fix/ compose/ history/   fix registry, YAML editing, backup/rollback
@@ -51,19 +51,19 @@ internal/
   ui/{theme,tui,web}/  thin UIs over the engine, and the one palette registry
 demo/                the reproducible vulnerable-server VM (Vagrant)
 scripts/measure/     the harness that measures hostveil with other tools
-site/                the marketing site (static, generated — see below)
-docs/                these docs, and docs/measurements/ — committed results
+site/                the marketing site (static, generated) see below)
+docs/                these docs, and docs/measurements/: committed results
 ```
 
 `AGENTS.md` is worth reading even if you never use a coding agent: it is the
-shortest description of the architectural rules that span multiple files — the
+shortest description of the architectural rules that span multiple files; the
 one-engine/thin-UI split and the tests that enforce it, the seams that keep
 checkers and fixes unit-testable, and the scoring invariants. Claude Code, OpenCode and Codex all read it directly.
 
 ## Editing the website
 
 `site/` is a static site (landing page + docs, mirrored under `site/ko/`), but
-its HTML is **generated** — don't hand-edit `site/**/*.html`. The single source
+its HTML is **generated**: don't hand-edit `site/**/*.html`. The single source
 of truth lives in `cmd/sitegen/`:
 
 ```
@@ -74,7 +74,7 @@ cmd/sitegen/
   main.go            resolves each page's chrome/URLs and renders it
 ```
 
-Metadata in `pages.json` (titles, descriptions, nav labels) is **plain text** —
+Metadata in `pages.json` (titles, descriptions, nav labels) is **plain text**:
 the generator HTML-escapes it at render time, so write `Fixing & rollback`, not
 `Fixing &amp; rollback`. Content fragments under `content/` are raw HTML.
 
@@ -88,7 +88,7 @@ git diff site/            # review, then commit the regenerated HTML
 
 CSS/JS (`site/styles.css`, `docs.css`, `script.js`, `docs.js`,
 `lang-suggest.js`) and `site/assets/` are shared by every page and are *not*
-generated — edit them directly. CI runs the generator and fails if `site/`
+generated: edit them directly. CI runs the generator and fails if `site/`
 drifts from the source, so always commit the regenerated output.
 
 Architectural rule: UIs depend only on `core` (an import-lint test enforces
@@ -101,7 +101,7 @@ implements the `Checker` interface and registering it.
 `demo/` is a code-defined, deliberately vulnerable Ubuntu server you can
 bring up on any machine. Hostveil is built from your working tree, which is
 rsync-synced *into* the VM, so a freshly booted VM reflects your current code.
-(After editing code, re-sync before rebuilding — the repo syncs on `up`/`reload`
+(After editing code, re-sync before rebuilding: the repo syncs on `up`/`reload`
 but not on `provision`; see [demo/README.md](../demo/README.md).)
 
 ```bash
@@ -110,7 +110,7 @@ cd demo
 ./run.sh scan      # run hostveil against the server
 ./run.sh web       # dashboard at http://localhost:8787
 ./run.sh shell     # a shell on the server (then: hostveil ...)
-./run.sh halt      # shut it down — nothing keeps running
+./run.sh halt      # shut it down; nothing keeps running
 ```
 
 (`run.sh` is a convenience wrapper around `vagrant`; on Windows without a
@@ -125,44 +125,44 @@ that reflows. All three of these run against the demo VM, so nothing is aimed
 at your own machine:
 
 ```bash
-# TUI — drive the real thing and read back what it drew
+# TUI: drive the real thing and read back what it drew
 vagrant ssh -c 'tmux -f /dev/null new-session -d -x 100 -y 34 "sudo hostveil tui"'
 vagrant ssh -c 'tmux send-keys -t 0 t; sleep 1; tmux capture-pane -p -t 0'   # -e keeps the colour codes
 
-# Web — a throwaway profile, or Firefox hangs waiting on the one you have open
+# Web: a throwaway profile, or Firefox hangs waiting on the one you have open
 firefox --headless --no-remote --profile "$(mktemp -d)" \
         --window-size=1400,900 --screenshot out.png http://localhost:8787/
 
 # What actually reaches the terminal, escape sequence by escape sequence.
 # stty is not optional: `vagrant ssh -c` has no terminal for script(1) to copy
-# a size from, so the pty it builds is 0x0 and bubbletea draws nothing into it
-# — you get the altscreen and cursor setup, not one glyph. Feed it a quit key,
+# a size from, so the pty it builds is 0x0 and bubbletea draws nothing into it;
+# you get the altscreen and cursor setup, not one glyph. Feed it a quit key,
 # or it runs until the timeout.
 vagrant ssh -c '(sleep 90; printf q) | script -qfc "stty rows 45 cols 200; sudo -E env TERM=xterm-256color hostveil" /tmp/raw.log'
 vagrant ssh -c "grep -o '38;5;[0-9]*' /tmp/raw.log | sort | uniq -c | sort -rn"
 ```
 
 Use `tmux capture-pane` when you want to *read* the screen and the raw log
-when you want to know which palette entry drew something — the palettes are
+when you want to know which palette entry drew something: the palettes are
 24-bit hex and SSH does not forward `COLORTERM`, so what a remote session
 actually receives is the quantised 256-colour index and not the hex
 (`internal/ui/tui/quantize_test.go` holds every theme to that).
 
 ### Capturing the whole interface
 
-All three surfaces draw the same written-down host — `uitest.PublishedReport` —
+All three surfaces draw the same written-down host: `uitest.PublishedReport`,
 so a set of captures is a set of pictures of one machine rather than of three
 machines that happened to be to hand. Every hook is a test that skips unless its
 environment variable is set, so none of them runs in CI.
 
 ```bash
-# TUI — one .ans per screen into a directory (a file path gets the site frame)
+# TUI: one .ans per screen into a directory (a file path gets the site frame)
 HOSTVEIL_SNAPSHOT=/tmp/frames go test ./internal/ui/tui -run TestSnapshotDump
 
-# CLI — the four shapes `hostveil scan` prints
+# CLI: the four shapes `hostveil scan` prints
 HOSTVEIL_SNAPSHOT=/tmp/cli go test ./internal/clirender -run TestSnapshotDump
 
-# Dashboard — serves the fixture, prints a URL, exits after 45s
+# Dashboard: serves the fixture, prints a URL, exits after 45s
 HOSTVEIL_SCREENSHOT_ADDR=127.0.0.1:8788 go test ./internal/ui/web -run TestScreenshotServe -v
 ```
 
@@ -210,7 +210,7 @@ python3 scripts/ansi2png.py internal/ui/tui/testdata/site-frame.ans site/assets/
 ```
 
 `ansi2png.py` needs DejaVu Sans Mono, which is the face the published image is
-set in — `apt install fonts-dejavu-core`, `dnf install dejavu-sans-mono-fonts`.
+set in: `apt install fonts-dejavu-core`, `dnf install dejavu-sans-mono-fonts`.
 It says so if the font is missing. `HOSTVEIL_ANSI2PNG_BG`/`_FG` override the
 ground and default ink, which a capture of a non-default theme needs: a
 terminal capture cannot carry them, so the renderer assumes the default
@@ -218,13 +218,13 @@ palette's `Ink` and `Bone`.
 
 **`web.png` is photographed, so its *inputs* are pinned instead.** There is no
 headless browser in the test suite, so `TestDashboardScreenshotStampIsCurrent`
-hashes everything that decides what that page looks like — the generated
-`/model.js`, `/themes.css` and `/theme.js`, plus the three embedded assets —
+hashes everything that decides what that page looks like: the generated
+`/model.js`, `/themes.css` and `/theme.js`, plus the three embedded assets:
 against `internal/ui/web/testdata/web-shot.stamp`, and names which one moved.
 
 Re-shooting it does not need the demo VM. `TestScreenshotServe` puts the real
-dashboard — every route, asset and generated stylesheet from `Server.Handler`,
-on the default theme and arrangement — in front of the same fixture the
+dashboard: every route, asset and generated stylesheet from `Server.Handler`,
+on the default theme and arrangement, in front of the same fixture the
 terminal frame draws, so both published screenshots are pictures of one host:
 
 ```bash
@@ -298,7 +298,7 @@ without any Hostveil fixes.
 
 ### Provider setup by platform
 
-**Linux — libvirt/KVM** (fastest, native):
+**Linux: libvirt/KVM** (fastest, native):
 
 ```bash
 # Debian/Ubuntu: apt install vagrant vagrant-libvirt qemu-kvm libvirt-daemon-system
@@ -309,23 +309,23 @@ sudo usermod -aG libvirt "$USER"     # then log out/in
 
 Use `demo/run.sh`, or export `LIBVIRT_DEFAULT_URI=qemu:///system` before
 raw `vagrant`. An unprivileged libvirt client resolves to `qemu:///session`,
-which has no management network, so the VM boots and never gets an address —
+which has no management network, so the VM boots and never gets an address:
 Vagrant reports *"not yet ready for SSH"* minutes later and leaves a domain
 behind that makes the next attempt fail with *"already taken"*. `run.sh`
 sets the URI and checks for that leftover; raw `vagrant` does neither.
 
 If the host also runs **Docker**, Docker sets the kernel `FORWARD` policy to
 DROP, which blocks the VM's outbound network (apt/curl time out during
-provisioning). Allow the libvirt bridge to forward + masquerade — see the
+provisioning). Allow the libvirt bridge to forward + masquerade: see the
 Troubleshooting section of [demo/README.md](../demo/README.md) for the exact
 `firewall-cmd` commands. Applying them **before** the first `vagrant up`
 avoids the issue cleanly.
 
-**macOS / Windows — VirtualBox** (cross-platform):
+**macOS / Windows: VirtualBox** (cross-platform):
 
 1. Install [Vagrant](https://developer.hashicorp.com/vagrant/install) and
    [VirtualBox](https://www.virtualbox.org/wiki/Downloads).
-2. `cd demo && vagrant up` — the provider is selected automatically.
+2. `cd demo && vagrant up`: the provider is selected automatically.
 
 - **Windows:** VirtualBox conflicts with Hyper-V/WSL2; either disable Hyper-V
   or use a Hyper-V-based provider. No host-firewall tweaks are needed
@@ -339,6 +339,6 @@ avoids the issue cleanly.
 - **Trivy** enables image CVE scanning; Hostveil skips that domain cleanly
   when it's absent. The demo VM installs it automatically.
 - **Ollama** (local LLM) powers the opt-in `hostveil explain --ai` by
-  default; without it, explanations are deterministic. Never required —
+  default; without it, explanations are deterministic. Never required:
   `HOSTVEIL_AI_PROVIDER=anthropic` or `openai` uses an external API instead,
   useful when the dev machine can't run a local model well.

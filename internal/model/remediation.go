@@ -2,7 +2,7 @@ package model
 
 // RemediationKind classifies how a finding can be fixed.
 //
-// The zero value is RemediationUnset — deliberately inert. In Hostveil v2
+// The zero value is RemediationUnset: deliberately inert. In Hostveil v2
 // the zero value was "Auto", so any Finding built without setting the
 // field silently presented a fix button it never had. Here an
 // unclassified finding is NOT fixable, and a validation pass rejects any
@@ -32,7 +32,7 @@ type remediationDef struct {
 //
 // The kind is an explicit column and the lookup is built from it, never
 // from the slice index. The numeric value is what reaches disk and the
-// wire, so nothing may depend on a row's position — that is the invariant
+// wire, so nothing may depend on a row's position, that is the invariant
 // the whole enum-table shape has to protect.
 //
 // RemediationUnset has a row so the zero value has a name and a label of
@@ -60,7 +60,7 @@ func (r RemediationKind) IsFixable() bool {
 //
 // This asks only about Unset, not about table membership. A value outside
 // the enum entirely is a bug or a corrupt snapshot, and the right answer
-// to that is a finding rendered "Unclassified" with no fix button — which
+// to that is a finding rendered "Unclassified" with no fix button, which
 // is what the other three methods already do. Failing Valid instead would
 // send it through Finding.Validate and drop it from the report, trading a
 // visible oddity for a silent disappearance.
@@ -68,7 +68,7 @@ func (r RemediationKind) Valid() bool {
 	return r != RemediationUnset
 }
 
-// Abbr returns the short lowercase form for surfaces with a width budget —
+// Abbr returns the short lowercase form for surfaces with a width budget:
 // the TUI's finding rows, which upper-case it.
 //
 // Every abbreviation is at most six characters, because the TUI pads the

@@ -9,7 +9,7 @@
 // dirty.
 //
 // That is not hypothetical. An earlier copy of the measurement seeding wrote
-// the OpenClaw config to ~/.config/openclaw/config.json — a plausible path,
+// the OpenClaw config to ~/.config/openclaw/config.json: a plausible path,
 // and not one internal/check/agent scans. The agent domain came back N/A on a
 // host whose description, on the same page, said it ran two agent runtimes.
 // Nothing failed, because nothing was comparing the two.
@@ -63,7 +63,7 @@ func writesAPath(line string) bool {
 // bug would have failed.
 //
 // Every dot-path a seeder installs under a home directory must be one the
-// agent runtime table names — a marker, a config, an env file, or a mode rule.
+// agent runtime table names: a marker, a config, an env file, or a mode rule.
 // The reverse is deliberately not required: a fixture is allowed to seed less
 // than the checker can read.
 func TestSeedersWriteWhereTheAgentCheckerLooks(t *testing.T) {
@@ -118,7 +118,7 @@ func TestSeedersWriteWhereTheAgentCheckerLooks(t *testing.T) {
 				seen++
 				continue
 			}
-			t.Errorf("%s installs ~/%s, which internal/check/agent does not scan — "+
+			t.Errorf("%s installs ~/%s, which internal/check/agent does not scan; "+
 				"the domain will report nothing found on a host seeded to have a runtime", rel, p)
 		}
 		if seen == 0 {
@@ -161,7 +161,7 @@ func TestSeedScriptIsExecutableAndGuarded(t *testing.T) {
 // page rests on: whether the findings it produces are the ones Hostveil can
 // now *fix*. The agent axis moved from "detects, cannot fix" to "fixes four
 // of seven" in this release, and a fixture that seeds only the three still
-// declined would publish an axis that does not move while nothing failed —
+// declined would publish an axis that does not move while nothing failed:
 // the same silence the path drift produced, one layer up.
 //
 // It reads demo/seed/openclaw.json, which measure/seed.sh and the Vagrant
@@ -202,7 +202,7 @@ func TestSeededAgentConfigExercisesTheRegisteredFixes(t *testing.T) {
 			if !registry.Has(rule.ID) || seen[rule.ID] {
 				continue
 			}
-			t.Errorf("demo/seed/openclaw.json sets no key for %s, which Hostveil can fix — "+
+			t.Errorf("demo/seed/openclaw.json sets no key for %s, which Hostveil can fix; "+
 				"the measured host would never exercise that fix", rule.ID)
 		}
 	}

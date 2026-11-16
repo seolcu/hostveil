@@ -22,7 +22,7 @@ func TestNoopIsInert(t *testing.T) {
 }
 
 // TestPromptRedactsEvidence verifies the prompt never carries raw evidence
-// values (which can include secrets or paths) off the host — only the
+// values (which can include secrets or paths) off the host: only the
 // human-readable finding fields are sent.
 func TestPromptRedactsEvidence(t *testing.T) {
 	f := model.NewFinding("compose.dr005", "Hardcoded secret", model.SeverityHigh,
@@ -48,7 +48,7 @@ func TestPromptRedactsEvidence(t *testing.T) {
 }
 
 // A supplied siteContext must reach the prompt, and switches on the
-// "For this host:" instruction — the whole reason it exists.
+// "For this host:" instruction; the whole reason it exists.
 func TestPromptCarriesSiteContextWhenGiven(t *testing.T) {
 	f := model.NewFinding("ssh.rootlogin", "SSH permits root login", model.SeverityHigh,
 		model.SourceSSH, model.RemediationReview)
@@ -67,7 +67,7 @@ func TestPromptCarriesSiteContextWhenGiven(t *testing.T) {
 	}
 }
 
-// The batch prompt carries the same redaction discipline as buildPrompt —
+// The batch prompt carries the same redaction discipline as buildPrompt:
 // evidence never leaves the host, even across a whole list of findings.
 func TestAdvisePromptRedactsEvidence(t *testing.T) {
 	f := model.NewFinding("compose.dr005", "Hardcoded secret", model.SeverityHigh,

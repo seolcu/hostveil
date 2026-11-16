@@ -15,7 +15,7 @@ import (
 // shows one it would not, hands the operator a false basis for consent. These
 // tests pin the exact rendered bytes rather than substring-matching, because
 // "the diff mentions PermitRootLogin somewhere" is not the property that
-// matters — "the diff is precisely the change" is.
+// matters: "the diff is precisely the change" is.
 //
 // Note on the format: Unified emits ---/+++ file headers, then one @@ header
 // per hunk with three lines of surrounding context, eliding equal runs
@@ -60,8 +60,8 @@ func TestUnified(t *testing.T) {
 		{
 			// A replaced line is a delete followed by an add, in that order:
 			// lcsDiff breaks the LCS tie toward deletion (dp[i+1][j] >=
-			// dp[i][j+1]). Order matters for readability — the operator reads
-			// "was X, now Y", not the reverse — so it is pinned.
+			// dp[i][j+1]). Order matters for readability: the operator reads
+			// "was X, now Y", not the reverse, so it is pinned.
 			name: "replacement renders as delete then add",
 			a:    "PermitRootLogin yes\n",
 			b:    "PermitRootLogin no\n",
@@ -91,7 +91,7 @@ func TestUnified(t *testing.T) {
 			// splitLines strips exactly one trailing newline, so both sides
 			// produce the same line slice and the LCS sees no change. The
 			// final line is therefore forced apart into a delete and an add
-			// so the marker can say which side lost its terminator — what
+			// so the marker can say which side lost its terminator: what
 			// git does for the same case. See the dedicated test below.
 			name: "trailing newline only difference renders both sides",
 			a:    "alpha\n",
@@ -160,7 +160,7 @@ func TestUnifiedHeaderNamesTheFile(t *testing.T) {
 // only effect was adding or removing the file's final newline produced a
 // diff with a header and nothing but context: non-empty, so the preview path treated
 // it as "there is a change to review", yet showing the operator zero +/-
-// lines to review — while applyEdit wrote the differing bytes. The preview
+// lines to review, while applyEdit wrote the differing bytes. The preview
 // and the write disagreed. Both sides of the change must now be visible and
 // the missing terminator stated.
 func TestUnifiedNewlineOnlyChangeIsVisible(t *testing.T) {
@@ -265,7 +265,7 @@ func TestUnifiedLargeInput(t *testing.T) {
 // the only reason previewing a fix to a large file is affordable.
 //
 // The LCS table is O(len(a)·len(b)) in time and memory. Without the trim
-// this input would build a 4·10^10-cell table — hundreds of gigabytes, so
+// this input would build a 4·10^10-cell table: hundreds of gigabytes, so
 // the test does not fail slowly, it dies. With it, the quadratic core sees
 // the one changed line and the cost tracks the edit rather than the file.
 // A one-line change to a 10,000-line compose file allocated 784 MiB before
@@ -297,12 +297,12 @@ func TestUnifiedCostIsBoundedByTheChange(t *testing.T) {
 // FuzzUnified asserts the property that makes a preview trustworthy: the diff
 // must be a faithful, lossless rendering of both texts. Because Unified emits
 // every line (no hunks, no elided context), the reconstruction is exact at line
-// granularity — the ' ' and '-' lines rebuild the original, the ' ' and '+'
+// granularity: the ' ' and '-' lines rebuild the original, the ' ' and '+'
 // lines rebuild the modification.
 //
 // The one documented lossiness is the trailing newline: splitLines strips it,
 // so reconstruction is compared against splitLines' output rather than against
-// the raw strings. That weaker form is still the meaningful invariant — it
+// the raw strings. That weaker form is still the meaningful invariant: it
 // catches any line that is dropped, duplicated, reordered, or attributed to the
 // wrong side, which is the whole class of "the preview lied" failures.
 func FuzzUnified(f *testing.F) {
@@ -341,7 +341,7 @@ func FuzzUnified(f *testing.F) {
 		}
 
 		// Now that equal runs are elided, the body no longer reconstructs the
-		// whole file — so the property checked is the one that actually makes
+		// whole file, so the property checked is the one that actually makes
 		// a hunk trustworthy: every hunk's own line numbers must locate it
 		// exactly, and its ' '/'-' lines must be the original's lines at that
 		// offset, its ' '/'+' lines the modification's. A hunk that renders
@@ -489,8 +489,8 @@ func equalLines(x, y []string) bool {
 	return true
 }
 
-// The head/tail trim only removes what matches, so a whole-file reflow —
-// which is what internal/compose's re-encode fallback produces — reaches the
+// The head/tail trim only removes what matches, so a whole-file reflow
+// (which is what internal/compose's re-encode fallback produces) reaches the
 // quadratic core with both files entire. Two 4,000-line files with nothing
 // in common is a 16-million-cell table, and the comment on lcsDiff records
 // what that costs: 784 MiB for a 10,000-line file, enough to OOM the 1 GB

@@ -14,8 +14,8 @@ import (
 )
 
 // The environment-variable reference exists because a dozen variables were
-// scattered across five pages with no reference anywhere, and two — the ones
-// that decide whether Hostveil re-executes itself as root — were documented
+// scattered across five pages with no reference anywhere, and two (the ones
+// that decide whether Hostveil re-executes itself as root) were documented
 // nowhere user-facing at all. cmd/hostveil/elevate_test.go asserted, in a
 // failure message, that "HOSTVEIL_ELEVATED is documented", which was not true
 // of anything a user could read.
@@ -25,7 +25,7 @@ import (
 // reads and requires every name to appear on the page.
 //
 // It covers Hostveil's own reads only. The terminal libraries underneath the
-// TUI read a dozen more — TERM, COLORTERM, TEA_TRACE and the rest — and those
+// TUI read a dozen more (TERM, COLORTERM, TEA_TRACE and the rest) and those
 // are on the page too, but they cannot be harvested from this tree and their
 // absence would not be caught here. That gap is stated rather than papered
 // over: the page's own note says which rows come from a dependency.
@@ -37,7 +37,7 @@ func TestEveryVariableHostveilReadsIsDocumented(t *testing.T) {
 
 	for _, name := range readEnvNames(t) {
 		if !strings.Contains(page, "<code>"+name+"</code>") {
-			t.Errorf("Hostveil reads %s and the environment reference does not list it — "+
+			t.Errorf("Hostveil reads %s and the environment reference does not list it; "+
 				"a reference page that is missing a row looks exactly like a complete one", name)
 		}
 		if !strings.Contains(ko, "<code>"+name+"</code>") {
@@ -71,7 +71,7 @@ func TestEveryVariableHostveilReadsIsInTheBuiltInHelp(t *testing.T) {
 }
 
 // And the reverse. A row for a variable nothing reads is advice that cannot
-// work — the reader sets it, nothing happens, and the page is the reason they
+// work: the reader sets it, nothing happens, and the page is the reason they
 // tried.
 //
 // Only HOSTVEIL_-prefixed names are checked in this direction: everything
@@ -86,12 +86,12 @@ func TestNoHostveilVariableIsDocumentedButUnread(t *testing.T) {
 		documented[m[1]] = true
 	}
 	if len(documented) < 4 {
-		t.Fatalf("only %d HOSTVEIL_ variables parsed from the reference (%v) — the extraction "+
+		t.Fatalf("only %d HOSTVEIL_ variables parsed from the reference (%v); the extraction "+
 			"is broken, not the page", len(documented), documented)
 	}
 	for name := range documented {
 		if !slices.Contains(read, name) {
-			t.Errorf("the environment reference documents %s but nothing in Hostveil reads it — "+
+			t.Errorf("the environment reference documents %s but nothing in Hostveil reads it; "+
 				"a reader who sets it gets nothing, and the page is why they tried", name)
 		}
 	}
@@ -158,7 +158,7 @@ func readEnvNames(t *testing.T) []string {
 				names = append(names, s)
 			}
 		case *ast.SelectorExpr:
-			// os.Getenv(tui.LayoutEnv) — a const another package exports.
+			// os.Getenv(tui.LayoutEnv); a const another package exports.
 			// Without this arm the read is invisible here and the variable
 			// goes undocumented with both tests still passing, which is the
 			// failure mode this file exists to prevent, one level up.
@@ -209,7 +209,7 @@ func readEnvNames(t *testing.T) []string {
 	// Nothing-extracted guard. Hostveil reads several; a harvest that stopped
 	// matching would make both tests above pass while checking nothing.
 	if len(names) < 6 {
-		t.Fatalf("only %d environment reads harvested (%v) — the harvest is broken, not the page",
+		t.Fatalf("only %d environment reads harvested (%v): the harvest is broken, not the page",
 			len(names), names)
 	}
 	return names

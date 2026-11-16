@@ -15,15 +15,15 @@ import (
 
 // fix.Default()'s doc comment is the register of findings deliberately left
 // without a fix: each one named, each with the reason it is Manual on
-// purpose. TestKnownUnregisteredFindings pins that register from one side —
+// purpose. TestKnownUnregisteredFindings pins that register from one side:
 // it asserts nothing in the list has acquired a fix.
 //
 // Nothing pinned the other side, and five findings fell through it:
 // compose.ds012, compose.dr004, ports.exposed, accounts.uid0 and
 // accounts.emptypassword had no registered fix and no entry in the
 // register either. That is the state the register exists to make
-// impossible. Manual is a decision — "there is no action Hostveil can
-// safely take" — and a finding that is Manual because nobody has looked at
+// impossible. Manual is a decision: "there is no action Hostveil can
+// safely take", and a finding that is Manual because nobody has looked at
 // it is indistinguishable, in the interface, from one that is Manual
 // because a maintainer weighed the remediation and refused it.
 //
@@ -46,7 +46,7 @@ func TestEveryFindingIsEitherFixableOrDeclinedOnPurpose(t *testing.T) {
 			continue
 		}
 		t.Errorf("%s has no registered fix and no entry in fix.Default()'s register of "+
-			"deliberately-unfixed findings — it is Manual by omission, which a user cannot "+
+			"deliberately-unfixed findings; it is Manual by omission, which a user cannot "+
 			"tell from Manual by decision", id)
 	}
 }
@@ -75,7 +75,7 @@ func sourceNames() []string {
 // finding ID it names.
 //
 // It reads the comment rather than a list kept here on purpose: the comment
-// is the normative statement — it carries the reasons, and it is what a
+// is the normative statement; it carries the reasons, and it is what a
 // maintainer edits when they change their mind. A copy in a test would be
 // one more thing to drift.
 func declinedInRegister(t *testing.T) map[string]bool {
@@ -94,7 +94,7 @@ func declinedInRegister(t *testing.T) map[string]bool {
 		}
 	}
 	if doc == "" {
-		t.Fatal("fix.Default has no doc comment — the register of deliberately-unfixed findings is gone")
+		t.Fatal("fix.Default has no doc comment; the register of deliberately-unfixed findings is gone")
 	}
 
 	out := map[string]bool{}
@@ -106,7 +106,7 @@ func declinedInRegister(t *testing.T) map[string]bool {
 	// test demand a fix for every Manual finding in the tree, which reads
 	// as a code failure rather than as the test failure it is.
 	if len(out) < 10 {
-		t.Fatalf("only %d finding IDs extracted from the register (%v) — extraction is broken, not the register",
+		t.Fatalf("only %d finding IDs extracted from the register (%v): extraction is broken, not the register",
 			len(out), out)
 	}
 	return out
@@ -117,7 +117,7 @@ func declinedInRegister(t *testing.T) map[string]bool {
 //
 // The checks table is the right source and the register is not. The register
 // names findings it *argues about*, which includes ones held up as
-// counter-examples — cve.outdated-image is in it precisely because it is the
+// counter-examples: cve.outdated-image is in it precisely because it is the
 // one CVE finding that does have a fix, and agent.config-perms is in it as an
 // Auto fix that touches a home directory. Demanding a decline reason for
 // those would be demanding an explanation for something that never happens.
@@ -143,7 +143,7 @@ func unfixableInDocs(t *testing.T) map[string]bool {
 	// well above zero. It was 20 until the risky fixes were offered rather
 	// than declined, which took the honest count below it.
 	if len(out) < 8 {
-		t.Fatalf("only %d unfixable findings parsed from the checks table — extraction is broken, "+
+		t.Fatalf("only %d unfixable findings parsed from the checks table: extraction is broken, "+
 			"not the table", len(out))
 	}
 	return out
@@ -158,7 +158,7 @@ func unfixableInDocs(t *testing.T) map[string]bool {
 // anything about the user's, and the user is the one looking at a finding
 // with no button on it.
 //
-// The reasons were always written down — the register is pages of them — in a
+// The reasons were always written down (the register is pages of them) in a
 // doc comment nobody outside this repository will ever read. fix.WhyNoFix is
 // the same decision reaching the finding it is about, and this is what keeps
 // the two from parting.
@@ -167,7 +167,7 @@ func TestEveryDeclinedFindingSaysWhy(t *testing.T) {
 
 	for id := range unfixable {
 		if fix.WhyNoFix(id) == "" {
-			t.Errorf("%s reaches a user with no fix and fix.WhyNoFix has nothing to say about it — "+
+			t.Errorf("%s reaches a user with no fix and fix.WhyNoFix has nothing to say about it; "+
 				"they see a finding with no button and no reason", id)
 		}
 	}
@@ -186,7 +186,7 @@ func TestEveryDeclinedFindingSaysWhy(t *testing.T) {
 			continue
 		}
 		if !unfixable[id] {
-			t.Errorf("fix.WhyNoFix explains %s, which the checks table says a user can fix — "+
+			t.Errorf("fix.WhyNoFix explains %s, which the checks table says a user can fix; "+
 				"the reason would never be shown", id)
 		}
 	}

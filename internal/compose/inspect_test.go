@@ -36,8 +36,8 @@ const twoContainers = `[
 ]`
 
 // Compose-managed containers are already audited through their compose file.
-// Including them here would report every finding twice — once fixable, once
-// not — which is worse than not seeing them at all.
+// Including them here would report every finding twice (once fixable, once
+// not) which is worse than not seeing them at all.
 func TestComposeManagedContainersAreExcluded(t *testing.T) {
 	cs, err := parseInspect([]byte(twoContainers))
 	if err != nil {
@@ -74,7 +74,7 @@ func TestInspectMapsSecurityRelevantFields(t *testing.T) {
 		t.Error("a null healthcheck must stay nil so the rule fires")
 	}
 
-	// The port is published on all interfaces — the thing that makes a
+	// The port is published on all interfaces: the thing that makes a
 	// datastore reachable from the internet.
 	if len(s.Ports) != 1 {
 		t.Fatalf("Ports = %+v", s.Ports)

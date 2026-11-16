@@ -13,7 +13,7 @@ import (
 // logic duplicated across its UIs.
 //
 // The check itself lives in internal/ui/uitest because the dashboard needs
-// the identical one, and it used to be the identical one — the same twenty
+// the identical one, and it used to be the identical one: the same twenty
 // lines and the same list of four packages, written out twice. A fifth
 // package added to one copy would have left the other half of the boundary
 // open, with nothing anywhere to notice.

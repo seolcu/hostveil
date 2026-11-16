@@ -6,7 +6,7 @@ import "testing"
 // reachable only through the constants declared beside it. That makes one
 // failure mode invisible to every other test: a constant added to the block
 // with no row in the table simply never appears in the All* projection, so
-// every test that iterates All* passes without ever seeing it — vacuously,
+// every test that iterates All* passes without ever seeing it; vacuously,
 // and in the direction that reports the missing thing as fine.
 //
 // These tests are the ones that walk the *const range* instead, from the
@@ -29,13 +29,13 @@ func TestEverySourceConstHasATableRow(t *testing.T) {
 
 	for s := SourceUnset + 1; s < sourceCount; s++ {
 		if !s.Valid() {
-			t.Errorf("source %d is declared but not Valid — its findings are dropped after the scan", int(s))
+			t.Errorf("source %d is declared but not Valid; its findings are dropped after the scan", int(s))
 		}
 		if s.String() == "unset" {
 			t.Errorf("source %d has no String() name", int(s))
 		}
 		if s.Label() == "" {
-			t.Errorf("source %q (%d) has no Label() — it renders as a bare integer", s, int(s))
+			t.Errorf("source %q (%d) has no Label(); it renders as a bare integer", s, int(s))
 		}
 		if !inAll[s] {
 			t.Errorf("source %q (%d) is missing from AllSources()", s, int(s))
@@ -75,7 +75,7 @@ func TestEverySeverityConstHasATableRow(t *testing.T) {
 				s, s.Penalty())
 		}
 		if s.Description() == "" {
-			t.Errorf("severity %q has no Description() — a report's severity legend would render nothing for it", s)
+			t.Errorf("severity %q has no Description(); a report's severity legend would render nothing for it", s)
 		}
 	}
 	if got := (Severity(-1)).Description(); got == "" {

@@ -33,6 +33,6 @@ func TestPreviewCarriesBenefitAlongsideWarning(t *testing.T) {
 		t.Fatal("no actions in the preview")
 	}
 	if preview.Actions[0].Benefit == "" {
-		t.Error("action 0 carries no benefit — every registered fix must state one")
+		t.Error("action 0 carries no benefit; every registered fix must state one")
 	}
 }

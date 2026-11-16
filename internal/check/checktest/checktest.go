@@ -4,13 +4,13 @@
 // checker's tests need a fake one. Nineteen were written by hand, and between
 // them they had two shapes: a set of binaries that exist, and a map from a
 // command with its arguments to what that command prints. What actually
-// differed was which default each took — some listed the binaries present,
-// some listed the ones missing — and how each spelled the argv it scripted.
+// differed was which default each took (some listed the binaries present,
+// some listed the ones missing) and how each spelled the argv it scripted.
 //
 // The spelling is the part that bites. A scripted argv that no longer matches
 // what the caller runs does not fail the test. It falls through to the fake's
 // unscripted-command error, and every checker reads a command that errored as
-// a tool that did not answer — the same value a genuinely broken host
+// a tool that did not answer: the same value a genuinely broken host
 // produces. So a test written to cover the working case goes on passing while
 // silently covering the opposite one. Script through Docker or Listeners
 // below, or through platform's exported argv, rather than by writing the
@@ -92,8 +92,8 @@ func (r *Runner) Fail(err error, argv ...string) *Runner {
 }
 
 // Unscript removes a scripted command so that running it errors. That is the
-// state a tool which is installed but refuses to answer leaves a checker in —
-// `ufw status` without root, an iptables chain a non-root scan cannot read —
+// state a tool which is installed but refuses to answer leaves a checker in:
+// `ufw status` without root, an iptables chain a non-root scan cannot read,
 // and it is the one a checker must not confuse with an answer of "nothing".
 func (r *Runner) Unscript(argv ...string) *Runner {
 	delete(r.outputs, key(argv[0], argv[1:]))
@@ -185,9 +185,9 @@ func (r *Runner) ListenersFail(err error) *Runner {
 
 // IsDockerProbe reports whether a call is platform.DockerReachable's probe.
 //
-// For the fakes that cannot be a plain command-to-output map — the ones
+// For the fakes that cannot be a plain command-to-output map: the ones
 // scripting `docker inspect <ids...>` or recording a Trivy argv whose last
-// element is the image — so that they too stop spelling the probe out.
+// element is the image, so that they too stop spelling the probe out.
 func IsDockerProbe(name string, args []string) bool {
 	return key(name, args) == key(platform.DockerProbeArgv()[0], platform.DockerProbeArgv()[1:])
 }

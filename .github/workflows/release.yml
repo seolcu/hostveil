@@ -8,7 +8,7 @@ name: Release
 # A `push: tags` trigger works here because the tag is created with a real
 # user's credentials. Events created with the default GITHUB_TOKEN do not
 # start workflow runs, which is what made this trigger unusable while
-# release-please was cutting the tag — and why its release pull request could
+# release-please was cutting the tag, and why its release pull request could
 # never satisfy the branch ruleset's required checks, so every release had to
 # go through an admin bypass. Removing release-please removes that whole
 # problem rather than working around it.
@@ -57,7 +57,7 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   # A tag must point at a commit that is on main. This is the guard for the
-  # failure that produced v3.0.0 — a release published from a commit that was
+  # failure that produced v3.0.0: a release published from a commit that was
   # never on main, pointing every install.sh user at abandoned code. The tag
   # ruleset does not prevent this: it only forbids updating and deleting a v*
   # tag, not creating one on the wrong commit.
@@ -112,8 +112,8 @@ jobs:
           check-latest: true
       - name: Install syft
         uses: anchore/sbom-action/download-syft@v0
-      # Plain GITHUB_TOKEN is enough. The release already exists — a
-      # maintainer created it along with the tag — and goreleaser runs
+      # Plain GITHUB_TOKEN is enough. The release already exists (a
+      # maintainer created it along with the tag) and goreleaser runs
       # mode: keep-existing, so this only uploads archives, checksums, and
       # SBOMs onto it and leaves the notes alone.
       - uses: goreleaser/goreleaser-action@v7
@@ -134,7 +134,7 @@ jobs:
   # The release is published before any artifact exists, because a maintainer
   # creates it to make the tag. What can be fixed is the consequence:
   # scripts/install.sh resolves the version by following the /releases/latest
-  # redirect, and a draft release is not "Latest" — so demoting a release
+  # redirect, and a draft release is not "Latest", so demoting a release
   # whose build failed keeps installers on the last good version instead of
   # sending them to tarballs that were never uploaded.
   demote-on-failure:

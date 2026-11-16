@@ -20,7 +20,7 @@
 # took thirteen round trips of two to six minutes each, eight of them failures,
 # with the cause dug out of logs afterwards. This is the same Ubuntu release
 # the ubuntu-latest runner uses, the same script, and a shell into the VM the
-# moment a scenario fails — which CI can never give.
+# moment a scenario fails, which CI can never give.
 #
 # It edits only the VM. That is what makes it the safe local path AGENTS.md
 # asks for: never run these scenarios on your own machine.
@@ -74,7 +74,7 @@ PORT=${HOSTVEIL_E2E_PORT:-$DEFAULT_PORT}
 PROBE_PORTS=(6379 8080 9000)
 OUTSIDE=$(((PORT - 2222 + 1) * 10000))
 BASE=$CACHE/${IMAGE_URL##*/}
-# Provisioning — Docker, a firewall, node — takes minutes, and a reset that
+# Provisioning (Docker, a firewall, node) takes minutes, and a reset that
 # paid it every time would put back the wait this script exists to remove. So
 # the first boot provisions, powers off, and keeps its disk as PROVISIONED;
 # every run after that is a throwaway overlay on top of it. Delete $CACHE to

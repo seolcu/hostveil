@@ -24,7 +24,7 @@ func TestCoverageWithNoGapsIsNotAnError(t *testing.T) {
 	}
 }
 
-// The whole reason this type exists. Recording two gaps must report two —
+// The whole reason this type exists. Recording two gaps must report two:
 // the bug it replaces was a checker returning at the first one, which made
 // the second invisible in both the reason and the counters.
 func TestCoverageReportsEveryGap(t *testing.T) {

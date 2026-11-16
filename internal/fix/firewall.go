@@ -12,7 +12,7 @@ import (
 //
 // This was declined for a long time, and the reason was right: enabling a
 // default-deny policy on a box you reached over SSH drops every connection no
-// rule allows — including the one issuing the command — and an exec fix
+// rule allows (including the one issuing the command) and an exec fix
 // writes no checkpoint, so a lockout has no undo. The finding's how-to-fix
 // told the operator to allow their SSH port first, which is advice a person
 // can follow in order and a tool could not, because the checker recorded no
@@ -37,8 +37,8 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 	// open is the lockout this refused to risk for years, and "I could not
 	// tell" must not quietly become "22".
 	// Every port sshd is listening on, not the first. Two at once is how an
-	// operator changes the SSH port without locking themselves out — the old
-	// and the new both open until the new one is proven — and allowing one of
+	// operator changes the SSH port without locking themselves out (the old
+	// and the new both open until the new one is proven) and allowing one of
 	// them before a default-deny policy severs the other, with no checkpoint.
 	ports, err := parseSSHPorts(f.Evidence["ssh_port"])
 	if err != nil {
@@ -56,7 +56,7 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 	// A Proxmox VE host that also has ufw installed must not have ufw turned
 	// on under it. The hypervisor's own firewall manages the same chains,
 	// and a default-deny INPUT drops the web interface on 8006 and the
-	// cluster's corosync and migration traffic along with everything else —
+	// cluster's corosync and migration traffic along with everything else,
 	// on the machine every guest depends on, with no checkpoint to undo it.
 	if strings.Contains(f.Evidence["available"], "pve-firewall") {
 		return Fix{}, fmt.Errorf("finding %s is on a Proxmox VE host, where the datacenter "+
@@ -76,7 +76,7 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 	return Fix{
 		FindingID: f.ID,
 		Label:     "Enable ufw, allowing SSH on port " + spelled + " first",
-		// Declared Auto — one mechanical action — and demoted to Review by
+		// Declared Auto (one mechanical action) and demoted to Review by
 		// EffectiveKind because it is exec, which is the same route
 		// updates.disabled takes. Validate reserves the Review kind for
 		// fixes with two or more *alternatives* to choose between, and this
@@ -85,10 +85,10 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 		Actions: []Action{{
 			Label: "Allow SSH on " + spelled + "/tcp, then enable ufw with a default-deny inbound policy",
 			Benefit: "Turns on default-deny, so only the ports Hostveil confirmed sshd is actually " +
-				"listening on stay reachable — everything else stops accepting connections from off this host.",
+				"listening on stay reachable; everything else stops accepting connections from off this host.",
 			Warning: "Every inbound port except " + spelled + "/tcp stops being reachable the moment this " +
-				"runs, including anything a container publishes. There is no rollback checkpoint — " +
-				"exec fixes are not file-backed — so undoing it means `ufw disable` by hand.",
+				"runs, including anything a container publishes. There is no rollback checkpoint: " +
+				"exec fixes are not file-backed, so undoing it means `ufw disable` by hand.",
 			Kind:     ActionExec,
 			Commands: allow,
 		}},
@@ -97,8 +97,8 @@ func buildEnableFirewall(f model.Finding) (Fix, error) {
 
 // buildFixDefaultAllow flips a running firewall's default inbound policy
 // from allow to deny. It is buildEnableFirewall's fix applied to a firewall
-// that is already running rather than absent — same evidence, same ordering
-// (allow SSH first, then tighten the policy), same reason it stays Review —
+// that is already running rather than absent (same evidence, same ordering
+// (allow SSH first, then tighten the policy), same reason it stays Review)
 // restricted to ufw for the same reason: firewalld's target flip has no
 // registered fix yet.
 func buildFixDefaultAllow(f model.Finding) (Fix, error) {
@@ -141,8 +141,8 @@ func buildFixDefaultAllow(f model.Finding) (Fix, error) {
 				"closing every port nothing has explicitly opened on a host where a firewall was already " +
 				"assumed to be doing that job.",
 			Warning: "Every inbound port except " + spelled + "/tcp stops being reachable the moment this " +
-				"runs, including anything a container publishes. There is no rollback checkpoint — " +
-				"exec fixes are not file-backed — so undoing it means `ufw default allow incoming` by hand.",
+				"runs, including anything a container publishes. There is no rollback checkpoint: " +
+				"exec fixes are not file-backed, so undoing it means `ufw default allow incoming` by hand.",
 			Kind:     ActionExec,
 			Commands: commands,
 		}},
@@ -193,10 +193,10 @@ func enableFirewalld(f model.Finding, ports []int) Fix {
 			Label: "Allow SSH on " + spelled + "/tcp in firewalld's default zone, set it to reject by default, " +
 				"then enable and start firewalld",
 			Benefit: "Turns on default-deny, so only the ports Hostveil confirmed sshd is actually " +
-				"listening on — and the services the default zone already allows — stay reachable.",
+				"listening on (and the services the default zone already allows) stay reachable.",
 			Warning: "Every inbound port the default zone does not already allow, except " + spelled +
 				"/tcp, stops being reachable the moment firewalld starts. Ports Docker publishes stay " +
-				"reachable: Docker's rules come first. There is no rollback checkpoint — undo it with " +
+				"reachable: Docker's rules come first. There is no rollback checkpoint: undo it with " +
 				"`systemctl disable --now firewalld`.",
 			Kind:     ActionExec,
 			Commands: cmds,
@@ -206,7 +206,7 @@ func enableFirewalld(f model.Finding, ports []int) Fix {
 
 // firewalldDenyByDefault is buildFixDefaultAllow for firewalld: SSH allowed
 // in the zone at runtime and permanently, then the zone's target set back to
-// firewalld's default, which rejects, and the configuration reloaded — a
+// firewalld's default, which rejects, and the configuration reloaded; a
 // target is permanent-only, so the reload is what puts it in force.
 func firewalldDenyByDefault(f model.Finding, ports []int) Fix {
 	zone := f.Evidence["zone"]
@@ -231,7 +231,7 @@ func firewalldDenyByDefault(f model.Finding, ports []int) Fix {
 				"closing every port nothing has explicitly opened.",
 			Warning: "Every inbound port the " + zone + " zone does not allow, except " + spelled + "/tcp, stops " +
 				"being reachable. The reload also drops any rule that was added without --permanent. There is " +
-				"no rollback checkpoint — undo it with `firewall-cmd --permanent --zone=" + zone +
+				"no rollback checkpoint: undo it with `firewall-cmd --permanent --zone=" + zone +
 				" --set-target=ACCEPT && firewall-cmd --reload`.",
 			Kind:     ActionExec,
 			Commands: cmds,

@@ -43,7 +43,7 @@ func DeclinedIDs() []string {
 
 // declineReasons is the register in Default()'s doc comment, one sentence at
 // a time. Each answers the question a user actually has looking at a finding
-// with no button on it: not "what is wrong" — the finding already said that —
+// with no button on it: not "what is wrong" (the finding already said that)
 // but "why is Hostveil not doing anything about it".
 //
 // Every sentence is drawn from an argument already made in that comment. None
@@ -53,13 +53,13 @@ func DeclinedIDs() []string {
 // The agent findings used to share one sentence, because the register argued
 // all seven jointly: none of them could be edited without an editor that
 // keeps JSON5 comments. internal/json5 is that editor, four of the seven are
-// registered now, and the three left each say something different — which is
+// registered now, and the three left each say something different, which is
 // what the shared sentence had been hiding.
 var declineReasons = map[string]string{
 	// forensic
 	"forensic.auditd-missing": "Installing and enabling a new daemon is a package decision, and auditd's default rules and disk use are yours to accept.",
 	"forensic.time-unsynced":  "Which time server to trust is not written anywhere on this host, and a wrong one moves every timestamp in every log.",
-	"forensic.weblog-no-size": "Every parser of this log — fail2ban filters, log shippers, traffic reports — expects its current format, and Hostveil cannot see which of them read it.",
+	"forensic.weblog-no-size": "Every parser of this log (fail2ban filters, log shippers, traffic reports) expects its current format, and Hostveil cannot see which of them read it.",
 	"forensic.no-remote-log":  "Remote logging needs a second machine to receive it, which no change on this one can create.",
 
 	// compose
@@ -80,7 +80,7 @@ var declineReasons = map[string]string{
 	// accounts
 	"proxmox.webui-open":     "Which network is the management network is not written anywhere Hostveil can read, and a wrong guess locks you out of the hypervisor's interface; LISTEN_IP also breaks clusters across subnets.",
 	"proxmox.root-no-tfa":    "A second factor is a device a person holds, and Hostveil must never enrol a credential on anyone's behalf.",
-	"accounts.sudo-nopasswd": "The grant comes from sudo -l, not from reading /etc/sudoers, so nothing says which file, line, or group rule to edit — there is nowhere for an edit to point.",
+	"accounts.sudo-nopasswd": "The grant comes from sudo -l, not from reading /etc/sudoers, so nothing says which file, line, or group rule to edit; there is nowhere for an edit to point.",
 	"accounts.duplicate-uid": "Changing a UID requires migrating every file it owns across filesystems, which cannot be represented or rolled back as one action.",
 
 	// fileperms

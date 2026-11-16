@@ -17,8 +17,8 @@ import (
 // panics before it can offer anything.
 //
 // Neither is hypothetical in kind. A Transform is the one place in this
-// program where host-supplied bytes meet a hand-written parser — compose YAML
-// surgery, JSON5 editing, sshd_config rewriting — and the file it reads is the
+// program where host-supplied bytes meet a hand-written parser (compose YAML
+// surgery, JSON5 editing, sshd_config rewriting) and the file it reads is the
 // live one, which can have changed since the scan that produced the finding.
 func crashingRegistry(t *testing.T) *fix.Registry {
 	t.Helper()
@@ -94,18 +94,18 @@ func TestACrashingFixDoesNotTakeTheProcessWithIt(t *testing.T) {
 	})
 
 	// And the file it was pointed at is untouched. A panic partway through a
-	// transform must not leave a half-written target — the whole reason apply
+	// transform must not leave a half-written target: the whole reason apply
 	// writes through a temp file and a rename.
 	t.Run("the target is untouched", func(t *testing.T) {
 		got, err := os.ReadFile(path)
 		if err != nil || string(got) != "original\n" {
-			t.Errorf("the target reads %q, %v — want the original", got, err)
+			t.Errorf("the target reads %q, %v; want the original", got, err)
 		}
 	})
 }
 
 // The builder runs before any action exists, so it is a second, earlier place
-// a crash can happen — and it reads the host to decide which file to edit.
+// a crash can happen, and it reads the host to decide which file to edit.
 func TestACrashingBuilderIsAnErrorNotAnExit(t *testing.T) {
 	f := crashFinding("panic.build", filepath.Join(t.TempDir(), "x.conf"))
 	if _, err := crashEngine(t).PreviewFix(f); err == nil {

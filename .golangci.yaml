@@ -27,7 +27,7 @@ linters:
     rules:
       # gosec judges what ships. A test that writes a fixture into t.TempDir
       # with generous permissions, or converts a loop counter, is describing
-      # its own scaffolding — and annotating twenty of those would train
+      # its own scaffolding, and annotating twenty of those would train
       # everyone to add the annotation rather than read the finding.
       - path: _test\.go
         linters: [gosec]

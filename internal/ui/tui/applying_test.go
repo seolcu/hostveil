@@ -23,7 +23,7 @@ func previewModel(w, h int) *appModel {
 
 // Confirming a fix used to leave the screen showing the exact frame it had
 // before the keypress until the engine's answer arrived, however long that
-// took — a Review fix can re-check its whole domain afterward, minutes for
+// took: a Review fix can re-check its whole domain afterward, minutes for
 // cve.*. modeApplying and its ticker exist so there is something on screen
 // answering "is it hung?" the moment y is pressed, before the engine has
 // said anything at all.
@@ -50,7 +50,7 @@ func TestConfirmingAFixEntersApplyingImmediately(t *testing.T) {
 	}
 
 	// The screen itself must already read "applying", not the frame the
-	// preview left behind — the whole point is that this does not wait for
+	// preview left behind: the whole point is that this does not wait for
 	// appliedMsg to say so.
 	if view := am.View().Content; !strings.Contains(view, "APPLYING") {
 		t.Errorf("view after y does not show the applying screen:\n%s", view)
@@ -58,7 +58,7 @@ func TestConfirmingAFixEntersApplyingImmediately(t *testing.T) {
 }
 
 // The clock ticks while modeApplying is showing and stops re-arming the
-// moment the model leaves it — the same rule scanning_test.go pins for
+// moment the model leaves it: the same rule scanning_test.go pins for
 // modeScanning, now shared by the same ticker.
 func TestTheApplyClockTicksAndStops(t *testing.T) {
 	m := &appModel{mode: modeApplying, applyLabel: "Datastore exposed", width: 96, height: 34}

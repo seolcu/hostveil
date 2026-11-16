@@ -115,7 +115,7 @@ func (c *Checker) checkJournald(ctx context.Context, env platform.Env) ([]model.
 			model.WithMetadata("journald_dropin", dropIn),
 			model.WithDescription("journald keeps its log in memory only ("+why+"), so every login, service start and error "+
 				"recorded before the last reboot is gone. A reboot is also the first thing many people do when a server "+
-				"misbehaves — which erases the record of why it misbehaved."),
+				"misbehaves, which erases the record of why it misbehaved."),
 			model.WithHowToFix("Create "+journaldDropInOrDefault(dropIn)+" containing:\n\n    [Journal]\n    Storage=persistent\n\n"+
 				"then run `systemctl restart systemd-journald`. journald creates /var/log/journal itself."),
 			model.WithEvidence("Storage", storage),

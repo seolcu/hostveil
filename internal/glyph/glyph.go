@@ -9,7 +9,7 @@
 // exactly the way every other tool in this space handles it.
 //
 // The default is therefore Plain, which is every symbol Hostveil drew
-// before this package existed — nothing about an ordinary run changes.
+// before this package existed; nothing about an ordinary run changes.
 //
 // Both sets are held to one column per symbol. That is the load-bearing
 // property, not a nicety: the TUI's frame arithmetic budgets columns, and a
@@ -19,15 +19,15 @@
 //
 // The Nerd variants come from the Font Awesome block (U+F000–U+F2FF), for
 // two reasons that were checked rather than assumed. It is the oldest range
-// in the patch set, so it is present everywhere — a newer, prettier
+// in the patch set, so it is present everywhere: a newer, prettier
 // codepoint that half the fonts lack is worse than no support at all,
 // because the operator opted in and got a row of tofu. And it is the range
 // that stays one cell wide: the glyphs that go double-width in a
 // non-Mono build are the Powerline, Devicon and Material ranges, not this
 // one, so Hostveil does not have to care which variant is installed.
 //
-// Verified against v3.4.0 of JetBrains Mono, Hack, FiraCode and Meslo — 18
-// files, Mono and non-Mono — by reading each font's cmap and hmtx: every
+// Verified against v3.4.0 of JetBrains Mono, Hack, FiraCode and Meslo (18
+// files, Mono and non-Mono) by reading each font's cmap and hmtx: every
 // symbol below is present in all of them, and every one has the same
 // advance as an ASCII 'M'.
 package glyph
@@ -38,8 +38,8 @@ import (
 )
 
 // Set is which of the two tables to draw from. The zero value is Plain, so
-// anything constructed without a choice — and every model built as a bare
-// struct literal in the tests — renders the way Hostveil always has.
+// anything constructed without a choice (and every model built as a bare
+// struct literal in the tests) renders the way Hostveil always has.
 type Set int
 
 const (
@@ -70,7 +70,7 @@ const (
 
 // def is one symbol's row. Every symbol is declared here once, with both
 // spellings side by side, so the two sets cannot drift into disagreeing
-// about which symbols exist — which is what a second table would allow and
+// about which symbols exist, which is what a second table would allow and
 // what nothing would then notice.
 type def struct {
 	sym   Symbol
@@ -86,7 +86,7 @@ var defs = []def{
 	// ▣ rather than the ▚ this replaced. The old one is a quadrant block,
 	// which is missing from enough monospace fonts that it rendered as tofu;
 	// ▣ is Geometric Shapes, is in nearly everything, and is the closest a
-	// single cell gets to the mark itself — a package with a core in it.
+	// single cell gets to the mark itself: a package with a core in it.
 	{Brand, "brand", "▣", ""},     // nf-fa-microchip
 	{OK, "ok", "✓", ""},           // nf-fa-check
 	{Warning, "warning", "⚠", ""}, // nf-fa-exclamation_triangle
@@ -98,7 +98,7 @@ var defs = []def{
 
 // There is deliberately no arrow row. "→" appears once, inside the
 // evidence-change detail a delta prints, three call frames below anything
-// holding an Options — and the Nerd arrow is a slightly longer arrow. A row
+// holding an Options, and the Nerd arrow is a slightly longer arrow. A row
 // nothing asks for is a row that goes stale unnoticed.
 
 // Of returns the symbol as this set spells it. An unknown symbol returns

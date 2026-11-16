@@ -9,8 +9,8 @@ import (
 )
 
 // The trap this package has to get right. The nineteen fakes it replaced took
-// two opposite defaults — some listed the binaries present, some the ones
-// missing — and a fixture that means one and silently gets the other still
+// two opposite defaults (some listed the binaries present, some the ones
+// missing) and a fixture that means one and silently gets the other still
 // runs. It just tests a different host than the one it names.
 func TestOnlyAndWithoutAreOppositeDefaults(t *testing.T) {
 	if _, err := New().LookPath("anything"); err != nil {

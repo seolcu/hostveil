@@ -94,7 +94,7 @@ func TestExplainAIError(t *testing.T) {
 }
 
 // AIContext/SetAIContext round-trip through the engine's own state
-// directory — Engine owns this directly (internal/core is not
+// directory: Engine owns this directly (internal/core is not
 // layering-restricted), unlike theme/layout's UI-injected Save callback.
 func TestAIContextRoundTrip(t *testing.T) {
 	e := New(Config{Store: history.NewStore(t.TempDir())})

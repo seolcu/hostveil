@@ -30,7 +30,7 @@ func captureStderr(t *testing.T, fn func()) string {
 	return <-done
 }
 
-// Every subcommand exits 2 on a flag it does not accept — that is the
+// Every subcommand exits 2 on a flag it does not accept, that is the
 // documented usage-error contract, and it is what tells a user their
 // invocation did not do what they typed.
 //

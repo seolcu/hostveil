@@ -37,7 +37,7 @@ func TestProgressNamesRunningDomains(t *testing.T) {
 	}
 }
 
-// A domain that has finished must leave the line, whatever it finished as —
+// A domain that has finished must leave the line, whatever it finished as:
 // a skipped or failed checker is no longer something the user is waiting on.
 func TestProgressDropsFinishedDomains(t *testing.T) {
 	for _, end := range []model.ScanState{

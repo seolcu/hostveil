@@ -13,7 +13,7 @@ import (
 //
 // daemon.json is plain JSON, so re-encoding it through encoding/json would be
 // correct. It would also sort every key and reflow the file, turning a
-// one-line change into a diff of the whole document — which is the thing the
+// one-line change into a diff of the whole document, which is the thing the
 // preview exists to keep readable. So the value's bytes are located with the
 // decoder's own offsets and replaced, or a new member is inserted before the
 // closing brace, and the result is trusted only if it parses to exactly the

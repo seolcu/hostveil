@@ -95,7 +95,7 @@ func TestSARIFSeverityLevels(t *testing.T) {
 	}
 }
 
-// An empty scan must produce `"results": []`, not `"results": null` —
+// An empty scan must produce `"results": []`, not `"results": null`;
 // null is invalid SARIF and some ingesters reject the whole file.
 func TestSARIFEmptyReportHasEmptyArrays(t *testing.T) {
 	out, err := SARIF(model.Report{}, "v-test")
@@ -164,7 +164,7 @@ func TestSARIFLevelsStillMeanWhatTheyMeant(t *testing.T) {
 //
 // security-severity is what GitHub code scanning ranks and filters by, and
 // it is the only number in the export. Replacing the whole of
-// securitySeverity with a constant passed every test in the repository —
+// securitySeverity with a constant passed every test in the repository,
 // so a rename, a reordering, or a level added without a case would have
 // shipped a SARIF file where nothing sorts.
 //
@@ -185,7 +185,7 @@ func TestEverySeverityCarriesASecurityScore(t *testing.T) {
 			t.Errorf("%s exports security-severity %v, outside code scanning's 0–10 scale", sev, got)
 		}
 		if got >= prev {
-			t.Errorf("%s exports security-severity %v, which does not rank below the level above it (%v) — "+
+			t.Errorf("%s exports security-severity %v, which does not rank below the level above it (%v); "+
 				"code scanning sorts by this number, so an order that does not descend is an export "+
 				"that cannot be triaged", sev, got, prev)
 		}

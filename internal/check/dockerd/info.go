@@ -40,8 +40,8 @@ func (i info) securityOptions() string {
 }
 
 // infoJSON is the narrow view of `docker info` this domain needs. The full
-// document is several kilobytes — the runtime table alone carries every OCI
-// feature the installed runc supports — and decoding it into a map would
+// document is several kilobytes (the runtime table alone carries every OCI
+// feature the installed runc supports) and decoding it into a map would
 // mean carrying all of that through a scan for five fields.
 type infoJSON struct {
 	SecurityOptions    []string `json:"SecurityOptions"`
@@ -60,11 +60,11 @@ type infoJSON struct {
 func readInfo(ctx context.Context, r platform.CommandRunner) (info, bool, string) {
 	out, err := r.Run(ctx, "docker", "info", "--format", "{{json .}}")
 	if err != nil {
-		return info{}, false, "cannot read the daemon's effective configuration with `docker info` — its default hardening settings were not audited"
+		return info{}, false, "cannot read the daemon's effective configuration with `docker info`; its default hardening settings were not audited"
 	}
 	var d infoJSON
 	if err := json.Unmarshal(out, &d); err != nil {
-		return info{}, false, "the daemon's `docker info` output could not be parsed — its default hardening settings were not audited"
+		return info{}, false, "the daemon's `docker info` output could not be parsed; its default hardening settings were not audited"
 	}
 
 	i := info{

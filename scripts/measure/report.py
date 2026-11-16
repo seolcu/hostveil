@@ -74,7 +74,7 @@ def host():
         pass
     out["kernel"] = os.uname().release
     # The architecture, because the page wants to say it and had nothing to
-    # say it from. It named one anyway, out of the filename — which is the
+    # say it from. It named one anyway, out of the filename, which is the
     # one claim on that page nothing checked.
     out["arch"] = os.uname().machine
     return out
@@ -84,7 +84,7 @@ def rollback_verdict(work):
     """Did undoing every fix put the watched paths back byte for byte?
 
     Three tables: before the fixes, after them, and after the rollback. The
-    before table is the authority — it was taken off the live filesystem
+    before table is the authority: it was taken off the live filesystem
     before hostveil wrote anything, which is the only reading a checkpoint
     cannot influence.
 
@@ -130,8 +130,8 @@ def rollback_verdict(work):
 
 # The identifier sets each instrument reports, and where to find them.
 #
-# A count is not evidence — one check clearing while another appears leaves
-# the total where it was — so the report diffs the sets and says which
+# A count is not evidence (one check clearing while another appears leaves
+# the total where it was) so the report diffs the sets and says which
 # identifiers left and which arrived.
 #
 # The labels carry no dots. The documentation test addresses a figure in this
@@ -163,7 +163,7 @@ def deltas(phases):
     `after` is the host with the files changed and nothing restarted, which
     is exactly what `hostveil fix --all` leaves behind. `restarted` is the
     same host once the services have read those files. An instrument that
-    moves only in the second column is not a fix that failed — it is a fix
+    moves only in the second column is not a fix that failed: it is a fix
     that is not in force yet, and the difference is the single most useful
     thing this harness has to say.
     """
@@ -237,7 +237,7 @@ def seeded_manifest():
     reason that has nothing to do with hostveil.
 
     Publishing the score without saying so would be the same mistake the
-    scanner itself is built against — an absence read as an all-clear — so the
+    scanner itself is built against (an absence read as an all-clear) so the
     manifest travels with the numbers rather than living in somebody's memory
     of how the host was built.
 
@@ -262,7 +262,7 @@ def main():
         # Only the phases that actually ran. A control run has two of them and
         # a hostveil run has five, and reading a fixed list would put an
         # {"error": "No such file"} object under every phase the other kind of
-        # run does not have — a report that looks like five failed
+        # run does not have; a report that looks like five failed
         # measurements rather than like two that were never asked for.
         if not os.path.exists(os.path.join(work, phase + ".hostveil.json")):
             continue
@@ -287,7 +287,7 @@ def main():
     }
     # The hostveil-driven keys are omitted rather than zeroed when nothing
     # applied a fix. "attempted: 0, failed: []" is a claim that Hostveil tried
-    # nothing and succeeded, which is not what a control run means — it means
+    # nothing and succeeded, which is not what a control run means; it means
     # Hostveil was never asked.
     if os.path.exists(os.path.join(work, "fix.log")):
         doc["fixes"] = fix_phase(work)

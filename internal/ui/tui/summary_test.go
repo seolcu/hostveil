@@ -13,7 +13,7 @@ import (
 )
 
 // summaryReport is a host with a mixed severity spread, some fixable
-// findings, and three domains that did not fully cover their ground — the
+// findings, and three domains that did not fully cover their ground: the
 // ordinary shape of a self-hosted box, and the one the list screen has to
 // summarise.
 func summaryReport() model.Report {
@@ -106,7 +106,7 @@ func TestChipCountsDoNotMoveWithTheFilter(t *testing.T) {
 	}
 }
 
-// An active chip is filled — ink on the chip's own colour — the way the
+// An active chip is filled (ink on the chip's own colour) the way the
 // dashboard's stylesheet fills one, and the way this view already draws the
 // row under the cursor.
 func TestActiveChipIsFilled(t *testing.T) {
@@ -155,8 +155,8 @@ func TestTheChipRowDropsWholeChipsAndSaysHowMany(t *testing.T) {
 	}
 }
 
-// The domain filter's chip is the only place the domain is named — the head
-// line's "3/26" says the list is narrowed but not by what — so a column too
+// The domain filter's chip is the only place the domain is named: the head
+// line's "3/26" says the list is narrowed but not by what, so a column too
 // narrow for every chip must still keep that one.
 func TestANarrowChipRowKeepsTheActiveFilter(t *testing.T) {
 	m := summaryModel(120, 30)
@@ -170,7 +170,7 @@ func TestANarrowChipRowKeepsTheActiveFilter(t *testing.T) {
 }
 
 // The fill above is an attribute, so it is gone the moment the output is
-// stripped of styling — a pipe, a log, a terminal with nothing to render it
+// stripped of styling: a pipe, a log, a terminal with nothing to render it
 // with. What the list is showing has to survive that, and the head line is
 // where: it prints the narrowed count over the unnarrowed one. Without it a
 // filtered list is indistinguishable from a host with that many findings,
@@ -191,7 +191,7 @@ func TestANarrowedListSaysSoInPlainText(t *testing.T) {
 }
 
 // A severity threshold is a range. Every chip at or above it is describing
-// rows that are on screen, so every one of them reads as active — showing
+// rows that are on screen, so every one of them reads as active: showing
 // the HIGH chip dim on a list of nothing but High findings is the opposite of the
 // truth.
 func TestSeverityChipsAboveTheThresholdAreAllActive(t *testing.T) {
@@ -312,7 +312,7 @@ func TestCoverageIsShedBeforeTheAxesStrip(t *testing.T) {
 }
 
 // Whatever the header ends up carrying, the frame is exactly as tall as the
-// terminal — the property every mode is held to, asserted here with the two
+// terminal: the property every mode is held to, asserted here with the two
 // regions that are new.
 func TestFrameHeightHoldsWithCoverageAndChips(t *testing.T) {
 	for _, w := range []int{120, 80, 60, 44} {
@@ -334,7 +334,7 @@ func TestFrameHeightHoldsWithCoverageAndChips(t *testing.T) {
 
 // A clean host still says "Clean." rather than "No findings match the
 // filter." The chip row is drawn from the unfiltered report, so it is there
-// whenever the host has findings at all — using it to detect a filter would
+// whenever the host has findings at all: using it to detect a filter would
 // have turned every empty filtered list into the wrong message, and every
 // genuinely clean host into the other wrong one.
 func TestEmptyListDistinguishesAFilterFromACleanHost(t *testing.T) {
@@ -361,7 +361,7 @@ func TestEmptyListDistinguishesAFilterFromACleanHost(t *testing.T) {
 
 // The dashboard has two rows over its findings list: the filter chips, then a
 // bar of batch buttons. The terminal had only the first, and what a batch
-// would do was documented in the footer among fourteen other keys — so the
+// would do was documented in the footer among fourteen other keys, so the
 // state the list was actually in (two findings marked, `a` about to apply
 // exactly those) was the one thing the screen did not say.
 func TestTheBatchBarSaysWhatTheBatchKeyWouldDo(t *testing.T) {
@@ -455,8 +455,8 @@ func TestTheServiceIsSetFlushRightWhenThereIsRoom(t *testing.T) {
 }
 
 // A domain that ran always colors a cell, and a domain that did not never
-// does. These are the two states the whole scanner is built to keep apart —
-// "nothing there" and "I could not look" — and in a six-cell meter filling by
+// does. These are the two states the whole scanner is built to keep apart:
+// "nothing there" and "I could not look", and in a six-cell meter filling by
 // score they arrived identical: Container at 0 and a skipped CVE domain both
 // drew six empty cells.
 //
@@ -476,14 +476,14 @@ func TestAMeterSeparatesAZeroScoreFromADomainThatDidNotRun(t *testing.T) {
 		}
 	}
 	if got := filled(s.meterAtLeastOne(0, w, s.cLine, false)); got != 0 {
-		t.Errorf("an axis that did not run drew %d filled cells, want 0 — a skipped "+
+		t.Errorf("an axis that did not run drew %d filled cells, want 0; a skipped "+
 			"domain with ink in its meter reads as a score", got)
 	}
 	// And the floor is a floor, not a rewrite: a real score still fills what
 	// it earned.
 	//
 	// Against meterCells(w) rather than w, because w is a budget in terminal
-	// columns and a block is not always one of them — under
+	// columns and a block is not always one of them; under
 	// RUNEWIDTH_EASTASIAN it is two. Asserting six blocks in a six-column
 	// meter is the exact conflation the meter itself used to make.
 	cells := meterCells(w)
@@ -502,7 +502,7 @@ func TestAMeterSeparatesAZeroScoreFromADomainThatDidNotRun(t *testing.T) {
 // 28 of them and something else entirely about the rest.
 //
 // The spelling is also chosen once for the whole rail rather than per domain,
-// because the busiest domain has the widest counts — so deciding row by row
+// because the busiest domain has the widest counts, so deciding row by row
 // abbreviated exactly the first row and left the eleven under it long.
 func TestTheSeverityMixIsNeverCutMidCount(t *testing.T) {
 	m := modeModels(150, 30)["list"]
@@ -519,7 +519,7 @@ func TestTheSeverityMixIsNeverCutMidCount(t *testing.T) {
 	byDomain := map[model.Source][]model.Finding{model.SourceCompose: fs}
 
 	// Every term the two spellings can produce. Anything the rail draws has to
-	// be one of these, whole — dropping "28 low" off the end is fine, printing
+	// be one of these, whole: dropping "28 low" off the end is fine, printing
 	// "28" is not.
 	whole := map[string]bool{
 		"9 high": true, "16 med": true, "28 low": true,
@@ -541,7 +541,7 @@ func TestTheSeverityMixIsNeverCutMidCount(t *testing.T) {
 		for _, term := range strings.Split(got, sep) {
 			if !whole[term] {
 				t.Errorf("at %d columns the mix rendered %q, whose term %q is not a "+
-					"complete count — a count cut in half reads as a number the host "+
+					"complete count; a count cut in half reads as a number the host "+
 					"does not have", w, got, term)
 			}
 		}
@@ -550,7 +550,7 @@ func TestTheSeverityMixIsNeverCutMidCount(t *testing.T) {
 		}
 		// The point of choosing a spelling is that the short one says
 		// everything the long one does in less room. Where the short form fits
-		// and the long one does not, the rail has to switch — dropping "28
+		// and the long one does not, the rail has to switch: dropping "28
 		// low" to keep the long spelling hides a level it had room to report.
 		if w >= lipgloss.Width("9H·16M·28L") && w < lipgloss.Width("9 high · 16 med · 28 low") {
 			if n := len(strings.Split(got, sep)); n != 3 {
@@ -567,7 +567,7 @@ func TestTheSeverityMixIsNeverCutMidCount(t *testing.T) {
 // batchRow counted over the *unfiltered* report while startBatch applies over
 // m.active, which is the filtered list. So narrowing to one domain or one
 // severity left the bar offering "fix all N safe" for an N that included
-// findings the key would not touch — the screen promising work it then did not
+// findings the key would not touch: the screen promising work it then did not
 // do, with no error and no way for the operator to notice except by counting
 // the list afterwards.
 func TestTheBatchBarCountsWhatTheBatchKeyWouldApply(t *testing.T) {

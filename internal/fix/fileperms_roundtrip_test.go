@@ -14,14 +14,14 @@ import (
 // filepermsRoundTripIDs mirrors registerFilePerms' exact IDs.
 // TestFilepermsRoundTripCoversEveryRegisteredID cross-checks this list
 // against the registry mechanically, so a new rule does not go untested
-// silently — the same check is what caught fileperms.compiler being absent
+// silently: the same check is what caught fileperms.compiler being absent
 // from an earlier draft of this list.
 //
 // fileperms.compiler's production rule targets two absolute glob Patterns
 // (/usr/bin/*-linux-gnu-as, /usr/bin/*-linux-gnu-ld.bfd) rather than one
 // Path, which cannot resolve inside a temp dir. Like the other glob-backed
 // IDs here (sudoers-dropins, cron, systemd-units, hostkey), the fixture
-// substitutes a plain single path — glob expansion itself is
+// substitutes a plain single path: glob expansion itself is
 // fileperms_test.go's job, not this one's.
 func filepermsRoundTripIDs() []string {
 	return []string{
@@ -51,12 +51,12 @@ func TestFilepermsRoundTripCoversEveryRegisteredID(t *testing.T) {
 	delete(registered, "fileperms.owner")
 	for id := range registered {
 		if !covered[id] {
-			t.Errorf("%s is registered but this file does not cover it — a rule was added without a fixture", id)
+			t.Errorf("%s is registered but this file does not cover it; a rule was added without a fixture", id)
 		}
 	}
 	for id := range covered {
 		if !registered[id] {
-			t.Errorf("%s is covered here but is not registered — this list has gone stale", id)
+			t.Errorf("%s is covered here but is not registered; this list has gone stale", id)
 		}
 	}
 }
@@ -66,7 +66,7 @@ func TestFilepermsRoundTripCoversEveryRegisteredID(t *testing.T) {
 //
 // Each case is a single-rule fileperms.Checker over one temp file chmod'd to
 // 0666, which is a superset of every registered MaxMode's r/w bits (none set
-// execute) — so tighten() always lands exactly on MaxMode, and a single-rule
+// execute), so tighten() always lands exactly on MaxMode, and a single-rule
 // checker means there is no second finding the "no other finding" direction
 // could confuse with cross-contamination from a shared fixture. MaxMode
 // itself comes from fileperms.DefaultRules(), the production table, rather

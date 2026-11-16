@@ -59,7 +59,7 @@ func TestComputeDeltaDetectsMovementUnderAStableKey(t *testing.T) {
 	}
 	// The four buckets partition: a changed finding is not also "still present".
 	if d.StillPresent != 0 {
-		t.Errorf("still present = %d, want 0 — changed and unchanged must not overlap", d.StillPresent)
+		t.Errorf("still present = %d, want 0; changed and unchanged must not overlap", d.StillPresent)
 	}
 	if len(d.Resolved) != 0 || len(d.New) != 0 {
 		t.Errorf("a moved finding is neither resolved nor new: %+v", d)

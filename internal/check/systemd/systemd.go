@@ -5,9 +5,9 @@
 // of them are not in containers. The compose domain covers the half that
 // are: it reads what each service declares and says so when a container runs
 // privileged, as root, or with no-new-privileges off. A service started by a
-// unit file gets exactly the same decisions made about it — whether it can
+// unit file gets exactly the same decisions made about it (whether it can
 // gain privileges, whether it can write outside its own data, whether it can
-// read every user's home — and until this domain existed nothing looked at
+// read every user's home) and until this domain existed nothing looked at
 // them at all.
 //
 // systemd already answers all of it. `systemctl show` reports the *effective*
@@ -25,7 +25,7 @@
 // schedule, and a drop-in that second-guesses them is the operator taking on
 // maintenance of somebody else's service. More to the point, flagging them
 // would bury the operator's own services under dozens of findings about
-// software they did not choose to run and cannot sensibly change — and a
+// software they did not choose to run and cannot sensibly change, and a
 // domain that accuses everything is a domain nobody reads. The units this
 // package reports on are the ones whose author is the person reading the
 // report.
@@ -100,13 +100,13 @@ func (*Checker) Source() model.Source { return model.SourceSystemd }
 // and score this axis a perfect 100 on a host it never looked at.
 func (c *Checker) Available(ctx context.Context, env platform.Env) (bool, string) {
 	if env.ServiceManager != platform.SMSystemd {
-		return false, "systemd is not this host's service manager — there are no units to audit"
+		return false, "systemd is not this host's service manager; there are no units to audit"
 	}
 	if !platform.Has(env.Runner, "systemctl") {
-		return false, "systemctl is not installed — units cannot be read"
+		return false, "systemctl is not installed; units cannot be read"
 	}
 	if _, err := env.Runner.Run(ctx, "systemctl", "show", "--property=Version"); err != nil {
-		return false, "systemd did not answer — units cannot be read"
+		return false, "systemd did not answer; units cannot be read"
 	}
 	return true, ""
 }
@@ -184,7 +184,7 @@ func (u unit) root() bool { return u.User == "" || u.User == "root" }
 // parseUnits splits `systemctl show` output into one record per unit.
 //
 // systemd separates records with a blank line and prints Key=Value one per
-// line, in an order of its own choosing — so records are keyed by name, never
+// line, in an order of its own choosing, so records are keyed by name, never
 // by position. A value may itself contain "=", so only the first is a
 // separator.
 func parseUnits(out string) []unit {

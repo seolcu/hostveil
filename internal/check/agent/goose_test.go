@@ -45,7 +45,7 @@ func TestGooseModeAutoIsExecUnrestricted(t *testing.T) {
 }
 
 // The case the rule exists for. Goose's default is auto, so the host where
-// nobody chose a mode is running the one that approves everything — and a
+// nobody chose a mode is running the one that approves everything, and a
 // rule that fired only on an explicit value would call it clean.
 func TestGooseModeUnsetIsTheDefaultAuto(t *testing.T) {
 	for name, write := range map[string]func(h *host){
@@ -129,7 +129,7 @@ func TestGooseSecretsYAMLIsReadAsYAML(t *testing.T) {
 	}
 }
 
-// goose web's bind is a flag, so the listener is the whole answer — and it
+// goose web's bind is a flag, so the listener is the whole answer, and it
 // is attributed by process name, on whatever port it chose.
 func TestGooseWebListenerIsAttributedByProcess(t *testing.T) {
 	h := newHost(t, "alice")

@@ -19,7 +19,7 @@ import (
 const maxEditBytes = 1 << 20
 
 // PreviewFix returns, per available action, exactly what the fix would
-// change — a unified diff for edits, the command list for execs — WITHOUT
+// change (a unified diff for edits, the command list for execs) WITHOUT
 // touching any file or running anything. This is the single preview path
 // all UIs use.
 func (e *Engine) PreviewFix(f model.Finding) (model.FixPreview, error) {
@@ -35,7 +35,7 @@ func (e *Engine) PreviewFix(f model.Finding) (model.FixPreview, error) {
 	// hold a fix at Review that the registry shapes as Auto, and a preview
 	// labelled "Auto" next to a finding labelled "Review" would be a
 	// contradiction the user has to resolve. It has to be the *same*
-	// resolution the finding went through, exec floor included — this used to
+	// resolution the finding went through, exec floor included: this used to
 	// call only the checker-versus-registry half, so an exec fix the finding
 	// carried as Review previewed as "Auto", producing that contradiction
 	// on exactly the fixes where unattended application is the thing being
@@ -91,7 +91,7 @@ func (e *Engine) previewEdit(a fix.Action, id string) (string, error) {
 //
 // A CreateIfMissing action treats an absent file as empty input, so
 // Transform composes the whole contents and the diff renders as a pure
-// addition — which is exactly what the operator is being asked to approve.
+// addition, which is exactly what the operator is being asked to approve.
 // Any other read error is still an error, including for such an action: a
 // permission denial or an EISDIR must not be mistaken for "not there yet"
 // and answered by creating something.
@@ -119,7 +119,7 @@ func readEditTarget(a fix.Action) (data []byte, creating bool, err error) {
 // previewMode renders a mode action as a table. It only stats; the live
 // files are never chmod'ed, mirroring previewEdit's purity.
 //
-// diff.Unified is no use here — it returns "" when the bytes match, and a
+// diff.Unified is no use here: it returns "" when the bytes match, and a
 // mode change leaves them identical.
 func previewMode(a fix.Action) (string, error) {
 	changes, err := planModes(a)

@@ -139,7 +139,7 @@ func TestFixThroughAPI(t *testing.T) {
 	}
 }
 
-// TestFixOneThroughAPI pins /api/fix/one — the batch loop's own per-item
+// TestFixOneThroughAPI pins /api/fix/one: the batch loop's own per-item
 // step, exposed so the dashboard's progress modal can drive a real loop over
 // several findings without routing through /api/fix's verify step (see
 // Engine.ApplyOne's doc comment). Skip/eligibility is pinned at the engine
@@ -438,7 +438,7 @@ func TestRescanIsAsynchronous(t *testing.T) {
 	}
 }
 
-// A second rescan while one is running queues nothing and answers 409 —
+// A second rescan while one is running queues nothing and answers 409:
 // the engine serialises scans behind one mutex, so accepting the request
 // would only hold a connection open behind the first.
 func TestConcurrentRescanIsRefused(t *testing.T) {
@@ -459,7 +459,7 @@ func TestConcurrentRescanIsRefused(t *testing.T) {
 
 // The explain route must always answer with the deterministic explanation,
 // and with no AI provider wired in (the test engine has none) it says so in
-// ai_error rather than failing — AI is advisory everywhere or it is a
+// ai_error rather than failing: AI is advisory everywhere or it is a
 // dependency, and it must not be a dependency.
 func TestExplainDegradesWithoutAI(t *testing.T) {
 	s, _ := testServer(t)
@@ -542,7 +542,7 @@ func TestThemeAssets(t *testing.T) {
 }
 
 // The page paints in the theme Hostveil was started with, before any script
-// runs — otherwise every load flashes the default palette first.
+// runs: otherwise every load flashes the default palette first.
 func TestServedThemeIsTheStartingPalette(t *testing.T) {
 	s, _ := testServer(t) // built with "nord"
 	rec := httptest.NewRecorder()
@@ -591,7 +591,7 @@ func TestThemeAssetsAreGuarded(t *testing.T) {
 //
 // The refusals matter more than the acceptances, but the acceptances are what
 // keep a tightened check from quietly locking the operator out of their own
-// dashboard — http://[::1]/ sends a bracketed authority with no port at all.
+// dashboard: http://[::1]/ sends a bracketed authority with no port at all.
 func TestHostAllowlistJudgesTheWholeAuthority(t *testing.T) {
 	for _, tc := range []struct {
 		host string
@@ -616,7 +616,7 @@ func TestHostAllowlistJudgesTheWholeAuthority(t *testing.T) {
 		{"[evil.example.com]", false, "brackets do not make a host loopback"},
 	} {
 		if got := hostAllowed(tc.host); got != tc.want {
-			t.Errorf("hostAllowed(%q) = %v, want %v — %s", tc.host, got, tc.want, tc.why)
+			t.Errorf("hostAllowed(%q) = %v, want %v; %s", tc.host, got, tc.want, tc.why)
 		}
 	}
 }
@@ -638,7 +638,7 @@ func TestAGuestPortSmugglingAHostnameIsRefused(t *testing.T) {
 // Moving the palette out of app.css and into a generated stylesheet means the
 // two files now have to agree: every var(--x) the layout reads must be one the
 // theme package declares. A typo, or a variable added to app.css and never to
-// a palette, resolves to nothing — and an unset custom property is not an
+// a palette, resolves to nothing, and an unset custom property is not an
 // error in CSS, it is an invisible element.
 func TestEveryCSSVariableIsDeclared(t *testing.T) {
 	appCSS, err := assets.ReadFile("assets/app.css")
@@ -686,7 +686,7 @@ func TestIndexLoadsTheGeneratedThemeAssets(t *testing.T) {
 // The guard checked the origin of POSTs only, and the handlers ignored the
 // request method entirely. A GET therefore skipped the origin check and still
 // reached the handler, so `<img src="http://127.0.0.1:8787/api/fix/all">` on
-// any page in the world made the dashboard apply every Auto fix on the host —
+// any page in the world made the dashboard apply every Auto fix on the host;
 // verified applying three real fixes to a compose file before this landed. An
 // <img> cannot carry the access token either, but the method restriction is
 // what makes the route unreachable rather than merely unauthorized.
@@ -705,7 +705,7 @@ func TestMutatingRoutesRejectGET(t *testing.T) {
 		s.Handler().ServeHTTP(rec, req)
 
 		if rec.Code == http.StatusOK {
-			t.Errorf("GET %s succeeded (%d) — a cross-origin <img> can reach it", route, rec.Code)
+			t.Errorf("GET %s succeeded (%d): a cross-origin <img> can reach it", route, rec.Code)
 		}
 	}
 
@@ -749,7 +749,7 @@ func TestWrongTokenIsRejected(t *testing.T) {
 }
 
 // The token travels in the URL once and is exchanged for a session cookie,
-// so the dashboard's own fetches — which carry no query string — stay
+// so the dashboard's own fetches (which carry no query string) stay
 // authorized without the token reappearing in every request.
 func TestTokenInURLSetsTheSessionCookie(t *testing.T) {
 	s, _ := testServer(t)
@@ -771,7 +771,7 @@ func TestTokenInURLSetsTheSessionCookie(t *testing.T) {
 		t.Fatal("no session cookie was set")
 	}
 	if !session.HttpOnly {
-		t.Error("the session cookie must be HttpOnly — a script should not be able to read the token")
+		t.Error("the session cookie must be HttpOnly; a script should not be able to read the token")
 	}
 	if session.SameSite != http.SameSiteStrictMode {
 		t.Error("the session cookie must be SameSite=Strict; Lax would ride along on a cross-site navigation")
@@ -780,7 +780,7 @@ func TestTokenInURLSetsTheSessionCookie(t *testing.T) {
 
 // The token travels in the URL because a terminal has no other way to hand a
 // credential to a browser, and once the cookie exists the copy in the address
-// bar is residue — it stays in the history entry, in a bookmark made without
+// bar is residue: it stays in the history entry, in a bookmark made without
 // thinking, and in every screenshot of the dashboard pasted into an issue.
 // So app.js drops it. What makes that safe is that nothing else needs it:
 // every dashboard fetch authenticates with the cookie alone.
@@ -874,7 +874,7 @@ func TestSecFetchSiteBlocksCrossSite(t *testing.T) {
 }
 
 // A wildcard bind is an instruction to the listener, not an address anyone
-// can browse to — and the Host allowlist requires a loopback name whatever
+// can browse to, and the Host allowlist requires a loopback name whatever
 // the socket is bound to. The Vagrant demo binds 0.0.0.0 and reaches the
 // dashboard through a port-forward, so the URL it prints has to be usable.
 func TestURLRendersAWildcardBindAsLoopback(t *testing.T) {
@@ -893,9 +893,9 @@ func TestURLRendersAWildcardBindAsLoopback(t *testing.T) {
 }
 
 // The dashboard runs as root and applies fixes, so it must stop when it is
-// told to. Before this it ignored cancellation entirely — cmdServe took a
+// told to. Before this it ignored cancellation entirely (cmdServe took a
 // context and never looked at it, and ListenAndServe blocked with no
-// Shutdown wired up — leaving a process that answered neither Ctrl-C nor
+// Shutdown wired up) leaving a process that answered neither Ctrl-C nor
 // `systemctl stop` and died only when systemd escalated to SIGKILL.
 func TestServeStopsWhenTheContextIsCancelled(t *testing.T) {
 	s, _ := testServer(t)
@@ -920,7 +920,7 @@ func TestServeStopsWhenTheContextIsCancelled(t *testing.T) {
 }
 
 // Cancelled before ListenAndServe is even called is a clean stop, not a
-// failure to report — there is no reason to open a socket for a context
+// failure to report: there is no reason to open a socket for a context
 // that is already dead.
 func TestServeInterruptedDuringTheStartupScanIsNotAnError(t *testing.T) {
 	s, _ := testServer(t)
@@ -952,7 +952,7 @@ func (c blockingChecker) Check(ctx context.Context, _ platform.Env) ([]model.Fin
 
 // ListenAndServe used to run the initial scan synchronously before ever
 // opening the listener, so the printed URL connected to nothing for the
-// whole first scan — minutes, on a host with many images. It now opens the
+// whole first scan: minutes, on a host with many images. It now opens the
 // listener immediately and runs that scan the same tracked, backgrounded
 // way a rescan runs, and this pins the observable half of that: the server
 // answers, and says a scan is running, before the (deliberately blocked)
@@ -1051,7 +1051,7 @@ func TestListenAndServeIsReachableBeforeTheInitialScanFinishes(t *testing.T) {
 
 // A browser that goes away must not take a fix or a rescan with it. net/http
 // cancels the request context the moment the client disconnects, and a tab
-// closes for reasons that have nothing to do with intent — so the work runs
+// closes for reasons that have nothing to do with intent, so the work runs
 // under a context carrying the request's values but not its cancellation.
 func TestHostWorkOutlivesTheRequest(t *testing.T) {
 	reqCtx, cancel := context.WithCancel(context.Background())

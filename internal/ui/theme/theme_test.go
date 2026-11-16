@@ -33,7 +33,7 @@ func TestRegistryShape(t *testing.T) {
 		case th.ID == "":
 			t.Error("a theme has no ID")
 		case th.ID != strings.ToLower(th.ID):
-			t.Errorf("theme ID %q is not lowercase — it is typed on a command line", th.ID)
+			t.Errorf("theme ID %q is not lowercase; it is typed on a command line", th.ID)
 		case seen[th.ID]:
 			t.Errorf("duplicate theme ID %q", th.ID)
 		case th.Name == "":
@@ -90,8 +90,8 @@ func TestHostveilUnchanged(t *testing.T) {
 // anyone who chose it keeps it, so its table is pinned the same way.
 //
 // Four of the twelve are not One Dark's published values. Three of those are
-// not drift — TestEveryThemeMeetsTheContrastFloor rejects the published Slate,
-// Crit and Low outright — and the fourth, Bone, is a judgement with its own
+// not drift (TestEveryThemeMeetsTheContrastFloor rejects the published Slate,
+// Crit and Low outright) and the fourth, Bone, is a judgement with its own
 // reason beside it. Either way somebody comparing this against Atom will find
 // a discrepancy and be right to ask, so the numbers are pinned here with the
 // ones they replaced beside them.
@@ -105,9 +105,9 @@ func TestOneDarkUnchanged(t *testing.T) {
 		High:  "#d19a66", Med: "#e5c07b",
 		Low:  "#79808e", // #767d8c was 3.39:1 on ink, floor is 3.5
 		Safe: "#98c379",
-		// One Dark's blue, for structure only — see the Palette doc comment.
+		// One Dark's blue, for structure only; see the Palette doc comment.
 		Accent: "#61afef",
-		// Manual/Unavail: muted clay and dusty violet, neither a heat — see
+		// Manual/Unavail: muted clay and dusty violet, neither a heat; see
 		// the Palette doc comment.
 		Manual: "#b3906a", Unavail: "#8f88c9",
 	}
@@ -136,7 +136,7 @@ func TestCSSCoversEveryTheme(t *testing.T) {
 		t.Error("CSS has no bare :root block, so the page has no palette before script runs")
 	}
 	// The bare :root block must carry the requested default, not the registry
-	// default — that block is what paints the first frame.
+	// default, that block is what paints the first frame.
 	root := css[strings.Index(css, ":root {"):strings.Index(css, `:root[data-theme=`)]
 	nord, _ := Lookup("nord")
 	if !strings.Contains(root, nord.Palette.Ink) {
@@ -146,7 +146,7 @@ func TestCSSCoversEveryTheme(t *testing.T) {
 	for _, th := range All() {
 		sel := `:root[data-theme="` + th.ID + `"]`
 		if !strings.Contains(css, sel) {
-			t.Errorf("CSS has no block for %q — the picker could not switch to it", th.ID)
+			t.Errorf("CSS has no block for %q; the picker could not switch to it", th.ID)
 		}
 		v := th.Palette.vars()
 		for name, val := range v {

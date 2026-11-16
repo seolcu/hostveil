@@ -5,7 +5,7 @@
 // The output is the last thing an operator reads before authorizing a write
 // to a file like /etc/ssh/sshd_config, which makes two properties matter
 // more than they would in a general-purpose diff. It must show every byte
-// the apply would change — a change the preview cannot render is consent
+// the apply would change: a change the preview cannot render is consent
 // obtained on a false basis. And it must show little else: a one-line edit
 // to a several-hundred-line compose file that echoes the whole file buries
 // the very line being authorized.
@@ -186,7 +186,7 @@ func rangeSpec(start, count int) string {
 // The trim is what makes previewing a fix affordable. The LCS table is
 // O(len(a)·len(b)) in both time and memory, and a fix is by construction a
 // small localized edit: previewing a one-line change to a 10,000-line
-// compose file built a 100-million-cell table — 784 MiB of allocation to
+// compose file built a 100-million-cell table; 784 MiB of allocation to
 // produce 408 bytes of diff, enough to OOM the 1 GB VPS this tool is aimed
 // at. Every line outside the changed region is common to both sides, so
 // trimming leaves the core a handful of lines regardless of file size.
@@ -238,7 +238,7 @@ func lcsDiff(a, b []string) []op {
 // performs, but it can only trim what matches: when internal/compose falls
 // back to re-encoding a whole YAML file, the reflow leaves no common head or
 // tail at all and the core sees both files entire. Ten million cells is
-// roughly 80 MiB — well past any real diff, and well short of the 784 MiB
+// roughly 80 MiB: well past any real diff, and well short of the 784 MiB
 // that OOMs the 1 GB VPS this tool is aimed at.
 //
 // Past the cap the diff degrades to whole-file replace rather than failing:

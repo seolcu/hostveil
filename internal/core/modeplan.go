@@ -74,7 +74,7 @@ func planModes(a fix.Action) ([]modeChange, error) {
 //
 // It is separate from previewMode so that applyMode can describe the very
 // changes it is about to make. applyMode used to call planModes and then
-// previewMode, which planned again — two Lstat passes over the same paths
+// previewMode, which planned again: two Lstat passes over the same paths
 // inside one apply, and two chances for the answer to differ. The paths it
 // chmod'ed and recorded for rollback came from the first pass while the
 // summary stored in the checkpoint came from the second, so a mode altered
@@ -83,7 +83,7 @@ func planModes(a fix.Action) ([]modeChange, error) {
 // the record of what happened was the part that lied.
 //
 // The column is measured in display columns. len() counts bytes, which
-// misaligns the arrows for any path that is not ASCII — and paths come from
+// misaligns the arrows for any path that is not ASCII, and paths come from
 // the operator.
 func modeTable(changes []modeChange) string {
 	if len(changes) == 0 {

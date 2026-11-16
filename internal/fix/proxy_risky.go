@@ -58,7 +58,7 @@ func buildNginxModernTLS(f model.Finding) (Fix, error) {
 		Label: "Set every ssl_protocols in " + p + " to TLSv1.2 TLSv1.3, then reload nginx",
 		Benefit: "Connections can no longer be negotiated down to TLS 1.0 or 1.1, which every current browser " +
 			"already refuses, so nothing that can connect today loses anything.",
-		Warning: "A client that only speaks TLS 1.0 or 1.1 — a very old Android or Java, an embedded device — stops " +
+		Warning: "A client that only speaks TLS 1.0 or 1.1 (a very old Android or Java, an embedded device) stops " +
 			"connecting. " + proxyRevertNote,
 		Kind: ActionEdit, Path: p,
 		Transform: func(in []byte) ([]byte, error) {
@@ -82,7 +82,7 @@ func buildNginxNoAutoindex(f model.Finding) (Fix, error) {
 		Label: "Set every `autoindex on;` in " + p + " to off, then reload nginx",
 		Benefit: "Directories without an index file stop listing what is in them, so a stray backup or .env " +
 			"beside the site is no longer one click away.",
-		Warning: "A directory somebody meant to be browsable — a download mirror, a shared folder — stops listing " +
+		Warning: "A directory somebody meant to be browsable (a download mirror, a shared folder) stops listing " +
 			"and answers 403 instead. Listing is sometimes on for one location on purpose; if so, put it back for " +
 			"that location alone. " + proxyRevertNote,
 		Kind: ActionEdit, Path: p,
@@ -154,8 +154,8 @@ func buildCaddyAdminLoopback(f model.Finding) (Fix, error) {
 			Label: "Set `admin localhost:2019` in " + p + ", then validate and reload Caddy",
 			Benefit: "The API that can replace the proxy's whole configuration stops answering anyone but processes " +
 				"on this host.",
-			Warning: "Whatever calls the admin API from elsewhere — a deploy script, a config manager, a certificate " +
-				"sidecar on another machine — stops being able to, and the proxy keeps serving until something needs " +
+			Warning: "Whatever calls the admin API from elsewhere; a deploy script, a config manager, a certificate " +
+				"sidecar on another machine; stops being able to, and the proxy keeps serving until something needs " +
 				"to change and then cannot. " + proxyRevertNote,
 			Kind: ActionEdit, Path: p,
 			Transform: func(in []byte) ([]byte, error) {

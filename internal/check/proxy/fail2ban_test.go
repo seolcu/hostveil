@@ -152,7 +152,7 @@ func TestScanJailEvidenceOmittedForTheDefaultErrorLog(t *testing.T) {
 	if f == nil {
 		t.Fatalf("expected proxy.no-scan-jail, got %v", fs)
 	}
-	// Evidence is still recorded — only the fix decides not to act on a
+	// Evidence is still recorded; only the fix decides not to act on a
 	// value equal to the compiled-in default.
 	if f.Evidence["error-log"] != "/var/log/nginx/error.log" {
 		t.Errorf("error-log evidence = %q", f.Evidence["error-log"])

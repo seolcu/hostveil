@@ -1,7 +1,7 @@
 # Throwaway hosts for the distribution seam.
 #
 # seed.sh resolves Debian, Fedora and Alpine through a package-manager seam,
-# and every published measurement was taken on Ubuntu — not a decision, just
+# and every published measurement was taken on Ubuntu, not a decision, just
 # the only host the fixture had ever been built on. This is the other hosts.
 #
 # Deliberately not demo/Vagrantfile. That VM is the *demo*: it is pinned to
@@ -28,7 +28,7 @@ GO_VERSION = "1.26.3"
 
 # One entry per host the seam claims to support. Ubuntu is here too, not
 # because it needs proving, but because a seam is only a seam if the runs are
-# comparable — and the box the demo uses is the one the published figures came
+# comparable, and the box the demo uses is the one the published figures came
 # off.
 #
 # STATUS, so the next attempt starts from what was learned rather than from
@@ -38,7 +38,7 @@ GO_VERSION = "1.26.3"
 #   fedora   DOES NOT COME UP on libvirt here, and it is the box rather than
 #            anything in this file. cloud-image/fedora-42 downloads, the
 #            domain boots, and it never takes a DHCP lease on the
-#            vagrant-libvirt network — `virsh net-dhcp-leases vagrant-libvirt`
+#            vagrant-libvirt network: `virsh net-dhcp-leases vagrant-libvirt`
 #            shows the Ubuntu guest and nothing else, and vagrant gives up in
 #            "Waiting for domain to get an IP address". Dropping
 #            machine_virtual_size (in case the resize broke the image) changes
@@ -48,7 +48,7 @@ GO_VERSION = "1.26.3"
 # The dnf half has since run end to end on a Fedora host that boots:
 # scripts/e2e/vm.sh boots Fedora 44's cloud image under plain QEMU, with
 # user-mode networking and no libvirt network to lease from. There, seed.sh
-# completed and `run.sh -c -p seeded` passed its checks — score 38 to 46,
+# completed and `run.sh -c -p seeded` passed its checks: score 38 to 46,
 # 96% of the watched paths restored, the rest residue from Review actions
 # marked not reversible. Use that, not this, for Fedora:
 #
@@ -72,7 +72,7 @@ Vagrant.configure("2") do |config|
       node.vm.hostname = "hostveil-#{name}"
 
       # rsync, like the demo, so the guest builds the CURRENT source rather
-      # than whatever was committed. It does NOT re-sync on `provision` — edit
+      # than whatever was committed. It does NOT re-sync on `provision`: edit
       # the tree, then `vagrant rsync`.
       node.vm.synced_folder "../..", "/hostveil",
         type: "rsync", rsync__exclude: [".vagrant/", ".git/", "demo/.vagrant/"]
@@ -119,7 +119,7 @@ Vagrant.configure("2") do |config|
 
         cat <<'EOF'
 
-        Ready. Nothing is seeded yet — that is the next command, and it is
+        Ready. Nothing is seeded yet, that is the next command, and it is
         separate so its output can be read:
 
           sudo /hostveil/scripts/measure/seed.sh

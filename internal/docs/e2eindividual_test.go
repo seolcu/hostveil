@@ -19,7 +19,7 @@ func TestTheIndividualFixE2ENamesRealFixes(t *testing.T) {
 	re := regexp.MustCompile(`\b(?:` + strings.Join(sourceNames(), "|") + `)\.[a-z0-9][a-z0-9-]*[a-z0-9]\b`)
 	var ids []string
 	for _, loc := range re.FindAllStringIndex(script, -1) {
-		// Part of a host name — download.proxmox.com — not a finding ID.
+		// Part of a host name (download.proxmox.com) not a finding ID.
 		if loc[0] > 0 && strings.ContainsRune("./", rune(script[loc[0]-1])) {
 			continue
 		}

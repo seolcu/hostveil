@@ -235,8 +235,8 @@ func TestRemoveBeneathRefusesASymlinkInAParentComponent(t *testing.T) {
 	}
 }
 
-// ReadFileBounded is the opposite policy on links — system configuration
-// legitimately uses them — and the same policy on everything else.
+// ReadFileBounded is the opposite policy on links (system configuration
+// legitimately uses them) and the same policy on everything else.
 func TestReadFileBoundedFollowsASymlink(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "sysctl.conf")

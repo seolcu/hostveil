@@ -19,7 +19,7 @@ const dropInDir = "/etc/sysctl.d/"
 // sysctlBenefit names what each kernel parameter actually buys, keyed by
 // finding ID since buildSysctl/buildSysctlReview are two generic builders
 // shared across every ID below. The same text is used for both the persist
-// and (where offered) the immediate-apply alternative — TakesEffectOn and
+// and (where offered) the immediate-apply alternative: TakesEffectOn and
 // each action's own Warning already say how the two differ in timing and
 // durability, so the benefit itself does not need to repeat that split.
 var sysctlBenefit = map[string]string{
@@ -42,12 +42,12 @@ var sysctlBenefit = map[string]string{
 	"sysctl.accept-source-route": "Stops the kernel honoring source-routed packets, closing a way to " +
 		"make traffic take a path chosen by whoever sent it rather than by this network's own routing.",
 	"sysctl.send-redirects": "Stops this host sending ICMP redirects itself, which it should not be " +
-		"doing unless it is actually a router — removes a route-injection tool a compromised host could " +
+		"doing unless it is actually a router; removes a route-injection tool a compromised host could " +
 		"use against its neighbors.",
 	"sysctl.suid-dumpable": "Stops a crashed setuid process writing a core dump that can contain " +
 		"whatever secrets were in its memory at the moment it crashed.",
 	"sysctl.protected-fifos": "Stops a process writing into a FIFO it does not own in a world-writable " +
-		"sticky directory — the same class protected-links closes for symlinks.",
+		"sticky directory; the same class protected-links closes for symlinks.",
 	"sysctl.protected-regular": "Stops a process writing into a regular file it does not own in a " +
 		"world-writable sticky directory, for the same reason.",
 	"sysctl.unprivileged-bpf": "Removes unprivileged users' ability to load BPF programs into the " +
@@ -101,9 +101,9 @@ var sysctlBenefit = map[string]string{
 // operator. Topology-dependent findings are Review, with two genuinely
 // independent alternatives rather than two halves of one procedure:
 //
-//   - write a drop-in — persistent, and takes effect at the next boot or
+//   - write a drop-in; persistent, and takes effect at the next boot or
 //     the next `sysctl --system`;
-//   - `sysctl -w` — takes effect immediately, and is lost at the next boot.
+//   - `sysctl -w`; takes effect immediately, and is lost at the next boot.
 //
 // Neither is strictly better for those topology-dependent controls, which is
 // what makes this a choice rather than a sequence. Offering only "do both, in
@@ -171,14 +171,14 @@ func registerSysctl(r *Registry) {
 // usbstorage's benefit (physical media) is a different story from the other
 // four (rarely-used network protocols with a history of local kernel bugs).
 var moduleBlockBenefit = map[string]string{
-	"sysctl.module-dccp": "Removes the kernel's ability to load the DCCP module at all — a " +
+	"sysctl.module-dccp": "Removes the kernel's ability to load the DCCP module at all; a " +
 		"rarely-used protocol on an ordinary self-hosted server, and one that has shown up " +
 		"repeatedly as a local attack vector when left loadable.",
-	"sysctl.module-sctp": "Removes the kernel's ability to load the SCTP module at all — the same " +
+	"sysctl.module-sctp": "Removes the kernel's ability to load the SCTP module at all; the same " +
 		"reasoning as DCCP: rarely used here, and a repeat source of local kernel bugs when loadable.",
-	"sysctl.module-rds": "Removes the kernel's ability to load the RDS module at all — the same " +
+	"sysctl.module-rds": "Removes the kernel's ability to load the RDS module at all; the same " +
 		"reasoning as DCCP: rarely used here, and a repeat source of local kernel bugs when loadable.",
-	"sysctl.module-tipc": "Removes the kernel's ability to load the TIPC module at all — the same " +
+	"sysctl.module-tipc": "Removes the kernel's ability to load the TIPC module at all; the same " +
 		"reasoning as DCCP: rarely used here, and a repeat source of local kernel bugs when loadable.",
 	"sysctl.module-usbstorage": "Removes the kernel's ability to load the USB mass-storage driver, " +
 		"closing a common way to pull data off or introduce malware onto a physically-accessible server " +
@@ -265,7 +265,7 @@ const legacyConfFile = "/etc/sysctl.conf"
 //
 // Which file that is depends on the host. A drop-in only takes effect if
 // nothing read after it assigns the same key, and systemd-sysctl reads every
-// sysctl.d directory as one list sorted by file name — so a value already set
+// sysctl.d directory as one list sorted by file name, so a value already set
 // in /etc/sysctl.conf, or in a drop-in sorting after ours, wins. Writing the
 // drop-in anyway is the worst available outcome: the file appears, the fix
 // reports success, a checkpoint is recorded, and the value comes back at the
@@ -278,14 +278,14 @@ const legacyConfFile = "/etc/sysctl.conf"
 // sysctlEffect is what puts a persisted parameter in force.
 //
 // Both persist actions carry it, and until they did this fact lived in their
-// Warning prose — "The running kernel keeps its current value until one of
-// those happens" — where a human could read it and nothing could act on it.
+// Warning prose; "The running kernel keeps its current value until one of
+// those happens", where a human could read it and nothing could act on it.
 // The sysctl checker reads /proc/sys, so the file this fix writes is not the
 // object the domain reports on: exactly the artifact-versus-oracle mismatch
 // Action.TakesEffectOn exists to declare, present since before the field did.
 //
 // It is the first alternative of a Review, so `fix --all --review` takes this
-// path — which is the path the measurement harness's reviewed phase takes, and
+// path, which is the path the measurement harness's reviewed phase takes, and
 // that harness never reboots.
 const sysctlEffect = "`sysctl --system`, or the next boot"
 
@@ -297,7 +297,7 @@ func persistSysctl(f model.Finding, pairs []string, benefit string) Action {
 		return Action{
 			Label:         "Persist it: correct " + origin,
 			Benefit:       benefit,
-			Warning:       "Edits a file you wrote. " + origin + " is read after everything in /etc/sysctl.d, so a new file there would be overridden — this changes the line that actually decides the value.",
+			Warning:       "Edits a file you wrote. " + origin + " is read after everything in /etc/sysctl.d, so a new file there would be overridden: this changes the line that actually decides the value.",
 			TakesEffectOn: sysctlEffect,
 			Kind:          ActionEdit,
 			Path:          origin,
@@ -315,7 +315,7 @@ func persistSysctl(f model.Finding, pairs []string, benefit string) Action {
 	warning := ""
 	if origin != "" && readAfter(origin, dropIn) {
 		// Reachable only if a distribution ships a late-sorting file setting
-		// an unsafe value, which none do — so Hostveil does not edit
+		// an unsafe value, which none do, so Hostveil does not edit
 		// package-owned files under /usr/lib to work around it (an upgrade
 		// would undo the change with no checkpoint involved). It says so
 		// instead of reporting a success the next boot will contradict.
@@ -349,7 +349,7 @@ func persistSysctl(f model.Finding, pairs []string, benefit string) Action {
 }
 
 // originPath is the file the checker found setting the observed value, or ""
-// when no file did — in which case the value is the kernel's own default and
+// when no file did, in which case the value is the kernel's own default and
 // a drop-in is the right answer.
 func originPath(f model.Finding) string {
 	raw := f.Evidence["set-by"]

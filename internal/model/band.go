@@ -1,8 +1,8 @@
 package model
 
 // Band is the health class of a 0-100 score: which of four ranges it falls
-// in, and nothing more. What each band looks like — a meter color, an ANSI
-// escape, a phrase — is the renderer's business; where the boundaries sit
+// in, and nothing more. What each band looks like (a meter color, an ANSI
+// escape, a phrase) is the renderer's business; where the boundaries sit
 // is not, because a boundary is a judgement about what a score means and
 // there is only one of those to make.
 //
@@ -79,7 +79,7 @@ func Bands() []Band {
 
 // Verdict is the band said out loud: the half-sentence a UI completes with
 // "This host is …". It is a phrase and not a color, so by the rule at the
-// top of this file it looks like the renderer's business — but two
+// top of this file it looks like the renderer's business, but two
 // renderers now need the same words, and a phrase paired with the wrong
 // band is the same defect as a meter painted the wrong color. The dashboard
 // held these four strings and the terminal would have had to copy them.

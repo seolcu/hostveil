@@ -68,7 +68,7 @@ func TestMarkdownFindingsCarryTheFixTradeOff(t *testing.T) {
 	}
 
 	// The Manual finding has no registered fix, so it must show neither
-	// heading — inventing a trade-off for a fix that does not exist would
+	// heading: inventing a trade-off for a fix that does not exist would
 	// be worse than saying nothing.
 	mediumSection := got[strings.Index(got, "Container has the Docker socket mounted"):]
 	if strings.Contains(mediumSection, "**Benefit.**") || strings.Contains(mediumSection, "**Side effect.**") {

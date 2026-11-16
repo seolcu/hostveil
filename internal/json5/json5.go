@@ -3,7 +3,7 @@
 //
 // It exists for the agent domain. OpenClaw documents its config as JSON5 and
 // operators comment it heavily, so the config on a real host carries line
-// comments, block comments and trailing commas — none of which survive a
+// comments, block comments and trailing commas: none of which survive a
 // round trip through encoding/json. That is why every agent config-key
 // finding was declined a fix: the only available editor would have deleted
 // the operator's own notes from a file it was asked to harden.
@@ -12,8 +12,8 @@
 // dotted key path that ALREADY EXISTS, and there is no insert, no delete,
 // and no re-encode. Every finding this serves fired because the checker read
 // a bad value at that path, so the path is present by construction, and
-// refusing to create one keeps the hardest part of a JSON5 editor — deciding
-// where a new key goes among somebody's comments — out of the code entirely.
+// refusing to create one keeps the hardest part of a JSON5 editor (deciding
+// where a new key goes among somebody's comments) out of the code entirely.
 //
 // # Why there is no fallback
 //
@@ -78,7 +78,7 @@ func (d *Doc) Has(path string) bool {
 }
 
 // Set records that the value at a dotted path becomes v, which must be a
-// value encoding/json can marshal — the callers pass strings and bools.
+// value encoding/json can marshal: the callers pass strings and bools.
 //
 // An absent path is an error rather than an insertion. See the package
 // comment: every finding served here fired on a value that was read, so a
@@ -106,7 +106,7 @@ func (d *Doc) Set(path string, v any) error {
 // The rendering is verified before it is returned: the result is re-parsed
 // and compared against the original tree with exactly the recorded edits
 // applied to it. A mismatch means the text surgery changed something it was
-// not asked to, and that is an error — never a fallback, because the only
+// not asked to, and that is an error: never a fallback, because the only
 // fallback available would discard the comments this package exists to keep.
 func (d *Doc) Bytes() ([]byte, error) {
 	if len(d.order) == 0 {

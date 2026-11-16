@@ -8,7 +8,7 @@ import (
 	"github.com/seolcu/hostveil/internal/model"
 )
 
-// fixableActive is what Advise judges — active findings with a real
+// fixableActive is what Advise judges: active findings with a real
 // Benefit/SideEffect to weigh. Manual and Unavailable findings have
 // nothing to apply (WhyNoFix already explains those), so they're excluded
 // here rather than sent to a model with nothing to say about them.
@@ -50,8 +50,8 @@ func plainAdvice(findings []model.Finding) string {
 	return strings.TrimSpace(b.String())
 }
 
-// Advise judges a whole set of findings at once — "which of these fixes
-// make sense here, and which don't" — against the operator's own saved
+// Advise judges a whole set of findings at once: "which of these fixes
+// make sense here, and which don't": against the operator's own saved
 // description of this host (AIContext). findings is caller-supplied,
 // mirroring ApplyBatch's shape, rather than read from e.Current(): the
 // caller (a fresh scan in the CLI, the live report in the TUI/web) already

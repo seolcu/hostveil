@@ -158,7 +158,7 @@ func TestAvailableDistinguishesUnreadableFromAbsent(t *testing.T) {
 //
 // A home directory that cannot be entered is ground this domain did not
 // cover. Available discarded the unreadable list and reported "no
-// self-hosted agent runtime found" — so a non-root scan on a host where
+// self-hosted agent runtime found", so a non-root scan on a host where
 // another account runs an agent behind a wide-open gateway told the operator
 // there was no agent runtime, and offered no reason to try again with sudo.
 //
@@ -178,10 +178,10 @@ func TestAvailableSaysSoWhenAHomeCannotBeRead(t *testing.T) {
 
 	// The premise: bob's home stats fine, the marker inside it does not.
 	if _, err := os.Stat(h.homes["bob"]); err != nil {
-		t.Fatalf("premise broken — bob's home is not stat-able: %v", err)
+		t.Fatalf("premise broken; bob's home is not stat-able: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(h.homes["bob"], ".openclaw")); err == nil {
-		t.Fatal("premise broken — the marker under an unreadable home is still readable")
+		t.Fatal("premise broken; the marker under an unreadable home is still readable")
 	}
 
 	ok, reason := h.checker().Available(context.Background(), platform.Env{})
@@ -197,7 +197,7 @@ func TestAvailableSaysSoWhenAHomeCannotBeRead(t *testing.T) {
 }
 
 // The same blind spot on the other side of the fence: one runtime is visible,
-// so the domain runs — and the account it could not look at has to show up as
+// so the domain runs, and the account it could not look at has to show up as
 // a coverage gap rather than as a clean result.
 func TestAnUnreadableHomeDegradesAScanThatOtherwiseRan(t *testing.T) {
 	if os.Geteuid() == 0 {
@@ -280,7 +280,7 @@ func TestUnparseableConfigDegradesWithoutInventingAFinding(t *testing.T) {
 }
 
 // An install with no config file at all is a normal state, not partial
-// coverage — there is nothing we failed to read.
+// coverage: there is nothing we failed to read.
 func TestInstalledButUnconfiguredDoesNotDegrade(t *testing.T) {
 	h := newHost(t, "alice")
 	h.mkdir("alice", ".openclaw", 0o700)
@@ -326,10 +326,10 @@ func TestGatewayExposureSeverityMatrix(t *testing.T) {
 			}
 			f, ok := findByID(fs, "agent.gateway-exposed")
 			if ok != c.ok {
-				t.Fatalf("finding present = %v, want %v — %s", ok, c.ok, c.why)
+				t.Fatalf("finding present = %v, want %v; %s", ok, c.ok, c.why)
 			}
 			if ok && f.Severity != c.want {
-				t.Errorf("severity = %v, want %v — %s", f.Severity, c.want, c.why)
+				t.Errorf("severity = %v, want %v; %s", f.Severity, c.want, c.why)
 			}
 		})
 	}
@@ -350,7 +350,7 @@ func TestListenerAloneExposesGateway(t *testing.T) {
 		t.Fatal("an observed non-loopback listener on the gateway port must be reported")
 	}
 	if got := f.Evidence["basis"]; got != "listener" {
-		t.Errorf("basis = %q, want \"listener\" — the config said loopback", got)
+		t.Errorf("basis = %q, want \"listener\"; the config said loopback", got)
 	}
 }
 
@@ -431,7 +431,7 @@ func TestMissingSsDoesNotDegrade(t *testing.T) {
 // --- Authentication --------------------------------------------------------
 
 // auth.mode: none on a loopback gateway is upstream's documented single-user
-// default. Flagging it would put a High on a correct install — a score
+// default. Flagging it would put a High on a correct install: a score
 // nobody could improve by doing everything right.
 func TestAuthDisabledIsSilentOnALoopbackGateway(t *testing.T) {
 	h := newHost(t, "alice")
@@ -584,7 +584,7 @@ func TestManualDangerFindingCarriesNoValuesToWrite(t *testing.T) {
 }
 
 // Two keys describing the same weakening are one problem, and the operator
-// should see it once — with both keys named.
+// should see it once, with both keys named.
 func TestSharedIDDangerRulesCollapseToOneFinding(t *testing.T) {
 	h := newHost(t, "alice")
 	h.write("alice", ".openclaw/openclaw.json", `{"tools":{"exec":{"security":"full","ask":"off"}}}`, 0o600)
@@ -782,7 +782,7 @@ func TestFindingsFromDifferentUsersHaveDistinctKeys(t *testing.T) {
 	keys := map[string]bool{}
 	for _, f := range fs {
 		if keys[f.Key()] {
-			t.Errorf("duplicate Key %q — one user's finding will mask the other's", f.Key())
+			t.Errorf("duplicate Key %q; one user's finding will mask the other's", f.Key())
 		}
 		keys[f.Key()] = true
 	}
@@ -814,7 +814,7 @@ func TestModeFindingsForDifferentPathsHaveDistinctKeys(t *testing.T) {
 }
 
 // Every finding the domain can emit must survive model validation, or it is
-// silently dropped after the scan — the failure the Source.Valid() bound
+// silently dropped after the scan: the failure the Source.Valid() bound
 // exists to cause and this test exists to catch.
 func TestAllEmittedFindingsValidate(t *testing.T) {
 	h := newHost(t, "alice")
@@ -870,7 +870,7 @@ func TestSystemAccountsAreNotProbed(t *testing.T) {
 // command already fails loudly, but a command that is scripted and simply no
 // longer needed costs a subprocess on every scan of every host and produces
 // no symptom at all. That is what the agent checker was doing with the
-// firewall probe — up to four binaries, run and discarded.
+// firewall probe: up to four binaries, run and discarded.
 type recordingRunner struct {
 	platform.CommandRunner
 	mu  sync.Mutex
@@ -892,7 +892,7 @@ func (r *recordingRunner) commands() []string {
 
 // The agent domain judges a config and a listening socket. It used to ask the
 // firewall as well, hand the answer to gatewayFindings, and have that function
-// never read it — so every scan on every host ran ufw, firewall-cmd, nft and
+// never read it, so every scan on every host ran ufw, firewall-cmd, nft and
 // iptables to build an argument that was thrown away.
 //
 // The severity levels merging is what made it dead: blast radius is not

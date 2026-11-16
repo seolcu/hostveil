@@ -26,7 +26,7 @@ const goodStack = "services:\n  app:\n    image: myapp\n    privileged: true\n"
 
 // A project docker knows about but whose file cannot be parsed is a stack
 // this scan says nothing about. It used to be dropped with a bare `continue`
-// and the domain reported ScanDone over the rest — the only place in the
+// and the domain reported ScanDone over the rest: the only place in the
 // tree that let "I couldn't look" pass for "nothing there", which is
 // precisely what scores a never-audited stack as clean.
 func TestAnUnparseableProjectDegradesTheDomain(t *testing.T) {
@@ -47,7 +47,7 @@ func TestAnUnparseableProjectDegradesTheDomain(t *testing.T) {
 	if partial.Covered != 1 || partial.Total != 2 {
 		t.Errorf("coverage = %d/%d, want 1/2", partial.Covered, partial.Total)
 	}
-	// The stack that did parse is still audited — partial means incomplete,
+	// The stack that did parse is still audited; partial means incomplete,
 	// not failed.
 	var sawPrivileged bool
 	for _, f := range findings {

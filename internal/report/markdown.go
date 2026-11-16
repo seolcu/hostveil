@@ -7,7 +7,7 @@ import (
 
 // markdown renders d as GitHub-flavored Markdown: a header, then one section
 // per Section, findings grouped severity-first with their evidence as a
-// table. Paragraphs are written unwrapped — Markdown renderers reflow their
+// table. Paragraphs are written unwrapped: Markdown renderers reflow their
 // own text, and a hard wrap here would fight that.
 func markdown(d Doc) ([]byte, error) {
 	var b strings.Builder
@@ -24,7 +24,7 @@ func markdown(d Doc) ([]byte, error) {
 	}
 
 	b.WriteString("---\n\n")
-	fmt.Fprintf(&b, "*Hostveil %s — generated %s. No AI was used to produce this report; "+
+	fmt.Fprintf(&b, "*Hostveil %s: generated %s. No AI was used to produce this report; "+
 		"every explanation above comes directly from the finding Hostveil detected.*\n",
 		d.Version, d.Generated.Format("2006-01-02 15:04 MST"))
 
@@ -39,7 +39,7 @@ func writeMDSection(b *strings.Builder, sec Section) {
 		b.WriteString(p + "\n\n")
 	}
 	for _, kv := range sec.KV {
-		fmt.Fprintf(b, "- **%s** — %s\n", kv.Key, kv.Value)
+		fmt.Fprintf(b, "- **%s**; %s\n", kv.Key, kv.Value)
 	}
 	if len(sec.KV) > 0 {
 		b.WriteString("\n")

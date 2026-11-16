@@ -53,13 +53,13 @@ func (*Checker) Source() model.Source { return model.SourceFirewall }
 // It is not true anywhere else, and that is the one exception worth spelling
 // out. probe only knows ufw, firewall-cmd, nft and iptables. On a host with
 // none of them installed nothing fails, `unreadable` stays false, and the
-// function returns StatusInactive — which Check reports as "no active host
+// function returns StatusInactive, which Check reports as "no active host
 // firewall" at the top severity. On Linux that is correct: those four are the
 // front-ends, and a host without any of them has no host firewall.
 //
 // On macOS it is a false finding on every machine. The packet filter is pf
 // and the application firewall is socketfilterfw, and neither string appears
-// anywhere in this repository, so Hostveil is not reporting an absence — it
+// anywhere in this repository, so Hostveil is not reporting an absence: it
 // is reporting its own blindness as one. See platform.AuditableOS.
 //
 // Inside a container it is a false finding for the same reason and on a path
@@ -67,7 +67,7 @@ func (*Checker) Source() model.Source { return model.SourceFirewall }
 // packet filter that decides whether its ports answer belongs to the host and
 // cannot be seen from inside. So every one of those four probes finds nothing,
 // nothing fails, and the absence of a failure is read as the absence of a
-// firewall — a guaranteed top-severity finding on any container that runs a
+// firewall: a guaranteed top-severity finding on any container that runs a
 // scan, and an unactionable one, since there is nothing inside to install or
 // enable. Verified on bare Fedora and Alpine images: 50/100 on a fabricated
 // High. See platform.ContainerRuntime.
@@ -84,8 +84,8 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 // Check probes the known firewall front-ends and, if none is active,
 // emits a single finding.
 //
-// When a tool is installed but every probe fails — `ufw status` and
-// `nft list ruleset` both need root — the honest answer is "cannot tell",
+// When a tool is installed but every probe fails: `ufw status` and
+// `nft list ruleset` both need root: the honest answer is "cannot tell",
 // not "no firewall". Reporting the finding there would accuse a properly
 // firewalled host of being wide open purely because the scan lacked
 // privileges.
@@ -113,7 +113,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			// The same rule the probe itself follows: not being able to read
 			// the policy degrades the domain, it does not accuse the host.
 			partial = &check.PartialError{
-				Reason: "cannot read " + which + "'s default inbound policy — re-run with sudo to check whether the firewall actually denies unmatched traffic",
+				Reason: "cannot read " + which + "'s default inbound policy; re-run with sudo to check whether the firewall actually denies unmatched traffic",
 			}
 		}
 
@@ -125,7 +125,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			findings = append(findings, fs...)
 			// Both gaps are reported, not the first. A domain can have more
 			// than one blind spot, and deciding to keep only the earlier one
-			// discards the other — which is the failure the two container
+			// discards the other, which is the failure the two container
 			// checkers were fixed for, still here because this one kept a
 			// comment defending it.
 			//
@@ -146,7 +146,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		return findings, nil
 	case StatusUnknown:
 		return nil, &check.PartialError{
-			Reason: "cannot read firewall state — re-run with sudo to check the host firewall",
+			Reason: "cannot read firewall state; re-run with sudo to check the host firewall",
 		}
 	}
 	how := "Enable a firewall that defaults to denying inbound traffic and allow only what you need (e.g. SSH). Important: allow your SSH port before enabling the firewall so you do not lock yourself out."
@@ -154,7 +154,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		// ufw or firewalld on a hypervisor would fight the firewall the
 		// platform ships, over the same chains.
 		how = "On Proxmox VE, enable the datacenter firewall rather than installing another one: Datacenter → Firewall → Options → Firewall, or `enable: 1` under [OPTIONS] in /etc/pve/firewall/cluster.fw. " +
-			"Its default inbound policy is DROP, with the web interface (8006) and SSH still allowed from the management network — check that the address you connect from is in it before enabling."
+			"Its default inbound policy is DROP, with the web interface (8006) and SSH still allowed from the management network: check that the address you connect from is in it before enabling."
 	}
 	findings := []model.Finding{
 		model.NewFinding("firewall.inactive", "No active host firewall",
@@ -216,7 +216,7 @@ func mergePartial(a, b *check.PartialError) *check.PartialError {
 // answer here and is reported as one: no ports, no fix.
 //
 // Every one of them, not the first. sshd serving on two ports at once is how
-// an operator changes the SSH port without locking themselves out — `Port 22`
+// an operator changes the SSH port without locking themselves out: `Port 22`
 // and `Port 2222` together, verify the new one works, then drop the old.
 // Returning only the first meant the fix allowed one and `ufw --force enable`
 // severed the other, with no checkpoint to undo it. The fix's entire
@@ -254,7 +254,7 @@ const (
 	// StatusActive means a supported firewall is actively filtering.
 	StatusActive
 	// StatusUnknown means a firewall tool is installed but could not be
-	// queried — almost always missing root. It is deliberately distinct
+	// queried: almost always missing root. It is deliberately distinct
 	// from Inactive: "I could not look" is not evidence of absence.
 	StatusUnknown
 )
@@ -299,12 +299,12 @@ func probe(ctx context.Context, r platform.CommandRunner) (Status, string) {
 	// not, which is the only signal stable across versions: some print
 	// "running" to stdout, others to stderr, and Run captures stdout only.
 	// Matching the text therefore read a running firewalld as absent on every
-	// host of the second kind — a High finding on a firewalled machine.
+	// host of the second kind; a High finding on a firewalled machine.
 	//
 	// Not every non-zero exit is a silence, though. 252 is firewalld saying it
 	// is not running, as root or not; 253 is a user it will not answer. Both
 	// read as unreadable once, so a root scan of a host with firewalld
-	// stopped reported "cannot read firewall state — re-run with sudo" and
+	// stopped reported "cannot read firewall state: re-run with sudo" and
 	// never firewall.inactive. Found on a real Fedora 44.
 	if platform.Has(r, "firewall-cmd") {
 		_, err := r.Run(ctx, "firewall-cmd", "--state")
@@ -322,7 +322,7 @@ func probe(ctx context.Context, r platform.CommandRunner) (Status, string) {
 	// INPUT chain whose policy stays ACCEPT, so the iptables probe below read
 	// a firewalled hypervisor as having no firewall at all. The status line
 	// is "Status: enabled/running", with " (pending changes)" appended while
-	// a rule edit is being compiled — still filtering.
+	// a rule edit is being compiled; still filtering.
 	if st, which := query("pve-firewall", "pve-firewall", []string{"status"}, func(s string) bool {
 		for _, line := range strings.Split(strings.ToLower(s), "\n") {
 			if strings.HasPrefix(strings.TrimSpace(line), "status: enabled/running") {
@@ -338,7 +338,7 @@ func probe(ctx context.Context, r platform.CommandRunner) (Status, string) {
 	}
 	// iptables last, and only as a fallback: on a modern host the nft backend
 	// already reported the same rules above. It matters for a host still on
-	// iptables-persistent with no nft binary, which every probe above misses —
+	// iptables-persistent with no nft binary, which every probe above misses,
 	// so a correctly firewalled machine was told it had no firewall at all,
 	// and the ports checker simultaneously stopped treating it as shielded.
 	if st, which := query("iptables", "iptables", []string{"-S", "INPUT"}, hasDropPolicy); st == StatusActive {
@@ -353,7 +353,7 @@ func probe(ctx context.Context, r platform.CommandRunner) (Status, string) {
 }
 
 // hasHostFirewall reports whether an nft ruleset contains an actual
-// host-level input firewall — a base chain hooked at input whose default
+// host-level input firewall: a base chain hooked at input whose default
 // policy drops or rejects traffic (what ufw, firewalld, and hand-written
 // nftables firewalls install). It deliberately does NOT count the tables
 // Docker adds for container networking: those hook prerouting/forward/

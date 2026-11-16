@@ -96,7 +96,7 @@ func TestColoredOutputResetsEveryEscape(t *testing.T) {
 	const reset = "\x1b[0m"
 	last := strings.LastIndex(out, "\x1b[")
 	if last < 0 || !strings.HasPrefix(out[last:], reset) {
-		t.Errorf("output ends with an unreset color escape (%q) — the terminal would stay colored", out[last:min(last+20, len(out))])
+		t.Errorf("output ends with an unreset color escape (%q); the terminal would stay colored", out[last:min(last+20, len(out))])
 	}
 }
 

@@ -35,7 +35,7 @@ func TestBatchOutcomeSummary(t *testing.T) {
 				Applied: []string{"a", "b"}, Skipped: []string{"c", "d", "e"},
 				Interrupted: true, NewScore: score,
 			},
-			want: []string{"Applied 2", "skipped 3", "Interrupted — 3 of 5 were never attempted."},
+			want: []string{"Applied 2", "skipped 3", "Interrupted; 3 of 5 were never attempted."},
 		},
 		// The other half: a failure must never be silent, which is what the
 		// fix-all path did by reporting only the applied count.

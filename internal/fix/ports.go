@@ -13,9 +13,9 @@ func registerPorts(r *Registry) {
 	r.Register("ports.exposed-admin", buildUFWDenyPort)
 	r.Register("ports.redis-bind", buildRedisDirective("bind", "bind 127.0.0.1 ::1", "Bind Redis to loopback",
 		"Redis ships with no authentication by default; binding it to loopback means the only way to "+
-			"reach it is already being on this host — closes it to the network entirely."))
+			"reach it is already being on this host; closes it to the network entirely."))
 	r.Register("ports.redis-protected-mode", buildRedisDirective("protected-mode", "protected-mode yes", "Enable Redis protected mode",
-		"Turns on Redis's own built-in refusal to serve remote clients when no password is set — a "+
+		"Turns on Redis's own built-in refusal to serve remote clients when no password is set; a "+
 			"second, independent barrier behind the bind address, so a firewall or compose slip elsewhere "+
 			"doesn't leave Redis exposed anyway."))
 	r.Register("ports.redis-disable-config", buildRedisDirective("rename-command CONFIG", `rename-command CONFIG ""`, "Disable the Redis CONFIG command",
@@ -47,7 +47,7 @@ func buildRedisDirective(key, line, label, benefit string) Builder {
 // carries none of them.
 //
 // The checker offers it only where ufw is running and the port is not
-// Docker's, and reads ufw's rules back the same way ufw applies them — so the
+// Docker's, and reads ufw's rules back the same way ufw applies them, so the
 // re-check sees the port closed.
 func buildUFWDenyPort(f model.Finding) (Fix, error) {
 	port := f.Evidence["port"]
@@ -59,8 +59,8 @@ func buildUFWDenyPort(f model.Finding) (Fix, error) {
 	}
 	rule := port + "/tcp"
 	// The allow goes first. ufw treats a deny with the same match as an
-	// allow already in the ruleset as a duplicate — "Skipping inserting
-	// existing rule", exit 0 — so prepending alone did nothing on exactly the
+	// allow already in the ruleset as a duplicate: "Skipping inserting
+	// existing rule", exit 0, so prepending alone did nothing on exactly the
 	// host this finding fires on, one with that port allowed, while the fix
 	// reported success. Found on a real ufw by scripts/e2e/individual.sh.
 	// Deleting a rule that is not there is also exit 0, and prepend works on
@@ -75,8 +75,8 @@ func buildUFWDenyPort(f model.Finding) (Fix, error) {
 			Label: "Deny " + rule + " ahead of every other ufw rule",
 			Benefit: what + " stops being reachable from any other machine, while everything on this host keeps " +
 				"reaching it as before.",
-			Warning: "Every remote client of " + what + " is cut off — an application server on another machine, a " +
-				"replica, a backup job, your own desktop client — including ones a subnet allow rule used to let " +
+			Warning: "Every remote client of " + what + " is cut off; an application server on another machine, a " +
+				"replica, a backup job, your own desktop client, including ones a subnet allow rule used to let " +
 				"in. An existing `allow " + rule + "` is deleted first, because ufw will not put a deny for the same " +
 				"port ahead of it. There is no checkpoint: undo it with `ufw delete deny " + rule + "`, and " +
 				"`ufw allow " + rule + "` if you had that rule. Binding the service to 127.0.0.1 in its own " +
@@ -88,7 +88,7 @@ func buildUFWDenyPort(f model.Finding) (Fix, error) {
 
 // firewalldRejectPort is buildUFWDenyPort for firewalld: a rich rule that
 // rejects the port, at a negative priority so firewalld applies it before
-// the zone's ports and services — which is what lets it close a port the
+// the zone's ports and services, which is what lets it close a port the
 // zone opened, the case this finding fires on. On a real Fedora 44 the port
 // answered from outside with the zone opening it and stopped with this rule.
 // It goes in at runtime and permanently rather than through a reload, which
@@ -108,8 +108,8 @@ func firewalldRejectPort(f model.Finding, port string) (Fix, error) {
 			Label: "Reject " + port + "/tcp in firewalld's " + zone + " zone, ahead of its ports and services",
 			Benefit: what + " stops being reachable from any other machine, while everything on this host keeps " +
 				"reaching it as before.",
-			Warning: "Every remote client of " + what + " is cut off — an application server on another machine, a " +
-				"replica, a backup job, your own desktop client — including ones the zone used to let in. There is " +
+			Warning: "Every remote client of " + what + " is cut off; an application server on another machine, a " +
+				"replica, a backup job, your own desktop client, including ones the zone used to let in. There is " +
 				"no checkpoint: undo it with `firewall-cmd --zone=" + zone + " --remove-rich-rule='" + rule +
 				"'`, and again with --permanent. Binding the service to 127.0.0.1 in its own configuration is the " +
 				"cleaner long-term fix.",

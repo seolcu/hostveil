@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Put a throwaway host into the `seeded` profile — the deliberately
+# Put a throwaway host into the `seeded` profile: the deliberately
 # misconfigured self-hosted server the published measurements were taken on.
 #
 #   scripts/measure/seed.sh [--user NAME] [--no-instruments] [--force]
@@ -8,7 +8,7 @@
 # This exists because the measurements page told a reader to clone the repo and
 # run the harness, and the harness measures whatever host it is pointed at. The
 # seeding lived in a script nobody could see, so the published figures were not
-# reproducible by the instructions published beside them — and the fixture drifted
+# reproducible by the instructions published beside them, and the fixture drifted
 # from the product without anything noticing: an earlier copy of it wrote the
 # OpenClaw config to ~/.config/openclaw/, which is not a path the agent checker
 # scans, so the domain reported "no agent runtime found" on a host seeded to have
@@ -53,8 +53,8 @@ say() { printf '\n==> %s\n' "$*"; }
 # has no "automatic updates are switched off" weakness to find. The number that
 # comes back is then higher for a reason that has nothing to do with hostveil.
 #
-# That is the same failure this whole project is built against — an absence
-# read as an all-clear — so it is recorded rather than left to be inferred from
+# That is the same failure this whole project is built against (an absence
+# read as an all-clear) so it is recorded rather than left to be inferred from
 # a score. Every weakness declares itself as it is seeded, the manifest goes
 # where run.sh can put it in the measurement JSON, and a `require` that does
 # not arrive stops the script instead of producing a host nobody can interpret.
@@ -67,7 +67,7 @@ MISSING=()
 seeded() { SEEDED+=("$1"); }
 
 # unseedable records a weakness this distribution cannot express, with the
-# reason. It is not a failure — it is the difference between two hosts, which
+# reason. It is not a failure: it is the difference between two hosts, which
 # is exactly what a cross-distribution measurement is for.
 unseedable() {
   MISSING+=("$1|$2")
@@ -83,7 +83,7 @@ require() {
   if "$@"; then
     seeded "$what"
   else
-    echo "seed: could not seed $what on $DISTRO_ID — refusing to leave a host that cannot be measured" >&2
+    echo "seed: could not seed $what on $DISTRO_ID; refusing to leave a host that cannot be measured" >&2
     exit 1
   fi
 }
@@ -149,7 +149,7 @@ case "$DISTRO_ID $DISTRO_LIKE" in
   *debian*|*ubuntu*) PKG=apt ;;
   *fedora*|*rhel*|*centos*) PKG=dnf ;;
   *alpine*) PKG=apk ;;
-  *) echo "seed: unsupported distribution '$DISTRO_ID' — it needs an entry in the distro seam" >&2; exit 1 ;;
+  *) echo "seed: unsupported distribution '$DISTRO_ID'; it needs an entry in the distro seam" >&2; exit 1 ;;
 esac
 
 # Alpine runs OpenRC, which is not a smaller systemd: it has no unit files, so
@@ -242,7 +242,7 @@ say "base packages ($DISTRO_ID, $PKG, $INIT)"
 pkg_refresh
 # ufw is Debian's; Fedora ships firewalld and Alpine neither. Hostveil probes
 # ufw, firewall-cmd, nft and iptables in that order, so what matters is that
-# *a* firewall exists to be found switched off — not which one.
+# *a* firewall exists to be found switched off, not which one.
 case "$PKG" in
   apt) pkg_install ca-certificates curl git ufw "$SSHD_PKG" sudo iproute2 systemd-sysv python3 jq || true ;;
   dnf) pkg_install ca-certificates curl git firewalld "$SSHD_PKG" sudo iproute python3 jq || true ;;
@@ -264,7 +264,7 @@ docker version --format '{{.Server.Version}}' 2>&1 | tail -1
 # different measurement, it is most of one missing.
 require docker have_docker
 
-say "weak SSH — a drop-in that outranks the image's own"
+say "weak SSH: a drop-in that outranks the image's own"
 # Ubuntu's sshd_config includes sshd_config.d/*.conf at the top and sshd keeps
 # the FIRST value it obtains for each keyword, so the cloud image's own
 # drop-ins beat anything appended to the main file. The 00- prefix sorts ahead
@@ -300,7 +300,7 @@ esac
 #
 # The distinction decides which remediation Hostveil offers, so seeding it
 # wrong measures the wrong path. Writing the config for a package that is not
-# installed — which this script used to do — produces a host no distribution
+# installed (which this script used to do) produces a host no distribution
 # ships: the finding then carries no config path, Hostveil offers the exec
 # install instead of the one-file edit, and apt's postinst leaves an existing
 # "0" alone, so the fix completes and the finding survives. The harness caught
@@ -332,12 +332,12 @@ EOF
     # Alpine ships no unattended-upgrade mechanism at all, so there is nothing
     # to install and switch off. The domain has no weakness to find here, and
     # that raises the score for a reason that is about Alpine and not about
-    # Hostveil — which is why it is recorded rather than inferred.
+    # Hostveil, which is why it is recorded rather than inferred.
     unseedable updates-off "Alpine ships no unattended-upgrade mechanism"
     ;;
 esac
 
-say "host-level weaknesses — a native datastore on 0.0.0.0, a uid-0 twin, loose perms"
+say "host-level weaknesses: a native datastore on 0.0.0.0, a uid-0 twin, loose perms"
 # A NON-Docker datastore on every interface. This is the exposure a Compose
 # audit can never see, and the one Hostveil reports and declines to fix,
 # because the config path differs per datastore.
@@ -345,7 +345,7 @@ pkg_install "$REDIS_PKG" || true
 if [ -f "$REDIS_CONF" ]; then
   sed -i 's/^bind .*/bind 0.0.0.0/; s/^protected-mode yes/protected-mode no/' "$REDIS_CONF" 2>/dev/null || true
   # apt's postinst already starts the service before this edit runs, and
-  # `enable --now` on an already-running unit does not reload its config —
+  # `enable --now` on an already-running unit does not reload its config:
   # it has to be a restart, or the listener stays on the package's default
   # bind address and the weakness silently fails to seed.
   svc_enable "$REDIS_SVC" || true
@@ -354,7 +354,7 @@ if [ -f "$REDIS_CONF" ]; then
 fi
 # The listener is the weakness, not the package. This is the exposure a Compose
 # audit can never see, and it is the one Hostveil reports and declines to fix
-# because the config path differs per datastore — so a run without it is
+# because the config path differs per datastore, so a run without it is
 # missing the finding that argues for that decline.
 if have_exposed_redis; then
   seeded exposed-datastore
@@ -377,7 +377,7 @@ require shadow-readable have_open_shadow
 say "sysctl overrides that fight the distribution's own defaults"
 # ptrace_scope=0 and perf_event_paranoid<2 are among the most-copied lines in
 # "gdb: Operation not permitted" and "perf: Permission denied" troubleshooting
-# guides — an operator running a game server or profiling a stuck daemon
+# guides; an operator running a game server or profiling a stuck daemon
 # applies both and drops them in sysctl.d to survive a reboot. This is an
 # operator undoing a hardened default, not merely leaving one alone; most of
 # the sysctl domain's other rules already match what these distributions ship
@@ -392,7 +392,7 @@ require debug-sysctl have_debug_sysctl
 say "an unhardened operator-written systemd unit"
 case "$INIT" in
   systemd)
-    # A hand-written backup unit with none of the sandboxing directives — what
+    # A hand-written backup unit with none of the sandboxing directives: what
     # copying a tutorial's minimal [Unit]/[Service]/[Install] skeleton for a
     # backup script produces, and one of the most common ways a self-hoster
     # ends up with an *operator* unit (as opposed to a distro-packaged one) in
@@ -416,7 +416,7 @@ EOF
     require systemd-unhardened-unit have_unhardened_unit
     ;;
   openrc)
-    unseedable systemd-unhardened-unit "Alpine runs OpenRC — no systemd units to leave unhardened"
+    unseedable systemd-unhardened-unit "Alpine runs OpenRC: no systemd units to leave unhardened"
     ;;
 esac
 
@@ -454,13 +454,13 @@ for dir in /opt/stacks/*/; do
     || echo "     (a service did not start; its compose file is still audited)"
 done
 # The compose *files* are what the container domain audits, so they are the
-# weakness — a service that failed to start still produces its findings.
+# weakness: a service that failed to start still produces its findings.
 require compose-stacks have_stacks
 
 if [ "$INSTRUMENTS" = 1 ]; then
   say "the instruments the harness reports through"
   # Absent ones are recorded as absent rather than passed over, so this is a
-  # convenience — but a run missing one is a run missing a whole column, and
+  # convenience, but a run missing one is a run missing a whole column, and
   # the CVE domain being absent also *raises* the score, because an excluded
   # axis leaves the denominator rather than scoring zero.
   pkg_install lynis || echo "  lynis: install failed (no packaged lynis on $DISTRO_ID)"
@@ -484,12 +484,12 @@ fi
 
 write_manifest
 
-say "seeded — what the harness will find"
+say "seeded: what the harness will find"
 printf '  %-14s %s\n' \
-  "lynis" "$(command -v lynis || echo 'MISSING — no hardening index column')" \
-  "docker-bench" "$(test -x /opt/docker-bench-security/docker-bench-security.sh && echo ok || echo 'MISSING — no CIS column')" \
-  "trivy" "$(command -v trivy || echo 'MISSING — CVE axis N/A, and the score reads higher for it')" \
-  "hostveil" "$(command -v hostveil || echo 'MISSING — build it: go build -o /usr/local/bin/hostveil ./cmd/hostveil')" \
+  "lynis" "$(command -v lynis || echo 'MISSING: no hardening index column')" \
+  "docker-bench" "$(test -x /opt/docker-bench-security/docker-bench-security.sh && echo ok || echo 'MISSING: no CIS column')" \
+  "trivy" "$(command -v trivy || echo 'MISSING: CVE axis N/A, and the score reads higher for it')" \
+  "hostveil" "$(command -v hostveil || echo 'MISSING: build it: go build -o /usr/local/bin/hostveil ./cmd/hostveil')" \
   "containers" "$(docker ps -q 2>/dev/null | wc -l)"
 
 cat <<'NEXT'
@@ -499,7 +499,7 @@ Next:
   scripts/measure/run.sh -c -p seeded /tmp/measurement.json
 
 run.sh applies every fix and then rolls them all back, so it leaves this host
-roughly as this script left it — roughly, because enabling a firewall and
+roughly as this script left it: roughly, because enabling a firewall and
 installing unattended-upgrades are not file edits and have no checkpoint. Seed
 again rather than measuring twice on one host.
 NEXT

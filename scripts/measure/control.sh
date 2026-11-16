@@ -41,13 +41,13 @@ LoginGraceTime 60
 EOF
 
 # The seeded host carries a deliberately weak drop-in. Leaving it in place
-# would mean testing precedence rather than hardening — a later file wins, and
+# would mean testing precedence rather than hardening: a later file wins, and
 # 00- sorts before 99-, so this one already loses to nothing. Remove it so the
 # control host is actually hardened.
 rm -f /etc/ssh/sshd_config.d/00-hostveil-demo.conf
 
 # CIS Debian 3.3 (network parameters) and 1.5 (kernel hardening). One
-# drop-in, named so it wins against everything the distribution ships — on
+# drop-in, named so it wins against everything the distribution ships, on
 # Ubuntu, /etc/sysctl.d/99-sysctl.conf is a symlink to /etc/sysctl.conf and
 # sorts last, so a lower number would silently lose.
 say "sysctl: CIS 3.3/1.5 baseline"
@@ -88,7 +88,7 @@ say "accounts: CIS 5.4.2"
 # script was ever run, and the second is what hid the first.
 #
 # userdel identifies "is this account in use" by *uid*, and a UID-0 twin
-# shares root's — so it finds pid 1 running as that uid and refuses with
+# shares root's, so it finds pid 1 running as that uid and refuses with
 # "user breakglass is currently used by process 1". That is true of every host
 # there has ever been, which makes it a step that could never once have
 # succeeded. `2>/dev/null || true` meant the script said "removing UID 0
@@ -127,4 +127,4 @@ json.dump(cfg, open(path, "w"), indent=2)
 PY
 fi
 
-say "control host hardened — measure it with: scripts/measure/run.sh -p control"
+say "control host hardened: measure it with: scripts/measure/run.sh -p control"

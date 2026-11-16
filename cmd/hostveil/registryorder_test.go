@@ -11,7 +11,7 @@ import (
 // place.
 //
 // It is not cosmetic. Registry.Run writes its results by registry index, so
-// this list — not model.AllSources — is what orders Report.Domains, which
+// this list (not model.AllSources) is what orders Report.Domains, which
 // is what the CLI prints as its per-domain status block. The other two
 // copies were merged into sourceDefs and can no longer disagree with each
 // other; this one still can, and a registration slipped into the wrong
@@ -21,7 +21,7 @@ import (
 // It also catches the plainer mistake: a checker package written, tested,
 // and never registered. buildEngine is the only place that turns a checker
 // into something that runs, and a domain missing from here reports nothing
-// while its axis reports N/A — which reads as "not installed", not as "we
+// while its axis reports N/A, which reads as "not installed", not as "we
 // forgot to call it".
 func TestCheckerRegistrationMatchesSourceOrder(t *testing.T) {
 	var registered []model.Source
@@ -36,7 +36,7 @@ func TestCheckerRegistrationMatchesSourceOrder(t *testing.T) {
 	}
 	for i := range want {
 		if registered[i] != want[i] {
-			t.Errorf("checker %d is %q, but domain %d is %q — registration order must match sourceDefs",
+			t.Errorf("checker %d is %q, but domain %d is %q; registration order must match sourceDefs",
 				i, registered[i], i, want[i])
 		}
 	}

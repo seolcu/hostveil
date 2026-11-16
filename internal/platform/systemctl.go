@@ -19,9 +19,9 @@ func ShowProperty(out, key string) string {
 //
 //	ExecStart={ path=/usr/bin/dockerd ; argv[]=/usr/bin/dockerd -H fd:// ; ... }
 //
-// A unit may have several ExecStart entries — a drop-in that clears the
+// A unit may have several ExecStart entries: a drop-in that clears the
 // packaged one with a bare `ExecStart=` and adds its own is the standard way
-// to change a daemon's flags — so every argv list is returned.
+// to change a daemon's flags, so every argv list is returned.
 func ExecStartArgv(out string) []string {
 	var argvs []string
 	rest := out

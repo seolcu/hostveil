@@ -95,7 +95,7 @@ func TestAMissingSudoSaysSoRatherThanGoingQuiet(t *testing.T) {
 // Every subcommand goes through parseAndElevate, so the ordering above is a
 // property of the program rather than of the one command a test happened to
 // run. A command that called parseFlags directly would parse its flags and
-// never elevate — which is the quieter half of the same defect.
+// never elevate, which is the quieter half of the same defect.
 func TestNoCommandParsesFlagsWithoutElevating(t *testing.T) {
 	fset := token.NewFileSet()
 	entries, err := os.ReadDir(".")

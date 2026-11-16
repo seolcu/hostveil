@@ -1,6 +1,6 @@
 // Package ports implements a native host listening-port checker. It reads
 // the host's TCP listening sockets with `ss` and flags services bound to a
-// non-loopback address — the natively-installed exposed database, admin
+// non-loopback address: the natively-installed exposed database, admin
 // panel, or app that the Compose-only exposure checks never see, because it
 // isn't a container at all.
 package ports
@@ -61,7 +61,7 @@ var datastorePorts = map[int]string{
 
 // adminPorts maps well-known admin/management-UI ports to a human name.
 // Only single-purpose admin UIs whose default port is unambiguous belong
-// here — Cockpit's 9090 is absent because Prometheus claims the same port,
+// here: Cockpit's 9090 is absent because Prometheus claims the same port,
 // and a finding titled with the wrong product half the time teaches the
 // user to ignore the whole domain.
 var adminPorts = map[int]string{
@@ -128,7 +128,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	}
 
 	// Generic non-loopback listeners are only worth flagging when there is
-	// no host firewall acting as a backstop — otherwise every expected web
+	// no host firewall acting as a backstop: otherwise every expected web
 	// server would be noise. When there is no firewall, surface them once,
 	// aggregated, at low severity.
 	//
@@ -143,7 +143,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			findings = append(findings, genericFinding(generic))
 		case firewall.StatusUnknown:
 			return findings, &check.PartialError{
-				Reason: "cannot read firewall state — re-run with sudo to judge whether open ports are shielded",
+				Reason: "cannot read firewall state; re-run with sudo to judge whether open ports are shielded",
 			}
 		}
 	}
@@ -185,7 +185,7 @@ func regexpLine(text, expression string) bool {
 
 // dockerProxy is the process Docker publishes a port through. Its traffic is
 // accepted by Docker's own rules before ufw or firewalld sees it, so a rule
-// in either neither shields it nor closes it — on a real Fedora 44 a
+// in either neither shields it nor closes it, on a real Fedora 44 a
 // published port answered from outside with firewalld running.
 const dockerProxy = "docker-proxy"
 

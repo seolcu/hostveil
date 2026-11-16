@@ -43,7 +43,7 @@ func TestLooksLiteralRejectsReferencesAndPlaceholders(t *testing.T) {
 	}
 	for _, c := range cases {
 		if got := LooksLiteral(c.value); got != c.want {
-			t.Errorf("LooksLiteral(%q) = %v, want %v — %s", c.value, got, c.want, c.why)
+			t.Errorf("LooksLiteral(%q) = %v, want %v; %s", c.value, got, c.want, c.why)
 		}
 	}
 }

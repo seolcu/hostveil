@@ -19,8 +19,8 @@ var evidenceRead = regexp.MustCompile(`Evidence\["([a-zA-Z0-9_-]+)"\]`)
 // holding together.
 //
 // Finding IDs have five tests, environment variables three, the model's enums
-// two, the layout registries two, the severity CSS two. Evidence — the keys a
-// checker writes and a fix parses to build a remediation out of — had none, in
+// two, the layout registries two, the severity CSS two. Evidence (the keys a
+// checker writes and a fix parses to build a remediation out of) had none, in
 // either direction.
 //
 // The direction that matters is a fix reading a key no checker writes. It does
@@ -40,7 +40,7 @@ func TestEveryEvidenceKeyAFixReadsIsWrittenByAChecker(t *testing.T) {
 
 	for key := range read {
 		if !written[key] {
-			t.Errorf("internal/fix reads Evidence[%q] and no checker writes it — "+
+			t.Errorf("internal/fix reads Evidence[%q] and no checker writes it; "+
 				"the builder errors, classify demotes the finding to Manual, and the "+
 				"user sees a fix button disappear with nothing to say why", key)
 		}
@@ -108,7 +108,7 @@ func evidenceKeysWritten(t *testing.T, dir string) map[string]bool {
 	// Not every write goes through WithEvidence: a checker that decides a key
 	// after building the finding assigns into the map directly
 	// (`f.Evidence["installed"] = "true"`). Those are picked up textually,
-	// which cannot tell a write from a read — but on the checker side there
+	// which cannot tell a write from a read, but on the checker side there
 	// is nothing to read, so every match is a write.
 	walkGo(t, dir, func(_ string, src string) {
 		for _, m := range evidenceRead.FindAllStringSubmatch(src, -1) {

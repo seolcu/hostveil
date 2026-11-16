@@ -20,14 +20,14 @@
 // # What it concludes
 //
 // Every indicator is one of three verdicts. An attempt is an attack that left
-// no sign of success — the thousands of scans and password guesses every
+// no sign of success: the thousands of scans and password guesses every
 // public server receives. Suspicious is something a normal host also does,
 // which a person should confirm. Compromise is something a healthy host does
 // not do. Keeping attempts apart from the rest is most of the value: the
 // question an operator actually has is not "was I attacked" (yes, constantly)
 // but "did any of it work".
 //
-// Alongside the indicators it reports evidence gaps — questions the bundle
+// Alongside the indicators it reports evidence gaps; questions the bundle
 // cannot answer because the host never recorded what would answer them. Those
 // come from the forensic-readiness domain, which is how the two halves of
 // this work meet: readiness decides what triage will be able to see.

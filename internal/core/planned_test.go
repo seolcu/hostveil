@@ -17,7 +17,7 @@ import (
 //
 // A plan that over-counts is the failure worth naming: the terminal draws a
 // bar out of it, and a bar that reaches eleven of twelve and stops there reads
-// as a hang — which is precisely the state the progress display was added to
+// as a hang, which is precisely the state the progress display was added to
 // rule out.
 func TestThePlanNamesTheDomainsTheScanActuallyRuns(t *testing.T) {
 	sources := []model.Source{model.SourceSSH, model.SourceFirewall, model.SourceSysctl, model.SourceUpdates}
@@ -57,7 +57,7 @@ func TestThePlanNamesTheDomainsTheScanActuallyRuns(t *testing.T) {
 			slices.Sort(planned)
 			slices.Sort(ran)
 			if !slices.Equal(planned, ran) {
-				t.Errorf("planned %v, ran %v — a progress bar built on this plan would stop short or overrun", planned, ran)
+				t.Errorf("planned %v, ran %v: a progress bar built on this plan would stop short or overrun", planned, ran)
 			}
 		})
 	}

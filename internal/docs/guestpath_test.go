@@ -17,7 +17,7 @@ import (
 //
 //	vagrant ssh -c 'sudo /vagrant/scripts/measure/run.sh -c -p seeded out.json'
 //
-// and there is no /vagrant in that VM — the synced folder is mounted at
+// and there is no /vagrant in that VM; the synced folder is mounted at
 // /hostveil. Three commands, one for the harness, one for the control group
 // and one for the control run, all of them "No such file or directory". The
 // path is Vagrant's own default, which is exactly why it reads as right.

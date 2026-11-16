@@ -19,7 +19,7 @@ const siteFramePath = "testdata/site-frame.ans"
 // Everything else the website says about Hostveil is held to the code by a
 // test: the domain names, the finding IDs, the fix column, the measured
 // figures. The screenshots were outside all of it, and they drifted exactly
-// the way an unchecked claim does — the published terminal frame kept showing
+// the way an unchecked claim does: the published terminal frame kept showing
 // a four-level severity scale for two releases after the scale became three,
 // so the one part of the page a reader trusts on sight was the part saying
 // something untrue.
@@ -71,8 +71,8 @@ func TestSiteFrameIsCurrent(t *testing.T) {
 }
 
 // firstDifference reports the first line that differs, with the escape
-// sequences made visible. A raw diff of two ANSI frames is unreadable — the
-// colour codes are most of the bytes — and the failure that matters is
+// sequences made visible. A raw diff of two ANSI frames is unreadable (the
+// colour codes are most of the bytes) and the failure that matters is
 // usually one line of text, not the styling around it.
 func firstDifference(want, got string) string {
 	wl, gl := strings.Split(want, "\n"), strings.Split(got, "\n")

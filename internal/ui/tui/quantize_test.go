@@ -22,12 +22,12 @@ import (
 // Hostveil's subject is servers, and a server is reached over SSH, which does
 // not forward COLORTERM. Without it colorprofile degrades the TUI to the
 // xterm-256 palette, so the hexes in internal/ui/theme are not colors that get
-// drawn — they are inputs to a quantiser, and what the operator sees is
+// drawn: they are inputs to a quantiser, and what the operator sees is
 // whatever comes out of it.
 //
 // What comes out is not a rounding error. ansi.Convert256 maps a color into
 // the 6x6x6 cube by truncating each channel, works out the nearest entry on
-// the greyscale ramp, and returns whichever is closer *in HSLuv* — a choice
+// the greyscale ramp, and returns whichever is closer *in HSLuv*: a choice
 // its own source marks with "XXX: this is where it differs from tmux". For a
 // mid-lightness color of moderate chroma the grey wins, and the color is drawn
 // as grey.
@@ -43,7 +43,7 @@ import (
 // profiles, and this test is the only place that asks.
 //
 // It lives here rather than in internal/ui/theme because that package is pure
-// data and string formatting by design — no lipgloss, no image/color — which
+// data and string formatting by design (no lipgloss, no image/color) which
 // is what lets the web dashboard depend on it. The quantiser is lipgloss's.
 
 // chromatic roles must survive as colors. Each is a thing the design system
@@ -62,13 +62,13 @@ func chromaticRoles(p theme.Palette) map[string]string {
 
 // distinctRoles must stay telling apart. Low is in the list but not in
 // chromaticRoles: "no known path today" is allowed to be a grey, and is one on
-// purpose — it just may not be *the same* grey as the muted text it sits
+// purpose; it just may not be *the same* grey as the muted text it sits
 // beside, or as the body text.
 //
 // Manual and Unavail join Low here for the same reason, not chromaticRoles:
 // both are deliberately muted rather than heats (see the Palette doc
 // comment), so a 256-color terminal collapsing one to a cube greyscale entry
-// is acceptable — it just may not be the *same* entry as Low, Slate, Bone, or
+// is acceptable; it just may not be the *same* entry as Low, Slate, Bone, or
 // each other, which is exactly the collision the two used to share when both
 // fell back to one dim grey in kindStyle.
 func distinctRoles(p theme.Palette) map[string]string {
@@ -95,7 +95,7 @@ func TestEveryHeatSurvivesA256ColorTerminal(t *testing.T) {
 	for _, th := range theme.All() {
 		for role, hex := range chromaticRoles(th.Palette) {
 			if i := index256(hex); isGrey(i) {
-				t.Errorf("%s: %s is %s, which a 256-color terminal draws as xterm %d — "+
+				t.Errorf("%s: %s is %s, which a 256-color terminal draws as xterm %d; "+
 					"a grey. Over SSH, where COLORTERM is not forwarded, that is what "+
 					"the operator sees. Raise its chroma until the cube beats the "+
 					"greyscale ramp; the hue is what the theme is recognised by, so "+
@@ -115,7 +115,7 @@ func TestNoTwoRolesCollapseOntoOneColor(t *testing.T) {
 			if other, ok := seen[i]; ok {
 				t.Errorf("%s: %s (%s) and %s (%s) both quantise to xterm %d, so on a "+
 					"256-color terminal they are the same pixel value. Nord shipped "+
-					"like this — its muted text and a Low finding were one colour, "+
+					"like this: its muted text and a Low finding were one colour, "+
 					"and no amount of looking gets that distinction back.",
 					th.ID, role, hex, other, distinctRoles(th.Palette)[other], i)
 				continue
@@ -148,7 +148,7 @@ func TestNudgingForThe256PathLeavesTruecolorAlone(t *testing.T) {
 // actually broke: a correct color is worth nothing if the row draws something
 // else with it. The screenshot that started this had 42 High findings on it
 // and not one red pixel, and no test in this package noticed, because they all
-// compare rendered output against rendered output — both sides built from the
+// compare rendered output against rendered output: both sides built from the
 // same styles, so both sides are wrong together.
 //
 // So this renders a real row and puts it through colorprofile's writer at
@@ -193,7 +193,7 @@ func TestAHighRowIsDrawnInAColorOverSSH(t *testing.T) {
 	}
 	// And the assertion that does not lean on the palette to grade the
 	// palette. Everything above compares the row against Crit, so it passes
-	// whatever Crit happens to be — including the grey that shipped. What a
+	// whatever Crit happens to be, including the grey that shipped. What a
 	// reader needs is not that the row agrees with the theme file; it is that
 	// the row arrives in a color at all.
 	if isGrey(want) {

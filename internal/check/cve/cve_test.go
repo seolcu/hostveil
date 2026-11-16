@@ -36,7 +36,7 @@ func TestCVEAvailableWithTrivyAlone(t *testing.T) {
 
 // The bug this guards: the docker CLI on PATH says nothing about whether this
 // user may talk to the socket. Treating presence as reachability let the scan
-// proceed, fail on every image, and report zero vulnerabilities — which scores
+// proceed, fail on every image, and report zero vulnerabilities, which scores
 // as a perfect 100 on a host that was never actually scanned. The host's
 // packages are still scanned, so the axis is Degraded and says why.
 func TestCVEUnreachableDaemonIsAGapNotAClean(t *testing.T) {
@@ -126,13 +126,13 @@ type scriptRunner struct {
 	noDocker, dockerDown bool
 
 	// The checker scans images concurrently, so this fake is called from
-	// several goroutines at once. Only the recording needs guarding — the
+	// several goroutines at once. Only the recording needs guarding: the
 	// scripted maps are written before the scan starts and only read during
 	// it. The real DefaultRunner is stateless and needs none of this.
 	mu   sync.Mutex
 	argv []string // the last trivy argv, for flag assertions
 	// calls records every trivy invocation in order: "warm" for the DB
-	// download, the image name for a scan. The order is the point — the
+	// download, the image name for a scan. The order is the point: the
 	// download has to finish before the first scan starts.
 	calls []string
 }
@@ -231,7 +231,7 @@ const oneVuln = `{"Results":[{"Vulnerabilities":[{"VulnerabilityID":"CVE-2021-12
 // one alone leaves the scan failing: without the DB downloaded first, all four
 // race to fetch it and all four die; without a private analysis cache, they
 // race for its lock and most die. On the demo VM that showed up as 1 of 7
-// images covered and a vulnerability axis of 44/100 where the truth was 16 —
+// images covered and a vulnerability axis of 44/100 where the truth was 16:
 // wrong in the flattering direction, because an image that could not be
 // scanned contributes no vulnerabilities.
 //
@@ -263,7 +263,7 @@ func TestConcurrentScansDoNotShareOneTrivyCache(t *testing.T) {
 // The fast path is not available on every Trivy: `--cache-backend` is
 // experimental and `memory` is newer than the flag. An unsupported value fails
 // the warm-up exactly like a host with no network does, and nothing here can
-// tell those apart — so both fall back to scanning one image at a time, which
+// tell those apart, so both fall back to scanning one image at a time, which
 // no version of Trivy has ever had trouble with.
 //
 // Treating the warm-up as a dependency instead would turn a working offline
@@ -310,7 +310,7 @@ func TestCVEPartialScanIsDegraded(t *testing.T) {
 }
 
 // An unparsed compose file is a set of images the scan never even knew to
-// look at, and the clean branch already counts it — but the branch that
+// look at, and the clean branch already counts it, but the branch that
 // handles a failed image scan did not, so a host that hit both reported
 // "covered 1 of 2" while a whole stack's images had gone unexamined. Two
 // independent blind spots, one of them silently discarded.
@@ -368,7 +368,7 @@ func withBrokenProject(lsJSON string) string {
 }
 
 // Every image failing is not a partial result, it is a failed one. It must be
-// an ordinary error so the axis drops out of scoring entirely — a Degraded
+// an ordinary error so the axis drops out of scoring entirely: a Degraded
 // domain is still scored, and would hand back the false 100 all over again.
 func TestCVEAllImagesFailingIsError(t *testing.T) {
 	r := composeProject(t)
@@ -399,7 +399,7 @@ func TestCVECleanScanIsNotDegraded(t *testing.T) {
 	}
 }
 
-// A host with no containers genuinely has no image vulnerabilities — that is a
+// A host with no containers genuinely has no image vulnerabilities, that is a
 // clean Done, not a degraded or failed scan.
 func TestCVENoImagesIsClean(t *testing.T) {
 	r := composeProject(t)
@@ -458,12 +458,12 @@ func TestParseTrivyFixedAndUnfixed(t *testing.T) {
 	if fixed.Remediation != model.RemediationReview {
 		t.Errorf("fixable group should be Review, got %v", fixed.Remediation)
 	}
-	// High, from its own group — not the Critical sitting in the other one.
+	// High, from its own group, not the Critical sitting in the other one.
 	if fixed.Severity != model.SeverityHigh {
 		t.Errorf("severity = %v, want high", fixed.Severity)
 	}
 
-	// Vulnerabilities with no upstream fix are Unavailable — set at the
+	// Vulnerabilities with no upstream fix are Unavailable: set at the
 	// source, no post-scan override band-aid.
 	unfixed := byID["cve.unpatched-image"]
 	if unfixed.Remediation != model.RemediationUnavailable {
@@ -633,7 +633,7 @@ func TestRollupSeverityIgnoresUnfixableCVEs(t *testing.T) {
 	}
 }
 
-// With nothing fixable there is no action to offer, so there is no rollup —
+// With nothing fixable there is no action to offer, so there is no rollup:
 // the per-CVE findings still stand on their own.
 func TestNoRollupWhenNothingIsFixable(t *testing.T) {
 	out := `{"Results":[{"Vulnerabilities":[
@@ -653,7 +653,7 @@ func TestNoRollupWhenNothingIsFixable(t *testing.T) {
 
 // A digest pin cannot be improved by pulling, and the honest remediation
 // (repin to a newer digest) needs data the report does not carry. The
-// finding is still emitted — the image really is outdated, and hiding a real
+// finding is still emitted: the image really is outdated, and hiding a real
 // problem because its remediation is awkward is the worse failure.
 func TestRollupForDigestPinnedImageIsManual(t *testing.T) {
 	out := `{"Results":[{"Vulnerabilities":[
@@ -742,7 +742,7 @@ func FuzzParseTrivy(f *testing.F) {
 //
 // summary() and evidence() each walked a severity list written out in this
 // file. When Critical and High merged into one constant, both rows stayed
-// and the same constant was read twice — so an image whose worst
+// and the same constant was read twice, so an image whose worst
 // vulnerabilities were all top-severity described itself as "2 high, 2 high"
 // and attached the same evidence key twice. Nothing failed; the count was
 // right, said twice.

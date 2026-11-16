@@ -31,7 +31,7 @@ func TestTheFirewallFixOpensSSHBeforeItClosesEverything(t *testing.T) {
 		t.Errorf("Kind = %v, want the declared Auto that Validate accepts for a single action", fx.Kind)
 	}
 	if got := fx.EffectiveKind(); got != model.RemediationReview {
-		t.Errorf("EffectiveKind = %v, want Review — this cannot be rolled back", got)
+		t.Errorf("EffectiveKind = %v, want Review; this cannot be rolled back", got)
 	}
 	if len(fx.Actions) != 1 {
 		t.Fatalf("want one action carrying both commands in order, got %d", len(fx.Actions))
@@ -85,7 +85,7 @@ func TestNoFirewallFixWithoutUfw(t *testing.T) {
 // Two ports at once is how an operator changes the SSH port without locking
 // themselves out: `Port 22` and `Port 2222` both listening, verify the new
 // one, then drop the old. The fix allowed the first and `ufw --force enable`
-// severed the second, with no checkpoint to undo it — on a host reached only
+// severed the second, with no checkpoint to undo it, on a host reached only
 // over SSH.
 //
 // The whole justification for this fix existing is that Hostveil now knows
@@ -110,7 +110,7 @@ func TestTheFirewallFixAllowsEverySSHPortBeforeItClosesEverything(t *testing.T) 
 		{"ufw", "--force", "enable"},
 	} {
 		if strings.Join(cmds[i], " ") != strings.Join(want, " ") {
-			t.Errorf("command %d is %v, want %v — every port has to be open before the policy closes", i, cmds[i], want)
+			t.Errorf("command %d is %v, want %v; every port has to be open before the policy closes", i, cmds[i], want)
 		}
 	}
 	if !strings.Contains(fx.Actions[0].Warning, "2222") {

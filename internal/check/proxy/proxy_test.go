@@ -34,7 +34,7 @@ func nginxRoot(t *testing.T, files map[string]string) string {
 // noDocker is a host with no Docker at all, which is the arrangement every
 // nginx test wants: the Traefik half then has nothing to say and cannot
 // degrade the domain. fail2ban is scripted as not installed for the same
-// reason — a test about TLS versions or directory listing has nothing to
+// reason: a test about TLS versions or directory listing has nothing to
 // say about scan protection either, and without this every one of them
 // would degrade on an unscripted systemctl call.
 func noDocker() platform.Env {
@@ -78,7 +78,7 @@ func TestDeprecatedTLSVersionsAreFound(t *testing.T) {
 
 // The trap the whole rule turns on. "tlsv1" is a prefix of "tlsv1.2" and
 // "tlsv1.3", so a substring or prefix test flags the *recommended*
-// configuration — and the finding would then be on every correctly configured
+// configuration, and the finding would then be on every correctly configured
 // nginx there is, which is worse than not having the rule.
 func TestModernTLSIsNotFlagged(t *testing.T) {
 	for _, line := range []string{
@@ -142,8 +142,8 @@ func TestAutoindexOffIsNotAFinding(t *testing.T) {
 }
 
 // Following include is the whole reason this reads more than one file.
-// Debian's nginx.conf is almost empty — the configuration lives in conf.d and
-// sites-enabled — so a checker that read only the top-level file would audit
+// Debian's nginx.conf is almost empty (the configuration lives in conf.d and
+// sites-enabled) so a checker that read only the top-level file would audit
 // an empty shell on the distribution most of this program's users run. That is
 // the mistake internal/check/ssh was fixed for with sshd_config's Include.
 func TestIncludesAreFollowed(t *testing.T) {
@@ -241,7 +241,7 @@ func TestTraefikWithoutTheInsecureAPIIsClean(t *testing.T) {
 
 // A host with neither surface has no proxy to have an opinion about, and the
 // axis is renormalized away rather than scored on an absence. This is the
-// opposite of the firewall domain, where absence *is* the finding — nobody is
+// opposite of the firewall domain, where absence *is* the finding: nobody is
 // insecure for not running a reverse proxy.
 func TestAHostWithNoProxyIsSkipped(t *testing.T) {
 	c := &Checker{NginxRoot: filepath.Join(t.TempDir(), "nope")}
@@ -254,7 +254,7 @@ func TestAHostWithNoProxyIsSkipped(t *testing.T) {
 	}
 }
 
-// An unreadable config is a gap, not a clean result — the ordinary non-root
+// An unreadable config is a gap, not a clean result: the ordinary non-root
 // scan, and the case this whole codebase is most insistent about.
 func TestUnreadableConfigDegradesRatherThanPassing(t *testing.T) {
 	root := nginxRoot(t, map[string]string{"nginx.conf": "include conf.d/*.conf;\n"})
