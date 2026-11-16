@@ -17,7 +17,7 @@ import (
 // compile, no test that builds its input from the tables notices, and the
 // page still renders, with the severity gutters, the filter chips and the
 // overview chips drawn in the default colour, which reads as a theme that
-// happens to be low-contrast rather than as a stylesheet that no longer
+// happens to be low-contrast and hides a stylesheet that no longer
 // matches anything.
 //
 // That is not hypothetical. It shipped: the landing page's mockup chips
@@ -38,7 +38,7 @@ func TestTheStylesheetStylesEverySeverityTheModelDeclares(t *testing.T) {
 		// reader chasing a failure lands in the right place. The list was
 		// four of these while the comment above already promised the set,
 		// and the two it missed are the ones no one looks at, which is
-		// exactly why they need a test rather than a reading.
+		// exactly why they need a test.
 		for _, want := range []string{
 			fmt.Sprintf(".finding.%s", sev.String()),       // per-finding gutter
 			fmt.Sprintf(".over-chip.sev-%s", sev),          // overview chips

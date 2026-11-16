@@ -25,10 +25,10 @@ import (
 func TestGeneratedDomainsCoverEverySource(t *testing.T) {
 	js := modelJS()
 	for i, src := range model.AllSources() {
-		// The whole entry, not its pieces. A domain present but nameless is
+		// The whole entry. A domain present but nameless is
 		// the failure mode that shipped: app.js falls back to String(s) and
-		// draws the integer, which reads as a rendering glitch rather than
-		// as a missing table entry.
+		// draws the integer, which reads as a rendering glitch and hides
+		// the missing table entry.
 		want := fmt.Sprintf("    %q: {id: %q, label: %q, rank: %d},", src.String(), src.String(), src.Label(), i)
 		if src.Label() == "" {
 			t.Errorf("%q (%d) reaches the dashboard with no label", src.String(), int(src))
@@ -185,7 +185,7 @@ func TestAppJSHasNoMirroredTables(t *testing.T) {
 	for _, tc := range []struct{ shape, what string }{
 		{`1: "Container"`, "a domain table"},
 		{`container: "Container"`, "an axis-label table"},
-		// Built from the model rather than written out, because a literal
+		// Built from the model, because a literal
 		// here is a guard keyed to one generation of the scale: these three
 		// rows named the four-level names, so the table they had to catch
 		// after the merge (the current three, in order) went straight

@@ -635,13 +635,13 @@
             <dd>
               <p lang="en">Delete <code>network_mode: host</code></p>
               <p class="fix-benefit" lang="en">✓ The container gets its own network namespace again, so it can no longer bind any port on the host or reach services that listen only on the host's loopback.</p>
-              <p class="fix-warning" lang="en">⚠ With host networking gone, whatever port the service listens on is no longer reachable from outside the container until you publish it under <code>ports:</code>; Hostveil cannot tell which ports those are. Services that discover devices on the LAN (Home Assistant, Plex/Jellyfin DLNA) also lose that. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ With host networking gone, whatever port the service listens on is no longer reachable from outside the container until you publish it under <code>ports:</code>; Hostveil cannot tell which ports those are. Services that discover devices on the LAN (Home Assistant, Plex/Jellyfin DLNA) also lose that. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.dr002"><code>compose.dr002</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Bind published port to 127.0.0.1</p>
               <p class="fix-benefit" lang="en">✓ Once recreated, the service stops being reachable from the network at all; only processes on this host can reach it, closing off whatever guessing or scanning the open port currently invites.</p>
-              <p class="fix-warning" lang="en">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.dr004"><code>compose.dr004</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -653,25 +653,25 @@
             <dd>
               <p lang="en">Delete <code>privileged: true</code></p>
               <p class="fix-benefit" lang="en">✓ A compromise of this container stops being a compromise of the host: it loses direct access to every device and almost every kernel capability root has.</p>
-              <p class="fix-warning" lang="en">⚠ If the service really does need host devices or kernel access; a VPN client, a hardware monitor, Docker-in-Docker; it will fail to start or silently lose that function. Check its logs after recreating it, and if it needs one specific capability, grant just that with cap_add. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ If the service really does need host devices or kernel access; a VPN client, a hardware monitor, Docker-in-Docker; it will fail to start or silently lose that function. Check its logs after recreating it, and if it needs one specific capability, grant just that with cap_add. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds005"><code>compose.ds005</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Remove SYS_ADMIN from cap_add</p>
               <p class="fix-benefit" lang="en">✓ Takes away a capability that can be escalated into a container escape, so a compromise of this service stays inside it.</p>
-              <p class="fix-warning" lang="en">⚠ Services add capabilities intentionally: NET_ADMIN for a VPN or a firewall container, SYS_ADMIN for FUSE mounts, SYS_PTRACE for a debugger. If this one needs SYS_ADMIN, it will fail the operation that uses it once recreated. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Services add capabilities intentionally: NET_ADMIN for a VPN or a firewall container, SYS_ADMIN for FUSE mounts, SYS_PTRACE for a debugger. If this one needs SYS_ADMIN, it will fail the operation that uses it once recreated. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds006"><code>compose.ds006</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Add security_opt no-new-privileges:true</p>
               <p class="fix-benefit" lang="en">✓ A process that breaks into this container can no longer gain more privilege than it started with via a setuid binary; one of the more common container-escape stepping stones, closed.</p>
-              <p class="fix-warning" lang="en">⚠ This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds008"><code>compose.ds008</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Set restart: unless-stopped</p>
               <p class="fix-benefit" lang="en">✓ The service comes back on its own after a crash, an OOM kill, or a host reboot instead of silently staying down until someone notices.</p>
-              <p class="fix-warning" lang="en">⚠ This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds009"><code>compose.ds009</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -679,12 +679,12 @@
                 <li>
               <p lang="en">Run app as 1000:1000; the first regular user, which most images that support a non-root user are built for (recommended)</p>
               <p class="fix-benefit" lang="en">✓ A process that escapes this container lands on the host as an unprivileged UID instead of root.</p>
-              <p class="fix-warning" lang="en">⚠ Images that start as root to set up and then drop privileges themselves; postgres chowning its data directory, nginx binding port 80; fail to start when a user is forced on them, and files already on a volume stay owned by whoever wrote them. Check the image's documentation for the UID it expects. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Images that start as root to set up and then drop privileges themselves; postgres chowning its data directory, nginx binding port 80; fail to start when a user is forced on them, and files already on a volume stay owned by whoever wrote them. Check the image's documentation for the UID it expects. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
                 </li>
                 <li>
               <p lang="en">Run app as 65534:65534; nobody, for a service that writes nothing it needs to own</p>
               <p class="fix-benefit" lang="en">✓ A process that escapes this container lands on the host as an unprivileged UID instead of root.</p>
-              <p class="fix-warning" lang="en">⚠ Images that start as root to set up and then drop privileges themselves; postgres chowning its data directory, nginx binding port 80; fail to start when a user is forced on them, and files already on a volume stay owned by whoever wrote them. Check the image's documentation for the UID it expects. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Images that start as root to set up and then drop privileges themselves; postgres chowning its data directory, nginx binding port 80; fail to start when a user is forced on them, and files already on a volume stay owned by whoever wrote them. Check the image's documentation for the UID it expects. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
                 </li>
               </ul>
             </dd>
@@ -694,17 +694,17 @@
                 <li>
               <p lang="en">Limit app to 1g; typical application container (recommended)</p>
               <p class="fix-benefit" lang="en">✓ Gives the container a memory ceiling, so a leak or a runaway process inside it gets OOM-killed and restarted instead of exhausting the host's memory and taking every other service down with it.</p>
-              <p class="fix-warning" lang="en">⚠ Too low a limit gets the container OOM-killed under load. Start generous, watch <code>docker stats</code>, and tighten later. This is a file edit, so it is fully reversible. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Too low a limit gets the container OOM-killed under load. Start generous, watch <code>docker stats</code>, and tighten later. This is a file edit, so it is fully reversible. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
                 </li>
                 <li>
               <p lang="en">Limit app to 512m; small service (proxy, exporter, static site)</p>
               <p class="fix-benefit" lang="en">✓ Gives the container a memory ceiling, so a leak or a runaway process inside it gets OOM-killed and restarted instead of exhausting the host's memory and taking every other service down with it.</p>
-              <p class="fix-warning" lang="en">⚠ Too low a limit gets the container OOM-killed under load. Start generous, watch <code>docker stats</code>, and tighten later. This is a file edit, so it is fully reversible. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Too low a limit gets the container OOM-killed under load. Start generous, watch <code>docker stats</code>, and tighten later. This is a file edit, so it is fully reversible. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
                 </li>
                 <li>
               <p lang="en">Limit app to 2g; database or JVM service</p>
               <p class="fix-benefit" lang="en">✓ Gives the container a memory ceiling, so a leak or a runaway process inside it gets OOM-killed and restarted instead of exhausting the host's memory and taking every other service down with it.</p>
-              <p class="fix-warning" lang="en">⚠ Too low a limit gets the container OOM-killed under load. Start generous, watch <code>docker stats</code>, and tighten later. This is a file edit, so it is fully reversible. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Too low a limit gets the container OOM-killed under load. Start generous, watch <code>docker stats</code>, and tighten later. This is a file edit, so it is fully reversible. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
                 </li>
               </ul>
             </dd>
@@ -712,61 +712,61 @@
             <dd>
               <p lang="en">Remove the /var/run/docker.sock volume</p>
               <p class="fix-benefit" lang="en">✓ The container loses the Docker API, which is root on the host for anything that can reach it; so compromising this service stops meaning compromising the machine.</p>
-              <p class="fix-warning" lang="en">⚠ Portainer, Traefik's Docker provider, Watchtower and similar tools exist to talk to that API and stop working without it. If this is one of them, a socket proxy that allows only the calls it needs is the way to keep it working. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Portainer, Traefik's Docker provider, Watchtower and similar tools exist to talk to that API and stop working without it. If this is one of them, a socket proxy that allows only the calls it needs is the way to keep it working. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds017"><code>compose.ds017</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Add <code>:ro</code> to the /var/run/docker.sock mount</p>
               <p class="fix-benefit" lang="en">✓ A compromise of this container can still read /var/run/docker.sock but can no longer plant SSH keys, cron jobs or anything else there to persist on the host.</p>
-              <p class="fix-warning" lang="en">⚠ If the service writes under that mount (a backup tool restoring files, a config manager) those writes start failing with a read-only filesystem error. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ If the service writes under that mount (a backup tool restoring files, a config manager) those writes start failing with a read-only filesystem error. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds018"><code>compose.ds018</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Bind published port to 127.0.0.1</p>
               <p class="fix-benefit" lang="en">✓ Once recreated, the service stops being reachable from the network at all; only processes on this host can reach it, closing off whatever guessing or scanning the open port currently invites.</p>
-              <p class="fix-warning" lang="en">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds019"><code>compose.ds019</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Bind published port to 127.0.0.1</p>
               <p class="fix-benefit" lang="en">✓ Once recreated, the service stops being reachable from the network at all; only processes on this host can reach it, closing off whatever guessing or scanning the open port currently invites.</p>
-              <p class="fix-warning" lang="en">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Once app is recreated, it is reachable only from this host. If you access it from another machine, use an SSH tunnel, VPN, or reverse proxy. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds020"><code>compose.ds020</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Delete <code>pid: host</code></p>
               <p class="fix-benefit" lang="en">✓ The container stops seeing every process on the host, along with the credentials their command lines and environments tend to carry, and loses the ability to signal them.</p>
-              <p class="fix-warning" lang="en">⚠ A monitoring agent (node-exporter, netdata, a security scanner) uses this to observe the host; without it, it starts fine and reports only on itself. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ A monitoring agent (node-exporter, netdata, a security scanner) uses this to observe the host; without it, it starts fine and reports only on itself. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds021"><code>compose.ds021</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Delete <code>ipc: host</code></p>
               <p class="fix-benefit" lang="en">✓ The container can no longer read or tamper with shared memory that host processes and other containers use.</p>
-              <p class="fix-warning" lang="en">⚠ If the service shares memory with a process on the host intentionally, that sharing stops; if it only needs to share with one other container, <code>ipc: "service:NAME"</code> is the narrower setting. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ If the service shares memory with a process on the host intentionally, that sharing stops; if it only needs to share with one other container, <code>ipc: "service:NAME"</code> is the narrower setting. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds022"><code>compose.ds022</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Set read_only: true with tmpfs at /tmp and /run</p>
               <p class="fix-benefit" lang="en">✓ A process that breaks in can no longer replace the container's own binaries or leave tools behind in its filesystem; anything it writes outside the tmpfs mounts fails, and what it writes inside them is gone at the next restart.</p>
-              <p class="fix-warning" lang="en">⚠ Many images write somewhere other than /tmp and /run; a cache directory, a PID file, logs, and fail to start, or fail later, on a read-only root. Watch the logs after recreating it; each path it complains about needs a tmpfs or a volume. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Many images write somewhere other than /tmp and /run; a cache directory, a PID file, logs, and fail to start, or fail later, on a read-only root. Watch the logs after recreating it; each path it complains about needs a tmpfs or a volume. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds023"><code>compose.ds023</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Remove <code>seccomp:unconfined</code> from security_opt</p>
               <p class="fix-benefit" lang="en">✓ Docker's default syscall filter applies again, blocking the kernel interfaces a container escape usually goes through.</p>
-              <p class="fix-warning" lang="en">⚠ Someone disabled the filter for a reason, usually one syscall an application needs, such as a browser sandbox or a FUSE mount. That call will now fail with EPERM; if it does, a profile allowing just that syscall is the narrow fix. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Someone disabled the filter for a reason, usually one syscall an application needs, such as a browser sandbox or a FUSE mount. That call will now fail with EPERM; if it does, a profile allowing just that syscall is the narrow fix. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds024"><code>compose.ds024</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Remove <code>apparmor:unconfined</code> from security_opt</p>
               <p class="fix-benefit" lang="en">✓ Docker's default AppArmor profile confines the container again, putting back a host-enforced limit on what a compromise inside it can read and execute.</p>
-              <p class="fix-warning" lang="en">⚠ If the service mounts filesystems or writes under /proc or /sys, the default profile will deny it and the service will fail where it does that. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ If the service mounts filesystems or writes under /proc or /sys, the default profile will deny it and the service will fail where it does that. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
             <dt id="fix-compose.ds026"><code>compose.ds026</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Delete <code>userns_mode: host</code></p>
               <p class="fix-benefit" lang="en">✓ Root inside the container maps to an unprivileged host UID again, so a container escape no longer lands as host root.</p>
-              <p class="fix-warning" lang="en">⚠ Files on bind mounts that were written as host root become unreadable to the remapped root, which can stop a database or anything else that owns its data directory from starting. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ Files on bind mounts that were written as host root become unreadable to the remapped root, which can stop a database or anything else that owns its data directory from starting. This is a file edit with a checkpoint, so rolling it back restores the line exactly. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
             </dd>
           </dl>
           <h3>SSH</h3>
@@ -814,7 +814,7 @@
             <dd>
               <p lang="en">Disable host-based authentication</p>
               <p class="fix-benefit" lang="en">✓ Removes a trust-based login path that bypasses per-user keys entirely.</p>
-              <p class="fix-warning" lang="en">⚠ If any user logs in via host-based trust rather than their own key, this removes that path.</p>
+              <p class="fix-warning" lang="en">⚠ If any user logs in via host-based trust, this removes that path. Logins with their own key keep working.</p>
             </dd>
             <dt id="fix-ssh.ignorerhosts"><code>ssh.ignorerhosts</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -835,7 +835,7 @@
             <dt id="fix-ssh.loglevel"><code>ssh.loglevel</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Log SSH key fingerprints</p>
-              <p class="fix-benefit" lang="en">✓ Logs the key fingerprint used on every login, giving the operator forensic evidence of exactly which key authenticated, not just that a login succeeded.</p>
+              <p class="fix-benefit" lang="en">✓ Logs the key fingerprint used on every login, giving the operator forensic evidence of exactly which key authenticated each login.</p>
             </dd>
             <dt id="fix-ssh.maxauthtries"><code>ssh.maxauthtries</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -988,7 +988,7 @@
             <dt id="fix-updates.pending-security"><code>updates.pending-security</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Refresh apt metadata and fully upgrade installed packages</p>
-              <p class="fix-benefit" lang="en">✓ Applies whatever security patches are already sitting unapplied right now: closes today's already-known gaps rather than waiting for the next automatic run.</p>
+              <p class="fix-benefit" lang="en">✓ Applies whatever security patches are already sitting unapplied right now: closes today's already-known gaps without waiting for the next automatic run.</p>
               <p class="fix-warning" lang="en">⚠ Upgrading packages can restart the services they belong to, including sshd and the Docker daemon, and a container whose compose file has no restart policy in force stays down until <code>docker compose up -d</code> brings it back. A kernel or libc update may also need a reboot to take effect. There is no rollback checkpoint; undoing this means downgrading the affected packages by hand.</p>
             </dd>
             <dt id="fix-updates.process-accounting"><code>updates.process-accounting</code> <span class="fix-kind review">Review</span></dt>
@@ -1310,7 +1310,7 @@
             <dt id="fix-sysctl.accept-source-route"><code>sysctl.accept-source-route</code> <span class="fix-kind">Auto</span></dt>
             <dd>
               <p lang="en">Persist it: write /etc/sysctl.d/60-hostveil-accept-source-route.conf</p>
-              <p class="fix-benefit" lang="en">✓ Stops the kernel honoring source-routed packets, closing a way to make traffic take a path chosen by whoever sent it rather than by this network's own routing.</p>
+              <p class="fix-benefit" lang="en">✓ Stops the kernel honoring source-routed packets, closing a way to make traffic take a path chosen by whoever sent it.</p>
             </dd>
             <dt id="fix-sysctl.aslr"><code>sysctl.aslr</code> <span class="fix-kind">Auto</span></dt>
             <dd>
@@ -1670,7 +1670,7 @@
             <dd>
               <p lang="en">Set NoNewPrivileges=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Closes the setuid escalation path out of this unit: a compromised process cannot gain more privilege than the service already had, the same protection compose.ds006 gives a container.</p>
-              <p class="fix-warning" lang="en">⚠ Closes the setuid path out of this service. A service that escalates (anything calling a setuid helper) stops working, and it stops at the next restart rather than now.</p>
+              <p class="fix-warning" lang="en">⚠ Closes the setuid path out of this service. A service that escalates (anything calling a setuid helper) stops working, and it stops at the next restart.</p>
             </dd>
             <dt id="fix-systemd.private-devices"><code>systemd.private-devices</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -1712,7 +1712,7 @@
             <dd>
               <p lang="en">Set ProtectKernelModules=yes for app</p>
               <p class="fix-benefit" lang="en">✓ Stops the unit loading or removing kernel modules itself, closing a direct path to running arbitrary code in kernel space from what should be an ordinary service.</p>
-              <p class="fix-warning" lang="en">⚠ Only a service that loads or removes kernel modules itself at runtime: rather than modules already loaded at boot: needs this off.</p>
+              <p class="fix-warning" lang="en">⚠ Only a service that loads or removes kernel modules itself at runtime needs this off. Modules loaded at boot are unaffected.</p>
             </dd>
             <dt id="fix-systemd.protect-kernel-tunables"><code>systemd.protect-kernel-tunables</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -1759,12 +1759,12 @@
                 <li>
               <p lang="en">Enable it (fail2ban's own default: 10 minute ban) (recommended)</p>
               <p class="fix-benefit" lang="en">✓ Once fail2ban reloads, an IP that repeatedly requests nonexistent or known-vulnerable paths gets banned automatically; no more finding it and banning it yourself.</p>
-              <p class="fix-warning" lang="en">⚠ Takes effect on the next <code>fail2ban-client reload</code>, not immediately. A shared or NAT'd IP address could ban more than the one visitor responsible for it. This only ever affects HTTP(S) traffic: never SSH, and never the operator's own access to the host.</p>
+              <p class="fix-warning" lang="en">⚠ Takes effect on the next <code>fail2ban-client reload</code>. A shared or NAT'd IP address could ban more than the one visitor responsible for it. This only ever affects HTTP(S) traffic: never SSH, and never the operator's own access to the host.</p>
                 </li>
                 <li>
               <p lang="en">Enable it with a longer ban (1 week)</p>
               <p class="fix-benefit" lang="en">✓ Once fail2ban reloads, an IP that repeatedly requests nonexistent or known-vulnerable paths gets banned automatically; no more finding it and banning it yourself.</p>
-              <p class="fix-warning" lang="en">⚠ Takes effect on the next <code>fail2ban-client reload</code>, not immediately. A shared or NAT'd IP address could ban more than the one visitor responsible for it. This only ever affects HTTP(S) traffic: never SSH, and never the operator's own access to the host.</p>
+              <p class="fix-warning" lang="en">⚠ Takes effect on the next <code>fail2ban-client reload</code>. A shared or NAT'd IP address could ban more than the one visitor responsible for it. This only ever affects HTTP(S) traffic: never SSH, and never the operator's own access to the host.</p>
                 </li>
               </ul>
             </dd>
@@ -1785,7 +1785,7 @@
                 <li>
               <p lang="en">Remove --api.insecure=true; recreate app yourself</p>
               <p class="fix-benefit" lang="en">✓ The unauthenticated dashboard, and the map of every router and backend it shows, stops being served to anyone who reaches port 8080.</p>
-              <p class="fix-warning" lang="en">⚠ The dashboard is gone until you expose <code>api@internal</code> through a router with authentication. The edit has a checkpoint and rolls back exactly. This edits the file, not the running container: <code>docker compose up -d app</code> is what puts the change into force.</p>
+              <p class="fix-warning" lang="en">⚠ The dashboard is gone until you expose <code>api@internal</code> through a router with authentication. The edit has a checkpoint and rolls back exactly. This edits the file. The running container changes only after <code>docker compose up -d app</code> is what puts the change into force.</p>
                 </li>
               </ul>
             </dd>
@@ -1817,7 +1817,7 @@
             <dd>
               <p lang="en">Write /etc/rancher/k3s/config.yaml.d/99-hostveil-secrets-encryption.yaml, enable encryption, rotate the keys, and restart k3s</p>
               <p class="fix-benefit" lang="en">✓ Every Secret in the datastore is encrypted, the ones already there included, so a copied /var/lib/rancher/k3s or a shipped snapshot no longer hands over every password the cluster holds.</p>
-              <p class="fix-warning" lang="en">⚠ This cannot be rolled back: once Secrets are rewritten encrypted, removing the setting leaves them unreadable, so the way back is <code>k3s secrets-encrypt disable</code> and a rotation, by hand. It restarts k3s twice, which makes the API unavailable for the seconds each takes, and rewrites every Secret; running pods keep running. If a step fails, Hostveil stops there and says which, rather than undoing the earlier ones.</p>
+              <p class="fix-warning" lang="en">⚠ This cannot be rolled back: once Secrets are rewritten encrypted, removing the setting leaves them unreadable, so the way back is <code>k3s secrets-encrypt disable</code> and a rotation, by hand. It restarts k3s twice, which makes the API unavailable for the seconds each takes, and rewrites every Secret; running pods keep running. If a step fails, Hostveil stops there and says which. The earlier steps stay applied.</p>
             </dd>
             <dt id="fix-kube.token-readable"><code>kube.token-readable</code> <span class="fix-kind review">Review</span></dt>
             <dd>
@@ -1849,7 +1849,7 @@
             <dt id="fix-forensic.service-exec-unaudited"><code>forensic.service-exec-unaudited</code> <span class="fix-kind review">Review</span></dt>
             <dd>
               <p lang="en">Write an execve rule for uid 33 to /etc/audit/rules.d/90-hostveil-service-exec.rules and load it</p>
-              <p class="fix-benefit" lang="en">✓ Every program the web server's account starts is recorded with its time and arguments, so a webshell's first command is evidence rather than a guess.</p>
+              <p class="fix-benefit" lang="en">✓ Every program the web server's account starts is recorded with its time and arguments, so a webshell's first command is on record.</p>
               <p class="fix-warning" lang="en">⚠ A web application that legitimately starts programs; an image converter, a PDF renderer, a git-backed wiki; writes an audit record each time it does; watch <code>ausearch -k hostveil-svc-exec</code> for a day after applying. The rule file is a checkpoint; rolling it back removes the rule and reloads.</p>
             </dd>
           </dl>

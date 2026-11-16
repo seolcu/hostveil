@@ -108,7 +108,7 @@ func Text(r model.Report, opts Options) string {
 		// point at a button that has already been pressed, on the one row
 		// where pressing it again achieves nothing.
 		if f.Pending {
-			fmt.Fprintf(&b, " %sapplied, not in force yet%s\n", c.yellow, c.reset)
+			fmt.Fprintf(&b, " %sapplied, waiting to take effect%s\n", c.yellow, c.reset)
 		} else {
 			fmt.Fprintf(&b, " %s%s%s\n", c.dim, f.Remediation.Label(), c.reset)
 		}

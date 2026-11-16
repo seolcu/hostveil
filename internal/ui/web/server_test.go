@@ -47,7 +47,7 @@ func testServer(t *testing.T) (*Server, string) {
 // authedClient returns a client carrying the dashboard's access token in its
 // cookie jar, which is the state a browser is in after following the URL
 // Hostveil prints. Requests without it are rejected before routing, so every
-// test that exercises a route needs this rather than http.DefaultClient.
+// test that exercises a route needs this client.
 func authedClient(t *testing.T, s *Server, srv *httptest.Server) *http.Client {
 	t.Helper()
 	jar, err := cookiejar.New(nil)
@@ -345,7 +345,7 @@ func TestDashboardServed(t *testing.T) {
 
 // TestResultCarriesDelta: the dashboard has to be able to answer "did my
 // last round of fixes help?", which means the engine's delta must survive
-// the trip through the API rather than being dropped as it used to be.
+// the trip through the API. It used to be dropped.
 func TestResultCarriesDelta(t *testing.T) {
 	s, _ := testServer(t)
 	srv := httptest.NewServer(s.Handler())
@@ -459,7 +459,7 @@ func TestConcurrentRescanIsRefused(t *testing.T) {
 
 // The explain route must always answer with the deterministic explanation,
 // and with no AI provider wired in (the test engine has none) it says so in
-// ai_error rather than failing: AI is advisory everywhere or it is a
+// ai_error: AI is advisory everywhere or it is a
 // dependency, and it must not be a dependency.
 func TestExplainDegradesWithoutAI(t *testing.T) {
 	s, _ := testServer(t)
@@ -509,8 +509,7 @@ func TestRescanStatusRequiresTheToken(t *testing.T) {
 	}
 }
 
-// The dashboard's palette is generated from internal/ui/theme rather than
-// shipped in app.css, so that it and the TUI cannot drift. That only holds if
+// The dashboard's palette is generated from internal/ui/theme, so that it and the TUI cannot drift. That only holds if
 // the two generated routes serve.
 func TestThemeAssets(t *testing.T) {
 	s, _ := testServer(t)
@@ -604,7 +603,7 @@ func TestHostAllowlistJudgesTheWholeAuthority(t *testing.T) {
 		{"[::1]", true, "IPv6 loopback with no port, as http://[::1]/ sends it"},
 		{"127.0.0.1", true, "bare loopback, no port"},
 		{"localhost", true, "bare name, no port"},
-		{"127.0.0.1:", true, "empty port addresses the default, not a name"},
+		{"127.0.0.1:", true, "empty port addresses the default port"},
 
 		{"evil.example.com", false, "a plain hostile name"},
 		{"localhost.evil.com", false, "a name that merely starts with one of ours"},
@@ -621,8 +620,7 @@ func TestHostAllowlistJudgesTheWholeAuthority(t *testing.T) {
 	}
 }
 
-// And the same authority, refused through the middleware rather than the
-// function, because a guard that is correct but unwired protects nothing.
+// And the same authority, refused through the middleware, because a guard that is correct but unwired protects nothing.
 func TestAGuestPortSmugglingAHostnameIsRefused(t *testing.T) {
 	s, _ := testServer(t)
 	rec := httptest.NewRecorder()
@@ -689,7 +687,7 @@ func TestIndexLoadsTheGeneratedThemeAssets(t *testing.T) {
 // any page in the world made the dashboard apply every Auto fix on the host;
 // verified applying three real fixes to a compose file before this landed. An
 // <img> cannot carry the access token either, but the method restriction is
-// what makes the route unreachable rather than merely unauthorized.
+// what makes the route unreachable.
 func TestMutatingRoutesRejectGET(t *testing.T) {
 	s, path := testServer(t)
 	before, err := os.ReadFile(path)
@@ -825,8 +823,7 @@ func TestAppJSStripsTheTokenFromTheURL(t *testing.T) {
 	}
 }
 
-// The printed URL has to be the one that works, or the token is a puzzle
-// rather than a credential.
+// The printed URL has to be the one that works.
 func TestURLCarriesTheToken(t *testing.T) {
 	s, _ := testServer(t)
 	if !strings.Contains(s.URL(), "t="+s.token) {
@@ -835,7 +832,7 @@ func TestURLCarriesTheToken(t *testing.T) {
 }
 
 // Origin comparison decides whether a request may mutate the host, so it
-// parses the URL rather than trimming a prefix off it. The old hand-rolled
+// parses the URL. The old hand-rolled
 // version credited the host of anything that merely started with the right
 // characters.
 func TestOriginMatchingIsNotPrefixBased(t *testing.T) {
@@ -873,8 +870,8 @@ func TestSecFetchSiteBlocksCrossSite(t *testing.T) {
 	}
 }
 
-// A wildcard bind is an instruction to the listener, not an address anyone
-// can browse to, and the Host allowlist requires a loopback name whatever
+// A wildcard bind is an instruction to the listener, and no one can browse
+// to it, and the Host allowlist requires a loopback name whatever
 // the socket is bound to. The Vagrant demo binds 0.0.0.0 and reaches the
 // dashboard through a port-forward, so the URL it prints has to be usable.
 func TestURLRendersAWildcardBindAsLoopback(t *testing.T) {
@@ -919,8 +916,7 @@ func TestServeStopsWhenTheContextIsCancelled(t *testing.T) {
 	}
 }
 
-// Cancelled before ListenAndServe is even called is a clean stop, not a
-// failure to report: there is no reason to open a socket for a context
+// Cancelled before ListenAndServe is even called is a clean stop: there is no reason to open a socket for a context
 // that is already dead.
 func TestServeInterruptedDuringTheStartupScanIsNotAnError(t *testing.T) {
 	s, _ := testServer(t)
@@ -1097,7 +1093,7 @@ func TestBatchRoutesCarryTheOutcomeMessage(t *testing.T) {
 			}
 
 			// Decoded as a bare map as well, so this fails if the field is
-			// renamed or dropped from the wire rather than only from Go.
+			// renamed or dropped from the wire.
 			var raw map[string]any
 			if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 				t.Fatal(err)

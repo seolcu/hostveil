@@ -45,7 +45,7 @@ func TestScreenshotServe(t *testing.T) {
 		t.Skip("set HOSTVEIL_SCREENSHOT_ADDR to serve the published fixture for a screenshot")
 	}
 
-	// Rebuilt on the defaults rather than reusing testServer's, which picks
+	// Rebuilt on the defaults. testServer picks
 	// a non-default theme and arrangement so the tests do not
 	// silently pass on them. The published picture has to show what a person
 	// gets when they type `hostveil serve` and choose nothing.
@@ -94,7 +94,7 @@ func TestScreenshotServe(t *testing.T) {
 }
 
 // screenshotTheme and screenshotLayout resolve the two overrides. An unknown
-// ID is a hard failure rather than a fall back to the default, because Opts
+// ID is a hard failure, because Opts
 // silently accepts one, so a typo would otherwise serve a page that is named
 // after the palette asked for and drawn in another.
 func screenshotTheme(t *testing.T) string {

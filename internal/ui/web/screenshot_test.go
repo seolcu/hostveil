@@ -36,7 +36,7 @@ const stampPath = "testdata/web-shot.stamp"
 //
 // A hash cannot say what moved, so the failure prints each input's own digest
 // beside the recorded one, which narrows a re-shoot to "the stylesheet
-// changed" rather than "something did".
+// changed".
 //
 // After re-taking the screenshot, update the stamp:
 //
@@ -99,7 +99,7 @@ type screenshotInput struct{ name, digest string }
 // left the terminal screenshot stale.
 func screenshotInputs(t *testing.T) []screenshotInput {
 	t.Helper()
-	// The fixture the picture is *of*, not only the code that draws it.
+	// The fixture the picture is *of*, as well as the code that draws it.
 	//
 	// Without this the stamp answered half the question: PR #701 changed
 	// uitest.PublishedReport (a domain appeared, another stopped being
