@@ -73,8 +73,8 @@ the `run.sh` helper, and shut it down when you're done:
 
 ```bash
 cd demo
-./run.sh up        # boot the VM + rebuild hostveil + start the stacks (first run downloads the box + images)
-./run.sh build     # re-sync the repo and rebuild hostveil in the VM (after editing code)
+./run.sh up        # boot the VM + rebuild Hostveil + start the stacks (first run downloads the box + images)
+./run.sh build     # re-sync the repo and rebuild Hostveil in the VM (after editing code)
 ./run.sh scan      # scored report across all domains
 ./run.sh web       # dashboard at http://localhost:8787 (Ctrl-C to stop)
 ./run.sh shell     # a shell on the demo server, then e.g. `hostveil`

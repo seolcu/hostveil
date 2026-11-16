@@ -78,7 +78,7 @@ jobs:
     env:
       HOSTVEIL_ASSUME_HOST: "1"
     steps:
-      - name: Install the host tooling hostveil probes for
+      - name: Install the host tooling Hostveil probes for
         run: |
           apt-get update -qq
           # openssh-server for sshd and its -t validator; iproute2 for `ss`;

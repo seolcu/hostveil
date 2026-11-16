@@ -41,7 +41,7 @@ type Cache struct {
 // cache and not an error: this is a convenience, and a scan must never fail
 // because of it.
 func LoadCache(dir string) Cache {
-	data, err := os.ReadFile(filepath.Join(dir, cacheName)) //nolint:gosec // a path hostveil owns
+	data, err := os.ReadFile(filepath.Join(dir, cacheName)) //nolint:gosec // a path Hostveil owns
 	if err != nil {
 		return Cache{}
 	}

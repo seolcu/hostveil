@@ -670,16 +670,16 @@ scenario_reboot_preview() {
 scenario_fedora_updates() {
     command -v dnf5 >/dev/null || fail "this scenario is for a dnf5 host (Fedora 41 or later)"
 
-    step "updates.pending-security: hostveil counts what dnf lists"
+    step "updates.pending-security: Hostveil counts what dnf lists"
     # Scan first and list after, so both read the metadata the scan just
     # refreshed; listing first compared against a cache the scan replaced.
     local reported listed
     reported=$(count updates.pending-security)
     listed=$(dnf -q -C updateinfo list --security 2>/dev/null | awk '$2 == "security"' | wc -l)
     if ((listed > 0)); then
-        [[ $reported == 1 ]] || fail "dnf lists $listed security packages, hostveil reports no updates.pending-security"
+        [[ $reported == 1 ]] || fail "dnf lists $listed security packages, Hostveil reports no updates.pending-security"
         reported=$(jq -r '[.findings[] | select(.id == "updates.pending-security")][0].evidence.pending' /tmp/hv-scan.json)
-        [[ $reported == "$listed" ]] || fail "dnf lists $listed security packages, hostveil reports $reported"
+        [[ $reported == "$listed" ]] || fail "dnf lists $listed security packages, Hostveil reports $reported"
     else
         echo "  (no security updates pending on this image; the count is not exercised)"
     fi

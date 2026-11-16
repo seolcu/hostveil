@@ -29,14 +29,14 @@ usage() {
 Usage: install.sh [options]
 
 Options:
-  --version vX.Y.Z   Install a specific hostveil release (v prefix optional)
+  --version vX.Y.Z   Install a specific Hostveil release (v prefix optional)
   --no-trivy         Skip the optional trivy (image CVE scanner) install
-  --no-deps          Install hostveil only (same as --no-trivy)
+  --no-deps          Install Hostveil only (same as --no-trivy)
   --yes, -y          Non-interactive mode (install optional dependencies)
-  --uninstall        Remove hostveil, and say where its saved state lives
+  --uninstall        Remove Hostveil, and say where its saved state lives
   --help, -h         Show this help
 
-Re-running this script installs over an existing hostveil, which is the
+Re-running this script installs over an existing Hostveil, which is the
 supported way to upgrade: the binary is replaced and your saved scans and
 rollback checkpoints are left alone.
 EOF
@@ -79,7 +79,7 @@ uninstall() {
     echo "  ${GREEN}✓${RESET} removed /usr/bin/hostveil"
     removed=true
   else
-    echo "  hostveil is not installed at /usr/bin/hostveil"
+    echo "  Hostveil is not installed at /usr/bin/hostveil"
   fi
 
   local state
@@ -367,7 +367,7 @@ fi
 if [[ -z "$VERSION" ]]; then
   VERSION=$(github_latest_tag "$REPO") || true
   if [[ -z "$VERSION" ]]; then
-    echo "  ${RED}ERROR:${RESET} failed to determine latest hostveil version" >&2
+    echo "  ${RED}ERROR:${RESET} failed to determine latest Hostveil version" >&2
     echo "  Try again later or specify a version with --version vX.Y.Z" >&2
     exit 1
   fi

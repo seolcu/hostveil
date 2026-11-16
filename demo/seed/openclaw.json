@@ -1,9 +1,9 @@
-// Intentionally insecure OpenClaw gateway config for the hostveil demo.
+// Intentionally insecure OpenClaw gateway config for the Hostveil demo.
 //
 // This file is JSON5: comments and trailing commas and all.
 // OpenClaw documents its config as JSON5 and users comment it heavily, so a
 // config that parses ONLY as strict JSON would not exercise the checker's
-// real input. If hostveil ever regresses to a strict-JSON parse, the agent
+// real input. If Hostveil ever regresses to a strict-JSON parse, the agent
 // domain reports Degraded here and the demo shows it.
 //
 // Every setting below is one a real self-hoster plausibly sets while trying

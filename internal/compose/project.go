@@ -64,7 +64,7 @@ type Service struct {
 	Labels      map[string]string `yaml:"-"`
 }
 
-// Deploy carries the resource limits hostveil checks for.
+// Deploy carries the resource limits Hostveil checks for.
 type Deploy struct {
 	Resources struct {
 		Limits struct {

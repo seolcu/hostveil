@@ -50,7 +50,7 @@ internal/
   clirender/         the CLI's report rendering
   ui/{theme,tui,web}/  thin UIs over the engine, and the one palette registry
 demo/                the reproducible vulnerable-server VM (Vagrant)
-scripts/measure/     the harness that measures hostveil with other tools
+scripts/measure/     the harness that measures Hostveil with other tools
 site/                the marketing site (static, generated) see below)
 docs/                these docs, and docs/measurements/: committed results
 ```
