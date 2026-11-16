@@ -148,13 +148,13 @@ func publishedCountClaims() []countClaim {
 			file:   "README.md",
 			what:   "how much of what it finds it can also fix",
 			keys:   []string{"findings.total", "findings.fixable", "findings.auto", "findings.review"},
-			phrase: "**%s findings** across those domains, and **%s of them carry a fix**: %s Hostveil will apply unattended, %s only after you have read the diff",
+			phrase: "%s findings across those domains. %s of them carry a fix: Hostveil applies %s unattended and %s only after you have read the diff",
 		},
 		{
 			file:   "README.ko.md",
 			what:   "how much of what it finds it can also fix",
 			keys:   []string{"findings.total", "findings.fixable", "findings.auto", "findings.review"},
-			phrase: "이 영역들에서 **발견 항목 %s개**를 보고할 수 있고, 그중 **%s개에 수정이 붙어 있습니다.** %s개는 무인으로 적용하고, %s개는 차이를 읽은 뒤에만 적용합니다",
+			phrase: "이 영역들에서 발견 항목 %s개를 보고할 수 있습니다. 그중 %s개에 수정이 붙어 있습니다. %s개는 무인으로 적용하고, %s개는 차이를 읽은 뒤에만 적용합니다",
 		},
 		{
 			file:   "README.md",

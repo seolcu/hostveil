@@ -78,7 +78,7 @@ func TestSyncReadmeRewritesOnlyTheMarkedBlock(t *testing.T) {
 	if !strings.HasPrefix(got, "before\n\n"+countsStart+"\n") || !strings.HasSuffix(got, countsEnd+"\n\nafter\n") {
 		t.Errorf("text outside the markers moved:\n%s", got)
 	}
-	if !strings.Contains(got, "**10 findings**") || !strings.Contains(got, "**7 of them") {
+	if !strings.Contains(got, "10 findings") || !strings.Contains(got, "7 of them") {
 		t.Errorf("counts not written:\n%s", got)
 	}
 	if err := os.WriteFile(p, []byte("no markers\n"), 0o600); err != nil {
