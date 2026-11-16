@@ -33,7 +33,7 @@ func TestReportEndsWithActionableCommands(t *testing.T) {
 }
 
 // fix --all is only worth naming when something can use it, and the
-// count has to be the number of Auto findings, not the total.
+// count has to be the number of Auto findings.
 func TestFixAllOfferedOnlyWithAutoFindings(t *testing.T) {
 	withAuto := Text(report(
 		fnd("ssh.maxauthtries", model.SeverityLow, model.RemediationAuto),

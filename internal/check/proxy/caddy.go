@@ -30,7 +30,7 @@ import (
 // older, so there is no configuration of it that this rule could flag.
 //
 // Only the Caddyfile is read. A JSON configuration is reported as a coverage
-// gap rather than read as clean, because a Caddyfile's absence says nothing
+// gap, because a Caddyfile's absence says nothing
 // about what the JSON beside it contains.
 
 // caddyDefaultConfig is where both the distribution packages and the official
@@ -53,11 +53,10 @@ type caddyLine struct {
 //
 // The grammar is line-oriented, unlike nginx's: a newline ends a directive, a
 // token that is exactly `{` opens a block and one that is exactly `}` closes
-// it. Braces inside a token are placeholders (`{env.ADMIN}`), not blocks,
-// which is why they are compared as whole unquoted tokens. `#` starts a
+// it. Braces inside a token are placeholders (`{env.ADMIN}`), which is why they are compared as whole unquoted tokens. `#` starts a
 // comment only at the start of a token, and quotes and backticks group a token
 // across whitespace. A heredoc (`<<MARKER`) runs to the line that starts with
-// the marker, and its body is skipped rather than read as directives: it is
+// the marker, and its body is skipped: it is
 // content the proxy serves, and an `admin :2019` inside a respond body is not
 // a setting.
 func caddyLines(body string) []caddyLine {
@@ -118,8 +117,7 @@ type caddyToken struct {
 }
 
 // caddyTokens splits one line. A quoted token that runs past the end of the
-// line is cut there: Caddy allows it, and what it holds is a value rather than
-// a directive this package reads.
+// line is cut there: Caddy allows it, and what it holds is a value.
 func caddyTokens(line string) []caddyToken {
 	var out []caddyToken
 	var b strings.Builder

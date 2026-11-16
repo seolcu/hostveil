@@ -1,5 +1,5 @@
 // Package clirender renders a scan Report as text or JSON for the CLI.
-// Keeping rendering here (rather than in cmd/) lets the CLI, and later any
+// Keeping rendering here lets the CLI, and later any
 // other text surface, share one formatting implementation.
 package clirender
 
@@ -60,7 +60,7 @@ func Text(r model.Report, opts Options) string {
 	// Domain status (skipped/degraded/errored checkers). All three markers
 	// come from the same set: they are printed as one block, and a patched
 	// glyph on the skipped line beside an ASCII one on the partial line
-	// reads as two different kinds of remark rather than three degrees of
+	// reads as two different kinds of remark when there are three degrees of
 	// the same one.
 	for _, d := range r.Domains {
 		switch d.State {
@@ -103,8 +103,7 @@ func Text(r model.Report, opts Options) string {
 		if f.Service != "" {
 			fmt.Fprintf(&b, " %s(%s)%s", c.dim, f.Service, c.reset)
 		}
-		// A pending row reports what is outstanding rather than its
-		// remediation kind. The fix has been applied; "Auto" there would
+		// A pending row reports what is outstanding. The fix has been applied; "Auto" there would
 		// point at a button that has already been pressed, on the one row
 		// where pressing it again achieves nothing.
 		if f.Pending {
@@ -166,7 +165,7 @@ const maxDeltaLines = 10
 
 // DeltaSummary renders a short "since last scan" summary line.
 //
-// It takes the whole Options rather than just the glyph set so it cannot
+// It takes the whole Options so it cannot
 // drift out of step with Text's: the two are printed one after the other and
 // a resolved-tick from a different table in the middle of one report would
 // be the only place Hostveil disagreed with itself about a symbol.
@@ -181,8 +180,8 @@ func DeltaSummary(d model.Delta, opts Options) string {
 }
 
 // maxChangedValue bounds how long an evidence value may be before it is
-// summarised rather than printed. An aggregate finding can carry thousands
-// of IDs in one value; the line reports what moved, not the payload.
+// summarised. An aggregate finding can carry thousands of IDs in one
+// value; the line reports what moved.
 const maxChangedValue = 40
 
 // changedLines names findings that persisted but moved, and says how. A bare
@@ -237,7 +236,7 @@ func membership(added, removed []string) string {
 	}
 	if len(parts) == 0 {
 		// The value moved without its membership doing so: reordered, or
-		// reformatted. Say that rather than claiming a change we cannot show.
+		// reformatted. Say exactly that.
 		return "changed"
 	}
 	return strings.Join(parts, ", ")
@@ -282,7 +281,7 @@ func JSON(r model.Report) (string, error) {
 }
 
 // severityCounts renders an axis's mix. It walks ScoreAxis.Counts, which is
-// ordered most-severe-first by the model, rather than naming the levels: a
+// ordered most-severe-first by the model: a
 // hand-written arm per level is what had to be edited in three renderers when
 // the scale changed.
 func severityCounts(ax model.ScoreAxis) string {
@@ -348,7 +347,7 @@ func scoreColor(c colors, score uint8) string {
 // wrap reflows text to width columns, indenting continuation lines.
 // wrap reflows text to width display columns, indenting continuation lines.
 //
-// The count is columns rather than bytes. Counting bytes wrapped Hangul at
+// The count is columns. Counting bytes wrapped Hangul at
 // roughly two-thirds of the width it was given, and the TUI's copy of this
 // function had the same flaw, which is why there is now one of it.
 func wrap(s string, width int, indent string) string {

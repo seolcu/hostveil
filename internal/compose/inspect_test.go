@@ -110,7 +110,7 @@ func TestReadOnlyBindDetected(t *testing.T) {
 }
 
 // Docker writes bind options as a comma-joined list ("rw,z" under SELinux),
-// so :ro has to be found inside it rather than compared to the whole field.
+// so :ro has to be found inside it.
 func TestReadOnlyInsideCommaJoinedOptions(t *testing.T) {
 	in := `[{"Name":"/x","Config":{"Image":"a"},"HostConfig":{"Binds":["/etc:/etc:ro,z"]}}]`
 	cs, err := parseInspect([]byte(in))
@@ -221,6 +221,6 @@ func TestContainerOrderIsStable(t *testing.T) {
 
 func TestMalformedInspectOutputIsAnError(t *testing.T) {
 	if _, err := parseInspect([]byte("not json")); err == nil {
-		t.Error("malformed docker inspect output must be an error, not an empty clean result")
+		t.Error("malformed docker inspect output must be an error")
 	}
 }

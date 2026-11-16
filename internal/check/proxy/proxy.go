@@ -14,8 +14,7 @@
 //     following include and import directives.
 //   - Traefik and Caddy as containers, read from the Compose files the
 //     container domain already discovers. Traefik's most dangerous setting is
-//     almost always on the service's command line rather than in a config
-//     file, because that is how every tutorial writes it; a Caddy container's
+//     almost always on the service's command line, because that is how every tutorial writes it; a Caddy container's
 //     Caddyfile is read through its bind mount. What is read from Caddy, and
 //     why, is in caddy.go.
 //
@@ -34,7 +33,7 @@
 // severity budget on them teaches people to ignore it.
 //
 // **Anything about certificates.** Expiry and issuer are facts about the
-// network, not about a file, and a scanner reading a config cannot see them.
+// network, and a scanner reading a config cannot see them.
 package proxy
 
 import (
@@ -78,7 +77,7 @@ func (*Checker) Source() model.Source { return model.SourceProxy }
 //
 // A host with no nginx or Caddy configuration and no reachable Docker daemon has
 // no proxy for this domain to have an opinion about, and the axis is
-// renormalized away rather than scored on an absence. That is the opposite of
+// renormalized away. That is the opposite of
 // the firewall domain, where absence *is* the finding: no host is insecure for
 // not running a reverse proxy.
 func (c *Checker) Available(ctx context.Context, env platform.Env) (bool, string) {
@@ -159,7 +158,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	} else if why != "" {
 		// Only a gap when there is a daemon to fail to reach. "Docker not
 		// installed" on a host running nginx from a package is a complete
-		// answer, not a blind spot: the same direction dockerd's config
+		// answer: the same direction dockerd's config
 		// merge got wrong.
 		if !strings.Contains(why, "not installed") {
 			cov.Missed(0, why+": a containerised proxy was not audited")
@@ -369,8 +368,8 @@ func weakProtocols(fields []string) []string {
 	for _, f := range fields[1:] {
 		got := strings.ToLower(f)
 		for _, bad := range deprecatedTLS {
-			// Exact, not prefix: "tlsv1" must not match "tlsv1.2", which is
-			// the whole reason this list is compared rather than searched for.
+			// Exact match: "tlsv1" must not match "tlsv1.2", which is why
+			// this list is compared for equality.
 			if got == bad {
 				found = append(found, f)
 			}
@@ -449,7 +448,7 @@ func directoryListingFinding(nginx, caddy []string) model.Finding {
 // nginxFiles returns every configuration file reachable from root, following
 // include directives, plus the paths it could not read.
 //
-// Includes are followed rather than assumed, because nginx's own layout puts
+// Includes are followed, because nginx's own layout puts
 // almost nothing in nginx.conf: Debian ships conf.d/*.conf and sites-enabled/*,
 // and a rule that read only the top-level file would audit an empty shell on
 // the distribution most of this program's users run. That is the same mistake
@@ -460,7 +459,7 @@ func nginxFiles(root string) ([]string, []string) {
 
 	var walk func(path string, depth int)
 	walk = func(path string, depth int) {
-		// A bound rather than a cycle check: nginx itself refuses to nest
+		// A bound: nginx itself refuses to nest
 		// includes forever, and a config that reaches this depth is not one
 		// Hostveil should be following anyway.
 		if depth > 10 || seen[path] {

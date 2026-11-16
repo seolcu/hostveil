@@ -240,7 +240,7 @@ func TestTraefikWithoutTheInsecureAPIIsClean(t *testing.T) {
 }
 
 // A host with neither surface has no proxy to have an opinion about, and the
-// axis is renormalized away rather than scored on an absence. This is the
+// axis is renormalized away. This is the
 // opposite of the firewall domain, where absence *is* the finding: no host is
 // insecure for not running a reverse proxy.
 func TestAHostWithNoProxyIsSkipped(t *testing.T) {
@@ -254,7 +254,7 @@ func TestAHostWithNoProxyIsSkipped(t *testing.T) {
 	}
 }
 
-// An unreadable config is a gap, not a clean result: the ordinary non-root
+// An unreadable config is a gap: the ordinary non-root
 // scan, and the case this whole codebase is most insistent about.
 func TestUnreadableConfigDegradesRatherThanPassing(t *testing.T) {
 	root := nginxRoot(t, map[string]string{"nginx.conf": "include conf.d/*.conf;\n"})

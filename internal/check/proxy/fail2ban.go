@@ -28,9 +28,9 @@ func (c *Checker) fail2banDir() string {
 // say about a host with no nginx config to protect.
 //
 // "Could not tell whether fail2ban is installed" degrades the domain's
-// coverage rather than passing silently, the same discipline the nginx
+// coverage, the same discipline the nginx
 // directive walk right above it already holds to. "fail2ban is not
-// installed" is a real answer (systemd loaded no such unit), not a gap:
+// installed" is a real answer (systemd loaded no such unit):
 // updates.fail2ban already reports that case, so this stays silent instead
 // of duplicating it.
 func (c *Checker) auditScanProtection(ctx context.Context, r platform.CommandRunner, cov *check.Coverage) []model.Finding {
@@ -60,12 +60,12 @@ func (c *Checker) auditScanProtection(ctx context.Context, r platform.CommandRun
 // fail2banInstalled reports whether fail2ban.service exists as a systemd
 // unit, and whether the question could be answered at all.
 //
-// LoadState rather than is-active or fail2ban-client: an installed-but-not-
+// LoadState: an installed-but-not-
 // running service is still something the fix this finding offers can act
 // on, and asking systemd whether the unit was loaded is the same idiom
 // internal/check/updates uses for dnf-automatic.timer; a unit systemd has
 // never heard of answers with no error and an empty property, which is a
-// real "not installed" rather than a probe that failed.
+// real "not installed".
 func fail2banInstalled(ctx context.Context, r platform.CommandRunner) (installed, ok bool) {
 	out, err := r.Run(ctx, "systemctl", "show", "fail2ban.service", "--property=LoadState")
 	if err != nil {
@@ -82,8 +82,7 @@ func fail2banInstalled(ctx context.Context, r platform.CommandRunner) (installed
 // not a real INI parser, because fail2ban's %(...)s interpolation and
 // [DEFAULT] inheritance would make a faithful parse a much bigger job than
 // deciding "does Hostveil's own drop-in, or one the operator already wrote,
-// turn this on" needs. It returns the files it could not read rather than
-// treating them as absent: jail.d commonly holds files an unprivileged scan
+// turn this on" needs. It returns the files it could not read: jail.d commonly holds files an unprivileged scan
 // cannot open, and reading that as "no jail configured" is exactly the
 // mistake this checker's own nginx-config walk already refuses to make.
 func (c *Checker) nginxJailEnabled() (enabled bool, unread []string) {
