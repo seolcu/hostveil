@@ -169,7 +169,7 @@ func scanWithProgress(ctx context.Context, engine *core.Engine, opts core.ScanOp
 
 // scanSelection turns --only/--skip into ScanOptions, validating domain
 // names against the real source set so a typo is a usage error naming the
-// valid choices rather than a silently empty scan.
+// valid choices.
 func scanSelection(only, skip string) (core.ScanOptions, string) {
 	if only != "" && skip != "" {
 		return core.ScanOptions{}, "--only and --skip are mutually exclusive"
@@ -223,7 +223,7 @@ func scanSelection(only, skip string) (core.ScanOptions, string) {
 }
 
 // Exit codes for scan. These are the CI and cron contract, so they are
-// named rather than written as bare integers at the return sites.
+// named constants.
 const (
 	exitClean      = 0 // the scan ran and found nothing serious
 	exitFindings   = 1 // unfixed High findings
@@ -249,15 +249,14 @@ const (
 // state of a host that has no Docker or no Trivy, and failing every such
 // pipeline would train people to ignore the code. Degraded means the checker
 // covered part of its ground and said so, and those findings are real and
-// scored; it is reported in the output, not in the exit status.
+// scored; it is reported in the output and leaves the exit status alone.
 func exitCode(r model.Report) int {
 	for _, f := range r.Findings {
 		// Active, not !Fixed, so the gate keeps meaning what it says: a High
 		// whose fix is written and not yet in force has not been dealt with.
 		// Defensive today (cmdScan always renders a fresh scan and ScanWith
 		// replaces the report wholesale, so neither flag survives into here)
-		// which is exactly why it is worth spelling out rather than leaving
-		// the next caller to discover the distinction.
+		// which is why it is spelled out here.
 		if !f.Active() {
 			continue
 		}

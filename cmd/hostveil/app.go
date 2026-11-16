@@ -79,7 +79,7 @@ func buildRegistry() *check.Registry {
 // debugRunner returns the command runner the engine should use: the plain
 // one, or a tracing wrapper when HOSTVEIL_DEBUG is set.
 //
-// An environment variable rather than a flag, because it has to work for
+// An environment variable, because it has to work for
 // every command without threading a flag through six of them, and because
 // the thing you tell someone in a bug report is one line they can paste:
 //

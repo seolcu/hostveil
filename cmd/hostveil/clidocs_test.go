@@ -63,8 +63,7 @@ func repoRoot(t *testing.T) string {
 }
 
 // declaredFlags walks this package's own source for the flag names each
-// subcommand registers. Reading the AST rather than the flag.FlagSet values
-// keeps the production code free of test seams: the flag sets are built
+// subcommand registers. Reading the AST keeps the production code free of test seams: the flag sets are built
 // inside the cmd functions, which cannot be called without running the
 // command they belong to.
 func declaredFlags(t *testing.T) map[string][]string {
@@ -251,7 +250,7 @@ func TestEverySubcommandHasAReferenceSection(t *testing.T) {
 // discovers it needed root half way through; one missing from the CLI
 // reference is a command users find by reading the help text and nowhere else.
 //
-// The harvest is from the dispatch switch rather than from function names, so
+// The harvest is from the dispatch switch, so
 // a cmdXxx helper that is not a subcommand does not have to be excused here.
 func TestEverySubcommandIsClassifiedAndDocumented(t *testing.T) {
 	fset := token.NewFileSet()
@@ -309,8 +308,7 @@ func TestEverySubcommandIsClassifiedAndDocumented(t *testing.T) {
 }
 
 // runsAsInvokingUser are the commands that do real work and still must not
-// elevate, each with the reason. It is a list rather than an absence from
-// needsRoot so that leaving a new command out of needsRoot by accident still
+// elevate, each with the reason. It is an explicit list so that leaving a new command out of needsRoot by accident still
 // fails the test above.
 var runsAsInvokingUser = map[string]string{}
 
@@ -323,7 +321,7 @@ var runsAsInvokingUser = map[string]string{}
 // and the symptom is that `hostveil update` on a current host announces an
 // update and reinstalls what is already there.
 //
-// Pinned against the real `version` variable rather than a literal, so a change
+// Pinned against the real `version` variable, so a change
 // to how the build stamps it lands here.
 func TestTheStampedVersionComparesAgainstAResolvedTag(t *testing.T) {
 	stamped := version

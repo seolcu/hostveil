@@ -13,8 +13,7 @@ import (
 // for a crawler was whatever it happened to follow from the landing page, and
 // the Korean half is reachable only through a language switcher.
 //
-// Both files are generated here rather than committed by hand, and the URLs
-// come from the render loops rather than from a second list. main() already
+// Both files are generated here, and the URLs come from the render loops. main() already
 // computes View.Canonical for every page it writes; a page that is rendered is
 // therefore in the sitemap by construction, and a page that is not rendered
 // cannot be. That is the same move cmd/sitegen/changelog.go makes for the

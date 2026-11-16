@@ -20,8 +20,8 @@ func stateDir() string { return history.DefaultDir() }
 
 // resolveTheme applies the precedence --theme > HOSTVEIL_THEME > the
 // remembered choice > the default. Only a bad flag value is an error; a stale
-// environment variable or preference file falls back silently rather than
-// keeping the interface from starting.
+// environment variable or preference file falls back silently, so the
+// interface still starts.
 func resolveTheme(flagValue string) (theme.Theme, error) {
 	return theme.Resolve(flagValue, os.Getenv(themeEnv), stateDir())
 }

@@ -20,7 +20,7 @@ import (
 // cmdDiagnostics never touches the network. It used to also offer to open
 // the bundle as a GitHub issue (`bugreport --send`), which meant Hostveil
 // itself decided when and how a report left the host; the network path was
-// removed rather than fixed because a self-hosted-server tool's own audience
+// removed because a self-hosted-server tool's own audience
 // is the one most likely to distrust that decision being made for them. What
 // is left is the part with no objection: collecting the pieces a human
 // would otherwise have to gather by hand before filing an issue.
@@ -69,7 +69,7 @@ type diagnosticsOptions struct {
 // evidence a finding carries, which can quote the very config an operator is
 // asking for help with) and an optional HOSTVEIL_DEBUG trace the operator
 // already produced by hand. See --help's Environment section for that
-// workflow; this command is the packaging step for it, not a replacement.
+// workflow; this command only packages it.
 func buildDiagnosticsReport(opts diagnosticsOptions) (string, error) {
 	var b strings.Builder
 	fmt.Fprintln(&b, "# hostveil diagnostics")

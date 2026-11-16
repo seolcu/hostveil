@@ -68,7 +68,7 @@ var (
 
 // unsupported are the Markdown constructs this converter does not implement.
 //
-// They are an error rather than a silent passthrough. A minimal converter is
+// They are an error. A minimal converter is
 // the right trade for a file whose syntax this project controls (it keeps a
 // Markdown dependency out of a six-dependency module for the sake of one page)
 // but only if it says so when the file outgrows it. Rendering a table as a
@@ -163,7 +163,7 @@ func changelogHTML(body string) string {
 			item = append(item, strings.TrimSpace(line))
 		case strings.TrimSpace(line) == "":
 			// A blank line ends a top-level paragraph, and inside a bullet it
-			// separates two of them rather than ending the bullet; the entry
+			// separates two of them and the bullet goes on; the entry
 			// continues on the next indented line.
 			flushPara()
 			if len(item) > 0 {
@@ -211,7 +211,7 @@ func versionHTML(line string) string {
 	m := versionHeading.FindStringSubmatch(line)
 	if m == nil {
 		// Not the shape this file has used for thirty-one releases; render the
-		// text rather than dropping the heading on the floor.
+		// text so the heading is not lost.
 		return fmt.Sprintf("          <h2>%s</h2>\n", inline(strings.TrimSpace(line[3:])))
 	}
 	version, compareURL, date := m[1], m[2], m[3]
@@ -227,7 +227,7 @@ func versionHTML(line string) string {
 
 // inline renders the four inline constructs, escaping first so that anything
 // the changelog quotes: `/etc/systemd/system/<unit>.d/`, `.chip.c-<abbr>`:
-// reaches the page as text rather than as a tag.
+// reaches the page as text.
 func inline(s string) string {
 	s = escText(s)
 	// Code first, and its content is left alone afterwards: a path or a
@@ -246,7 +246,7 @@ func inline(s string) string {
 	return s
 }
 
-// replaceCode walks backtick spans by hand rather than by regexp, because the
+// replaceCode walks backtick spans by hand, because the
 // changelog contains backticks inside prose about backticks and a greedy or
 // lazy pattern gets one of those two cases wrong.
 func replaceCode(s string, fn func(string) string) string {

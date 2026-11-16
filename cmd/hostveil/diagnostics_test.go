@@ -72,8 +72,7 @@ func TestDiagnosticsWithoutOutputPrintsAndNamesWhereToPasteIt(t *testing.T) {
 	}
 }
 
-// --unredacted is the one flag that changes the content rather than the
-// destination, and it used to also gate --send; there is nothing left to
+// --unredacted is the one flag that changes the content, and it used to also gate --send; there is nothing left to
 // refuse combining it with.
 func TestDiagnosticsUnredactedKeepsIPsVerbatim(t *testing.T) {
 	if os.Geteuid() == 0 {

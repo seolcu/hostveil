@@ -188,7 +188,7 @@ func assetLinks(kind, lang string) string {
 	link := func(href string) { fmt.Fprintf(&b, "    <link rel=\"stylesheet\" href=\"%s\">\n", href) }
 	script := func(src string) { fmt.Fprintf(&b, "    <script src=\"%s\" defer></script>\n", src) }
 	// The tab icon is the same file the dashboard serves, and it is emitted
-	// here rather than in head.tmpl because it is the one <link> whose href
+	// here because it is the one <link> whose href
 	// depends on how deep the page is. It used to be an inline data URI of a
 	// figure drawn nowhere else, which is how the site ended up with a mark
 	// of its own that nothing kept in step with the product's.
@@ -331,7 +331,7 @@ func fragment(kind, lang, slug string) (string, error) {
 	// CHANGELOG.md / CHANGELOG.ko.md so the page cannot say a different thing
 	// from the file; see cmd/sitegen/changelog.go.
 	//
-	// A marker rather than an append, so the fragment keeps deciding what
+	// A marker, so the fragment keeps deciding what
 	// comes before the entries and what comes after. Appending would have put
 	// the page's own footer above three thousand lines of release notes.
 	if kind == "docs" && slug == changelogSlug {
@@ -347,8 +347,8 @@ func fragment(kind, lang, slug string) (string, error) {
 	}
 
 	// The checks page's "what each fix does" section. Same marker
-	// shape as the changelog, not generalized into one
-	// mechanism for two cases. Every language with the marker gets the
+	// shape as the changelog; two cases do not justify one
+	// shared mechanism. Every language with the marker gets the
 	// section and its Fix-column links: see renderFixActions's doc comment
 	// for what is and is not localized within it.
 	if kind == "docs" && slug == checksSlug {

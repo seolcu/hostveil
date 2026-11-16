@@ -85,6 +85,6 @@ func TestSyncReadmeRewritesOnlyTheMarkedBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := syncReadme(p, readmeCounts["en"].sentence, tally{}); err == nil {
-		t.Error("a README without the markers must be an error, not a silent skip")
+		t.Error("a README without the markers must be an error")
 	}
 }
