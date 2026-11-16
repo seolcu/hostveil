@@ -113,8 +113,7 @@ func splitColumns(s string) []string {
 
 // portMatcher reads the port part of a To column: "Anywhere", "6379",
 // "6379/tcp", "80,443/tcp", "6000:6007/tcp". A rule bound to an address or an
-// interface, or for UDP only, is not one this reads; it is skipped rather than
-// guessed at, which can only make a port look less blocked than it is.
+// interface, or for UDP only, is not one this reads; it is skipped, which can only make a port look less blocked than it is.
 func portMatcher(to string) (func(int) bool, bool) {
 	if strings.EqualFold(to, "anywhere") {
 		return func(int) bool { return true }, true

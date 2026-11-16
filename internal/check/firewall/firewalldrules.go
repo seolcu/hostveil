@@ -49,7 +49,7 @@ type richRule struct {
 }
 
 // dockerZone is the zone Docker binds its bridges to. Its target accepts,
-// but what arrives there is from containers on this host, not off it.
+// but what arrives there is from containers on this host.
 const dockerZone = "docker"
 
 // ReadFirewalld reads the default zone. A firewalld that is not running, or

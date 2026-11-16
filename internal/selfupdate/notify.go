@@ -95,7 +95,7 @@ func (c Cache) Notice(current string) string {
 // belongs to a packager, and its version is not one this project ever
 // published to compare against.
 //
-// The shape is checked rather than just the dash, because anything unequal to
+// The shape is checked, because anything unequal to
 // the latest release reads as out of date, and a version string this program
 // cannot recognise should not be the basis for telling somebody to run an
 // update.

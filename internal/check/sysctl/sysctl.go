@@ -45,7 +45,7 @@ type Rule struct {
 	Want  string   // the sysctl.d line(s) the how-to-fix recommends
 
 	// Flagged is handed the readings for Keys, in Keys order, and nothing
-	// else. Use is/isNot/below/anyIs rather than writing one out.
+	// else. Use is/isNot/below/anyIs.
 	//
 	// It used to take the whole reading as a map, and every rule spelled its
 	// own key out a second time inside the closure to look it up. Two copies
@@ -268,7 +268,7 @@ func (*Checker) Source() model.Source { return model.SourceSysctl }
 
 // Available requires a readable /proc/sys. Its absence (non-Linux test
 // environments, heavily sandboxed containers) is a clean skip: there are no
-// kernel parameters to audit, not an error to report.
+// kernel parameters to audit.
 func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 	fi, err := os.Stat(filepath.Join(c.Root, "kernel"))
 	if err != nil || !fi.IsDir() {
@@ -281,9 +281,9 @@ func (c *Checker) Available(_ context.Context, _ platform.Env) (bool, string) {
 // whose file does not exist is a knob this kernel does not have (Yama not
 // built, IPv4 disabled) and is silently fine; one that exists but cannot be
 // read is ground not covered, and the domain says so with a PartialError
-// rather than letting "could not look" pass for "nothing there".
+// so "could not look" never passes for "nothing there".
 func (c *Checker) Check(_ context.Context, env platform.Env) ([]model.Finding, error) {
-	// Asked once for the whole scan rather than per rule: it is a question
+	// Asked once for the whole scan: it is a question
 	// about the host, and the answer cannot change between two rules.
 	inContainer, containerWhy := c.containerGate()
 
@@ -325,8 +325,7 @@ func (c *Checker) Check(_ context.Context, env platform.Env) ([]model.Finding, e
 			model.WithEvidence("set", strings.Join(r.Set, ",")),
 		}
 		if origin, ok := originOf(r.Keys, vals, byKey); ok {
-			// Name the file, and tell the operator to edit it rather than to
-			// add a drop-in. A new file under /etc/sysctl.d is only read
+			// Name the file, and tell the operator to edit it. A new file under /etc/sysctl.d is only read
 			// before this one on the hosts where it happens to sort earlier,
 			// and on the common case (Ubuntu's 99-sysctl.conf symlink to
 			// /etc/sysctl.conf) it is read before it and loses silently.
@@ -406,7 +405,7 @@ func moduleBlocked(data []byte, module string) bool {
 // declines for a drop-in that would lose to a file under /usr or /run. This is
 // the same refusal, for a stronger version of the same reason.
 //
-// It is done here rather than in the fix registry because this is a statement
+// It is done here because this is a statement
 // about how much human judgement the finding needs, which is the checker's
 // half of that decision. Engine.classify resolves the two by taking whichever
 // is more cautious, so declaring Manual is enough on its own: the registered
@@ -437,7 +436,7 @@ func mergeEvidence(m map[string]string, key, val string) map[string]string {
 
 // readKey reads one dotted sysctl key from Root and parses its first field
 // as an integer. All audited parameters are single integers; anything else
-// is treated as unreadable rather than guessed at.
+// is treated as unreadable.
 func (c *Checker) readKey(key string) (int64, error) {
 	path := filepath.Join(c.Root, strings.ReplaceAll(key, ".", "/"))
 	data, err := os.ReadFile(path) //nolint:gosec // paths are the fixed rule table under /proc/sys

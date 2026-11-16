@@ -83,8 +83,7 @@ func TestAPackageClaimBeatsTheLocation(t *testing.T) {
 	}
 }
 
-// go install's destination is recognised so Hostveil rebuilds it rather than
-// dropping a published binary over somebody's own build.
+// go install's destination is recognised so Hostveil rebuilds it.
 func TestAGoInstallBinaryIsRecognised(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("GOBIN", dir)
@@ -145,7 +144,7 @@ func TestLatestRefusesAnAnswerThatIsNotARedirect(t *testing.T) {
 	}
 }
 
-// The checksum is the gate, not a warning. This is the whole safety argument
+// The checksum is the gate. This is the whole safety argument
 // for a program that is about to replace itself as root.
 func TestDownloadRefusesAnArchiveThatDoesNotMatch(t *testing.T) {
 	rel := Release{

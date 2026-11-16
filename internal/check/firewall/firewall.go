@@ -123,13 +123,13 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 		if which == "ufw" {
 			fs, err := checkDockerBypass(ctx, env.Runner, c.daemonConfig())
 			findings = append(findings, fs...)
-			// Both gaps are reported, not the first. A domain can have more
+			// Both gaps are reported. A domain can have more
 			// than one blind spot, and deciding to keep only the earlier one
 			// discards the other, which is the failure the two container
 			// checkers were fixed for, still here because this one kept a
 			// comment defending it.
 			//
-			// errors.As, not a bare type assertion: a PartialError that has
+			// errors.As: a PartialError that has
 			// been wrapped anywhere on the way up would otherwise fall to the
 			// branch below and take the whole domain's findings with it.
 			var pe *check.PartialError
@@ -168,8 +168,7 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 	// what makes this finding fixable at all: enabling a default-deny policy
 	// without allowing SSH first locks the operator out of the host, with no
 	// checkpoint to undo it, so the fix may not exist unless the port is
-	// known. Read from the kernel's socket table rather than sshd_config
-	// because a config that says one thing and a daemon that is serving on
+	// known. Read from the kernel's socket table because a config that says one thing and a daemon that is serving on
 	// another is exactly the case that would lock someone out.
 	findings[0] = withSSHPortEvidence(findings[0], ctx, env.Runner)
 	return findings, nil
@@ -215,7 +214,7 @@ func mergePartial(a, b *check.PartialError) *check.PartialError {
 // sshPorts finds every port sshd is listening on. "Cannot tell" is a real
 // answer here and is reported as one: no ports, no fix.
 //
-// Every one of them, not the first. sshd serving on two ports at once is how
+// Every one of them. sshd serving on two ports at once is how
 // an operator changes the SSH port without locking themselves out: `Port 22`
 // and `Port 2222` together, verify the new one works, then drop the old.
 // Returning only the first meant the fix allowed one and `ufw --force enable`
@@ -262,15 +261,14 @@ const (
 // Probe reports whether any supported host firewall is actively filtering,
 // and which one. It is exported so other checkers (e.g. the ports checker)
 // can treat an active firewall as a backstop when deciding how loudly to flag
-// an exposed listener, reusing this package's probing rather than duplicating
-// it. Callers must distinguish StatusUnknown from StatusInactive before
+// an exposed listener, reusing this package's probing. Callers must distinguish StatusUnknown from StatusInactive before
 // drawing any conclusion from it.
 func Probe(ctx context.Context, r platform.CommandRunner) (Status, string) {
 	return probe(ctx, r)
 }
 
 // probe runs each installed front-end's query in turn. A tool that is present
-// but errors is recorded as unreadable rather than as a negative answer.
+// but errors is recorded as unreadable.
 func probe(ctx context.Context, r platform.CommandRunner) (Status, string) {
 	unreadable := false
 
@@ -294,7 +292,7 @@ func probe(ctx context.Context, r platform.CommandRunner) (Status, string) {
 	}); st == StatusActive {
 		return st, which
 	}
-	// firewalld is detected by exit status, not by the text of `--state`.
+	// firewalld is detected by exit status.
 	// The command exits 0 when the daemon is running and non-zero when it is
 	// not, which is the only signal stable across versions: some print
 	// "running" to stdout, others to stderr, and Run captures stdout only.

@@ -25,7 +25,7 @@
 //     printing a command would have been easier and would have left the
 //     operator doing by hand the thing this exists to stop them doing.
 //   - Nothing is written until everything is verified, and the write is a
-//     rename over the target rather than a write through it. A running
+//     rename over the target. A running
 //     executable cannot be opened for writing at all, and a partially written
 //     one is a host with no working Hostveil and no obvious reason why.
 package selfupdate
@@ -36,8 +36,7 @@ import (
 	"strings"
 )
 
-// Repo is the only repository this will install from. A constant rather than a
-// parameter: an updater that can be pointed somewhere else is an updater whose
+// Repo is the only repository this will install from. A constant: an updater that can be pointed somewhere else is an updater whose
 // safety argument depends on no one pointing it somewhere else.
 const Repo = "seolcu/hostveil"
 
@@ -47,7 +46,7 @@ type Origin int
 
 const (
 	// OriginUnknown means the install method could not be established. It is
-	// the one case that ends in advice rather than action: guessing wrong
+	// the one case that ends in advice: guessing wrong
 	// here corrupts a package database or deletes a file somebody else owns.
 	OriginUnknown Origin = iota
 	// OriginStandalone is a binary this tool may replace directly, which is
@@ -58,14 +57,13 @@ const (
 	// OriginRPM is a binary rpm owns. Updated and removed through dnf.
 	OriginRPM
 	// OriginGoInstall is a binary built from source into GOBIN. There is no
-	// release archive that corresponds to it, so it is rebuilt from source
-	// rather than replaced with one.
+	// release archive that corresponds to it, so it is rebuilt from source.
 	OriginGoInstall
 )
 
 // ErrUnknownOrigin is returned when Hostveil cannot establish how its own
 // binary was installed, which is the one case it will not act on. UIs match on
-// it rather than on the message.
+// this value.
 var ErrUnknownOrigin = errors.New("cannot tell how this Hostveil binary was installed")
 
 // String names the origin for a message.

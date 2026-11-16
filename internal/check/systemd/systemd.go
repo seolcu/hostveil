@@ -19,7 +19,7 @@
 //
 // Only units whose fragment lives under /etc/systemd/system or
 // /usr/local/lib/systemd/system: the ones the operator wrote or installed by
-// hand. That is a deliberate line, not a shortcut.
+// hand. That is an intended line.
 //
 // A distribution's own units are hardened by the distribution, on its
 // schedule, and a drop-in that second-guesses them is the operator taking on
@@ -41,7 +41,7 @@ import (
 )
 
 // operatorUnitDirs are the directories a unit file lives in when a person
-// rather than a package put it there. /run is absent: units
+// put it there. /run is absent: units
 // generated at boot are not for anyone to edit and do not survive a reboot.
 var operatorUnitDirs = []string{
 	"/etc/systemd/system/",
@@ -49,7 +49,7 @@ var operatorUnitDirs = []string{
 }
 
 // showProperties are the unit properties this domain reads. Asked for in one
-// batched call rather than one call per unit: a host with thirty operator
+// batched call: a host with thirty operator
 // units would otherwise be thirty round trips through the runner, each
 // bounded by platform.DefaultTimeout, inside a scan that already runs every
 // domain concurrently.
@@ -93,8 +93,7 @@ func (*Checker) Source() model.Source { return model.SourceSystemd }
 
 // Available requires systemd to be the service manager and to answer.
 //
-// The manager property is asked for rather than `systemctl` merely being on
-// PATH: the binary is installed on hosts that boot something else, and on
+// The manager property is asked for: the binary is installed on hosts that boot something else, and on
 // those it exits non-zero with "System has not been booted with systemd".
 // Treating its presence as an answer would enumerate no units, find nothing,
 // and score this axis a perfect 100 on a host it never looked at.
