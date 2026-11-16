@@ -224,6 +224,10 @@ the Vulnerabilities axis. Every interface also names the overall score: 80 and
 above is *in good shape*, 50 to 79 *middling*, 25 to 49 *exposed* and below 25
 *wide open*.
 
+Below the score, the dashboard and `hostveil scan` list the points left and
+why: points that return after a restart, points held by Manual findings you
+can fix by hand, and points held by findings with no fix published yet.
+
 [Scoring](https://hostveil.seolcu.com/docs/scoring) has the full model and the
 size of each axis.
 
@@ -384,7 +388,8 @@ graph TD
     v4 --> v5["3.22.0: Reverse proxy"]
     v5 --> v6["3.30.0: Proxmox VE host"]
     v6 --> v7["3.31.0: Single-node Kubernetes"]
-    v7 -.-> n1["More agent runtimes"]
+    v7 --> v8["3.36.0: Forensic readiness (opt-in)"]
+    v8 -.-> n1["More agent runtimes"]
     n1 -.-> n2["More reverse proxies"]
     n2 -.-> n3["Wider distro coverage"]
     n3 -.-> e4(["More languages"])
@@ -402,7 +407,7 @@ graph TD
     classDef notplanned fill:#101816,stroke:#516057,stroke-width:1px,stroke-dasharray:4 3,color:#9aa89f
     classDef npTitle fill:#07100f,stroke:#31413b,color:#9aa89f
 
-    class v1,v2,v3,v4,v5,v6,v7 shipped
+    class v1,v2,v3,v4,v5,v6,v7,v8 shipped
     class n1,n2,n3 next
     class e4 exploring
     class x1,x2,x3,x4 notplanned

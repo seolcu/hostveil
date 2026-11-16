@@ -36,7 +36,15 @@ type Action struct {
 	// has a real side effect, but every registered fix is worth doing, so
 	// it should be able to say why.
 	Benefit string
-	Kind    ActionKind
+
+	// CheckFirst is one thing to confirm before applying, written for an
+	// operator who is not a security specialist: "log in with your key in a
+	// second terminal first". Warning says what can break; CheckFirst says
+	// how to find out whether it will. Optional, and filled from the
+	// checkFirst table (checkfirst.go) when a builder leaves it empty.
+	CheckFirst string
+
+	Kind ActionKind
 
 	// Edit
 	Path      string
@@ -302,6 +310,7 @@ func (r *Registry) Build(f model.Finding) (Fix, bool, error) {
 				return Fix{}, true, err
 			}
 			fx.FindingID = f.ID
+			withCheckFirst(&fx, f.ID)
 			return fx, true, nil
 		}
 	}

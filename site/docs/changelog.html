@@ -134,6 +134,59 @@
 
             <p>Release archives, checksums, SBOMs and the signed build provenance for each version are on the <a href="https://github.com/seolcu/hostveil/releases">releases page</a>. To upgrade, run <code>hostveil update</code>.</p>
 
+          <h2 id="v3.36.0"><a href="https://github.com/seolcu/hostveil/compare/v3.35.0...v3.36.0">3.36.0</a> <span class="changelog-date">2026-11-17</span></h2>
+          <p>This release is written for people who run a server at home and do not work in security. The dashboard now explains each fix in plain sentences, asks you to check one thing before a fix that could lock you out, and says where the points left after every fix are. Hostveil also gains a forensic readiness domain and <code>hostveil triage</code>, scans the host's own packages for unfixed vulnerabilities, and has one look across the product, the website and the repository.</p>
+          <p><strong>Removed.</strong> Four things are gone, and scripts that use them need a change:</p>
+          <ul class="changelog-entries">
+            <li>
+              <p><code>hostveil advise</code>: run <code>hostveil explain</code> with no finding ID instead.</p>
+            </li>
+            <li>
+              <p><code>hostveil fleet</code>: run <code>ssh &lt;host&gt; hostveil scan --json</code> on each host.</p>
+            </li>
+            <li>
+              <p><code>export --format docx</code> and <code>--format pdf</code>: export <code>markdown</code> and convert it with any document tool.</p>
+            </li>
+            <li>
+              <p><code>--layout</code> and <code>HOSTVEIL_LAYOUT</code>: the TUI and the dashboard keep the console arrangement.</p>
+            </li>
+          </ul>
+          <h3>Features</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>web:</strong> a fix in the dashboard opens with what it gets you and what it can break, then says whether you can undo it from History and what has to happen before it takes effect. About 45 fixes that can lock you out, take a service down or cannot be undone name one thing to check first (for <code>ssh.passwordauth</code>: log in with your SSH key in a second terminal), and Apply stays off until you tick it. The diff is under "Show the exact change" (<a href="https://github.com/seolcu/hostveil/pull/889">#889</a>).</p>
+            </li>
+            <li>
+              <p><strong>web:</strong> the overview lists the points left under the score: points that return after a restart, points held by findings you fix by hand, and points held by findings with no fix published yet. <code>hostveil scan</code> prints the same as one line, and <code>--json</code> carries <code>score.left</code> (<a href="https://github.com/seolcu/hostveil/pull/888">#888</a>).</p>
+            </li>
+            <li>
+              <p><strong>core:</strong> forensic readiness is off by default, because ninety days of evidence matters to an organisation more than to a home server. Turn it on with <code>--with forensic</code> on <code>scan</code>, <code>tui</code>, <code>serve</code>, <code>fix</code>, <code>explain</code> or <code>export</code>. Turning it on or off no longer reports its findings as new or resolved (<a href="https://github.com/seolcu/hostveil/pull/886">#886</a>).</p>
+            </li>
+            <li>
+              <p><strong>check:</strong> a forensic readiness domain (<code>forensic.*</code>) checks whether the host keeps the evidence an investigation needs: a journal that survives reboots, 90 days of auth and web logs, auditd on the web server's account, a synchronised clock, request sizes in the access log and a log copy on another machine. <code>hostveil triage</code> collects a read-only, hashed evidence bundle and judges each indicator as an attempt, suspicious or a compromise (<a href="https://github.com/seolcu/hostveil/pull/864">#864</a>).</p>
+            </li>
+            <li>
+              <p><strong>cmd:</strong> <code>triage</code> names SSH guessing that a proxy, tunnel or NAT hides behind one internal address, and reads fail2ban's log for bans (<a href="https://github.com/seolcu/hostveil/pull/878">#878</a>).</p>
+            </li>
+            <li>
+              <p><strong>cve:</strong> the CVE domain also scans the host's own packages with <code>trivy rootfs</code>. A new <code>cve.unpatched-host</code> finding lists vulnerabilities the distribution has not fixed yet. The domain now needs only Trivy; an unreachable Docker daemon makes it partial (<a href="https://github.com/seolcu/hostveil/pull/879">#879</a>).</p>
+            </li>
+            <li>
+              <p><strong>ui:</strong> one brand across the TUI, the dashboard, the website and the repository: a new mark, a new default <code>hostveil</code> theme with one green for "made safe" and a blue accent, and a website set in the system sans (<a href="https://github.com/seolcu/hostveil/pull/866">#866</a>).</p>
+            </li>
+          </ul>
+          <h3>Bug Fixes</h3>
+          <ul class="changelog-entries">
+            <li>
+              <p><strong>check:</strong> the stock 0644 <code>/etc/crontab</code> on Debian and Ubuntu was High and made <code>scan</code> exit 1. A writable crontab stays High; a readable one is the new Low <code>fileperms.crontab-readable</code>. The cron and at allow and deny lists now flag write access only (<a href="https://github.com/seolcu/hostveil/pull/877">#877</a>).</p>
+            </li>
+            <li>
+              <p><strong>ui:</strong> text across the product, the docs and the code drops the phrasing that reads as machine-written, and a test keeps it out. The pending row now reads "Applied, waiting to take effect" (<a href="https://github.com/seolcu/hostveil/pull/887">#887</a>).</p>
+            </li>
+            <li>
+              <p><strong>demo:</strong> the demo VM's memory can be raised past 2 GB (<a href="https://github.com/seolcu/hostveil/pull/885">#885</a>).</p>
+            </li>
+          </ul>
           <h2 id="v3.35.0"><a href="https://github.com/seolcu/hostveil/compare/v3.34.0...v3.35.0">3.35.0</a> <span class="changelog-date">2026-10-20</span></h2>
           <p>Hostveil now notices updates that unattended-upgrades is set up to skip. A package from a third-party repository, such as Raspberry Pi OS, Tailscale or Docker, that is not on the allowed-origins list stays pending forever while automatic updates look healthy. This release also removes a false High finding that appeared on any host with a masked systemd unit.</p>
           <h3>Features</h3>

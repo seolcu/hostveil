@@ -34,9 +34,13 @@ func Text(r model.Report, opts Options) string {
 	if !r.Score.Applicable {
 		fmt.Fprintf(&b, "%sSecurity score: %sN/A; no domain could be scanned%s\n\n", c.bold, c.dim, c.reset)
 	} else {
-		fmt.Fprintf(&b, "%sSecurity score: %s%d/100%s%s\n\n",
+		fmt.Fprintf(&b, "%sSecurity score: %s%d/100%s%s\n",
 			c.bold, scoreColor(c, r.Score.Overall), r.Score.Overall, c.reset,
 			headroomNote(c, r.Score))
+		if line := pointsLeftLine(r.Score.Left); line != "" {
+			fmt.Fprintf(&b, "%s%s%s\n", c.dim, line, c.reset)
+		}
+		b.WriteString("\n")
 	}
 
 	for _, ax := range r.Score.Axes {
@@ -372,4 +376,30 @@ func headroomNote(c colors, h headroom) string {
 		return ""
 	}
 	return fmt.Sprintf("%s  → %d after fixes%s", c.dim, after, c.reset)
+}
+
+// pointsLeftLine says where the points short of 100 are, or nothing when
+// there are none to explain. See model.PointsLeft.
+func pointsLeftLine(l model.PointsLeft) string {
+	var parts []string
+	if l.Pending > 0 {
+		parts = append(parts, fmt.Sprintf("+%d after restarts (%s)", l.Pending, plural(l.PendingCount, "fix", "fixes")))
+	}
+	if l.Manual > 0 {
+		parts = append(parts, fmt.Sprintf("%d to fix by hand (%s)", l.Manual, plural(l.ManualCount, "finding", "findings")))
+	}
+	if l.Unavailable > 0 {
+		parts = append(parts, fmt.Sprintf("%d with no fix yet (%s)", l.Unavailable, plural(l.UnavailableCount, "finding", "findings")))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return "Points left: " + strings.Join(parts, " · ")
+}
+
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, one)
+	}
+	return fmt.Sprintf("%d %s", n, many)
 }
