@@ -129,7 +129,16 @@ func (d Delta) HasChanges() bool {
 }
 
 // ComputeDelta diffs the active (unfixed) findings of prev and curr by key.
+//
+// Only domains both scans ran are compared. A domain one of them never ran
+// has nothing to say about the other: turning the opt-in forensic domain off
+// would otherwise announce every forensic finding resolved, and turning it on
+// would announce them all as new, with nothing on the host having changed.
+// A report with no Domains at all (a hand-built one) compares everything.
 func ComputeDelta(prev, curr Report) Delta {
+	if shared := sharedDomains(prev, curr); shared != nil {
+		prev, curr = onlyDomains(prev, shared), onlyDomains(curr, shared)
+	}
 	prevByKey := activeByKey(prev)
 	currKeys := activeKeySet(curr)
 
@@ -151,6 +160,36 @@ func ComputeDelta(prev, curr Report) Delta {
 		}
 	}
 	return d
+}
+
+// sharedDomains returns the domains both reports ran, or nil when either
+// report lists none.
+func sharedDomains(prev, curr Report) map[Source]bool {
+	if len(prev.Domains) == 0 || len(curr.Domains) == 0 {
+		return nil
+	}
+	inPrev := make(map[Source]bool, len(prev.Domains))
+	for _, d := range prev.Domains {
+		inPrev[d.Source] = true
+	}
+	shared := make(map[Source]bool, len(curr.Domains))
+	for _, d := range curr.Domains {
+		if inPrev[d.Source] {
+			shared[d.Source] = true
+		}
+	}
+	return shared
+}
+
+func onlyDomains(r Report, keep map[Source]bool) Report {
+	out := r
+	out.Findings = make([]Finding, 0, len(r.Findings))
+	for _, f := range r.Findings {
+		if keep[f.Source] {
+			out.Findings = append(out.Findings, f)
+		}
+	}
+	return out
 }
 
 // All three of these ask Finding.Active rather than testing Fixed, so a fix

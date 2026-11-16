@@ -147,7 +147,7 @@
                   <tr><td>리버스 프록시</td><td><code>proxy.</code></td><td>nginx, Caddy 또는 Docker</td></tr>
                   <tr><td>Proxmox VE 호스트</td><td><code>proxmox.</code></td><td>Proxmox VE 호스트</td></tr>
                   <tr><td>단일 노드 쿠버네티스</td><td><code>kube.</code></td><td>k3s 또는 k0s</td></tr>
-                  <tr><td>포렌식 준비도</td><td><code>forensic.</code></td><td>—</td></tr>
+                  <tr><td>포렌식 준비도 <em>(선택)</em></td><td><code>forensic.</code></td><td><code>--with forensic</code></td></tr>
                   <tr><td>이미지 CVE <em>(선택)</em></td><td><code>cve.</code></td><td>Trivy</td></tr>
                 </tbody>
               </table>
@@ -426,6 +426,7 @@
 
             <h2 id="forensic">포렌식 준비도 <code>forensic.</code></h2>
             <p>다른 영역은 누군가 들어올 수 있는지를 묻습니다. 이 영역은 누군가 들어왔을 때 이 호스트가 그것을 보여 줄 수 있는지를 묻습니다. 셀프호스팅 서버는 대개 그러지 못합니다. 증거가 처음부터 남지 않기 때문입니다. 사람들이 가장 먼저 하는 재부팅에 저널이 사라지고, 웹 서버 계정이 무엇을 실행했는지 아무것도 기록하지 않으며, 접근 로그는 일주일만 남고 요청의 크기를 적지 않습니다. 어느 것도 침입 경로는 아니므로 이 영역의 발견 항목은 모두 <span class="sev low">LOW</span>입니다. 대가는 나중에 시도와 침해를 구분할 수 있는 능력입니다. 보존 기간은 90일을 기준으로 봅니다. 대부분의 침입이 침입자가 아닌 누군가에게 발견되기까지 걸리는 기간입니다.</p>
+            <p>이 영역은 기본으로 꺼져 있습니다. 홈서버 사용자에게는 90일치 증거를 남길 이유가 적은데, 켜 두면 그만큼 점수가 내려가기 때문입니다. 포함하려면 <code>scan</code>, <code>tui</code>, <code>serve</code>, <code>fix</code>, <code>explain</code>, <code>export</code>에 <code>--with forensic</code>을 붙입니다. 그러면 발견 항목이 위의 가중치로 점수에 들어갑니다. <code>hostveil triage</code>는 이 설정과 상관없이 이 영역을 실행합니다.</p>
             <div class="docs-table-wrap">
               <table>
                 <thead><tr><th>ID</th><th>잡아내는 것</th><th>심각도</th><th>수정</th></tr></thead>

@@ -32,6 +32,11 @@ type Config struct {
 	// that has a real one to give, and every core test that never sets it
 	// still gets a usable, if blank, record.
 	Version string
+	// OptIn names the opt-in domains (model.Source.OptIn) a full scan runs.
+	// The rest of the opt-in domains are left out of the scan, the report
+	// and the score, as if they were not registered. ScanOptions.Only can
+	// still name one directly.
+	OptIn []model.Source
 }
 
 // Engine holds the checker registry, fix registry, recovery store, and the
@@ -43,6 +48,7 @@ type Engine struct {
 	runner   platform.CommandRunner
 	ai       ai.Explainer
 	version  string
+	optIn    []model.Source
 
 	// applyMu serializes everything that mutates the host or replaces the
 	// current report: scans, fix applications, and rollbacks. It is always
@@ -75,7 +81,7 @@ func New(cfg Config) *Engine {
 	if explainer == nil {
 		explainer = ai.Noop{}
 	}
-	return &Engine{registry: cfg.Registry, fixes: cfg.Fixes, store: store, runner: runner, ai: explainer, version: cfg.Version}
+	return &Engine{registry: cfg.Registry, fixes: cfg.Fixes, store: store, runner: runner, ai: explainer, version: cfg.Version, optIn: cfg.OptIn}
 }
 
 // ScanOptions narrows what a scan covers. The zero value is a full scan.
@@ -113,12 +119,14 @@ func (e *Engine) PlannedDomains(opts ScanOptions) []model.Source {
 // plannedCheckers applies ScanOptions to the registry.
 func (e *Engine) plannedCheckers(opts ScanOptions) []check.Checker {
 	all := e.registry.Checkers()
-	if !opts.Partial() {
-		return all
-	}
 	var subset []check.Checker
 	for _, c := range all {
-		if slices.Contains(opts.Only, c.Source()) {
+		src := c.Source()
+		want := slices.Contains(opts.Only, src)
+		if !opts.Partial() {
+			want = !src.OptIn() || slices.Contains(e.optIn, src)
+		}
+		if want {
 			subset = append(subset, c)
 		}
 	}
@@ -155,11 +163,7 @@ func (e *Engine) ScanWith(ctx context.Context, progress chan<- model.ScanEvent, 
 	// not replace e.runner: fixes run through the uncached one, because an
 	// exec fix mutates the host and must never be served from a cache.
 	env := platform.Detect(ctx, platform.NewScanCache(e.runner))
-	registry := e.registry
-	if opts.Partial() {
-		registry = check.NewRegistry(e.plannedCheckers(opts)...)
-	}
-	results := registry.Run(ctx, env, progress)
+	results := check.NewRegistry(e.plannedCheckers(opts)...).Run(ctx, env, progress)
 
 	var findings []model.Finding
 	states := make(map[model.Source]model.ScanState, len(results))
@@ -189,7 +193,7 @@ func (e *Engine) ScanWith(ctx context.Context, progress chan<- model.ScanEvent, 
 	model.SortFindings(findings)
 	report := model.Report{
 		Findings: findings,
-		Score:    model.ScoreReport(findings, states),
+		Score:    withoutUnaskedOptIn(model.ScoreReport(findings, states), states),
 		Domains:  domains,
 	}
 
@@ -222,6 +226,18 @@ func (e *Engine) ScanWith(ctx context.Context, progress chan<- model.ScanEvent, 
 	e.state.replace(report, delta)
 
 	return report
+}
+
+// withoutUnaskedOptIn drops the axis of every opt-in domain this scan did not
+// run. Every other domain that did not run stays, as N/A: that one could not
+// look, and saying so is the point. An opt-in domain nobody asked for was
+// never going to look, and an N/A row for it on every scan would be noise.
+func withoutUnaskedOptIn(b model.ScoreBreakdown, states map[model.Source]model.ScanState) model.ScoreBreakdown {
+	b.Axes = slices.DeleteFunc(b.Axes, func(a model.ScoreAxis) bool {
+		_, ran := states[a.Source]
+		return a.Source.OptIn() && !ran
+	})
+	return b
 }
 
 // LastDelta returns how the most recent scan differed from the one before

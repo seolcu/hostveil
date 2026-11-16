@@ -67,6 +67,9 @@ type sourceDef struct {
 	axisID    string
 	axisLabel string
 	cap       int
+	// optIn keeps the domain out of a scan unless the operator asks for it
+	// by name. See Source.OptIn.
+	optIn bool
 }
 
 // sourceDefs describes every detection domain, in scan and report order.
@@ -92,22 +95,22 @@ type sourceDef struct {
 // previous scan whose findings had all changed domain, which reads to a
 // user as "everything on this host is new and everything old is fixed".
 var sourceDefs = []sourceDef{
-	{SourceCompose, "compose", "Container", "container", "Container exposure", 8},
-	{SourceSSH, "ssh", "SSH", "ssh", "SSH hardening", 9},
-	{SourceFirewall, "firewall", "Firewall", "firewall", "Host firewall", 6},
-	{SourceUpdates, "updates", "Updates", "updates", "Auto-updates", 7},
-	{SourceCVE, "cve", "CVEs", "cve", "Vulnerabilities", 7},
-	{SourcePorts, "ports", "Ports", "ports", "Exposed services", 6},
-	{SourceAccounts, "accounts", "Accounts", "accounts", "Account hygiene", 7},
-	{SourceFilePerms, "fileperms", "File perms", "fileperms", "File permissions", 5},
-	{SourceAgent, "agent", "AI agents", "agent", "AI agent runtimes", 6},
-	{SourceSysctl, "sysctl", "Kernel", "sysctl", "Kernel hardening", 5},
-	{SourceDockerd, "dockerd", "Dockerd", "dockerd", "Docker daemon", 7},
-	{SourceSystemd, "systemd", "Services", "systemd", "Service hardening", 6},
-	{SourceProxy, "proxy", "Proxy", "proxy", "Reverse proxy", 6},
-	{SourceProxmox, "proxmox", "Proxmox", "proxmox", "Proxmox VE host", 6},
-	{SourceKube, "kube", "Kubernetes", "kube", "Single-node Kubernetes", 5},
-	{SourceForensic, "forensic", "Forensics", "forensic", "Forensic readiness", 4},
+	{SourceCompose, "compose", "Container", "container", "Container exposure", 8, false},
+	{SourceSSH, "ssh", "SSH", "ssh", "SSH hardening", 9, false},
+	{SourceFirewall, "firewall", "Firewall", "firewall", "Host firewall", 6, false},
+	{SourceUpdates, "updates", "Updates", "updates", "Auto-updates", 7, false},
+	{SourceCVE, "cve", "CVEs", "cve", "Vulnerabilities", 7, false},
+	{SourcePorts, "ports", "Ports", "ports", "Exposed services", 6, false},
+	{SourceAccounts, "accounts", "Accounts", "accounts", "Account hygiene", 7, false},
+	{SourceFilePerms, "fileperms", "File perms", "fileperms", "File permissions", 5, false},
+	{SourceAgent, "agent", "AI agents", "agent", "AI agent runtimes", 6, false},
+	{SourceSysctl, "sysctl", "Kernel", "sysctl", "Kernel hardening", 5, false},
+	{SourceDockerd, "dockerd", "Dockerd", "dockerd", "Docker daemon", 7, false},
+	{SourceSystemd, "systemd", "Services", "systemd", "Service hardening", 6, false},
+	{SourceProxy, "proxy", "Proxy", "proxy", "Reverse proxy", 6, false},
+	{SourceProxmox, "proxmox", "Proxmox", "proxmox", "Proxmox VE host", 6, false},
+	{SourceKube, "kube", "Kubernetes", "kube", "Single-node Kubernetes", 5, false},
+	{SourceForensic, "forensic", "Forensics", "forensic", "Forensic readiness", 4, true},
 }
 
 var sourceIndex = indexBy(sourceDefs, func(d sourceDef) Source { return d.source })
@@ -142,6 +145,28 @@ func (s Source) Label() string {
 func (s Source) Valid() bool {
 	_, ok := sourceIndex[s]
 	return ok
+}
+
+// OptIn reports whether the domain runs only when the operator names it.
+//
+// Forensic readiness is the one such domain. It asks whether a host keeps the
+// evidence an investigation would need (ninety days of journal, auditd, a log
+// copy off the box), which is a fair question for an organisation and not one
+// the owner of a home server can do much about. Charged by default, it lowered
+// the score of exactly the reader Hostveil is written for, over findings that
+// reader has no reason to act on. Off by default and named with `--with`, it
+// is still one flag away for whoever wants it.
+func (s Source) OptIn() bool { return sourceIndex[s].optIn }
+
+// OptInSources lists the domains that run only when asked for, in scan order.
+func OptInSources() []Source {
+	var out []Source
+	for _, d := range sourceDefs {
+		if d.optIn {
+			out = append(out, d.source)
+		}
+	}
+	return out
 }
 
 // AllSources lists every real detection domain in scan/report order.

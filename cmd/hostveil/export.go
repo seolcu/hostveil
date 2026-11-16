@@ -19,6 +19,7 @@ func cmdExport(ctx context.Context, args []string) int {
 	fs.StringVar(&output, "output", "", "write to FILE instead of stdout")
 	fs.StringVar(&only, "only", "", "scan only these domains (comma-separated); a partial scan is not saved as the last-scan baseline")
 	fs.StringVar(&skip, "skip", "", "scan every domain except these (comma-separated); a partial scan is not saved as the last-scan baseline")
+	addWithFlag(fs)
 	if code := parseAndElevate(fs, args); code >= 0 {
 		return code
 	}

@@ -217,6 +217,8 @@ Scan flags:
                   --only ssh,firewall). A partial scan is not saved as the
                   last-scan baseline and reports no delta.
   --skip LIST     Scan every domain except these (comma-separated)
+  --with LIST     Also run these opt-in domains (today: forensic). tui,
+                  serve, fix, explain and export take it too.
   --no-color      Disable colored output
 
 Export flags:
