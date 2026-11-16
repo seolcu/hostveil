@@ -33,7 +33,7 @@ import (
 // the real sources, so incidental dotted strings in the check packages
 // (config filenames, config keys like net.bindIp) do not masquerade as IDs.
 //
-// The alternation is built from model.AllSources rather than written out,
+// The alternation is built from model.AllSources,
 // because a hand-written copy of the domain list is the thing this repo has
 // most reliably got wrong, and here it misreports which file is broken.
 //
@@ -158,10 +158,10 @@ func TestEveryEmittedFindingIsDocumented(t *testing.T) {
 // TestDocumentedFindingsAreStillEmitted is the same guard pointing the other
 // way: a row for a finding no checker constructs any more is a promise the
 // tool no longer keeps. It is a softer failure than the reverse, so it names
-// the retired ID rather than guessing whether the row or the checker is
-// wrong. It also keeps the harvest itself accurate: the two tests together
+// the retired ID and leaves the reader to decide whether the row or the
+// checker is wrong. It also keeps the harvest itself accurate: the two tests together
 // assert set equality, so a checker that starts building IDs in a shape the
-// walk cannot see fails here rather than silently shrinking coverage.
+// walk cannot see fails here.
 func TestDocumentedFindingsAreStillEmitted(t *testing.T) {
 	emitted := emittedFindingIDs(t)
 	for _, id := range documentedFindingIDs(t) {

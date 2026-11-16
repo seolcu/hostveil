@@ -20,8 +20,7 @@ import (
 //     never looked at is a claim about a domain it never looked at.
 //
 // This is the same shape of check as the Degraded flag's: a rule that lives in
-// prose until one renderer forgets it. It reads the sources rather than
-// rendering, because two of the three cannot be rendered here: the dashboard
+// prose until one renderer forgets it. It reads the sources, because two of the three cannot be rendered here: the dashboard
 // is JavaScript and SARIF is a machine format with its own answer.
 // The Go renderers all call model.ScoreAxis.Headroom and
 // model.ScoreAxis.ValueText now, so the compiler holds them together and

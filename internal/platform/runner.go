@@ -53,7 +53,7 @@ type DefaultRunner struct {
 // inspect`, `apt list --upgradable`, `sshd -T`. What they have in common is
 // that each talks to a daemon or a package database that can stop answering
 // while the socket stays open (a wedged Docker daemon is the everyday case)
-// and a read from one of those blocks forever, not briefly. Thirty seconds is
+// and a read from one of those blocks forever. Thirty seconds is
 // far more than any of them needs and still bounded.
 //
 // The bound matters more here than the exact number, because a scan runs its
@@ -76,12 +76,11 @@ const waitDelay = 2 * time.Second
 //
 // A caller that set its own deadline keeps it: the CVE checker gives Trivy
 // minutes, and imposing the default on top would kill every image
-// scan. The default is a floor for callers that said nothing, not a ceiling
-// over callers that did.
+// scan. The default applies only to callers that said nothing.
 //
 // # The locale is pinned, and it has to be
 //
-// Every parser in internal/check that matches a word rather than a number is
+// Every parser in internal/check that matches a word is
 // reading translated text unless the command is told not to translate. This
 // inherited the operator's environment, and `sudo` keeps LANG and LC_* by
 // default, so `hostveil scan` on a German or Japanese host asked apt in German
@@ -93,7 +92,7 @@ const waitDelay = 2 * time.Second
 // count came out zero however many were waiting: a clean report on an
 // unpatched machine, which is the failure class this whole tool refuses.
 //
-// LC_ALL rather than LANG, and this is the part worth remembering: gettext
+// LC_ALL, and this is the part to remember: gettext
 // honours LANGUAGE over LANG, so setting LANG alone leaves a desktop's
 // `LANGUAGE=de:en` in charge. LANGUAGE is ignored when the locale is C, which
 // is why this one variable is enough. Verified against real apt: with
@@ -123,7 +122,7 @@ func (r DefaultRunner) Run(ctx context.Context, name string, args ...string) ([]
 	cmd.WaitDelay = waitDelay
 	cmd.Env = append(os.Environ(), "LC_ALL=C")
 
-	// Bounded rather than cmd.Output(), which reads until the pipe closes.
+	// Bounded. cmd.Output() reads until the pipe closes.
 	// Time was bounded here from the start and memory was not, and the two
 	// fail differently: a command that hangs is killed at the deadline, while
 	// one that streams is held in full until it stops. The CVE checker runs
@@ -157,7 +156,7 @@ func (r DefaultRunner) Run(ctx context.Context, name string, args ...string) ([]
 // maxOutput bounds what one command may hand back.
 //
 // Generous: Trivy's JSON for a large image runs to tens of
-// megabytes and has to fit. This is a ceiling on a runaway, not a budget.
+// megabytes and has to fit. This is a ceiling on a runaway.
 const maxOutput = 128 << 20
 
 // maxStderrBytes bounds the diagnostic channel. cleanStderr cuts the message
@@ -168,7 +167,7 @@ const maxStderrBytes = 64 << 10
 //
 // Write always reports the full length. Reporting a short write would make
 // exec close the pipe and the command die of SIGPIPE, which reaches the
-// operator as a broken tool rather than as output Hostveil declined to hold.
+// operator as a broken tool.
 type capped struct {
 	buf      []byte
 	limit    int
@@ -235,7 +234,7 @@ func withStderr(err error, captured []byte) error {
 }
 
 // cleanStderr collapses stderr to a single truncated line. Truncation is by
-// rune, not byte, so a non-ASCII message is never cut mid-sequence.
+// rune, so a non-ASCII message is never cut mid-sequence.
 func cleanStderr(b []byte) string {
 	msg := strings.Join(strings.Fields(string(b)), " ")
 	if r := []rune(msg); len(r) > maxStderr {
@@ -267,7 +266,7 @@ func cleanStderr(b []byte) string {
 // is present and errors is recorded unreadable, and "no firewall" is only
 // claimed when every installed tool answered, so finding the binary is the
 // whole fix. An unreadable ufw becomes StatusUnknown, which is a coverage gap
-// rather than an accusation.
+// and makes no accusation.
 var adminDirs = []string{"/usr/local/sbin", "/usr/sbin", "/sbin"}
 
 // LookPath resolves a binary on PATH, then in the administrative directories.
@@ -321,7 +320,7 @@ func DockerReachable(ctx context.Context, r CommandRunner) (bool, string) {
 
 // DockerProbeArgv is the exact command DockerReachable runs.
 //
-// It is exported so tests script this rather than a copy of it. The argv was
+// It is exported so tests script this function itself. The argv was
 // written out by hand in five test files, and a scripted command that no
 // longer matches the caller's does not fail: it falls through to the fake
 // runner's error path, which every checker reads as a daemon that did not
@@ -336,7 +335,7 @@ func DockerProbeArgv() []string {
 // one. Some tools answer through it: firewall-cmd --state exits 252 for "not
 // running" and 253 for "not authorized", and those are an answer and a
 // silence respectively, which reading every non-zero exit alike confuses.
-// It matches on the method rather than on *exec.ExitError so a test runner
+// It matches on the method so a test runner
 // can script an exit status.
 func ExitCode(err error) (int, bool) {
 	var coded interface{ ExitCode() int }

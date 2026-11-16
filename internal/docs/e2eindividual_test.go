@@ -30,7 +30,7 @@ func TestTheIndividualFixE2ENamesRealFixes(t *testing.T) {
 	}
 	r := fix.Default()
 	for _, id := range ids {
-		// File names share the shape: compose.yaml is a path, not a finding.
+		// File names share the shape: compose.yaml is a path.
 		if _, ext, _ := strings.Cut(id, "."); ext == "yaml" || ext == "yml" || ext == "json" || ext == "conf" || ext == "service" {
 			continue
 		}

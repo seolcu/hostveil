@@ -49,7 +49,7 @@ const AssumeHostEnv = "HOSTVEIL_ASSUME_HOST"
 //
 // Both are reachable through instructions this project publishes: the README
 // and the measured-results page tell people to try it "on a container or a
-// throwaway VM rather than your own machine", and `fix --all --review` (which
+// throwaway VM, never your own machine", and `fix --all --review` (which
 // scripts/measure/run.sh runs) applies the sysctl fixes.
 func ContainerRuntime() (bool, string) {
 	if os.Getenv(AssumeHostEnv) != "" {
@@ -74,7 +74,7 @@ type ContainerEvidence struct {
 	InitEnviron string
 	// InitCgroup is /proc/1/cgroup verbatim. On cgroup v1 the runtime's name
 	// appears in the path; on v2 it usually does not, which is why this is the
-	// last resort rather than the first.
+	// last resort.
 	InitCgroup string
 }
 
@@ -93,7 +93,7 @@ func containerRuntime(e ContainerEvidence) (bool, string) {
 		return true, "this is a container (/run/.containerenv)"
 	}
 	// container=<name> is set on pid 1 by the runtime itself, so it names the
-	// runtime rather than being guessed from a path.
+	// runtime directly.
 	for _, kv := range strings.Split(e.InitEnviron, "\x00") {
 		if name, ok := strings.CutPrefix(kv, "container="); ok && name != "" {
 			return true, "this is a " + name + " container"

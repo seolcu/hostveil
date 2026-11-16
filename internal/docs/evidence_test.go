@@ -49,12 +49,11 @@ func TestEveryEvidenceKeyAFixReadsIsWrittenByAChecker(t *testing.T) {
 
 // conditionalKeys are written only in some circumstances, and each fix that
 // reads one says what it does when it is absent. They are named here so the
-// list of what is optional is written down somewhere rather than
-// being rediscovered from a nil map.
+// list of what is optional is written down somewhere.
 var conditionalKeys = map[string]string{
-	"ssh_port": "firewall.inactive carries it only where `ss` could be read; without it the fix errors rather than enabling a firewall on an unknown port",
+	"ssh_port": "firewall.inactive carries it only where `ss` could be read; without it the fix errors and enables no firewall on an unknown port",
 	"set-by":   "sysctl carries it only where an origin file was found; its absence means the kernel default, which the fix handles",
-	"set-alt":  "the agent config fixes carry it only where a key has two safe values; its absence is what makes the fix Auto rather than Review",
+	"set-alt":  "the agent config fixes carry it only where a key has two safe values; its absence is what makes the fix Auto",
 }
 
 // And the reverse, weakly: a key nothing reads is not a defect, because
@@ -83,7 +82,7 @@ func evidenceKeysRead(t *testing.T, dir string) map[string]bool {
 
 // evidenceKeysWritten collects the first argument of every WithEvidence call
 // under the checkers, through the AST so a key built by a helper is visible as
-// the constant it is rather than as a line of text.
+// the constant it is.
 func evidenceKeysWritten(t *testing.T, dir string) map[string]bool {
 	t.Helper()
 	out := map[string]bool{}

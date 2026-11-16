@@ -53,8 +53,8 @@ func Listeners(ctx context.Context, r CommandRunner) ([]Listener, error) {
 // ListenersArgv is the exact command Listeners runs.
 //
 // No `-H`: it is a relatively recent flag, so the header row is skipped here
-// (parseListener rejects it) rather than by asking an older iproute2 to
-// accept a flag it does not know. Exported for the same reason as
+// (parseListener rejects it), so an older iproute2 is never handed a flag
+// it does not know. Exported for the same reason as
 // DockerProbeArgv: a test that scripts a stale argv still passes, because
 // the fake runner's miss looks exactly like the tool failing.
 func ListenersArgv() []string { return []string{"ss", "-tlnp"} }
@@ -86,7 +86,7 @@ func parseListener(line string) (Listener, bool) {
 // splitHostPort splits ss's "host:port" local-address field. It defers to
 // net.SplitHostPort, which correctly handles bracketed IPv6 literals
 // ("[::]:22", "[fe80::1%lo]:6379") and wildcards ("*:22"). A field it cannot
-// parse is rejected rather than turned into a malformed address.
+// parse is rejected.
 func splitHostPort(s string) (host, port string, ok bool) {
 	h, p, err := net.SplitHostPort(s)
 	if err != nil || p == "" {

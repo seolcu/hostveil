@@ -106,7 +106,7 @@ func TestReadFileBeneathCapsTheSize(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := ReadFileBeneath(root, p, 99); err == nil {
-		t.Fatal("a file over the limit must be an error, not a truncated read")
+		t.Fatal("a file over the limit must be an error")
 	}
 	if b, err := ReadFileBeneath(root, p, 100); err != nil || len(b) != 100 {
 		t.Fatalf("a file exactly at the limit must read whole: %d bytes, %v", len(b), err)
@@ -161,7 +161,7 @@ func TestChmodBeneathRefusesAFIFO(t *testing.T) {
 		t.Skipf("mkfifo: %v", err)
 	}
 	if err := ChmodBeneath(root, p, 0o600); err == nil {
-		t.Fatal("a FIFO must be refused, not chmod'ed")
+		t.Fatal("a FIFO must be refused")
 	}
 }
 
@@ -259,13 +259,13 @@ func TestReadFileBoundedCapsTheSize(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := ReadFileBounded(p, 99); err == nil {
-		t.Fatal("a file over the limit must be an error, not a truncated read")
+		t.Fatal("a file over the limit must be an error")
 	}
 	if b, err := ReadFileBounded(p, 100); err != nil || len(b) != 100 {
 		t.Fatalf("a file exactly at the limit must read whole: %d bytes, %v", len(b), err)
 	}
 	if _, err := ReadFileBounded(p, -1); err == nil {
-		t.Fatal("a negative limit must be an error, not an unbounded read")
+		t.Fatal("a negative limit must be an error")
 	}
 }
 
@@ -282,7 +282,7 @@ func TestReadFileBoundedDoesNotBlockOnAFIFO(t *testing.T) {
 	select {
 	case err := <-done:
 		if err == nil {
-			t.Fatal("a FIFO must be an error, not content")
+			t.Fatal("a FIFO must be an error")
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("ReadFileBounded blocked on a FIFO")
@@ -312,7 +312,7 @@ func TestChownNoFollowRefusesASymlinkAndADirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := ChownNoFollow(link, os.Getuid(), os.Getgid()); err == nil {
-		t.Error("a symlink must be refused, not chowned through")
+		t.Error("a symlink must be refused")
 	}
 	if err := ChownNoFollow(dir, os.Getuid(), os.Getgid()); err == nil {
 		t.Error("a directory must be refused; only a created output file is chowned")

@@ -9,7 +9,7 @@ import (
 
 // The docs hand out commands to run *inside* the demo VM, and the path the
 // repository appears at in there is decided by one line of the Vagrantfile.
-// Nothing connects the two, and the failure is total rather than partial: a
+// Nothing connects the two, and the failure is total: a
 // command naming the wrong directory does not do less, it does nothing.
 //
 // DEVELOPMENT.md told anyone who wanted to reproduce the published

@@ -157,7 +157,7 @@ func koreanPages(t *testing.T) []string {
 func TestEveryKoreanSyllableOnTheSiteHasAGlyph(t *testing.T) {
 	m := readKoreanManifest(t)
 
-	// The whole file, not just its text nodes: an aria-label is read aloud and
+	// The whole file, attributes included: an aria-label is read aloud and
 	// a title attribute is shown in a tooltip, so a syllable there needs a
 	// glyph as much as one in a paragraph does.
 	missing := map[rune][]string{}
@@ -296,8 +296,7 @@ func wideTrackedSelectors(t *testing.T, file string, min float64) []trackedSelec
 // a Korean label apart into loose syllables, and the eyebrow on the Korean
 // landing page is a full sentence of them.
 //
-// site/korean.css answers with one value for all of them rather than a Korean
-// counterpart per Latin number, so there is nothing to keep numerically in
+// site/korean.css answers with one value for all of them, so there is nothing to keep numerically in
 // step. What there *is* to keep in step is the list of selectors, and a new
 // label added to either stylesheet would join it silently. Hence this.
 func TestKoreanTypographyRetracksEveryWideLabel(t *testing.T) {
@@ -327,7 +326,7 @@ func TestKoreanTypographyRetracksEveryWideLabel(t *testing.T) {
 			continue
 		}
 		t.Errorf("site/%s tracks %s at %gem, and site/korean.css does not retrack it.\n"+
-			"  At that width Hangul sets as separated syllables rather than as a word. Add\n"+
+			"  At that width Hangul sets as separated syllables. Add\n"+
 			"  the selector to the --track-ko-label rule in site/korean.css, or exempt it\n"+
 			"  here with the reason its text is never Korean.", w.file, w.selector, w.value)
 	}

@@ -7,7 +7,7 @@ import (
 
 // The rule, over the runtimes this build will not be running under. Each case
 // is the marker that runtime leaves, which is the whole reason the
-// evidence is a value rather than four reads inlined into the decision.
+// evidence is a value.
 func TestContainerRuntimeReadsEachRuntimesOwnMarker(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
@@ -75,8 +75,7 @@ func TestContainerRuntimeReadsEachRuntimesOwnMarker(t *testing.T) {
 	}
 }
 
-// The one that matters most, and the reason the cgroup markers are anchored
-// rather than loose.
+// The one that matters most, and the reason the cgroup markers are anchored.
 //
 // A host running Docker has cgroup paths full of the word "container", and pid
 // 1 is systemd's init.scope. Matching "container" anywhere would call every
@@ -97,7 +96,7 @@ func TestADockerHostIsNotAContainer(t *testing.T) {
 }
 
 // HOSTVEIL_ASSUME_HOST is the documented opt-out, and it has to reach the
-// exported entry point rather than the rule: the rule is about evidence, and
+// exported entry point: the rule is about evidence, and
 // the override is about what the operator is telling us to do with it.
 func TestAssumeHostOptsOutOfTheGate(t *testing.T) {
 	t.Setenv(AssumeHostEnv, "1")

@@ -90,7 +90,7 @@ func TestTheCountsAreNotAccidentallyZero(t *testing.T) {
 	for name, n := range counts(t) {
 		if n == 0 {
 			t.Errorf("%s counted 0; either the harvester broke or the claim is not worth "+
-				"publishing; both fail here rather than reaching a page", name)
+				"publishing; both fail here before reaching a page", name)
 		}
 	}
 }

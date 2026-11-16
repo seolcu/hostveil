@@ -26,8 +26,7 @@ import (
 // TestReadmeDocumentsEveryDomain pins README's table to model.AllSources, in
 // both languages.
 //
-// It matches on the prefix code span (`compose.*`) rather than the display
-// name, because the name is prose an author may reword: "Docker /
+// It matches on the prefix code span (`compose.*`), because the name is prose an author may reword: "Docker /
 // Compose", "Containers", while the prefix is the string a user types
 // into `hostveil fix`, and it is wrong or right.
 //
@@ -55,7 +54,7 @@ func TestReadmeDocumentsEveryDomain(t *testing.T) {
 		}
 		// Nothing-extracted guard: an empty section would make every Contains
 		// fail loudly, but a section that swallowed the whole file would make
-		// them all pass. Both are extraction bugs, not doc bugs.
+		// them all pass. Both are extraction bugs.
 		if len(table) > len(body)/2 {
 			t.Fatalf("the extracted table is %d bytes of a %d-byte %s: the section bounds are wrong",
 				len(table), len(body), tc.path)

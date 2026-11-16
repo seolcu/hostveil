@@ -27,8 +27,7 @@ import (
 // It covers Hostveil's own reads only. The terminal libraries underneath the
 // TUI read a dozen more (TERM, COLORTERM, TEA_TRACE and the rest) and those
 // are on the page too, but they cannot be harvested from this tree and their
-// absence would not be caught here. That gap is stated rather than papered
-// over: the page's own note says which rows come from a dependency.
+// absence would not be caught here. That gap is stated: the page's own note says which rows come from a dependency.
 var hostveilVar = regexp.MustCompile(`<code>(HOSTVEIL_[A-Z0-9_]+)</code>`)
 
 func TestEveryVariableHostveilReadsIsDocumented(t *testing.T) {
@@ -87,7 +86,7 @@ func TestNoHostveilVariableIsDocumentedButUnread(t *testing.T) {
 	}
 	if len(documented) < 4 {
 		t.Fatalf("only %d HOSTVEIL_ variables parsed from the reference (%v); the extraction "+
-			"is broken, not the page", len(documented), documented)
+			"is broken", len(documented), documented)
 	}
 	for name := range documented {
 		if !slices.Contains(read, name) {
@@ -163,7 +162,7 @@ func readEnvNames(t *testing.T) []string {
 			// goes undocumented with both tests still passing, which is the
 			// failure mode this file exists to prevent, one level up.
 			//
-			// consts is flat and keyed by name rather than by package, so two
+			// consts is flat and keyed by name, so two
 			// packages exporting the same const name would collide. They do
 			// not today, and a collision would have to be between two names
 			// whose values both start with HOSTVEIL_ to matter at all.
@@ -209,7 +208,7 @@ func readEnvNames(t *testing.T) []string {
 	// Nothing-extracted guard. Hostveil reads several; a harvest that stopped
 	// matching would make both tests above pass while checking nothing.
 	if len(names) < 6 {
-		t.Fatalf("only %d environment reads harvested (%v): the harvest is broken, not the page",
+		t.Fatalf("only %d environment reads harvested (%v): the harvest is broken",
 			len(names), names)
 	}
 	return names

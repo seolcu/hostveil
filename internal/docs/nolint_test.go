@@ -10,7 +10,7 @@ import (
 
 // nolintDirective matches the linter names a suppression comment lists.
 //
-// Written as a pattern rather than shown as an example, because an example
+// Written as a pattern, because an example
 // in this file is a directive in this file and this test would find it,
 // which it did, on the first run.
 var nolintDirective = regexp.MustCompile(`//nolint:([a-z0-9,]+)`)

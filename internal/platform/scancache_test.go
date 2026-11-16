@@ -108,7 +108,7 @@ func TestScanCacheCollapsesConcurrentDuplicates(t *testing.T) {
 	}
 
 	// Hold the first caller inside the host call so the rest pile onto the
-	// same in-flight key rather than finding a completed entry.
+	// same in-flight key.
 	<-inner.entered
 	close(inner.release)
 	wg.Wait()

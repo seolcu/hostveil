@@ -67,8 +67,7 @@ func TestNoFindingProseCarriesAGoIdentifier(t *testing.T) {
 					return true
 				}
 				// Unquote handles raw strings, so a backtick literal that
-				// happens to contain a quote is one literal rather than a
-				// span running into the next one.
+				// happens to contain a quote is one literal.
 				text, uerr := strconv.Unquote(lit.Value)
 				if uerr != nil {
 					return true

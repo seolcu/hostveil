@@ -40,7 +40,7 @@ var seeders = []string{
 var homeRelWrite = regexp.MustCompile(`(?:\$SEED_HOME|/home/[a-z_][a-z0-9_-]*|/root)/(\.[^\s"']+)`)
 
 // writesAPath reports whether a line is a command that puts something at a
-// path, rather than prose that mentions one. Both scripts explain themselves
+// path. Prose that mentions one does not count. Both scripts explain themselves
 // at length, and a comment naming /root/.cache/trivy is not a fixture writing
 // an agent config there.
 func writesAPath(line string) bool {
@@ -154,7 +154,7 @@ func TestSeedScriptIsExecutableAndGuarded(t *testing.T) {
 }
 
 // TestSeededAgentConfigExercisesTheRegisteredFixes holds the fixture to the
-// registry rather than to the checker.
+// registry.
 //
 // The paths test above asks whether the seeded host produces agent findings
 // at all. This asks the next question, and it is the one the measurements

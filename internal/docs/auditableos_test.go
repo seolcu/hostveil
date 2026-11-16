@@ -45,7 +45,7 @@ var osGated = map[string]string{
 // something Hostveil did not look at, which is the one thing this codebase
 // says a checker must never produce.
 //
-// It reads the source rather than calling Available, because on this platform
+// It reads the source, because on this platform
 // the gate returns true and a checker that had stopped calling it would
 // behave identically.
 func TestTheOSGateIsWhereItHasToBe(t *testing.T) {
@@ -104,7 +104,7 @@ func checkDomains(t *testing.T) []string {
 	}
 	sort.Strings(out)
 	if len(out) < 10 {
-		t.Fatalf("only %d detection domains found (%v); the discovery is broken, not the tree",
+		t.Fatalf("only %d detection domains found (%v); the discovery is broken",
 			len(out), out)
 	}
 	return out

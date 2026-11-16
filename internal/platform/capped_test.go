@@ -65,7 +65,7 @@ func TestCappedStopsAtItsLimitAndSaysSo(t *testing.T) {
 	}
 }
 
-// Overflow returns nothing rather than a prefix. Handing back the first
+// Overflow returns nothing. Handing back the first
 // 128 MiB of a JSON document gives a checker something that parses to a
 // smaller, wrong answer: a partial look reported as a finished one, which is
 // the failure this project spends most of its tests on.
