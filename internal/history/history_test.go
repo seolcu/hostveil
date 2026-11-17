@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -292,8 +293,17 @@ func TestRollbackRefusesToDiscardExternalEdits(t *testing.T) {
 		t.Fatalf("an unmodified file should roll back cleanly: %v", err)
 	}
 
-	// Now the operator edits the file after the fix.
+	// The fix is applied again, which writes a new checkpoint, and then the
+	// operator edits the file after it.
 	if err := os.WriteFile(path, applied, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cp, err = store.Save(Checkpoint{
+		ID:            NewID("ssh.rootlogin"),
+		FindingID:     "ssh.rootlogin",
+		AppliedSHA256: map[string]string{path: SHA256Hex(applied)},
+	}, map[string][]byte{path: orig})
+	if err != nil {
 		t.Fatal(err)
 	}
 	edited := []byte("PermitRootLogin no\nAllowUsers alice\n")
@@ -558,5 +568,49 @@ func TestOneBatchFitsUnderTheCheckpointCap(t *testing.T) {
 	}
 	if len(kept) != batch {
 		t.Errorf("a %d-fix batch left %d checkpoints; every one must survive its own session", batch, len(kept))
+	}
+}
+
+// A rolled-back checkpoint stays in the list, marked, and cannot be rolled
+// back a second time.
+func TestRollbackIsRecordedAndNotRepeated(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStore(dir)
+	path := filepath.Join(dir, "openclaw.json")
+	orig := []byte(`{"bind": "lan"}`)
+	applied := []byte(`{"bind": "loopback"}`)
+	if err := os.WriteFile(path, applied, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cp, err := store.Save(Checkpoint{
+		ID:            NewID("agent.auth-disabled"),
+		FindingID:     "agent.auth-disabled",
+		AppliedSHA256: map[string]string{path: SHA256Hex(applied)},
+	}, map[string][]byte{path: orig})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cp.RolledBack() {
+		t.Fatal("a new checkpoint reports itself rolled back")
+	}
+	got, err := store.Rollback(cp.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.RolledBack() {
+		t.Error("Rollback returned a checkpoint without RolledBackAt")
+	}
+	listed, err := store.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(listed) != 1 || !listed[0].RolledBack() {
+		t.Fatalf("List after rollback = %+v, want the one checkpoint marked rolled back", listed)
+	}
+	if _, err := store.Rollback(cp.ID); err == nil || !strings.Contains(err.Error(), "already rolled back") {
+		t.Errorf("second rollback: err = %v, want an already-rolled-back refusal", err)
+	}
+	if _, err := store.RollbackForce(cp.ID); err == nil {
+		t.Error("a forced second rollback was not refused")
 	}
 }

@@ -39,10 +39,11 @@ func toModelCheckpoint(cp history.Checkpoint) model.Checkpoint {
 		FindingID:      cp.FindingID,
 		Label:          cp.Label,
 		CreatedAt:      cp.CreatedAt,
-		Reversible:     cp.Reversible(),
+		Reversible:     cp.Reversible() && !cp.RolledBack(),
 		Diff:           cp.Diff,
 		RestartService: cp.RestartService,
 		Commands:       cp.Commands,
+		RolledBackAt:   cp.RolledBackAt,
 	}
 	for _, bf := range cp.Files {
 		out.Files = append(out.Files, bf.Path)

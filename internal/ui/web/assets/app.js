@@ -1031,8 +1031,15 @@ async function showAdvise() {
 function checkpointBox(cp) {
   const when = new Date(cp.created_at).toLocaleString();
   const body = el("div", { class: "fixbox-body" });
+  const undone = cp.rolled_back_at ? new Date(cp.rolled_back_at).toLocaleString() : "";
 
-  if (cp.reversible) {
+  if (undone) {
+    // Kept in the log so it still says what was applied; the button is
+    // gone because the original file is already back.
+    if (cp.diff) body.append(diffPre(cp.diff));
+    body.append(el("p", { class: "empty" },
+      t("Rolled back at {when}. The original file is in place.", { when: undone })));
+  } else if (cp.reversible) {
     if (cp.diff) body.append(diffPre(cp.diff));
     if (cp.restart_service) {
       body.append(el("div", { class: "warn" },
@@ -1049,7 +1056,8 @@ function checkpointBox(cp) {
   }
 
   return el("div", { class: "fixbox" },
-    el("div", { class: "fixbox-head" }, `${when}  ·  ${cp.finding_id}  ·  ${tr(cp.label)}`),
+    el("div", { class: "fixbox-head" },
+      `${when}  ·  ${cp.finding_id}  ·  ${tr(cp.label)}` + (undone ? `  ·  ${t("Rolled back")}` : "")),
     body);
 }
 
@@ -1219,6 +1227,13 @@ initThemePicker();
 initSortPicker();
 
 document.getElementById("history").onclick = showHistory;
+// The name in the status bar returns the detail pane to the overview, the
+// view a reload shows. Without it a finding, History or Advise held the pane
+// until the page was reloaded.
+document.getElementById("home").onclick = () => {
+  selected = null;
+  if (report) render();
+};
 document.getElementById("advise").onclick = showAdvise;
 
 // Export opens a modal to choose the format, then downloads /api/export as

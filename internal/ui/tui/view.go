@@ -1447,8 +1447,14 @@ func (m *appModel) checkpointRow(cp model.Checkpoint, cursor bool, idW int) stri
 	when := cp.CreatedAt.Local().Format("01-02 15:04")
 	id := truncate(cp.FindingID, idW)
 	inner := max(textwidth.MinWrap, m.width-2*bodyInset)
-	label := truncate(cp.Label, max(1, inner-whenW-idW-2))
-	line := fmt.Sprintf("%-*s %-*s %s", whenW, when, idW, id, label)
+	// An undone fix stays in the log, marked, so the list still says what
+	// was applied and when; only the rollback is gone from it.
+	tag := ""
+	if !cp.RolledBackAt.IsZero() {
+		tag = "  rolled back " + cp.RolledBackAt.Local().Format("15:04")
+	}
+	label := truncate(cp.Label, max(1, inner-whenW-idW-2-lipgloss.Width(tag)))
+	line := fmt.Sprintf("%-*s %-*s %s%s", whenW, when, idW, id, label, tag)
 	if cursor {
 		return s.sel.Render(padRight(line, inner))
 	}

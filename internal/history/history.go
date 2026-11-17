@@ -106,11 +106,20 @@ type Checkpoint struct {
 	// restoring daemon.json under a daemon that is still running from the
 	// edited one changes nothing until something restarts it.
 	AfterRestore [][]string `json:"after_restore,omitempty"`
+	// RolledBackAt is when a rollback restored every file of this
+	// checkpoint. Zero means it has not been rolled back. Without it the
+	// history listed an undone fix exactly like a live one, offered to
+	// roll it back again, and that second rollback was declined as an
+	// external edit, because the file now holds the original bytes.
+	RolledBackAt time.Time `json:"rolled_back_at,omitzero"`
 }
 
 // Reversible reports whether the checkpoint can be rolled back (i.e. it
 // backed up files).
 func (c Checkpoint) Reversible() bool { return len(c.Files) > 0 }
+
+// RolledBack reports whether a rollback already restored this checkpoint.
+func (c Checkpoint) RolledBack() bool { return !c.RolledBackAt.IsZero() }
 
 // Store persists checkpoints under a directory.
 type Store struct {
@@ -711,6 +720,10 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 	if !cp.Reversible() {
 		return cp, fmt.Errorf("checkpoint %s has no backed-up files to restore", id)
 	}
+	if cp.RolledBack() {
+		return cp, fmt.Errorf("checkpoint %s was already rolled back at %s", id,
+			cp.RolledBackAt.Local().Format("2006-01-02 15:04:05"))
+	}
 
 	// Check every file before touching any of them. Rollback restores in a
 	// loop and returns on the first error, so a mid-loop refusal would leave
@@ -843,6 +856,15 @@ func (s *Store) rollback(id string, force bool) (Checkpoint, error) {
 	}
 	if len(errs) > 0 {
 		return cp, &PartialRestoreError{Restored: restored, Failed: failed, Err: errors.Join(errs...)}
+	}
+	// Recorded only after every file is back. A failure to record it does
+	// not fail the rollback: the files are restored, and the caller still
+	// has to un-mark the finding and rescore. The cost is that the history
+	// keeps offering this entry, and a second attempt is declined as an
+	// external edit, which is how it behaved before this field existed.
+	cp.RolledBackAt = time.Now().UTC()
+	if err := s.writeMeta(filepath.Join(s.checkpointsDir(), id), cp); err != nil {
+		cp.RolledBackAt = time.Time{}
 	}
 	return cp, nil
 }
