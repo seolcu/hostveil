@@ -43,6 +43,10 @@ body {
    Wrapping drops .actions to its own right-aligned row instead. */
 .brand { display: inline-flex; align-items: center; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; }
 .brand b { color: var(--bone); }
+/* .brand is a button (it returns the detail pane to the overview), so it
+   drops the button chrome declared below and keeps the lockup's own type. */
+button.brand { font: 700 13px/1.55 var(--mono); letter-spacing: 1.5px; border: 0; padding: 0; background: transparent; color: inherit; }
+button.brand:hover b { color: var(--safe); }
 /* The tile-less mark, so it dissolves into any theme's status bar. (The favicon carries a tile instead, for the
    unknown background of a browser tab.)
 
@@ -75,6 +79,15 @@ button:focus-visible { outline: 2px solid var(--safe); outline-offset: 1px; }
 button.primary { border-color: var(--safe); color: var(--safe); }
 button.primary:hover { background: var(--safe); color: var(--ink); }
 button:disabled { opacity: .45; cursor: default; }
+/* Vertical centring of the labels. With line-height 1 the label sits where
+   the font's ascent and descent put it, and Hangul comes from a fallback
+   CJK face whose ink rides higher in that box than the mono's capitals do:
+   measured off screenshots of the Korean dashboard, button labels were
+   0.7px high and the language picker's 1.3px low, against a centred "AI".
+   The shift is two-thirds of a pixel, one device pixel at 1.5x. English
+   labels are capitals and already centred, so the shift is Korean only. */
+html:lang(ko) button:not(.chip, .dom, .brand, #advise) { padding-top: 8.67px; padding-bottom: 7.33px; }
+html:lang(ko) #lang { padding-top: 6.67px; padding-bottom: 9.33px; }
 
 /* theme picker: wears the button's chrome so the action row stays one
    object. The options themselves are drawn by the OS, so they are given
@@ -202,7 +215,8 @@ ul { list-style: none; margin: 0; padding: 0; }
 .filterbar:empty { display: none; }
 .chip { font: 600 10px/1 var(--mono); letter-spacing: .6px; text-transform: uppercase;
   color: var(--slate); background: transparent; border: 1px solid var(--line-2); border-radius: 0;
-  padding: 5px 9px; cursor: pointer; }
+  /* 2/3px lower than symmetric: both scripts measured 0.7px high in it. */
+  padding: 5.67px 9px 4.33px; cursor: pointer; }
 .chip:hover { border-color: var(--bone); color: var(--bone); }
 .chip.on { color: var(--ink); background: var(--accent); border-color: var(--accent); }
 .chip.c-high { color: var(--sev); }
@@ -219,7 +233,10 @@ ul { list-style: none; margin: 0; padding: 0; }
 .finding { display: grid; grid-template-columns: auto auto 1fr auto; gap: 12px; align-items: baseline;
   padding: 9px 18px 9px 15px; border-left: 3px solid transparent; cursor: pointer;
   border-bottom: 1px solid var(--ink-2); }
-.pick { accent-color: var(--safe); width: 14px; height: 14px; cursor: pointer; align-self: center; margin: 0; }
+/* Top-aligned to the first line, where the severity label sits: centred on
+   the row, it dropped between the two lines of a wrapped title. 3px is
+   (13px x 1.55 line - 14px box) / 2. */
+.pick { accent-color: var(--safe); width: 14px; height: 14px; cursor: pointer; align-self: start; margin: 3px 0 0; }
 .pick-spacer { display: inline-block; width: 14px; }
 .finding:hover { background: var(--ink-2); }
 .finding.active { background: var(--ink-2); border-left-color: var(--bone); }
@@ -286,7 +303,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .overview { max-width: 68ch; }
 .over-lead { color: var(--slate); }
 .over-sev { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
-.over-chip { font-size: 11px; font-weight: 700; letter-spacing: .5px; padding: 4px 9px;
+.over-chip { font-size: 11px; font-weight: 700; letter-spacing: .5px; padding: 5px 9px 3px; /* measured 1px high when symmetric */
   border: 1px solid var(--line-2); }
 .over-chip.sev-high { color: var(--sev); border-color: var(--sev); }
 .over-chip.sev-medium { color: var(--sev); }

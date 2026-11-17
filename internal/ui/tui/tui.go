@@ -1023,6 +1023,12 @@ func (m *appModel) keyHistory(key string) (tea.Model, tea.Cmd) {
 		if len(m.checkpoints) == 0 {
 			return m, nil
 		}
+		if cp := m.checkpoints[m.cpCursor]; !cp.RolledBackAt.IsZero() {
+			m.status = "That fix was already rolled back at " +
+				cp.RolledBackAt.Local().Format("01-02 15:04") + "; the original file is in place."
+			m.mode = modeMessage
+			return m, nil
+		}
 		if !m.checkpoints[m.cpCursor].Reversible {
 			m.status = "That fix ran a command and edited no file, so there is nothing to restore automatically."
 			m.mode = modeMessage

@@ -189,6 +189,9 @@ type Checkpoint struct {
 	Diff           string     `json:"diff,omitempty"`
 	RestartService string     `json:"restart_service,omitempty"`
 	Commands       [][]string `json:"commands,omitempty"`
+	// RolledBackAt is when this checkpoint was rolled back; zero if it was
+	// not. A rolled-back checkpoint is not Reversible.
+	RolledBackAt time.Time `json:"rolled_back_at,omitzero"`
 }
 
 // FixVerification is what a re-check of the finding's own domain found

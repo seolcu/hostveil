@@ -98,7 +98,10 @@ func cmdHistory(_ context.Context, args []string) int {
 	fmt.Println("Applied fixes (newest first):")
 	for _, cp := range cps {
 		reversible := "not reversible"
-		if cp.Reversible {
+		switch {
+		case !cp.RolledBackAt.IsZero():
+			reversible = "rolled back " + cp.RolledBackAt.Local().Format("2006-01-02 15:04:05")
+		case cp.Reversible:
 			reversible = "rollback: hostveil rollback " + cp.ID
 		}
 		fmt.Printf("  %s  %s  (%s)  [%s]\n",
