@@ -3,10 +3,10 @@ module github.com/seolcu/hostveil
 go 1.26.7
 
 require (
-	charm.land/bubbletea/v2 v2.1.1
-	charm.land/lipgloss/v2 v2.1.0
+	charm.land/bubbletea/v2 v2.1.2
+	charm.land/lipgloss/v2 v2.1.1
 	github.com/charmbracelet/colorprofile v0.4.3
-	github.com/charmbracelet/x/ansi v0.11.9
+	github.com/charmbracelet/x/ansi v0.11.10
 	github.com/mattn/go-runewidth v0.0.31
 	golang.org/x/sys v0.50.0
 	gopkg.in/yaml.v3 v3.0.1
