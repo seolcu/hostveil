@@ -2,6 +2,73 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.38.0](https://github.com/seolcu/hostveil/compare/v3.37.1...v3.38.0) (2026-11-25)
+
+### Features
+
+* **cve:** a repeat scan reads back the Trivy report of an image or a host
+  package set that has not changed. Reports are kept under the state
+  directory, keyed by the image ID or the package database, the
+  vulnerability database's date and the Trivy version, so a new database
+  or a new image is scanned again. On the demo VM a repeat scan went from
+  45.6s to 1.3s with the same findings
+  ([#897](https://github.com/seolcu/hostveil/pull/897)).
+* **cve:** a vulnerability is HIGH only when its CVSS vector says an
+  attacker reaches it over the network with no account and no one's help
+  (`AV:N`, `PR:N`, `UI:N`), which is what HIGH means in Hostveil. One that
+  needs local access, a login or a click is MEDIUM; one with no vector
+  keeps Trivy's level. On the demo host the HIGH vulnerabilities among the
+  Ubuntu packages' unfixed ones went from 137 to 25
+  ([#901](https://github.com/seolcu/hostveil/pull/901)).
+* **fix:** safe kernel fixes are in force when they return: the drop-in is
+  loaded at once where the kernel allows it, and a rollback puts the old
+  runtime values back. In a container with a read-only `/proc/sys` the
+  file stays and waits for a boot, as before
+  ([#898](https://github.com/seolcu/hostveil/pull/898)).
+* **fix:** after a batch, Hostveil offers to recreate the containers whose
+  compose files it edited, once per project, so the compose fixes take
+  effect. The CLI asks (`--yes` does not answer it), the TUI offers `y`,
+  and the dashboard has a Recreate now button
+  ([#898](https://github.com/seolcu/hostveil/pull/898)).
+* **fix:** four fixes are Auto when the host shows they cannot break
+  anything: `dockerd.live-restore` (Docker applies it on a reload),
+  the DCCP, SCTP, RDS and TIPC module blocks when the module is not loaded,
+  and `ssh.rootlogin` (`prohibit-password`) when root's password is locked
+  ([#898](https://github.com/seolcu/hostveil/pull/898)).
+* **ui:** the number beside the score is what the safe fixes deliver,
+  which is what Fix all safe applies. The Review fixes' share is listed
+  under the points left. Findings sort by severity and then by what can be
+  done, so the High findings with a button come first. Proxmox and
+  Kubernetes are no longer listed as skipped on a host that is neither
+  ([#900](https://github.com/seolcu/hostveil/pull/900)).
+* **web:** the dashboard draws the safe-fix projection on each bar, keeps
+  the list on screen during a rescan, says how many fixes a batch applies
+  and the score it leads to, offers Explain with AI only when a provider
+  answers, and works on a phone: a tapped finding scrolls into view and
+  every target is at least 24px, 44px on a touch screen. In Korean,
+  particles after a name (`{svc}을(를)`) are settled from how the name ends
+  ([#900](https://github.com/seolcu/hostveil/pull/900)).
+* **tui:** the list and the detail pane share the width in the golden
+  ratio, `a` asks before applying, and the footer fits in two lines at
+  most ([#900](https://github.com/seolcu/hostveil/pull/900)).
+* **demo:** the demo VM is rebuilt as a booth environment where nearly
+  every finding is Auto, and `homelab setup` makes it an SSH host named
+  `homelab` with seven-second resets and offline CVE scans
+  ([#903](https://github.com/seolcu/hostveil/pull/903)).
+
+### Bug Fixes
+
+* **check:** a password moved into `.env` or an `env_file` is no longer
+  reported as hardcoded in the compose file, and the long `env_file` form
+  parses. A literal default in `${VAR:-…}` still counts
+  ([#899](https://github.com/seolcu/hostveil/pull/899)).
+* **check:** a service unit the operator installed is audited even when
+  systemd has not loaded it, such as a backup service between runs
+  ([#899](https://github.com/seolcu/hostveil/pull/899)).
+* **check:** a kernel module blocked in any file under `/etc/modprobe.d`
+  is no longer reported as loadable
+  ([#902](https://github.com/seolcu/hostveil/pull/902)).
+
 ## [3.37.1](https://github.com/seolcu/hostveil/compare/v3.37.0...v3.37.1) (2026-11-17)
 
 ### Bug Fixes
