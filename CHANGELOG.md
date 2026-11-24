@@ -2,6 +2,29 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.39.0](https://github.com/seolcu/hostveil/compare/v3.38.1...v3.39.0) (2026-11-25)
+
+### Features
+
+* **model:** the overall score is the cap-weighted geometric mean of the
+  axes, `100 × Π remaining^(cap / Σcap)` over the axes that ran. Read an
+  axis's remaining share as the chance it holds: the chance every axis
+  holds is their product, and an attacker needs one that does not. A
+  collapsed domain now pulls the overall down as the weakest link it is,
+  where clean domains used to average it away; every axis at `r` still
+  scores `100r`. Scores are lower than 3.38 gave for the same host, most
+  of all on a host with one or two domains wide open
+  ([#907](https://github.com/seolcu/hostveil/pull/907)).
+* **model:** a finding another domain reports because a compose file
+  publishes a port on every interface (docker-proxy listening on it,
+  Docker bypassing ufw) is linked to the compose finding whose fix closes
+  it, and the number beside the score counts it as fixed along with it.
+  After recreating containers, the dashboard and the TUI rescan to show it
+  ([#907](https://github.com/seolcu/hostveil/pull/907)).
+* **demo:** the demo host's firewall is on and Docker publishes around it,
+  and an nginx web app replaces Gitea. It scores 38, and 92 after the safe
+  fixes ([#908](https://github.com/seolcu/hostveil/pull/908)).
+
 ## [3.38.1](https://github.com/seolcu/hostveil/compare/v3.38.0...v3.38.1) (2026-11-25)
 
 ### Bug Fixes
