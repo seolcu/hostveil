@@ -34,8 +34,10 @@ package systemd
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/seolcu/hostveil/internal/check"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -80,13 +82,16 @@ var showProperties = []string{
 
 // Checker reports services running with systemd's protections switched off.
 type Checker struct {
+	// UnitFileDirs are read for unit files systemd has not loaded; nil
+	// reads none. See Check.
+	UnitFileDirs []string
 	// UnitDirs is the set of fragment path prefixes counted as operator
 	// installed; overridable for tests.
 	UnitDirs []string
 }
 
 // New returns a systemd service-hardening checker.
-func New() *Checker { return &Checker{UnitDirs: operatorUnitDirs} }
+func New() *Checker { return &Checker{UnitDirs: operatorUnitDirs, UnitFileDirs: operatorUnitDirs} }
 
 // Source identifies the systemd domain.
 func (*Checker) Source() model.Source { return model.SourceSystemd }
@@ -113,14 +118,33 @@ func (c *Checker) Available(ctx context.Context, env platform.Env) (bool, string
 // Check reads every loaded service unit and reports the operator-installed
 // ones running without systemd's protections.
 func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
-	args := append([]string{"show", "*.service"}, "--property="+strings.Join(showProperties, ","))
-	out, err := env.Runner.Run(ctx, "systemctl", args...)
+	props := "--property=" + strings.Join(showProperties, ",")
+	out, err := env.Runner.Run(ctx, "systemctl", "show", "*.service", props)
 	if err != nil {
 		return nil, fmt.Errorf("listing service units: %w", err)
 	}
+	units := parseUnits(string(out))
+
+	// `show '*.service'` matches the units systemd has in memory, and it
+	// unloads one that nothing references and nothing is running: a
+	// hand-written backup service between runs, a unit started by hand
+	// once. Those are operator units too, so the unit files are listed from
+	// the directories and the ones missing above are asked for by name,
+	// which loads them.
+	var partial error
+	if missing := unlisted(c.UnitFileDirs, units); len(missing) > 0 {
+		more, err := env.Runner.Run(ctx, "systemctl", append(append([]string{"show"}, missing...), props)...)
+		if err != nil {
+			partial = &check.PartialError{
+				Reason: fmt.Sprintf("cannot read %d unit file(s) systemd has not loaded: %v", len(missing), err),
+			}
+		} else {
+			units = append(units, parseUnits(string(more))...)
+		}
+	}
 
 	var findings []model.Finding
-	for _, u := range parseUnits(string(out)) {
+	for _, u := range units {
 		if !c.operatorInstalled(u) {
 			continue
 		}
@@ -131,7 +155,33 @@ func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding,
 			findings = append(findings, r.finding(u))
 		}
 	}
-	return findings, nil
+	return findings, partial
+}
+
+// unlisted returns the *.service files in dirs that units does not name.
+// Templates (foo@.service) are skipped: there is no unit to show until an
+// instance exists, and an instance that exists is loaded.
+func unlisted(dirs []string, units []unit) []string {
+	seen := map[string]bool{}
+	for _, u := range units {
+		seen[u.ID] = true
+	}
+	var out []string
+	for _, dir := range dirs {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			name := e.Name()
+			if e.IsDir() || !strings.HasSuffix(name, ".service") || strings.Contains(name, "@") || seen[name] {
+				continue
+			}
+			seen[name] = true
+			out = append(out, name)
+		}
+	}
+	return out
 }
 
 // operatorInstalled reports whether a unit is one the person reading the

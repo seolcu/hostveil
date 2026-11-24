@@ -322,3 +322,18 @@ func TestEmittedFindingsCarryWhatTheirFixNeeds(t *testing.T) {
 		t.Fatal("no findings with registered fixes were exercised; the check is vacuous")
 	}
 }
+
+// A password the file takes from .env is not hardcoded in it, even though
+// the merged config docker compose prints shows the value.
+func TestInlineSecretReadsTheEnvironmentAsWritten(t *testing.T) {
+	s := compose.Service{Name: "db",
+		Environment:    compose.Environment{"POSTGRES_PASSWORD": "s3cretvalue123456"},
+		RawEnvironment: compose.Environment{"POSTGRES_PASSWORD": "${PGPASS}"}}
+	if _, flagged := ruleInlineSecret(s); flagged {
+		t.Error("${PGPASS} is a reference; the secret lives in .env")
+	}
+	s.RawEnvironment["POSTGRES_PASSWORD"] = "${PGPASS:-s3cretvalue123456}"
+	if _, flagged := ruleInlineSecret(s); !flagged {
+		t.Error("a literal default is written into the compose file")
+	}
+}

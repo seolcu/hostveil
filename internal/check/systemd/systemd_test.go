@@ -2,6 +2,8 @@ package systemd
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -51,7 +53,9 @@ func operatorUnit(id string, over map[string]string) string {
 func scan(t *testing.T, show string) []model.Finding {
 	t.Helper()
 	r := checktest.New().Script(show, showArgv...)
-	fs, err := New().Check(context.Background(), platform.Env{
+	c := New()
+	c.UnitFileDirs = nil
+	fs, err := c.Check(context.Background(), platform.Env{
 		ServiceManager: platform.SMSystemd, Runner: r,
 	})
 	if err != nil {
@@ -410,5 +414,32 @@ func TestAVendorDropInThatSortsBeforeUsChangesNothing(t *testing.T) {
 	}
 	if want := "/etc/systemd/system/gitea.service.d/50-hostveil.conf"; f.Metadata["dropin"] != want {
 		t.Errorf("dropin = %q, want %q", f.Metadata["dropin"], want)
+	}
+}
+
+// A unit file nothing has loaded is still an operator unit: it is asked for
+// by name, and audited like the loaded ones.
+func TestAUnitSystemdHasNotLoadedIsAudited(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"backup.service", "loaded.service", "tpl@.service", "notes.txt"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("[Service]\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	props := "--property=" + strings.Join(showProperties, ",")
+	r := checktest.New().
+		Script(operatorUnit("loaded.service", nil), showArgv...).
+		Script(operatorUnit("backup.service", nil), "systemctl", "show", "backup.service", props)
+	c := &Checker{UnitDirs: []string{"/etc/systemd/system/"}, UnitFileDirs: []string{dir}}
+	fs, err := c.Check(context.Background(), platform.Env{ServiceManager: platform.SMSystemd, Runner: r})
+	if err != nil {
+		t.Fatal(err)
+	}
+	services := map[string]bool{}
+	for _, f := range fs {
+		services[f.Service] = true
+	}
+	if !services["backup.service"] || !services["loaded.service"] {
+		t.Errorf("both units must be audited, got %v", services)
 	}
 }

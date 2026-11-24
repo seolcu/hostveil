@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -103,6 +104,9 @@ func effectiveProject(ctx context.Context, r platform.CommandRunner, files []str
 		// "which file decides this setting", and only the second is a
 		// question a fix can act on.
 		proj.Files = files
+		if perr == nil {
+			withRawEnvironment(ctx, r, &proj, argv)
+		}
 		return proj, perr
 	}
 
@@ -133,4 +137,39 @@ func configFiles(s string) []string {
 		}
 	}
 	return out
+}
+
+// withRawEnvironment reads the project again with --no-interpolate and keeps
+// each service's environment and env_file as the files write them.
+//
+// The merged config substitutes ${VAR} from .env and inlines every env_file
+// into environment, dropping the env_file key. So a password moved out of
+// the compose file, which is what compose.dr005 tells the operator to do,
+// came back as a literal in environment and was reported as hardcoded, and
+// compose.dr004 never saw an env_file at all. A compose too old for
+// --no-interpolate leaves the project as it was.
+func withRawEnvironment(ctx context.Context, r platform.CommandRunner, proj *Project, argv []string) {
+	rawArgv := append(slices.Clone(argv), "--no-interpolate")
+	out, err := r.Run(ctx, "docker", rawArgv...)
+	if err != nil {
+		return
+	}
+	raw, err := Parse(proj.File, out)
+	if err != nil {
+		return
+	}
+	for name, svc := range proj.Services {
+		rs, ok := raw.Services[name]
+		if !ok {
+			continue
+		}
+		svc.RawEnvironment = rs.Environment
+		if svc.RawEnvironment == nil {
+			svc.RawEnvironment = Environment{}
+		}
+		if len(svc.EnvFile) == 0 {
+			svc.EnvFile = rs.EnvFile
+		}
+		proj.Services[name] = svc
+	}
 }
