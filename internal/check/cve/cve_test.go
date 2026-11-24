@@ -123,6 +123,11 @@ type scriptRunner struct {
 	// noDocker removes docker from PATH; dockerDown leaves it on PATH with
 	// no daemon to answer.
 	noDocker, dockerDown bool
+	// dbJSON is `trivy version --format json`; imageIDs answers
+	// `docker image inspect`. Both are empty outside the cache tests, which
+	// leaves the cache off.
+	dbJSON   string
+	imageIDs map[string]string
 
 	// The checker scans images concurrently, so this fake is called from
 	// several goroutines at once. Only the recording needs guarding: the
@@ -134,6 +139,8 @@ type scriptRunner struct {
 	// download, the image name for a scan. The order matters: the
 	// download has to finish before the first scan starts.
 	calls []string
+	// hostCalls counts host package scans.
+	hostCalls int
 }
 
 // lastArgv returns the most recent trivy invocation's arguments.
@@ -166,6 +173,9 @@ func (s *scriptRunner) Run(_ context.Context, name string, args ...string) ([]by
 		}
 		return []byte("27.0.3\n"), nil
 	case name == "trivy" && len(args) > 0 && args[0] == "rootfs":
+		s.mu.Lock()
+		s.hostCalls++
+		s.mu.Unlock()
 		if s.hostErr {
 			return nil, errors.New("failed to analyze the root filesystem")
 		}
@@ -182,6 +192,17 @@ func (s *scriptRunner) Run(_ context.Context, name string, args ...string) ([]by
 		return []byte(s.psIDs), nil
 	case name == "docker" && args[0] == "inspect":
 		return []byte(s.inspectJSON), nil
+	case name == "trivy" && len(args) > 0 && args[0] == "version":
+		if s.dbJSON == "" {
+			return nil, errors.New("no vulnerability DB")
+		}
+		return []byte(s.dbJSON), nil
+	case name == "docker" && len(args) > 1 && args[0] == "image" && args[1] == "inspect":
+		id, ok := s.imageIDs[args[len(args)-1]]
+		if !ok {
+			return nil, errors.New("No such image")
+		}
+		return []byte(id + "\n"), nil
 	case name == "trivy" && slices.Contains(args, "--download-db-only"):
 		s.mu.Lock()
 		s.calls = append(s.calls, "warm")

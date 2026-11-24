@@ -39,7 +39,7 @@ func TestAPanicScanningOneImageDoesNotTakeTheProcessWithIt(t *testing.T) {
 	}
 	r := panicOnImage{image: "bad:latest"}
 
-	findings, failed, firstErr := scanAll(context.Background(), r, targets)
+	findings, failed, firstErr := scanAll(context.Background(), r, targets, &resultCache{})
 
 	if len(findings) != 0 {
 		t.Errorf("got %d findings from two failing targets, want 0", len(findings))
@@ -58,7 +58,7 @@ func TestAPanicScanningOneImageIsReportedByName(t *testing.T) {
 	targets := []target{{image: "bad:latest", standalone: true}}
 	r := panicOnImage{image: "bad:latest"}
 
-	_, failed, firstErr := scanAll(context.Background(), r, targets)
+	_, failed, firstErr := scanAll(context.Background(), r, targets, &resultCache{})
 	if failed != 1 || firstErr == nil {
 		t.Fatalf("got failed=%d err=%v, want one failure naming the image", failed, firstErr)
 	}
