@@ -3,3 +3,7 @@
 
 # Real API keys go here (see .env.example), never in a commit.
 .env
+
+# The demo stacks keep their passwords in a compose .env, which is the
+# practice the compose domain recommends. These are demo values.
+!stacks/*/.env

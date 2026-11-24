@@ -1,21 +1,18 @@
-// Intentionally insecure OpenClaw gateway config for the Hostveil demo.
+// OpenClaw gateway config for the Hostveil demo.
 //
-// This file is JSON5: comments and trailing commas and all.
-// OpenClaw documents its config as JSON5 and users comment it heavily, so a
-// config that parses ONLY as strict JSON would not exercise the checker's
-// real input. If Hostveil ever regresses to a strict-JSON parse, the agent
-// domain reports Degraded here and the demo shows it.
+// This file is JSON5: comments and trailing commas and all. OpenClaw
+// documents its config as JSON5 and users comment it heavily, so a config
+// that parses only as strict JSON would not exercise the checker's real input.
 //
-// Every setting below is one a real self-hoster plausibly sets while trying
-// to make the thing work, with a comment explaining the reasoning that leads
-// there. None of it looks reckless in isolation.
+// The gateway itself is set up sensibly (loopback, token auth, approvals,
+// sandbox), which is how most people get it after the first guide. The
+// settings below are the ones loosened later, each with the reason a
+// self-hoster gives, and each one `hostveil fix --all` puts back.
 {
   "gateway": {
-    // "so I can reach it from the tablet in the kitchen"
-    "bind": "lan",
+    "bind": "loopback",
     "port": 18789,
-    // "it's just my home network, nobody else is on it"
-    "auth": { "mode": "none" },
+    "auth": { "mode": "token", "token": "7c1e9f0b4a2d6e8f3b5c9a1d7e2f4b6c" },
     "controlUi": {
       // "the login kept logging me out while I was setting it up"
       "allowInsecureAuth": true,
@@ -23,16 +20,14 @@
   },
 
   "tools": {
-    // "approving every command got annoying fast"
-    "exec": { "security": "full", "ask": "off" },
+    "exec": { "security": "allowlist", "ask": "on-miss" },
     // "it couldn't restart my containers without this"
     "elevated": { "enabled": true },
   },
 
   "agents": {
     "defaults": {
-      // "the sandbox broke my file tools"
-      "sandbox": { "mode": "off", "workspaceAccess": "rw" },
+      "sandbox": { "mode": "non-main", "workspaceAccess": "ro" },
     },
   },
 

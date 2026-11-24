@@ -14,8 +14,9 @@
 # scans, so the domain reported "no agent runtime found" on a host seeded to have
 # two. internal/docs/seed_test.go now holds every path here against the checker.
 #
-# The fixtures are demo/seed/ and demo/stacks/, shared with the Vagrant demo, so
-# there is one description of this host.
+# The fixtures are scripts/measure/fixtures/seed/ and fixtures/stacks/: the
+# host the published figures were taken on. The Vagrant demo grew its own
+# (demo/seed/, demo/stacks/) for a booth, so these stay as they were measured.
 #
 # IT EDITS THE HOST IT RUNS ON, destructively and without a way back: it opens
 # an SSH drop-in, adds a second UID 0 account, world-reads /etc/shadow, and
@@ -25,8 +26,7 @@
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
-REPO=$(cd "$HERE/../.." && pwd)
-DEMO="$REPO/demo"
+FIXTURES="$HERE/fixtures"
 
 SEED_USER=root
 INSTRUMENTS=1
@@ -268,7 +268,7 @@ say "weak SSH: a drop-in that outranks the image's own"
 # drop-ins beat anything appended to the main file. The 00- prefix sorts ahead
 # of them. This also makes the fixture exercise the checker's Include handling.
 install -d -m 0755 /etc/ssh/sshd_config.d
-install -m 0644 "$DEMO/seed/sshd_hostveil.conf" /etc/ssh/sshd_config.d/00-hostveil-demo.conf
+install -m 0644 "$FIXTURES/seed/sshd_hostveil.conf" /etc/ssh/sshd_config.d/00-hostveil-demo.conf
 # Not every sshd_config includes the drop-in directory. Ubuntu's does at the
 # top of the file, which is what makes the 00- prefix win; Alpine's and
 # Fedora's may not, and a drop-in nothing reads seeds nothing. Append the
@@ -430,10 +430,10 @@ say "AI agent runtime configs (OpenClaw + Hermes) under $SEED_HOME"
 install -d -m 0700 -o "$SEED_USER" -g "$SEED_USER" "$SEED_HOME/.openclaw"
 install -d -m 0755 -o "$SEED_USER" -g "$SEED_USER" "$SEED_HOME/.openclaw/credentials"
 install -d -m 0700 -o "$SEED_USER" -g "$SEED_USER" "$SEED_HOME/.openclaw/state"
-install -m 0644 -o "$SEED_USER" -g "$SEED_USER" "$DEMO/seed/openclaw.json" "$SEED_HOME/.openclaw/openclaw.json"
+install -m 0644 -o "$SEED_USER" -g "$SEED_USER" "$FIXTURES/seed/openclaw.json" "$SEED_HOME/.openclaw/openclaw.json"
 
 install -d -m 0700 -o "$SEED_USER" -g "$SEED_USER" "$SEED_HOME/.hermes"
-install -m 0644 -o "$SEED_USER" -g "$SEED_USER" "$DEMO/seed/hermes.env" "$SEED_HOME/.hermes/.env"
+install -m 0644 -o "$SEED_USER" -g "$SEED_USER" "$FIXTURES/seed/hermes.env" "$SEED_HOME/.hermes/.env"
 # These paths are the ones internal/docs/seed_test.go holds against the agent
 # checker's own table, which is what stopped an earlier copy of this script
 # writing them somewhere the scan never looks.
@@ -441,7 +441,7 @@ require agent-configs have_agent_cfg
 
 say "compose stacks"
 install -d -m 0755 /opt/stacks
-cp -r "$DEMO/stacks/." /opt/stacks/
+cp -r "$FIXTURES/stacks/." /opt/stacks/
 chmod -R 0777 /opt/stacks
 for dir in /opt/stacks/*/; do
   name=$(basename "$dir")

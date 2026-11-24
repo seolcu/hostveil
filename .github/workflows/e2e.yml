@@ -100,8 +100,9 @@ jobs:
         run: |
           set -eux
           mkdir -p /etc/ssh/sshd_config.d
-          # The same fixture the demo VM uses, so the two describe one host.
-          cp demo/seed/sshd_hostveil.conf /etc/ssh/sshd_config.d/00-hostveil-demo.conf
+          # The measured host's fixture (scripts/measure/fixtures). The demo VM
+          # has its own, tuned for a booth where nearly everything is Auto.
+          cp scripts/measure/fixtures/seed/sshd_hostveil.conf /etc/ssh/sshd_config.d/00-hostveil-demo.conf
           # sshd -t needs a host key to validate against, and Hostveil's SSH
           # fixes run that validator before writing.
           ssh-keygen -A

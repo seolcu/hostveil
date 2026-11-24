@@ -9,7 +9,7 @@ import (
 
 // seededOpenClawConfig is the shape of config these fixes meet: the
 // commented, trailing-comma JSON5 a self-hoster writes while trying to make
-// the thing work. demo/seed/openclaw.json is the same file, and it exists
+// the thing work. scripts/measure/fixtures/seed/openclaw.json is the same file, and it exists
 // because a fixture that parses only as strict JSON would not exercise the
 // case the whole editor was written for.
 const seededOpenClawConfig = `{

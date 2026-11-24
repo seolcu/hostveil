@@ -168,6 +168,30 @@ before running `hostveil explain ... --ai` directly.
 
 ---
 
+## Presenting: `ssh homelab`
+
+`run.sh` is for working on Hostveil. To *show* it, make the VM look like what
+it stands for, a home server you SSH into, and forget there is a VM (Linux +
+libvirt):
+
+```bash
+./run.sh up && ./homelab setup     # once, with internet: warms Trivy, saves a memory snapshot
+```
+
+From then on the demo is what a self-hoster actually types:
+
+```bash
+ssh homelab          # starts the VM by itself if it is off
+hostveil             # TUI
+hostveil web         # click the URL it prints: 8787 is already tunnelled by `ssh homelab`
+```
+
+Between visitors, on the laptop: `homelab reset` reverts to the clean
+vulnerable server in a few seconds (a memory snapshot, so nothing boots and the
+stacks come back running). `homelab off` shuts it down. Vagrant is not used
+after setup. `setup` also pins Trivy's vulnerability DB inside the VM so CVE
+scans work with no internet.
+
 ## Suggested demo script (5 minutes)
 
 1. **Scan**: `hostveil scan`
@@ -178,11 +202,11 @@ before running `hostveil explain ... --ai` directly.
 3. **Fix with a preview**: `hostveil fix ssh.rootlogin`
    Shows the exact diff, backs up the file, applies it. Then
    `hostveil rollback <id>` restores it byte-for-byte.
-4. **Fix everything safe**: `hostveil fix --all`
-   Watch the score jump.
+4. **Fix everything safe**: `hostveil fix --all`, then say yes to
+   recreating the containers. Watch the score jump.
 5. **Re-scan**: `hostveil scan` shows what's now *resolved*.
-6. **(Optional) Web**: `hostveil serve --addr 0.0.0.0:8787`, open
-   <http://localhost:8787>, click a finding, preview + apply from the browser.
+6. **Web**: `hostveil web` inside `ssh homelab`, open the link it prints,
+   and do the same from the browser.
 
 Judges can poke around and see it's a real server: `docker ps`,
 `systemctl status ssh`, `sudo ufw status`.
@@ -263,47 +287,37 @@ VirtualBox (macOS/Windows), whose NAT is independent of the host firewall.
 
 ## What's vulnerable
 
+The host is set up the way a careful install leaves it, and then changed the
+way a hurried one does. Nearly everything the scan finds is something
+`hostveil fix --all` fixes, so the demo shows the whole loop: a low score,
+one button, the services recreated, a high score.
+
 | Domain | Seeded problem | Example finding |
 |---|---|---|
-| Docker/Compose | Portainer & Watchtower mount `docker.sock`; Redis/Postgres published on `0.0.0.0`; a privileged container with `SYS_ADMIN`; hardcoded DB/admin passwords; old images | `compose.ds016`, `ds018`, `ds019`, `ds001`, `dr005` |
-| SSH | root login, password auth, empty passwords, weak `MaxAuthTries`, X11 forwarding | `ssh.rootlogin`, `ssh.passwordauth`, … |
-| Firewall | `ufw` installed but inactive | `firewall.inactive` |
-| Auto-updates | unattended-upgrades disabled | `updates.disabled` |
-| Exposed services | a native (non-Docker) Redis bound to `0.0.0.0` | `ports.exposed-datastore` |
-| Accounts | a second UID-0 account (`breakglass`) and a passwordless login account (`contractor`) | `accounts.uid0`, `accounts.emptypassword` |
+| Docker/Compose | Postgres and Redis published on `0.0.0.0`, Adminer (an admin panel) and Gitea on every interface, no `no-new-privileges`, no restart policy | `compose.ds018`, `ds019`, `dr002`, `ds006`, `ds008` |
+| SSH | root login allowed (root's password is locked, so the fix is Auto), empty passwords, weak `MaxAuthTries`, X11 forwarding, no keepalive limits | `ssh.rootlogin`, `ssh.emptypasswords`, … |
+| Firewall | `ufw` installed but inactive: the one Review fix to show by hand | `firewall.inactive` |
+| Auto-updates | unattended-upgrades disabled, sysstat off | `updates.disabled`, `updates.sysstat-disabled` |
 | File permissions | `/etc/shadow` made world-readable | `fileperms.shadow` |
-| CVEs | old image tags (redis 6.0, postgres 13, jellyfin 10.8, nextcloud 24, portainer 2.9) | `cve.*` (needs Trivy, installed in the VM) |
-| AI agents | an OpenClaw gateway on the LAN with auth off, unapproved shell exec, sandbox off; world-readable Hermes API keys | `agent.auth-disabled`, `agent.gateway-exposed`, `agent.secret-exposed`, … |
-| Docker daemon | the API published on `0.0.0.0:2375` with no TLS, a `0666` docker socket, and a `nologin` CI account in the docker group | `dockerd.api-unauthenticated`, `dockerd.socket-world-writable`, `dockerd.group-members` |
-| sysctl | `kernel.yama.ptrace_scope` and `kernel.perf_event_paranoid` relaxed in `/etc/sysctl.d/98-local.conf` (the two lines every `gdb`/`perf` "Operation not permitted" guide tells you to add) | `sysctl.ptrace-scope`, `sysctl.perf-events` |
-| systemd | a hand-written `stacks-backup.service` with no sandboxing directives | `systemd.no-new-privileges`, `systemd.protect-system`, … |
+| AI agents | an OpenClaw config with the control UI's auth checks off, elevated commands on and private-network browsing allowed; world-readable credentials | `agent.control-ui-insecure`, `agent.elevated-enabled`, `agent.secret-exposed`, … |
+| Kernel | `ptrace_scope` and `perf_event_paranoid` relaxed in `/etc/sysctl.d/98-local.conf`, and the stock values Ubuntu leaves unhardened; rare protocol modules loadable | `sysctl.ptrace-scope`, `sysctl.module-dccp`, … |
+| Docker daemon | live-restore off (a stock default; Docker applies the fix on a reload) | `dockerd.live-restore` |
 
-The stacks live in `stacks/`, the weak SSH snippet and the agent configs in
+What is left after the safe fixes, and why:
+
+- `firewall.inactive`: Review, to apply by hand during the demo.
+- `ssh.allowtcpforwarding`: `ssh homelab` tunnels the dashboard through it.
+- `accounts.sudo-nopasswd`: Vagrant needs it.
+- `dockerd.userns-remap`: it moves every image into new storage.
+- `cve.*`: the Ubuntu packages' unfixed vulnerabilities, and whatever the
+  current images carry. The stacks build each image from its release with
+  the Alpine packages upgraded (`stacks/*/*.Dockerfile`), so a fresh build
+  has as few as the vendors allow.
+
+The stacks live in `stacks/`, the SSH snippet and the agent configs in
 `seed/`, and the whole build lives in `Vagrantfile` + `provision.sh`.
 
-> **On the Docker daemon**: this one is not a fixture, it is the real thing.
-> `dockerd.api-unauthenticated` means anyone who can reach port 2375 on this
-> VM is root on it; no password, one HTTP request. That is safe here only
-> because the `Vagrantfile` NATs the VM and forwards nothing but 8787; if you
-> add a forwarded port for 2375, you have published root on your laptop's
-> network. The three daemon *defaults* (`no-new-privileges`, `userns-remap`,
-> `live-restore`) need no seeding at all: they are off on a stock install,
-> which is why those rules exist. `dockerd.api-tls-unverified` is
-> the one finding the demo does not show, because it needs a server keypair;
-> the unit tests cover it instead.
-
-> **On the agent fixtures**: unlike everything else here, OpenClaw and Hermes
-> are not *installed*; neither is packaged for apt, and neither
-> ships a daemon the demo could accurately run. `provision.sh` seeds their
-> configuration and file layout instead, which is what the agent domain
-> inspects anyway. The one part this cannot show is the listener
-> cross-check. The finding is **High** either way (the firewall and the
-> listener change how confident it is and leave the urgency alone) but with nothing
-> bound to the gateway port its evidence says the binding came from the
-> config. No socket was observed. Start something on the port to
-> see the other case:
->
-> ```bash
-> python3 -m http.server 18789 --bind 0.0.0.0 &
-> hostveil scan          # still High; basis config → config+listener
-> ```
+> **On the agent fixtures**: OpenClaw and Hermes are not *installed*;
+> neither is packaged for apt, and neither ships a daemon the demo could
+> accurately run. `provision.sh` seeds their configuration and file layout
+> instead, which is what the agent domain inspects anyway.

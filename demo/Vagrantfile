@@ -27,7 +27,7 @@ Vagrant.configure("2") do |config|
     # can be OOM-killed, which shows up as "CVEs partial: ... signal: killed".
     # HOSTVEIL_DEMO_MEMORY (MB, e.g. in demo/.env) raises it.
     lv.memory = ENV.fetch("HOSTVEIL_DEMO_MEMORY", "2048").to_i
-    lv.cpus = 2
+    lv.cpus = ENV.fetch("HOSTVEIL_DEMO_CPUS", "2").to_i
 
     # The box ships an 8.7GB disk and this demo does not fit on it. The seven
     # intentionally outdated images are 3.8GB, Trivy's vulnerability DB is
@@ -50,7 +50,7 @@ Vagrant.configure("2") do |config|
   config.vm.provider "virtualbox" do |vb|
     vb.name = "hostveil-homelab"
     vb.memory = ENV.fetch("HOSTVEIL_DEMO_MEMORY", "2048").to_i
-    vb.cpus = 2
+    vb.cpus = ENV.fetch("HOSTVEIL_DEMO_CPUS", "2").to_i
   end
 
   # VirtualBox has no equivalent of machine_virtual_size built in, so the same
