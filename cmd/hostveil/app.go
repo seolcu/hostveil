@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/seolcu/hostveil/internal/ai"
 	"github.com/seolcu/hostveil/internal/check"
@@ -24,6 +25,7 @@ import (
 	"github.com/seolcu/hostveil/internal/core"
 	"github.com/seolcu/hostveil/internal/fix"
 	"github.com/seolcu/hostveil/internal/platform"
+	"github.com/seolcu/hostveil/internal/resultcache"
 )
 
 // buildEngine constructs the shared engine with every checker and the
@@ -61,7 +63,7 @@ func buildRegistry() *check.Registry {
 		sshcheck.New(),
 		firewallcheck.New(),
 		updatescheck.New(),
-		cvecheck.New(),
+		cvecheck.NewCached(resultcache.New(filepath.Join(stateDir(), "cache", "cve"), 64, 64<<20)),
 		portscheck.New(),
 		accountscheck.New(),
 		filepermscheck.New(),

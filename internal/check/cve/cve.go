@@ -24,10 +24,17 @@ import (
 )
 
 // Checker scans container images for known vulnerabilities via Trivy.
-type Checker struct{}
+type Checker struct {
+	// Cache holds Trivy reports between scans (see resultCache). Nil turns
+	// the cache off, which is what New returns.
+	Cache Store
+}
 
 // New returns a CVE checker.
 func New() *Checker { return &Checker{} }
+
+// NewCached returns a checker that keeps reports in store.
+func NewCached(store Store) *Checker { return &Checker{Cache: store} }
 
 // Source identifies the CVE domain.
 func (*Checker) Source() model.Source { return model.SourceCVE }
@@ -48,9 +55,14 @@ func (*Checker) Available(_ context.Context, env platform.Env) (bool, string) {
 // found" and "nothing could be examined" score identically but mean opposite
 // things. Some targets unscannable is Degraded; all of them is a complete
 // error, which drops the axis from scoring entirely.
-func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
+func (c *Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, error) {
+	cache := &resultCache{store: c.Cache}
+	if cache.store != nil {
+		cache.prepare(ctx, env.Runner)
+		defer cache.prune()
+	}
 	var cov check.Coverage
-	host, hostErr := scanHost(ctx, env.Runner)
+	host, hostErr := scanHost(ctx, env.Runner, cache)
 	if hostErr != nil {
 		cov.Missed(1, fmt.Sprintf("cannot scan the host's packages: %v", hostErr))
 	} else {
@@ -109,7 +121,7 @@ func (*Checker) Check(ctx context.Context, env platform.Env) ([]model.Finding, e
 		add(target{image: c.Service.Image, service: c.Name, standalone: true})
 	}
 
-	findings, failed, firstErr := scanAll(ctx, env.Runner, targets)
+	findings, failed, firstErr := scanAll(ctx, env.Runner, targets, cache)
 	findings = append(host, findings...)
 	attempted := len(targets)
 
@@ -261,7 +273,7 @@ func warmCache(ctx context.Context, r platform.CommandRunner) error {
 // findings and the reported error do not depend on which Trivy process
 // happened to finish first. A scan that reordered its own output between runs
 // would show up as a spurious delta on the next re-scan.
-func scanAll(ctx context.Context, r platform.CommandRunner, targets []target) (findings []model.Finding, failed int, firstErr error) {
+func scanAll(ctx context.Context, r platform.CommandRunner, targets []target, cache *resultCache) (findings []model.Finding, failed int, firstErr error) {
 	type result struct {
 		findings []model.Finding
 		err      error
@@ -276,7 +288,7 @@ func scanAll(ctx context.Context, r platform.CommandRunner, targets []target) (f
 	// yesterday, and the first version of it that reports what it
 	// examined.
 	cacheArgs, parallelism := []string(nil), 1
-	if len(targets) > 1 && warmCache(ctx, r) == nil {
+	if len(targets) > 1 && cache.warmed(ctx, r) {
 		cacheArgs, parallelism = memoryCache, scanParallelism
 	}
 
@@ -302,7 +314,7 @@ func scanAll(ctx context.Context, r platform.CommandRunner, targets []target) (f
 				}
 			}()
 
-			fs, err := scanImage(ctx, r, cacheArgs, t)
+			fs, err := scanImage(ctx, r, cacheArgs, t, cache)
 			if err == nil && t.standalone {
 				fs = demoteToManual(fs)
 			}
@@ -355,7 +367,7 @@ var hostSkipDirs = []string{"/proc", "/sys", "/dev", "/run", "/tmp", "/var/tmp",
 // What only this scan can see is a package the distribution is not going to
 // patch, such as Caddy 2.6.2 on Ubuntu noble, where upstream fixed the CVEs
 // in a release noble does not carry.
-func scanHost(ctx context.Context, r platform.CommandRunner) ([]model.Finding, error) {
+func scanHost(ctx context.Context, r platform.CommandRunner, cache *resultCache) ([]model.Finding, error) {
 	ctx, cancel := context.WithTimeout(ctx, imageTimeout+time.Minute)
 	defer cancel()
 
@@ -366,11 +378,28 @@ func scanHost(ctx context.Context, r platform.CommandRunner) ([]model.Finding, e
 	for _, d := range hostSkipDirs {
 		args = append(args, "--skip-dirs", d)
 	}
-	out, err := r.Run(ctx, "trivy", append(args, "/")...)
+	args = append(args, "/")
+
+	key := ""
+	if cache.enabled() {
+		if digest := hostDigest(hostPackageDBs); digest != "" {
+			key = cache.key("host", digest, args)
+			if out, ok := cache.get(key); ok {
+				if fs, err := parseHostTrivy(out); err == nil {
+					return fs, nil
+				}
+			}
+		}
+	}
+	out, err := r.Run(ctx, "trivy", args...)
 	if err != nil {
 		return nil, err
 	}
-	return parseHostTrivy(out)
+	fs, err := parseHostTrivy(out)
+	if err == nil && key != "" {
+		cache.put(key, out)
+	}
+	return fs, err
 }
 
 // hostDeclined is what a distribution's tracker says it has decided not to
@@ -451,19 +480,39 @@ func demoteToManual(fs []model.Finding) []model.Finding {
 // scanImage scans one image. cacheArgs is the cache-backend selection scanAll
 // settled on for this run, empty where the scans are running one at a time and
 // the shared cache is safe to use.
-func scanImage(ctx context.Context, r platform.CommandRunner, cacheArgs []string, t target) ([]model.Finding, error) {
+func scanImage(ctx context.Context, r platform.CommandRunner, cacheArgs []string, t target, cache *resultCache) ([]model.Finding, error) {
 	ctx, cancel := context.WithTimeout(ctx, imageTimeout+time.Minute)
 	defer cancel()
 
-	args := append([]string{"image",
+	base := []string{"image",
 		"--severity", "CRITICAL,HIGH,MEDIUM",
 		"--timeout", imageTimeout.String(),
-		"--format", "json", "--quiet", "--no-progress"}, cacheArgs...)
+		"--format", "json", "--quiet", "--no-progress"}
+
+	// The cache backend flag is left out of the key: it decides where
+	// Trivy keeps its working state, and the report is the same either way.
+	key := ""
+	if cache.enabled() {
+		if id := imageID(ctx, r, t.image); id != "" {
+			key = cache.key("image", id, base)
+			if out, ok := cache.get(key); ok {
+				if fs, err := parseTrivy(out, t); err == nil {
+					return fs, nil
+				}
+			}
+		}
+	}
+
+	args := append(slices.Clone(base), cacheArgs...)
 	out, err := r.Run(ctx, "trivy", append(args, t.image)...)
 	if err != nil {
 		return nil, err
 	}
-	return parseTrivy(out, t)
+	fs, err := parseTrivy(out, t)
+	if err == nil && key != "" {
+		cache.put(key, out)
+	}
+	return fs, err
 }
 
 func parseTrivy(out []byte, t target) ([]model.Finding, error) {
