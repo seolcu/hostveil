@@ -131,3 +131,22 @@ func (r *RemediationKind) UnmarshalJSON(data []byte) error {
 	*r = v
 	return nil
 }
+
+// actionRanks orders the kinds by what the operator can do: apply it
+// unattended, apply it after reading, fix it by hand, wait for a vendor.
+// Unset sorts last, because it is the kind that says nothing.
+var actionRanks = map[RemediationKind]int{
+	RemediationAuto:        0,
+	RemediationReview:      1,
+	RemediationManual:      2,
+	RemediationUnavailable: 3,
+	RemediationUnset:       4,
+}
+
+// ActionRank is the kind's place in actionRanks.
+func (r RemediationKind) ActionRank() int {
+	if n, ok := actionRanks[r]; ok {
+		return n
+	}
+	return len(actionRanks)
+}

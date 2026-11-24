@@ -114,7 +114,7 @@ html:lang(ko) #lang { padding-top: 6.67px; padding-bottom: 9.33px; }
 .gauge-score small { color: var(--slate); font-size: 12px; font-weight: 400; }
 .gauge-na { color: var(--slate); font-size: 13px; }
 .meter {
-  --w: 0%; --c: var(--slate);
+  --w: 0%; --a: 0%; --c: var(--slate);
   position: relative; width: 150px; height: 10px;
   background: repeating-linear-gradient(90deg, var(--ink-3) 0 6px, transparent 6px 8px);
   border: 1px solid var(--line);
@@ -122,6 +122,15 @@ html:lang(ko) #lang { padding-top: 6.67px; padding-bottom: 9.33px; }
 .meter::before {
   content: ""; position: absolute; inset: 0; width: var(--w);
   background: repeating-linear-gradient(90deg, var(--c) 0 6px, transparent 6px 8px);
+}
+/* Where the safe fixes take the bar (--a, set by meter() in app.js): the
+   same bar, fainter, from the score to the projection. Without --a it has
+   no width. */
+.meter::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: var(--w);
+  width: max(0%, calc(var(--a) - var(--w)));
+  background: repeating-linear-gradient(90deg, var(--c) 0 6px, transparent 6px 8px);
+  opacity: .3;
 }
 /* Severity → heat, once.
    Every element that carries a severity class sets --sev for itself and its
@@ -199,10 +208,15 @@ html:lang(ko) #lang { padding-top: 6.67px; padding-bottom: 9.33px; }
 
 /* ── body: two panes, independent scroll ── */
 main { flex: 1 1 auto; min-height: 0; display: grid;
-  grid-template-columns: minmax(360px, 1.1fr) 1.5fr; overflow: hidden; }
+  grid-template-columns: minmax(360px, 1fr) minmax(400px, 1.25fr); overflow: hidden; }
 .findings { border-right: 1px solid var(--line); display: flex; flex-direction: column;
   min-height: 0; overflow: hidden; }
-.detail { overflow-y: auto; min-height: 0; padding: 16px 22px; }
+.detail { overflow-y: auto; min-height: 0; padding: 16px clamp(22px, 3vw, 56px); }
+/* Prose holds to a readable measure (45 to 75 characters a line) however
+   wide the pane gets; the pane's extra width becomes margin. */
+.detail > * { max-width: 84ch; }
+.detail code, .overview code { font: inherit; color: var(--bone); background: var(--ink-3);
+  padding: 0 4px; border-radius: 3px; }
 
 .pane-head { background: var(--ink); padding: 10px 18px; border-bottom: 1px solid var(--line);
   font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent);
@@ -230,7 +244,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .batchbar[hidden] { display: none; }
 
 /* ── finding row: heat gutter + dense mono ── */
-.finding { display: grid; grid-template-columns: auto auto 1fr auto; gap: 12px; align-items: baseline;
+.finding { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 12px; align-items: baseline;
   padding: 9px 18px 9px 15px; border-left: 3px solid transparent; cursor: pointer;
   border-bottom: 1px solid var(--ink-2); }
 /* Top-aligned to the first line, where the severity label sits: centred on
@@ -494,8 +508,10 @@ pre.diff .ctx { color: var(--slate); }
    at 3px tall a part-filled bar stopped reading as a bar and started reading
    as a dashed rule. */
 .rail .dom .meter { grid-column: 1 / -1; width: 100%; height: 5px; }
-.rail .dom .c { grid-column: 1 / -1; color: var(--slate); font-size: 10.5px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+/* The severity mix is the row's tooltip (see renderRail): one domain is
+   two lines, name and score over the bar, so every domain fits a laptop
+   screen without scrolling the rail. */
+.rail .dom .c { display: none; }
 .rail .dom .c .high, .rail .dom .c .medium, .rail .dom .c .low { color: var(--sev); }
 
 .axes { display: none; }
@@ -507,3 +523,20 @@ pre.diff .ctx { color: var(--slate); }
   .rail { display: none; }
   .axes { display: grid; }
 }
+
+/* On a wide screen a finding's title stops at a readable length and the
+   service sits right after it, not a screen away at the far edge. */
+@media (min-width: 1600px) {
+  .finding { grid-template-columns: auto auto minmax(0, 72ch) auto; justify-content: start; }
+}
+
+/* Targets a finger can hit. WCAG 2.5.8 asks 24px of every target; on a touch
+   screen 44px (WCAG 2.5.5, Apple's HIG) is what a thumb lands on. */
+.chip { min-height: 24px; }
+@media (pointer: coarse) {
+  button, select, .chip { min-height: 44px; }
+  .finding { min-height: 44px; }
+}
+
+/* The previous scan's list while a rescan runs (renderScanProgress). */
+#findings.stale { opacity: .45; pointer-events: none; }

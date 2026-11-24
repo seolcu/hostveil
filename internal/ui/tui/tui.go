@@ -68,6 +68,12 @@ type appModel struct {
 	// literal has none, which is how several tests construct one.
 	ctx    context.Context
 	engine *core.Engine
+	// aiOK is whether an advisory AI provider answered at startup. Without
+	// one, "explain with AI" can only fail, so it is not offered.
+	aiOK bool
+	// confirmBatch holds the findings `a` would apply while the message on
+	// screen asks to confirm them.
+	confirmBatch []model.Finding
 	// offerActivate is set while the message on screen offers to recreate
 	// the containers applied compose fixes wait on (core.Engine.Activate).
 	offerActivate bool
@@ -228,6 +234,11 @@ func New(ctx context.Context, engine *core.Engine, opts Opts) tea.Model {
 		ctx: ctx, engine: engine, mode: modeScanning, status: "Scanning…", selected: map[string]bool{},
 		th: opts.Theme.Initial, saveTheme: opts.Theme.Save,
 		saveExport: opts.Export.Save, gl: opts.Glyphs,
+	}
+	if engine != nil {
+		probe, cancel := context.WithTimeout(ctx, 2*time.Second)
+		m.aiOK = engine.AIAvailable(probe)
+		cancel()
 	}
 	return m
 }
@@ -755,7 +766,7 @@ func (m *appModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		case "f":
 			return m, m.startPreview()
 		case "e":
-			if len(m.active) > 0 && !m.aiBusy {
+			if m.aiOK && len(m.active) > 0 && !m.aiBusy {
 				m.aiBusy = true
 				m.aiText, m.aiErr = "", ""
 				return m, explainCmd(m.runCtx(), m.engine, m.active[m.cursor])
@@ -780,6 +791,14 @@ func (m *appModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case modeAIContext:
 		return m.keyAIContext(key)
 	case modeMessage:
+		if sel := m.confirmBatch; sel != nil {
+			m.confirmBatch = nil
+			if key == "y" {
+				return m, m.runBatch(sel)
+			}
+			m.mode = modeList
+			return m, nil
+		}
 		if m.offerActivate && key == "y" {
 			m.offerActivate = false
 			m.applyLabel = "Recreating containers"
@@ -1142,6 +1161,19 @@ func (m *appModel) startBatch() tea.Cmd {
 		m.mode = modeMessage
 		return nil
 	}
+	// Asked first, the way the CLI and the dashboard ask: one key was
+	// applying fifty fixes with nothing on screen to say so beforehand.
+	m.confirmBatch = sel
+	m.status = fmt.Sprintf("Apply %d safe fixes?\n\nEach is backed up first and can be rolled back from history (h).", len(sel))
+	if after, ok := m.report.Score.Headroom(); ok && len(m.selected) == 0 && m.filter == (model.Filter{}) {
+		m.status += fmt.Sprintf("\nScore: %d now, about %d after.", m.report.Score.Overall, after)
+	}
+	m.mode = modeMessage
+	return nil
+}
+
+// runBatch applies sel and shows the progress screen.
+func (m *appModel) runBatch(sel []model.Finding) tea.Cmd {
 	m.mode = modeApplying
 	m.applyLabel = fmt.Sprintf("%d finding(s)", len(sel))
 	m.applyStartedAt, m.applyElapsed = time.Now(), 0

@@ -282,7 +282,10 @@ func (m *appModel) View() tea.View {
 		content = m.compose(fullHeader(), nil, m.listHintFor(), m.listRows)
 
 	case modeDetail:
-		hint := "e explain (AI)   esc back   q list"
+		hint := "esc back   q list"
+		if m.aiOK {
+			hint = "e explain (AI)   " + hint
+		}
 		if len(m.active) > 0 && m.active[m.cursor].IsFixable() {
 			hint = "f apply fix   " + hint
 		}
@@ -300,7 +303,9 @@ func (m *appModel) View() tea.View {
 
 	case modeMessage:
 		hint := "press any key to continue"
-		if m.offerActivate {
+		if m.confirmBatch != nil {
+			hint = "y apply   any other key: cancel"
+		} else if m.offerActivate {
 			hint = "y recreate now   any other key: later"
 		}
 		content = m.compose(compactHeader(""), nil, hint, m.messageRows)
@@ -392,7 +397,55 @@ func (m *appModel) listHintFor() string {
 	if len(m.active) == 0 {
 		return emptyListHint
 	}
-	return listHint
+	if m.width <= 0 {
+		return listHint
+	}
+	return fitKeys(listKeys, m.width-2, 2)
+}
+
+// listKeys are the list screen's keys, most needed first. fitKeys lays them
+// out in that order on as few lines as the width allows, at most two, and
+// leaves out the least needed ones that do not fit: at 80 columns the fixed
+// two-line hint used to wrap to three, which is a tenth of a 24-row terminal
+// spent repeating keys.
+var listKeys = []string{
+	"↑/↓ move", "enter details", "f fix", "a fix all safe", "space select", "r rescan",
+	"h history", "s severity", "d domain", "x fixable", "c clear", "v advise", "e export", "t theme",
+	"q quit",
+}
+
+func fitKeys(keys []string, width, maxLines int) string {
+	// The last key (quit) ends the footer whatever else is left out, so the
+	// way out is always on screen; its room is kept on the last line.
+	const gap = "   "
+	last := keys[len(keys)-1]
+	reserve := lipgloss.Width(gap + last)
+	lines := make([]string, 0, maxLines)
+	cur := ""
+	for _, k := range keys[:len(keys)-1] {
+		next := k
+		if cur != "" {
+			next = cur + gap + k
+		}
+		room := width
+		if len(lines)+1 == maxLines {
+			room -= reserve
+		}
+		if lipgloss.Width(next) <= room {
+			cur = next
+			continue
+		}
+		if len(lines)+1 < maxLines && lipgloss.Width(k) <= width {
+			lines = append(lines, cur)
+			cur = k
+		}
+	}
+	if cur == "" {
+		cur = last
+	} else {
+		cur += gap + last
+	}
+	return strings.Join(append(lines, cur), "\n")
 }
 
 // messageRows draws the one-screen result of an action: a fix applied, a
@@ -610,8 +663,11 @@ func (m *appModel) paneActionRows(f model.Finding) []string {
 	if f.IsFixable() {
 		acts = append(acts, s.safe.Render("f  preview and apply the fix"))
 	}
-	acts = append(acts, s.dim.Render("e  explain with AI")+
-		s.dim.Render("     enter  open full screen"))
+	if m.aiOK {
+		acts = append(acts, s.dim.Render("e  explain with AI")+s.dim.Render("     enter  open full screen"))
+	} else {
+		acts = append(acts, s.dim.Render("enter  open full screen"))
+	}
 	return acts
 }
 
@@ -1124,6 +1180,9 @@ func (m *appModel) coverageRows() []string {
 
 	var errored, degraded, skipped []string
 	for _, d := range m.report.Domains {
+		if d.Absent() {
+			continue
+		}
 		name := sourceLabel(d.Source)
 		switch d.State {
 		case model.ScanError:
@@ -1252,7 +1311,7 @@ func (m *appModel) detailFactsRows(f model.Finding, w int) []string {
 	// still needs the how-to first, and this answers the question they ask
 	// second. Dim, because it only explains an absence.
 	if f.WhyNoFix != "" {
-		out = append(out, "", s.accent.Render("WHY THERE IS NO FIX BUTTON"))
+		out = append(out, "", s.accent.Render("NO AUTOMATIC FIX"))
 		out = append(out, styledRows(s.dim, wrap(f.WhyNoFix, w))...)
 	}
 	if m.aiBusy || m.aiText != "" || m.aiErr != "" {

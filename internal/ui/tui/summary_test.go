@@ -251,6 +251,11 @@ func TestCoverageNoticesAreCappedAndSayHowManyAreHidden(t *testing.T) {
 	m := summaryModel(120, 40)
 	var doms []model.DomainResult
 	for _, src := range model.AllSources() {
+		// A presence-gated domain's skip is not a notice (see
+		// model.Source.PresenceGated), so only the others count here.
+		if src.PresenceGated() {
+			continue
+		}
 		doms = append(doms, model.DomainResult{Source: src, State: model.ScanSkipped, Reason: "nothing to scan"})
 	}
 	m.report.Domains = doms
@@ -400,6 +405,7 @@ func TestTheBatchBarSaysWhatTheBatchKeyWouldDo(t *testing.T) {
 // the pane is showing lived only in the footer.
 func TestThePaneNamesTheKeysThatActOnWhatItShows(t *testing.T) {
 	m := summaryModel(140, 34)
+	m.aiOK = true
 	rows := plain(strings.Join(m.paneRows(48, 30), "\n"))
 	if !strings.Contains(rows, "explain with AI") {
 		t.Errorf("the pane does not offer the AI explanation:\n%s", rows)
@@ -605,5 +611,29 @@ func TestTheBatchBarCountsWhatTheBatchKeyWouldApply(t *testing.T) {
 				t.Errorf("the bar says %q, but `a` would apply %d", got, want)
 			}
 		})
+	}
+}
+
+// Proxmox and Kubernetes skipped on a host that is neither are no notice at
+// all: that is the answer for nearly every host.
+func TestAnAbsentDomainIsNotANotice(t *testing.T) {
+	m := summaryModel(120, 40)
+	m.report.Domains = []model.DomainResult{
+		{Source: model.SourceProxmox, State: model.ScanSkipped, Reason: "not a Proxmox VE host; no /etc/pve"},
+		{Source: model.SourceKube, State: model.ScanSkipped, Reason: "no single-node Kubernetes found"},
+		{Source: model.SourceCVE, State: model.ScanSkipped, Reason: "Trivy not installed"},
+	}
+	rows := m.coverageRows()
+	if len(rows) != 1 || !strings.Contains(plain(rows[0]), "Trivy") {
+		t.Errorf("only the CVE skip is something to act on, got %q", rows)
+	}
+}
+
+// With no AI provider the pane does not offer what can only fail.
+func TestThePaneOffersNoAIWithoutAProvider(t *testing.T) {
+	m := summaryModel(140, 34)
+	rows := plain(strings.Join(m.paneRows(48, 30), "\n"))
+	if strings.Contains(rows, "explain with AI") {
+		t.Errorf("no provider answered, yet the pane offers AI:\n%s", rows)
 	}
 }

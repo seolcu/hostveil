@@ -240,8 +240,8 @@ func (m *appModel) gaugeRow(meterW int) string {
 	// all Manual sees nothing here, as intended: an arrow to the
 	// number it started from would say the fixes are worth nothing, and this
 	// line is the one place every arrangement shares.
-	if after := m.report.Score.AfterFixes; m.report.Score.Applicable && after > sc {
-		note := s.dim.Render(fmt.Sprintf("   %d after fixes", after))
+	if after, ok := m.report.Score.Headroom(); ok {
+		note := s.dim.Render(fmt.Sprintf("   %d after safe fixes", after))
 		// Both callers put this gauge after the brand and the same three-space
 		// gap. On a narrow terminal the meter already shrinks, but the optional
 		// headroom used to ignore the remaining width and was clipped halfway

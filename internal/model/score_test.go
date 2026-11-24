@@ -34,9 +34,9 @@ func TestAxisHeadroomHidesItselfWhenItWouldSayNothing(t *testing.T) {
 		want uint8
 		show bool
 	}{
-		{"room to improve", ScoreAxis{Applicable: true, Score: 40, AfterFixes: 90}, 90, true},
-		{"nothing fixable", ScoreAxis{Applicable: true, Score: 40, AfterFixes: 40}, 0, false},
-		{"did not run", ScoreAxis{Applicable: false, Score: 0, AfterFixes: 90}, 0, false},
+		{"room to improve", ScoreAxis{Applicable: true, Score: 40, AfterSafeFixes: 90}, 90, true},
+		{"nothing fixable", ScoreAxis{Applicable: true, Score: 40, AfterSafeFixes: 40}, 0, false},
+		{"did not run", ScoreAxis{Applicable: false, Score: 0, AfterSafeFixes: 90}, 0, false},
 	}
 	for _, tc := range cases {
 		got, show := tc.axis.Headroom()

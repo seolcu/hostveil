@@ -227,13 +227,22 @@ func AutoFixable(findings []Finding) []Finding {
 	return out
 }
 
-// SortFindings orders findings by severity (most severe first), then
-// source, then ID, for stable presentation across all UIs.
+// SortFindings orders findings by severity (most severe first), then by
+// what the operator can do about each (ActionRank: a safe fix first, no fix
+// last), then source, then ID, for stable presentation across all UIs.
+//
+// The second key is what puts the High findings with a button at the top of
+// the list. Sorted by domain alone, the first rows on the demo host were two
+// Manual secrets nobody can fix from here, and the first thing anyone pressed
+// opened an explanation with no fix in it.
 func SortFindings(findings []Finding) {
 	sort.SliceStable(findings, func(i, j int) bool {
 		a, b := findings[i], findings[j]
 		if a.Severity != b.Severity {
 			return a.Severity < b.Severity
+		}
+		if ra, rb := a.Remediation.ActionRank(), b.Remediation.ActionRank(); ra != rb {
+			return ra < rb
 		}
 		if a.Source != b.Source {
 			return a.Source < b.Source

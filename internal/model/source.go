@@ -206,3 +206,22 @@ func (s *Source) UnmarshalJSON(data []byte) error {
 	*s = v
 	return nil
 }
+
+// presenceGated lists the domains whose subject is a kind of host, not a
+// part of every host: a Proxmox VE node, a single-node Kubernetes. For these,
+// Skipped means "this host is not one", which is the answer for nearly every
+// host and not a blind spot, so the interfaces do not list them as skipped.
+// Every other domain's skip (no Trivy, no permission to read sshd_config) is
+// something the operator can act on and stays visible.
+var presenceGated = map[Source]bool{
+	SourceProxmox: true,
+	SourceKube:    true,
+}
+
+// PresenceGated reports whether a skip of this domain means the host is not
+// the kind of host the domain audits. See presenceGated.
+func (s Source) PresenceGated() bool { return presenceGated[s] }
+
+// Absent reports whether d is a presence-gated domain that did not run: a
+// domain the interfaces leave out entirely.
+func (d DomainResult) Absent() bool { return d.State == ScanSkipped && d.Source.PresenceGated() }

@@ -52,6 +52,12 @@ type ScoreBreakdown struct {
 	// Equal to Overall when nothing is fixable, which is the case every UI
 	// must render as nothing at all.
 	AfterFixes uint8 `json:"after_fixes"`
+	// AfterSafeFixes is the overall with only the Auto fixes treated as
+	// applied and in force: what "fix all safe" leaves. Every UI puts this
+	// number beside the score, because it is the one the big button
+	// delivers; AfterFixes adds the Review fixes, which need a person, and
+	// PointsLeft.Review is the difference.
+	AfterSafeFixes uint8 `json:"after_safe_fixes"`
 
 	// Left says where the points between the score and 100 are, by what it
 	// takes to win them back. See PointsLeft.
@@ -75,6 +81,11 @@ type PointsLeft struct {
 	// Pending is the points that return once applied fixes take effect.
 	Pending      uint8 `json:"pending"`
 	PendingCount int   `json:"pending_count"`
+	// Review is the points the Review fixes add on top of the safe ones:
+	// AfterFixes - AfterSafeFixes. Each has a button, behind a warning a
+	// person reads first.
+	Review      uint8 `json:"review"`
+	ReviewCount int   `json:"review_count"`
 	// Manual is the points held by findings Hostveil explains and leaves for
 	// the operator to fix by hand (RemediationManual, and anything not
 	// classified at all).
@@ -88,7 +99,7 @@ type PointsLeft struct {
 
 // Any reports whether any part of PointsLeft is worth showing.
 func (p PointsLeft) Any() bool {
-	return p.Pending > 0 || p.Manual > 0 || p.Unavailable > 0
+	return p.Pending > 0 || p.Review > 0 || p.Manual > 0 || p.Unavailable > 0
 }
 
 // ScoreAxis is one scoring dimension. Applicable is false when the axis's
@@ -120,20 +131,22 @@ type ScoreAxis struct {
 	// treated as applied. See ScoreBreakdown.AfterFixes; the per-axis one is
 	// what makes the aggregate actionable, because it says *where* the
 	// headroom is.
-	AfterFixes uint8           `json:"after_fixes"`
-	Penalty    int             `json:"penalty"`
-	MaxPenalty int             `json:"max_penalty"`
-	Counts     []SeverityCount `json:"counts"`
+	AfterFixes uint8 `json:"after_fixes"`
+	// AfterSafeFixes is this axis with only the Auto fixes applied.
+	AfterSafeFixes uint8           `json:"after_safe_fixes"`
+	Penalty        int             `json:"penalty"`
+	MaxPenalty     int             `json:"max_penalty"`
+	Counts         []SeverityCount `json:"counts"`
 }
 
 // Headroom is the overall score's version of ScoreAxis.Headroom, and follows
 // the same rule for the same reason: nothing to show when the fixes would not
 // move it, and nothing to show when no domain ran.
 func (b ScoreBreakdown) Headroom() (uint8, bool) {
-	if !b.Applicable || b.AfterFixes <= b.Overall {
+	if !b.Applicable || b.AfterSafeFixes <= b.Overall {
 		return 0, false
 	}
-	return b.AfterFixes, true
+	return b.AfterSafeFixes, true
 }
 
 // ValueText is the axis's score as every interface writes it: "N/A" when the
@@ -188,10 +201,10 @@ const ValueTextWidth = 4
 // domain the scan never looked at. Those two conditions were written out in each
 // renderer and held together only by a test that greps for them.
 func (a ScoreAxis) Headroom() (uint8, bool) {
-	if !a.Applicable || a.AfterFixes <= a.Score {
+	if !a.Applicable || a.AfterSafeFixes <= a.Score {
 		return 0, false
 	}
-	return a.AfterFixes, true
+	return a.AfterSafeFixes, true
 }
 
 // SeverityCount is how many findings of one severity landed on an axis.
@@ -404,14 +417,36 @@ func ScoreReport(findings []Finding, states map[Source]ScanState) ScoreBreakdown
 	// numbers to drift apart into two answers about one host.
 	offered := withOfferedFixesApplied(findings)
 	after := scoreOnce(offered, states)
+	safe := scoreOnce(withSafeFixesApplied(findings), states)
 	b.AfterFixes = after.Overall
+	b.AfterSafeFixes = safe.Overall
 	for i := range b.Axes {
 		b.Axes[i].AfterFixes = after.Axes[i].Score
+		b.Axes[i].AfterSafeFixes = safe.Axes[i].Score
 	}
 	if b.Applicable {
 		b.Left = pointsLeft(findings, offered, states, b.Overall, after.Overall)
+		b.Left.Review = gain(after.Overall, safe.Overall)
+		for _, f := range findings {
+			if f.Active() && f.Remediation == RemediationReview {
+				b.Left.ReviewCount++
+			}
+		}
 	}
 	return b
+}
+
+// withSafeFixesApplied is withOfferedFixesApplied for the Auto fixes alone.
+func withSafeFixesApplied(findings []Finding) []Finding {
+	out := make([]Finding, len(findings))
+	copy(out, findings)
+	for i := range out {
+		if out[i].Remediation == RemediationAuto {
+			out[i].Fixed = true
+			out[i].Pending = false
+		}
+	}
+	return out
 }
 
 // pointsLeft fills PointsLeft. Each part is the same scorer run on the

@@ -119,7 +119,7 @@ func TestSnapshotDump(t *testing.T) {
 // in the detail pane, and a slow answer for a finding the user already
 // left must be dropped.
 func TestDetailAIExplanation(t *testing.T) {
-	m := tea.Model(&appModel{mode: modeList, selected: map[string]bool{},
+	m := tea.Model(&appModel{mode: modeList, selected: map[string]bool{}, aiOK: true,
 		engine: core.New(core.Config{Registry: check.NewRegistry()})})
 	m = send(m, tea.WindowSizeMsg{Width: 96, Height: 34})
 	m = send(m, scannedMsg{report: sampleReport()})
@@ -262,10 +262,14 @@ func TestMultiSelectBatchApply(t *testing.T) {
 		t.Fatalf("expected 2 exposed datastores to mark, got %d", marked)
 	}
 
-	// a → batch command; run it and feed the result back.
-	_, cmd := m.Update(tea.KeyPressMsg(tea.Key{Text: "a"}))
+	// a asks first; y → batch command; run it and feed the result back.
+	m = send(m, tea.KeyPressMsg(tea.Key{Text: "a"}))
+	if am := m.(*appModel); am.confirmBatch == nil || !strings.Contains(am.status, "Apply 2 safe fixes?") {
+		t.Fatalf("a should ask before applying, status %q", am.status)
+	}
+	_, cmd := m.Update(tea.KeyPressMsg(tea.Key{Text: "y"}))
 	if cmd == nil {
-		t.Fatal("a should issue a batch command")
+		t.Fatal("y should issue a batch command")
 	}
 	m = send(m, applyMsg(cmd))
 	am = m.(*appModel)

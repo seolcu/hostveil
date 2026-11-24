@@ -67,6 +67,9 @@ func Text(r model.Report, opts Options) string {
 	// reads as two different kinds of remark when there are three degrees of
 	// the same one.
 	for _, d := range r.Domains {
+		if d.Absent() {
+			continue
+		}
 		switch d.State {
 		case model.ScanSkipped:
 			fmt.Fprintf(&b, "  %s%s %s skipped: %s%s\n", c.dim, opts.Glyphs.Of(glyph.Skipped), d.Source, d.Reason, c.reset)
@@ -375,7 +378,7 @@ func headroomNote(c colors, h headroom) string {
 	if !show {
 		return ""
 	}
-	return fmt.Sprintf("%s  → %d after fixes%s", c.dim, after, c.reset)
+	return fmt.Sprintf("%s  → %d after safe fixes%s", c.dim, after, c.reset)
 }
 
 // pointsLeftLine says where the points short of 100 are, or nothing when
@@ -384,6 +387,9 @@ func pointsLeftLine(l model.PointsLeft) string {
 	var parts []string
 	if l.Pending > 0 {
 		parts = append(parts, fmt.Sprintf("+%d after restarts (%s)", l.Pending, plural(l.PendingCount, "fix", "fixes")))
+	}
+	if l.Review > 0 {
+		parts = append(parts, fmt.Sprintf("%d with a fix to review first (%s)", l.Review, plural(l.ReviewCount, "finding", "findings")))
 	}
 	if l.Manual > 0 {
 		parts = append(parts, fmt.Sprintf("%d to fix by hand (%s)", l.Manual, plural(l.ManualCount, "finding", "findings")))
