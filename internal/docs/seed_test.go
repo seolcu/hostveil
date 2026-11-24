@@ -164,12 +164,12 @@ func TestSeedScriptIsExecutableAndGuarded(t *testing.T) {
 // declined would publish an axis that does not move while nothing failed:
 // the same silence the path drift produced, one layer up.
 //
-// It reads demo/seed/openclaw.json, which measure/seed.sh and the Vagrant
-// demo both install, and requires every registered agent config-key fix to
+// It reads scripts/measure/fixtures/seed/openclaw.json, the config the
+// measured host runs, and requires every registered agent config-key fix to
 // have a key in it to act on.
 func TestSeededAgentConfigExercisesTheRegisteredFixes(t *testing.T) {
 	root := repoRoot(t)
-	raw, err := os.ReadFile(filepath.Join(root, "demo", "seed", "openclaw.json"))
+	raw, err := os.ReadFile(filepath.Join(root, "scripts", "measure", "fixtures", "seed", "openclaw.json"))
 	if err != nil {
 		t.Fatalf("read the seeded OpenClaw config: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestSeededAgentConfigExercisesTheRegisteredFixes(t *testing.T) {
 			if !registry.Has(rule.ID) || seen[rule.ID] {
 				continue
 			}
-			t.Errorf("demo/seed/openclaw.json sets no key for %s, which Hostveil can fix; "+
+			t.Errorf("scripts/measure/fixtures/seed/openclaw.json sets no key for %s, which Hostveil can fix; "+
 				"the measured host would never exercise that fix", rule.ID)
 		}
 	}

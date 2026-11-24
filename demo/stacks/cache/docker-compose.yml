@@ -1,0 +1,18 @@
+# A cache several apps on this box share.
+services:
+  redis:
+    image: homelab/redis:7
+    build:
+      context: .
+      dockerfile: redis.Dockerfile
+    user: redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    read_only: true
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

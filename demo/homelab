@@ -1,0 +1,211 @@
+#!/usr/bin/env bash
+# Make the demo VM feel like what it stands for: a home server you SSH into.
+#
+# After `./run.sh up` has built the VM once, `./homelab setup` turns it into an
+# ordinary SSH host named `homelab`, and from then on the demo is exactly what
+# a self-hoster does with Hostveil:
+#
+#   ssh homelab          # the VM starts on its own if it is off
+#   hostveil             # TUI
+#   hostveil web         # prints one URL; click it (port 8787 is already tunnelled)
+#
+# and between visitors, from the laptop:
+#
+#   homelab reset        # back to the clean vulnerable server, in seconds
+#   homelab off          # shut it down
+#
+# Vagrant builds the VM and is not involved after that. Starting, resetting
+# and the tunnel go straight to libvirt and ssh, which is what makes them fast:
+# a reset is a revert to a memory snapshot, so the stacks come back already
+# running and nothing boots.
+set -euo pipefail
+
+here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+domain="$(basename "$here")_default"
+virsh() { LC_ALL=C command virsh -c qemu:///system "$@"; }
+key="$here/.vagrant/machines/default/libvirt/private_key"
+snapshot=clean
+sshconf="$HOME/.ssh/config.d/hostveil-homelab"
+
+say() { printf '\033[1;34m==>\033[0m %s\n' "$*" >&2; }
+die() { printf '\033[1;31m%s\033[0m\n' "$*" >&2; exit 1; }
+
+state() { virsh domstate "$domain" 2>/dev/null || echo missing; }
+
+vm_ip() {
+  virsh domifaddr "$domain" 2>/dev/null | awk '/ipv4/ { sub(/\/.*/, "", $4); print $4; exit }'
+}
+
+wait_ssh() {
+  local ip="$1"
+  for _ in $(seq 1 120); do
+    nc -z -w1 "$ip" 22 2>/dev/null && return 0
+    sleep 0.5
+  done
+  die "homelab did not answer on port 22."
+}
+
+# Revert to the clean snapshot and leave the VM running. The snapshot holds
+# memory, so this is a resume and not a boot.
+revert() {
+  virsh snapshot-info "$domain" "$snapshot" >/dev/null 2>&1 ||
+    die "No '$snapshot' snapshot. Run: $here/homelab setup"
+  virsh snapshot-revert "$domain" "$snapshot" --running --force >/dev/null
+}
+
+# The guest's clock is whatever it was when the snapshot was taken. Set it
+# from the host so logs, history timestamps and certificate checks look right.
+sync_clock() {
+  local ip="$1"
+  ssh -i "$key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+    -o LogLevel=ERROR -o BatchMode=yes "vagrant@$ip" \
+    "sudo date -s @$(date +%s) >/dev/null" 2>/dev/null || true
+}
+
+ensure_up() {
+  case "$(state)" in
+    running) ;;
+    missing) die "There is no demo VM. Build it once: cd $here && ./run.sh up && ./homelab setup" ;;
+    *) revert ;;
+  esac
+}
+
+cmd_proxy() {
+  # ssh's ProxyCommand: bring the VM up if needed, then carry the connection.
+  ensure_up
+  local ip
+  for _ in $(seq 1 60); do ip="$(vm_ip)"; [ -n "$ip" ] && break; sleep 0.5; done
+  [ -n "$ip" ] || die "homelab has no address yet."
+  wait_ssh "$ip"
+  exec nc "$ip" 22
+}
+
+# drop_stale_sessions ends the `ssh homelab` clients still open on this
+# laptop. A revert rewinds the VM's memory, so their connections are dead,
+# and one of them still holds the dashboard port: the next `ssh homelab`
+# could not tunnel 8787 and the dashboard link would not open.
+drop_stale_sessions() {
+  local pids
+  pids="$(pgrep -f '^ssh( .*)? homelab( |$)' || true)"
+  [ -n "$pids" ] || return 0
+  # shellcheck disable=SC2086 # one PID per word
+  kill $pids 2>/dev/null || true
+}
+
+cmd_reset() {
+  say "Restoring the clean home server…"
+  local t0=$SECONDS
+  drop_stale_sessions
+  revert
+  local ip
+  for _ in $(seq 1 60); do ip="$(vm_ip)"; [ -n "$ip" ] && break; sleep 0.5; done
+  wait_ssh "$ip"
+  sync_clock "$ip"
+  say "Done in $((SECONDS - t0))s. Reconnect with: ssh homelab"
+}
+
+cmd_off() {
+  [ "$(state)" = running ] || { say "homelab is already off."; return 0; }
+  virsh shutdown "$domain" >/dev/null
+  say "Shutting homelab down."
+}
+
+cmd_setup() {
+  [ "$(state)" = running ] || die "Bring the VM up first: cd $here && ./run.sh up"
+  local ip
+  ip="$(vm_ip)"
+  [ -n "$ip" ] || die "Cannot find the VM's address."
+  local g=(ssh -i "$key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "vagrant@$ip")
+
+  say "Quieting the login banner"
+  "${g[@]}" 'touch ~/.hushlogin'
+
+  # Provisioning installs today's updates. A new kernel among them leaves
+  # /var/run/reboot-required, which updates.reboot-required reports until
+  # the VM boots it, so boot it now and bring the stacks back (they have no
+  # restart policy).
+  if "${g[@]}" 'test -e /var/run/reboot-required'; then
+    say "Rebooting into the updated kernel"
+    "${g[@]}" 'sudo systemctl reboot' || true
+    sleep 5
+    for _ in $(seq 1 60); do ip="$(vm_ip)"; [ -n "$ip" ] && nc -z -w1 "$ip" 22 2>/dev/null && break; sleep 2; done
+    g=(ssh -i "$key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "vagrant@$ip")
+    sleep 3
+  fi
+  say "Starting the stacks"
+  # shellcheck disable=SC2016 # the guest shell expands these
+  "${g[@]}" 'for d in /opt/stacks/*/; do (cd "$d" && sudo docker compose up -d >/dev/null 2>&1); done'
+
+  say "Warming caches with one scan (downloads Trivy's DB while there is internet)"
+  "${g[@]}" 'sudo hostveil scan >/dev/null 2>&1 || true'
+
+  # A booth has no reliable internet, and Trivy refreshes its DB when the copy
+  # on disk is older than a day: offline, that refresh fails and the CVE
+  # domain with it. Pin the DB downloaded just now. A wrapper ahead of the
+  # real binary on sudo's secure_path, because sudo drops TRIVY_* variables.
+  say "Pinning Trivy's DB for offline use"
+  # shellcheck disable=SC2016 # the guest shell expands these
+  "${g[@]}" 'real=$(command -v trivy); [ "$real" = /usr/local/sbin/trivy ] && exit 0
+    sudo tee /usr/local/sbin/trivy >/dev/null <<EOF
+#!/bin/sh
+# Hostveil demo: use the vulnerability DB downloaded by "homelab setup";
+# never refresh it (the booth may be offline). Remove this file to undo.
+for a in "\$@"; do [ "\$a" = --download-db-only ] && exit 0; done
+case "\$1" in image|rootfs|fs|filesystem) sub=\$1; shift; exec $real "\$sub" --skip-db-update --skip-java-db-update "\$@";; esac
+exec $real "\$@"
+EOF
+    sudo chmod 755 /usr/local/sbin/trivy'
+
+  # The warm-up scan is ours, not the visitor's: without this, the first
+  # scan of the demo would report "resolved/new since last scan" against it.
+  # The CVE report cache stays, which is what makes that first scan fast.
+  "${g[@]}" 'sudo find /var/lib/hostveil -mindepth 1 -maxdepth 1 ! -name cache -exec rm -rf {} +'
+
+  # Vagrant forwards 8787 with an ssh -L of its own, which would take the
+  # port the `homelab` tunnel needs. Only that one process, matched by this
+  # checkout's key.
+  pkill -f -- "IdentityFile=\"$key\".* -L \*:8787:" 2>/dev/null || true
+  pkill -f -- "$key.*-L \*:8787:" 2>/dev/null || true
+
+  say "Saving the '$snapshot' snapshot (with memory, so resets are instant)"
+  virsh snapshot-delete "$domain" "$snapshot" >/dev/null 2>&1 || true
+  virsh snapshot-create-as "$domain" "$snapshot" >/dev/null
+
+  say "Adding 'homelab' to ~/.ssh/config"
+  mkdir -p "$HOME/.ssh/config.d"
+  cat >"$sshconf" <<EOF
+# Hostveil demo VM ($here). Written by 'homelab setup'.
+Host homelab
+  HostName homelab
+  User vagrant
+  IdentityFile $key
+  IdentitiesOnly yes
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  # QUIET: a second session cannot bind 8787 again and would say so on
+  # every connect; the first session's tunnel is the one the dashboard uses.
+  LogLevel QUIET
+  ProxyCommand $here/homelab proxy
+  LocalForward 8787 127.0.0.1:8787
+EOF
+  chmod 600 "$sshconf"
+  grep -qxF 'Include config.d/*' "$HOME/.ssh/config" 2>/dev/null ||
+    { printf 'Include config.d/*\n\n' | cat - "$HOME/.ssh/config" 2>/dev/null >"$HOME/.ssh/config.new" || true
+      mv "$HOME/.ssh/config.new" "$HOME/.ssh/config"; chmod 600 "$HOME/.ssh/config"; }
+
+  mkdir -p "$HOME/.local/bin"
+  ln -sf "$here/homelab" "$HOME/.local/bin/homelab"
+
+  say "Ready. Try: ssh homelab"
+}
+
+case "${1:-}" in
+  setup) cmd_setup ;;
+  proxy) cmd_proxy ;;
+  reset) cmd_reset ;;
+  off) cmd_off ;;
+  *)
+    echo "usage: homelab {setup|reset|off}   (connect with: ssh homelab)" >&2
+    exit 2
+    ;;
+esac
