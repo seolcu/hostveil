@@ -106,6 +106,11 @@ type Checkpoint struct {
 	// restoring daemon.json under a daemon that is still running from the
 	// edited one changes nothing until something restarts it.
 	AfterRestore [][]string `json:"after_restore,omitempty"`
+	// RestoreNow is the fix's ApplyNow counterpart (fix.Action.RestoreNow):
+	// run after the restore, with a failure ignored, because a host that
+	// refused it is a host where the apply's ApplyNow was refused too and
+	// nothing runtime changed.
+	RestoreNow [][]string `json:"restore_now,omitempty"`
 	// RolledBackAt is when a rollback restored every file of this
 	// checkpoint. Zero means it has not been rolled back. Without it the
 	// history listed an undone fix exactly like a live one, offered to

@@ -33,8 +33,11 @@ func TestAutoSysctlLoadsTheFileItWrote(t *testing.T) {
 		{"sysctl", "-w", "net.ipv4.conf.all.log_martians=0"},
 		{"sysctl", "-w", "net.ipv4.conf.default.log_martians=0"},
 	}
-	if !slices.EqualFunc(a.AfterRestore, want, slices.Equal) {
-		t.Errorf("AfterRestore = %v, want the values the scan read: %v", a.AfterRestore, want)
+	if !slices.EqualFunc(a.RestoreNow, want, slices.Equal) {
+		t.Errorf("RestoreNow = %v, want the values the scan read: %v", a.RestoreNow, want)
+	}
+	if len(a.AfterRestore) != 0 {
+		t.Errorf("AfterRestore = %v; a refused restore must not fail the rollback", a.AfterRestore)
 	}
 	if fx.EffectiveKind() != model.RemediationAuto {
 		t.Errorf("an edit with follow-up commands is still Auto, got %v", fx.EffectiveKind())
@@ -48,8 +51,8 @@ func TestAutoSysctlWithoutARecordedValueRestoresTheFileOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(fx.Actions[0].AfterRestore) != 0 {
-		t.Errorf("AfterRestore = %v, want nothing", fx.Actions[0].AfterRestore)
+	if len(fx.Actions[0].RestoreNow) != 0 {
+		t.Errorf("RestoreNow = %v, want nothing", fx.Actions[0].RestoreNow)
 	}
 }
 

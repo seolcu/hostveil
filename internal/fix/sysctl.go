@@ -235,8 +235,9 @@ func buildModuleBlock(f model.Finding) (Fix, error) {
 //   - ApplyNow is `sysctl -p <file>`. Where the kernel refuses it (a
 //     container's read-only /proc/sys), the file stays and the fix is pending
 //     on TakesEffectOn, as it always was.
-//   - AfterRestore writes back the runtime values the scan recorded, so a
-//     rollback restores the kernel as well as the file.
+//   - RestoreNow writes back the runtime values the scan recorded, so a
+//     rollback restores the kernel as well as the file. Where the kernel
+//     refused ApplyNow it refuses this too, and the rollback is the file.
 func buildSysctl(f model.Finding) (Fix, error) {
 	pairs, err := sysctlPairs(f)
 	if err != nil {
@@ -244,7 +245,7 @@ func buildSysctl(f model.Finding) (Fix, error) {
 	}
 	a := persistSysctl(f, pairs, sysctlBenefit[f.ID])
 	a.ApplyNow = [][]string{{"sysctl", "-p", a.Path}}
-	a.AfterRestore = sysctlRestore(f, pairs)
+	a.RestoreNow = sysctlRestore(f, pairs)
 
 	return Fix{
 		Label:   "Harden " + strings.Join(keysOf(pairs), ", "),

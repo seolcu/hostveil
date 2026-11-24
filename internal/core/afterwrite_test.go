@@ -399,3 +399,32 @@ func TestARefusedApplyNowKeepsTheEditPending(t *testing.T) {
 		t.Error("the edit must keep its checkpoint")
 	}
 }
+
+// A rollback on a host that refuses the runtime write still succeeds: the
+// file is what was changed there.
+func TestARefusedRestoreNowDoesNotFailTheRollback(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "60-test.conf")
+	runner := &restartRunner{failing: true}
+	reg := fix.NewRegistry()
+	reg.Register("sysctl.test", func(model.Finding) (fix.Fix, error) {
+		return fix.Fix{Label: "harden", Kind: model.RemediationAuto, Actions: []fix.Action{{
+			Label: "persist it", Benefit: "b", Kind: fix.ActionEdit, Path: path, CreateIfMissing: true,
+			Transform:     func([]byte) ([]byte, error) { return []byte("k = 1\n"), nil },
+			TakesEffectOn: "the next boot",
+			ApplyNow:      [][]string{{"sysctl", "-p", path}},
+			RestoreNow:    [][]string{{"sysctl", "-w", "k=0"}},
+		}}}, nil
+	})
+	e := New(Config{Fixes: reg, Store: history.NewStore(t.TempDir()), Runner: runner})
+	f := model.NewFinding("sysctl.test", "t", model.SeverityLow, model.SourceSysctl, model.RemediationAuto)
+	out, err := e.ApplyFix(context.Background(), f, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.Rollback(out.CheckpointID); err != nil {
+		t.Fatalf("a refused runtime restore must not fail the rollback: %v", err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("the created file must be gone after the rollback, stat err = %v", err)
+	}
+}

@@ -117,6 +117,9 @@ func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (
 	outcome.Pending = action.TakesEffectOn != "" && !inForce
 	if outcome.Pending {
 		outcome.TakesEffectOn = action.TakesEffectOn
+		if len(action.Activate) > 0 {
+			e.state.setActivation(f.Key(), action.Activate)
+		}
 	}
 
 	// Mark the finding fixed and rescore: both inside the engine so no UI
@@ -199,6 +202,7 @@ func (e *Engine) applyEdit(ctx context.Context, f model.Finding, fx fix.Fix, a f
 		// before anything on the host changes.
 		AppliedSHA256: map[string]string{a.Path: history.SHA256Hex(next)},
 		AfterRestore:  afterRestore(a),
+		RestoreNow:    a.RestoreNow,
 	}
 	if a.SafeRoot != "" {
 		cp.SafeRoots = map[string]string{a.Path: a.SafeRoot}
