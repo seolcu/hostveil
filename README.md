@@ -271,7 +271,7 @@ perfect score for the domains it could not see.
 
 <!-- hostveil:counts -->
 Hostveil can report 194 findings across those domains. 181 of them carry a
-fix: Hostveil applies 76 unattended and 105 only after you have read the diff.
+fix: Hostveil applies 77 unattended and 104 only after you have read the diff.
 <!-- /hostveil:counts -->
 
 The remaining findings are Manual. Each one is listed in

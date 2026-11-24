@@ -443,7 +443,7 @@ func (f *facts) defaultsFindings() []model.Finding {
 		out = append(out, model.NewFinding(
 			"dockerd.live-restore",
 			"Restarting the daemon stops every container",
-			model.SeverityLow, model.SourceDockerd, model.RemediationReview,
+			model.SeverityLow, model.SourceDockerd, model.RemediationAuto,
 			model.WithDescription("Without live-restore, containers do not survive a daemon restart. The security cost is indirect and worth stating as such: it makes upgrading Docker an outage, so daemon updates get deferred, and a deferred daemon update is an unpatched daemon holding root on this host."),
 			model.WithHowToFix("Add `\"live-restore\": true` to /etc/docker/daemon.json. Unlike the other daemon defaults this one is picked up by `systemctl reload docker`, so enabling it does not itself require an outage. It is unsupported in swarm mode."),
 			model.WithEvidence("live restore", "disabled"),

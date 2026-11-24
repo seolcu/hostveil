@@ -82,5 +82,7 @@ func (e *Engine) rollback(id string, force bool) (model.RollbackOutcome, error) 
 	if err := runEach(context.Background(), e.runner, cp.AfterRestore); err != nil {
 		return out, fmt.Errorf("the files were restored, but putting them back in force failed: %w", err)
 	}
+	// Best effort, the same as ApplyNow: see history.Checkpoint.RestoreNow.
+	_ = runEach(context.Background(), e.runner, cp.RestoreNow)
 	return out, nil
 }

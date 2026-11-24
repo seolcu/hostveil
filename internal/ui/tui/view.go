@@ -299,7 +299,11 @@ func (m *appModel) View() tea.View {
 			[]string{s.brand.Render(m.applyLabel)}, "ctrl+c quit", m.applyingRows)
 
 	case modeMessage:
-		content = m.compose(compactHeader(""), nil, "press any key to continue", m.messageRows)
+		hint := "press any key to continue"
+		if m.offerActivate {
+			hint = "y recreate now   any other key: later"
+		}
+		content = m.compose(compactHeader(""), nil, hint, m.messageRows)
 
 	case modeHistory:
 		content = m.compose(compactHeader(""), nil, historyHint, m.historyRows)

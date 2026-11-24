@@ -407,14 +407,52 @@ async function applyMany(findings, verb) {
   }
 
   document.getElementById("modal").removeAttribute("data-busy");
-  const done = el("button", { class: "primary" }, t("Done"));
+  marked.clear();
+  const before = report && report.score ? report.score.overall : null;
+  await refresh();
+  const heading = document.querySelector("#modal h3");
+  if (heading) heading.textContent = t("Fixes applied");
+  const done = el("button", {}, t("Done"));
   done.onclick = closeModal;
+  const lines = [el("p", {}, t("Applied {applied} · skipped {skipped} · failed {failed}.", { applied, skipped, failed }))];
+  if (before !== null) lines.push(el("p", {}, t("Score: {from} to {to}", { from: before, to: report.score.overall })));
+  const actions = el("div", { class: "row" }, done);
+  const plan = await api("/api/activation").catch(() => null);
+  if (plan && plan.fixes > 0) {
+    lines.push(el("p", { class: "muted" }, t("{n} of these are in compose files and take effect when their containers are recreated: {services}.",
+      { n: plan.fixes, services: plan.services.join(", ") })));
+    const go = el("button", { class: "primary" }, t("Recreate now"));
+    go.onclick = () => activate(body, heading, done);
+    actions.replaceChildren(go, done);
+  } else {
+    done.className = "primary";
+  }
+  body.replaceChildren(...lines, actions);
+}
+
+// activate recreates the containers applied fixes wait on
+// (POST /api/activate), then shows the score they leave.
+async function activate(body, heading, done) {
+  document.getElementById("modal").setAttribute("data-busy", "");
+  if (heading) heading.textContent = t("Recreating…");
+  body.replaceChildren(el("p", {}, t("Recreating…")));
+  let res = null, err = null;
+  try {
+    res = await api("/api/activate", { method: "POST" });
+  } catch (e) {
+    err = e;
+  }
+  document.getElementById("modal").removeAttribute("data-busy");
+  await refresh();
+  if (heading) heading.textContent = t("Fixes applied");
+  done.className = "primary";
+  const failed = res && res.failed ? Object.keys(res.failed).length : 0;
   body.replaceChildren(
-    el("p", {}, t("Applied {applied} · skipped {skipped} · failed {failed}.", { applied, skipped, failed })),
+    err || failed
+      ? el("p", { class: "error" }, t("Recreate failed: {err}", { err: err ? err.message : Object.values(res.failed).join("; ") }))
+      : el("p", {}, t("{n} fixes are in force. Score: {score}/100.", { n: res.in_force, score: report.score.overall })),
     el("div", { class: "row" }, done)
   );
-  marked.clear();
-  await refresh();
 }
 
 // Show which checkers did not fully cover their domain. Without this the

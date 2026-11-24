@@ -68,8 +68,11 @@ type appModel struct {
 	// literal has none, which is how several tests construct one.
 	ctx    context.Context
 	engine *core.Engine
-	report model.Report
-	active []model.Finding // report findings after m.filter
+	// offerActivate is set while the message on screen offers to recreate
+	// the containers applied compose fixes wait on (core.Engine.Activate).
+	offerActivate bool
+	report        model.Report
+	active        []model.Finding // report findings after m.filter
 
 	filter   model.Filter    // classification/narrowing (empty = all active)
 	selected map[string]bool // finding.Key() → picked for a batch fix
@@ -474,6 +477,14 @@ func exportCmd(e *core.Engine, r model.Report, format, path string, save func(st
 
 type batchAppliedMsg struct{ outcome model.BatchOutcome }
 
+type activatedMsg struct{ outcome core.ActivateOutcome }
+
+func activateCmd(ctx context.Context, e *core.Engine) tea.Cmd {
+	return func() tea.Msg {
+		return activatedMsg{outcome: e.Activate(ctx)}
+	}
+}
+
 func batchCmd(ctx context.Context, e *core.Engine, fs []model.Finding) tea.Cmd {
 	return func() tea.Msg {
 		return batchAppliedMsg{outcome: e.ApplyBatch(ctx, fs)}
@@ -658,6 +669,26 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.status = m.batchSummary(msg.outcome)
 		m.refreshFromEngine()
 		m.selected = map[string]bool{}
+		m.offerActivate = false
+		if plan := m.engine.PendingActivation(); plan.Fixes > 0 {
+			m.status += fmt.Sprintf("\n\n%d of these are in compose files and take effect when their containers are recreated: %s.",
+				plan.Fixes, strings.Join(plan.Services, ", "))
+			m.offerActivate = true
+		}
+		m.mode = modeMessage
+		return m, nil
+
+	case activatedMsg:
+		m.refreshFromEngine()
+		if len(msg.outcome.Failed) > 0 {
+			var errs []string
+			for cmd, err := range msg.outcome.Failed {
+				errs = append(errs, cmd+": "+err)
+			}
+			m.status = "Recreate failed: " + strings.Join(errs, "; ")
+		} else {
+			m.status = fmt.Sprintf("✓ %d fixes are in force. Score: %d/100.", msg.outcome.InForce, msg.outcome.NewScore.Overall)
+		}
 		m.mode = modeMessage
 		return m, nil
 
@@ -749,6 +780,13 @@ func (m *appModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case modeAIContext:
 		return m.keyAIContext(key)
 	case modeMessage:
+		if m.offerActivate && key == "y" {
+			m.offerActivate = false
+			m.applyLabel = "Recreating containers"
+			m.mode = modeApplying
+			return m, activateCmd(m.ctx, m.engine)
+		}
+		m.offerActivate = false
 		m.mode = modeList
 	}
 	return m, nil

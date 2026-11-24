@@ -215,6 +215,9 @@ func fixAll(ctx context.Context, yes, review bool) int {
 	for _, id := range slices.Sorted(maps.Keys(out.Failed)) {
 		fmt.Printf("  ✗ %s: %s\n", id, out.Failed[id])
 	}
+	if !activate(ctx, engine, yes) {
+		out.Failed["activate"] = "a recreate failed"
+	}
 	fmt.Println("Roll back any change with: hostveil history")
 	// The exit code is the CI contract, the same one `scan` documents: a
 	// non-zero status means the run did not do what it was asked to. A fix
@@ -224,6 +227,37 @@ func fixAll(ctx context.Context, yes, review bool) int {
 		return 1
 	}
 	return 0
+}
+
+// activate offers to recreate the services applied fixes are waiting on, and
+// recreates them on an interactive yes. It returns false only when a
+// recreate ran and failed.
+func activate(ctx context.Context, engine *core.Engine, yes bool) bool {
+	plan := engine.PendingActivation()
+	if plan.Fixes == 0 {
+		return true
+	}
+	fmt.Printf("\n%d of these fixes are in the compose files and wait for their containers to be recreated: %s.\n",
+		plan.Fixes, strings.Join(plan.Services, ", "))
+	// --yes answers the question about the edits. A restart is a separate
+	// outage, and an unattended caller has not been asked about it.
+	if yes || !promptYesNo("Recreate them now? Each restarts for a few seconds.") {
+		fmt.Println("Left as they are. Recreate them to put the fixes in force:")
+		for _, argv := range plan.Commands {
+			fmt.Println("  " + strings.Join(argv, " "))
+		}
+		return true
+	}
+	res := engine.Activate(ctx)
+	for _, cmd := range slices.Sorted(maps.Keys(res.Failed)) {
+		fmt.Printf("  ✗ %s: %s\n", cmd, res.Failed[cmd])
+	}
+	mark := "✓"
+	if len(res.Failed) > 0 {
+		mark = "✗"
+	}
+	fmt.Printf("%s %d fixes are in force. Score: %d/100.\n", mark, res.InForce, res.NewScore.Overall)
+	return len(res.Failed) == 0
 }
 
 // printIndividual lists the fixes no batch applies, with the command that

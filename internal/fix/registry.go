@@ -107,6 +107,32 @@ type Action struct {
 	// This is also the whole of the objection register.go raises against the
 	// dockerd and systemd domains: "a fix would edit a file the running
 	// daemon will not read again until it restarts": stated as a field.
+	// Activate puts a pending edit in force by disrupting what runs from it:
+	// recreating a container so it picks up an edited compose file. It is
+	// never run by the apply itself. Engine.Activate runs it for every fix
+	// still pending, once per command, when the operator asks, so a batch
+	// that edited one service five times recreates it once.
+	Activate [][]string
+
+	// recreate is the compose service an edit needs recreated. Registry.Build
+	// turns it into Activate, because the command needs every file the
+	// project is composed from, and that list is on the finding.
+	recreate string
+
+	// ApplyNow puts an edit in force at once when the host allows it, for an
+	// action whose artifact is otherwise read only at TakesEffectOn (a
+	// sysctl drop-in, read at boot). It runs after the write and AfterWrite.
+	// Its failure keeps the edit and its checkpoint: the fix is then exactly
+	// what it was without ApplyNow, applied and pending on TakesEffectOn. A
+	// container whose /proc/sys is read-only is the case that needs this,
+	// where an AfterWrite failure would have undone a correct file.
+	ApplyNow [][]string
+
+	// RestoreNow is ApplyNow's counterpart on rollback: it puts the runtime
+	// back after the file is restored, and its failure is ignored for the
+	// same reason (a host that refuses it refused ApplyNow too).
+	RestoreNow [][]string
+
 	TakesEffectOn string
 
 	// VerifyCmd is an optional argv that validates an edit action's *result*
@@ -311,10 +337,34 @@ func (r *Registry) Build(f model.Finding) (Fix, bool, error) {
 			}
 			fx.FindingID = f.ID
 			withCheckFirst(&fx, f.ID)
+			withActivate(&fx, f)
 			return fx, true, nil
 		}
 	}
 	return Fix{}, false, nil
+}
+
+// withActivate fills Activate for compose edits: `docker compose -f <each
+// file> up -d <service>`, the command the edit's TakesEffectOn names, with
+// the project's files in the order docker applies them. A finding that does
+// not say which files leaves it empty, and the edit stays pending for the
+// operator to recreate by hand, as before.
+func withActivate(fx *Fix, f model.Finding) {
+	for i := range fx.Actions {
+		a := &fx.Actions[i]
+		if a.recreate == "" || len(a.Activate) > 0 {
+			continue
+		}
+		files, err := composeFiles(f)
+		if err != nil || len(files) == 0 {
+			continue
+		}
+		argv := []string{"docker", "compose"}
+		for _, file := range files {
+			argv = append(argv, "-f", file)
+		}
+		a.Activate = [][]string{append(argv, "up", "-d", a.recreate)}
+	}
 }
 
 // Patterns returns every registered pattern. Tests enumerate the registry

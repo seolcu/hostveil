@@ -128,6 +128,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/fix/all", s.handleFixAll)
 	mux.HandleFunc("POST /api/fix/batch", s.handleFixBatch)
 	mux.HandleFunc("POST /api/rescan", s.handleRescan)
+	mux.HandleFunc("GET /api/activation", s.handleActivation)
+	mux.HandleFunc("POST /api/activate", s.handleActivate)
 	mux.HandleFunc("POST /api/rollback", s.handleRollback)
 	return s.guard(mux)
 }
@@ -683,6 +685,17 @@ func (s *Server) handleFixOne(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, fixOneResponse{FixOutcome: outcome, Skipped: !eligible})
+}
+
+// handleActivation reports which applied fixes wait on a container recreate
+// and what recreating them would run (core.Engine.PendingActivation).
+func (s *Server) handleActivation(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, s.engine.PendingActivation())
+}
+
+// handleActivate recreates those services (core.Engine.Activate).
+func (s *Server) handleActivate(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, s.engine.Activate(hostWork(r)))
 }
 
 func (s *Server) handleFixAll(w http.ResponseWriter, r *http.Request) {

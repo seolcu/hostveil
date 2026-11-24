@@ -30,6 +30,10 @@ type reportState struct {
 	current   model.Report
 	hasRun    bool
 	lastDelta model.Delta
+	// activations holds, by Finding.Key, the commands that put an applied
+	// and pending fix in force (fix.Action.Activate). A new scan starts a
+	// new report and with it an empty map.
+	activations map[string][][]string
 }
 
 // snapshot returns a copy of the current report and whether a scan has run.
@@ -53,6 +57,7 @@ func (s *reportState) replace(r model.Report, d model.Delta) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.current = r
+	s.activations = nil
 	s.hasRun = true
 	s.lastDelta = d
 }
@@ -132,4 +137,62 @@ func (s *reportState) rescore() model.ScoreBreakdown {
 	}
 	s.current.Score = model.ScoreReport(s.current.Findings, states)
 	return s.current.Score
+}
+
+// setActivation records the commands that put a pending fix in force.
+func (s *reportState) setActivation(key string, cmds [][]string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.activations == nil {
+		s.activations = map[string][][]string{}
+	}
+	s.activations[key] = cmds
+}
+
+// activationPlan merges the recorded commands of every finding that is still
+// fixed and pending, in report order.
+func (s *reportState) activationPlan() (Activation, [][]string) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var cmds [][]string
+	var keys []string
+	fixes := 0
+	for _, f := range s.current.Findings {
+		if !f.Fixed || !f.Pending {
+			continue
+		}
+		recorded, ok := s.activations[f.Key()]
+		if !ok {
+			continue
+		}
+		fixes++
+		for _, argv := range recorded {
+			cmds = append(cmds, argv)
+			keys = append(keys, f.Key())
+		}
+	}
+	merged, byCommand, services := mergeActivations(cmds, keys)
+	return Activation{Fixes: fixes, Services: services, Commands: merged}, byCommand
+}
+
+// markInForce clears Pending on the findings with these keys and returns how
+// many it changed. It is the one place Pending goes back to false while a
+// finding stays fixed: the command that TakesEffectOn names has run.
+func (s *reportState) markInForce(keys []string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	want := map[string]bool{}
+	for _, k := range keys {
+		want[k] = true
+	}
+	n := 0
+	for i := range s.current.Findings {
+		f := &s.current.Findings[i]
+		if want[f.Key()] && f.Fixed && f.Pending {
+			f.Pending = false
+			delete(s.activations, f.Key())
+			n++
+		}
+	}
+	return n
 }

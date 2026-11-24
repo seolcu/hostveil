@@ -35,6 +35,7 @@ func composeEdit(path, label, benefit, warning, service string, mutate func(*com
 		Kind:          ActionEdit,
 		Path:          path,
 		TakesEffectOn: "`docker compose up -d " + service + "`",
+		recreate:      service,
 		Transform: func(in []byte) ([]byte, error) {
 			doc, err := compose.Load(in)
 			if err != nil {

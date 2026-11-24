@@ -184,6 +184,16 @@ var moduleBlockBenefit = map[string]string{
 		"via a USB drive.",
 }
 
+// moduleBlockEffect is "" when the module is not loaded: modprobe reads the
+// block on every load request, so from the moment the file is written the
+// module cannot come in. A loaded module stays until the next reboot.
+func moduleBlockEffect(f model.Finding) string {
+	if f.Evidence["loaded"] == "no" {
+		return ""
+	}
+	return "the next reboot"
+}
+
 func buildModuleBlock(f model.Finding) (Fix, error) {
 	path, module := f.Evidence["config"], f.Evidence["module"]
 	if path == "" || module == "" {
@@ -196,7 +206,7 @@ func buildModuleBlock(f model.Finding) (Fix, error) {
 		Kind:            ActionEdit,
 		Path:            path,
 		CreateIfMissing: true,
-		TakesEffectOn:   "the next reboot",
+		TakesEffectOn:   moduleBlockEffect(f),
 		Transform: func(in []byte) ([]byte, error) {
 			line := "install " + module + " /bin/false"
 			if strings.Contains(string(in), line) {
@@ -210,21 +220,60 @@ func buildModuleBlock(f model.Finding) (Fix, error) {
 		}}}}, nil
 }
 
-// buildSysctl persists the finding's exact key=value pairs. It
-// does not change the running kernel: that keeps unattended application a
-// reversible file edit, while TakesEffectOn tells the operator that a reboot
-// or an explicit sysctl --system is still required.
+// buildSysctl persists the finding's exact key=value pairs and loads the file
+// it wrote, so on an ordinary host the running kernel has the value when the
+// fix reports success.
+//
+// It used to write the file only, on the grounds that unattended application
+// should stay a file edit. The cost was that `fix --all` changed nothing a
+// scan could see: the checker reads /proc/sys, every one of these findings
+// stayed charged until a reboot, and the next scan listed them as open again.
+// The values here are the unambiguous ones (the topology-dependent keys are
+// buildSysctlReview), so loading them now is as safe as loading them at boot,
+// and both halves are reversible:
+//
+//   - ApplyNow is `sysctl -p <file>`. Where the kernel refuses it (a
+//     container's read-only /proc/sys), the file stays and the fix is pending
+//     on TakesEffectOn, as it always was.
+//   - RestoreNow writes back the runtime values the scan recorded, so a
+//     rollback restores the kernel as well as the file. Where the kernel
+//     refused ApplyNow it refuses this too, and the rollback is the file.
 func buildSysctl(f model.Finding) (Fix, error) {
 	pairs, err := sysctlPairs(f)
 	if err != nil {
 		return Fix{}, err
 	}
+	a := persistSysctl(f, pairs, sysctlBenefit[f.ID])
+	a.ApplyNow = [][]string{{"sysctl", "-p", a.Path}}
+	a.RestoreNow = sysctlRestore(f, pairs)
 
 	return Fix{
 		Label:   "Harden " + strings.Join(keysOf(pairs), ", "),
 		Kind:    model.RemediationAuto,
-		Actions: []Action{persistSysctl(f, pairs, sysctlBenefit[f.ID])},
+		Actions: []Action{a},
 	}, nil
+}
+
+// sysctlRestore returns `sysctl -w key=value` for each key the fix sets, with
+// the value the scan read from /proc/sys before the fix (the finding's
+// "value" evidence). A key with no recorded value is left alone, and
+// with none at all there is nothing to run.
+func sysctlRestore(f model.Finding, pairs []string) [][]string {
+	before := map[string]string{}
+	for _, kv := range strings.Split(f.Evidence["value"], ",") {
+		k, v, ok := strings.Cut(strings.TrimSpace(kv), "=")
+		if ok && k != "" {
+			before[strings.TrimSpace(k)] = strings.TrimSpace(v)
+		}
+	}
+	var cmds [][]string
+	for _, kv := range pairs {
+		k, _, _ := strings.Cut(kv, "=")
+		if v, ok := before[k]; ok {
+			cmds = append(cmds, []string{"sysctl", "-w", k + "=" + v})
+		}
+	}
+	return cmds
 }
 
 // buildSysctlReview retains an immediate, non-persistent alternative for
