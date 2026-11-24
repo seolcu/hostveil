@@ -7,6 +7,14 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.38.1](https://github.com/seolcu/hostveil/compare/v3.38.0...v3.38.1) (2026-11-25)
+
+### 버그 수정
+
+* **web:** 한국어 대시보드가 발견 항목의 번역문에서도 이름 뒤 조사를
+  고릅니다. 모듈 항목이 "DCCP을(를)" 대신 "DCCP를"로 나옵니다
+  ([#905](https://github.com/seolcu/hostveil/pull/905)).
+
 ## [3.38.0](https://github.com/seolcu/hostveil/compare/v3.37.1...v3.38.0) (2026-11-25)
 
 ### 새 기능
