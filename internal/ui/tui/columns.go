@@ -27,9 +27,10 @@ const (
 	railWidth         = 24
 	minRailTotalWidth = 76
 	minPaneWidth      = 34
-	maxPaneWidth      = 52
+	maxPaneWidth      = 84
 	minPaneTotalWidth = 100
 	minListWidth      = 40
+	minListBesidePane = 56
 )
 
 // railBranch ties a domain's second row to the name above it, the way a reply
@@ -76,9 +77,20 @@ func (m *appModel) bodyColumns() (rail, list, pane int) {
 	// on an empty list, and that message is the long one, the one that says
 	// how many domains could not be looked at. The rail stays: on a host
 	// where nothing could be scanned it is the only thing that says why.
+	//
+	// The list and the pane share what the rail leaves in the golden ratio,
+	// list:pane = φ:1 (the pane is 0.382 of it): the list is the thing being
+	// scanned and gets the larger part, and the pane still grows with the
+	// terminal up to maxPaneWidth, a little past the 45 to 75 characters a
+	// line of prose reads best at once the margins are taken out. It used to
+	// be two fifths of the whole terminal capped at 52, which left a 220-column
+	// terminal with a 142-column list and a 52-column pane.
 	if len(m.active) > 0 && m.width >= minPaneTotalWidth {
-		p := clamp(m.width*2/5, minPaneWidth, maxPaneWidth)
-		if list-p-sep >= minListWidth {
+		p := clamp((list*382+500)/1000, minPaneWidth, maxPaneWidth)
+		// Beside a pane the list keeps room for a title and its service,
+		// or the pane is not drawn: a 40-column list beside a 34-column pane
+		// is two columns too narrow to read instead of one that is not.
+		if list-p-sep >= minListBesidePane {
 			pane = p
 			list -= pane + sep
 		}
@@ -190,7 +202,7 @@ func visibleRunes(s string) []rune {
 // losing its tail is better than the rail pushing the findings out.
 func (m *appModel) railRows(w, budget int) []string {
 	s := m.sty()
-	axes := m.report.Score.Axes
+	axes := presentAxes(m.report)
 	if len(axes) == 0 || budget <= 0 {
 		return nil
 	}
@@ -450,4 +462,23 @@ func (m *appModel) mixIsCompact(byDomain map[model.Source][]model.Finding, w int
 		}
 	}
 	return false
+}
+
+// presentAxes drops the axes of presence-gated domains that did not run (see
+// model.Source.PresenceGated): a Proxmox row on a host that is not a Proxmox
+// node is a line about nothing.
+func presentAxes(r model.Report) []model.ScoreAxis {
+	absent := map[model.Source]bool{}
+	for _, d := range r.Domains {
+		if d.Absent() {
+			absent[d.Source] = true
+		}
+	}
+	out := make([]model.ScoreAxis, 0, len(r.Score.Axes))
+	for _, ax := range r.Score.Axes {
+		if !absent[ax.Source] {
+			out = append(out, ax)
+		}
+	}
+	return out
 }

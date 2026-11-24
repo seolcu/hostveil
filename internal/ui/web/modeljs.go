@@ -54,7 +54,7 @@ func modelJS() string {
 
 	b.WriteString("  domains: {\n")
 	for i, s := range model.AllSources() {
-		fmt.Fprintf(&b, "    %q: {id: %q, label: %q, rank: %d},\n", s.String(), s.String(), s.Label(), i)
+		fmt.Fprintf(&b, "    %q: {id: %q, label: %q, rank: %d, presence: %t, optin: %t},\n", s.String(), s.String(), s.Label(), i, s.PresenceGated(), s.OptIn())
 	}
 	b.WriteString("  },\n")
 
@@ -68,8 +68,8 @@ func modelJS() string {
 
 	b.WriteString("  remediations: {\n")
 	for i, r := range model.AllRemediationKinds() {
-		fmt.Fprintf(&b, "    %q: {name: %q, label: %q, fixable: %t, auto: %t, rank: %d},\n",
-			r.String(), r.String(), r.Label(), r.IsFixable(), r == model.RemediationAuto, i)
+		fmt.Fprintf(&b, "    %q: {name: %q, label: %q, fixable: %t, auto: %t, rank: %d, action: %d},\n",
+			r.String(), r.String(), r.Label(), r.IsFixable(), r == model.RemediationAuto, i, r.ActionRank())
 	}
 	b.WriteString("  },\n")
 

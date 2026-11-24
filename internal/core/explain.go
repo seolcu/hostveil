@@ -35,6 +35,10 @@ func (e *Engine) Explain(ctx context.Context, f model.Finding, useAI bool) model
 // stability": used to make an AI judgment specific to this host. "" means nothing has been set.
 func (e *Engine) AIContext() string { return ai.LoadContext(e.store.Dir()) }
 
+// AIAvailable reports whether the advisory AI provider answers. It is false
+// with ai.Noop, and with a configured provider nobody can reach.
+func (e *Engine) AIAvailable(ctx context.Context) bool { return e.ai.Available(ctx) }
+
 // SetAIContext records or clears the saved host description (text == ""
 // clears it). It lives on Engine because the state directory is already reachable
 // through e.store.Dir(): internal/core is not layering-restricted the way

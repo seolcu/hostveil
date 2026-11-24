@@ -129,6 +129,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/fix/batch", s.handleFixBatch)
 	mux.HandleFunc("POST /api/rescan", s.handleRescan)
 	mux.HandleFunc("GET /api/activation", s.handleActivation)
+	mux.HandleFunc("GET /api/ai", s.handleAIStatus)
 	mux.HandleFunc("POST /api/activate", s.handleActivate)
 	mux.HandleFunc("POST /api/rollback", s.handleRollback)
 	return s.guard(mux)
@@ -685,6 +686,14 @@ func (s *Server) handleFixOne(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, fixOneResponse{FixOutcome: outcome, Skipped: !eligible})
+}
+
+// handleAIStatus reports whether an advisory AI provider answers, so the
+// dashboard offers "Explain with AI" only where it can work.
+func (s *Server) handleAIStatus(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	writeJSON(w, map[string]bool{"available": s.engine.AIAvailable(ctx)})
 }
 
 // handleActivation reports which applied fixes wait on a container recreate

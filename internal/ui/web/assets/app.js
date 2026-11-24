@@ -103,7 +103,50 @@ function patternFor(key) {
 }
 
 function fill(s, vars) {
-  return s.replace(/\{(\w+)\}/g, (m, k) => (vars && k in vars ? String(vars[k]) : m));
+  return josa(s.replace(/\{(\w+)\}/g, (m, k) => (vars && k in vars ? String(vars[k]) : m)));
+}
+
+// josa settles a Korean particle written both ways after a name the
+// catalog could not know, "{svc}을(를)", from the sound of the word before
+// it. A Hangul syllable has a final consonant when (code - 0xAC00) % 28 is
+// not 0, and "(으)로" also takes the short form after a final ㄹ (index 8).
+// A Latin letter or a digit is read the way a Korean speaker says it: "db"
+// ends in 비, so 를; "redis" ends in 스, so 를; "nginx" ends in 스, but
+// "html" ends in 엘, so 을.
+const FINAL_LATIN = new Set(["l", "m", "n", "r"]); // 엘 엠 엔 알
+const FINAL_DIGIT = new Set(["0", "1", "3", "6", "7", "8"]); // 영 일 삼 육 칠 팔
+function finalOf(word) {
+  const c = [...word.replace(/[\s'"`)\]}>.,:;!?]+$/u, "")].pop();
+  if (!c) return null;
+  const code = c.charCodeAt(0);
+  if (code >= 0xac00 && code <= 0xd7a3) {
+    const jong = (code - 0xac00) % 28;
+    return { has: jong !== 0, rieul: jong === 8 };
+  }
+  const lower = c.toLowerCase();
+  if (/[a-z]/.test(lower)) return { has: FINAL_LATIN.has(lower), rieul: lower === "l" || lower === "r" };
+  if (/[0-9]/.test(lower)) return { has: FINAL_DIGIT.has(lower), rieul: lower === "1" || lower === "7" || lower === "8" };
+  return null;
+}
+const JOSA = [
+  ["을(를)", "을", "를"], ["를(을)", "을", "를"], ["이(가)", "이", "가"], ["가(이)", "이", "가"],
+  ["은(는)", "은", "는"], ["는(은)", "은", "는"], ["과(와)", "과", "와"], ["와(과)", "과", "와"],
+];
+function josa(s) {
+  if (LANG !== "ko" || !/[(]/.test(s)) return s;
+  for (const [both, withFinal, without] of JOSA) {
+    let at = s.indexOf(both);
+    while (at > 0) {
+      const f = finalOf(s.slice(0, at));
+      const pick = f === null ? both : (f.has ? withFinal : without);
+      s = s.slice(0, at) + pick + s.slice(at + both.length);
+      at = s.indexOf(both, at + pick.length);
+    }
+  }
+  return s.replace(/\(으\)로/g, (m, at) => {
+    const f = finalOf(s.slice(0, at));
+    return f === null ? m : (f.has && !f.rieul ? "으로" : "로");
+  });
 }
 
 // t is for text this file writes. The key is the English.
@@ -116,7 +159,7 @@ function t(key, vars) {
 function tr(s) {
   if (!s || LANG === "en") return s;
   const hit = CAT.server[s];
-  if (hit) return hit;
+  if (hit) return josa(hit);
   for (const p of PATTERNS) {
     const m = p.re.exec(s);
     if (m) return fill(p.out, m.groups);
@@ -184,7 +227,9 @@ let sortBy = "severity"; // "severity" | "domain" | "remediation"; see #sort
 // own tables carry, so "Domain" and "Remediation" sort in the order the
 // engine declared them in.
 const sortComparators = {
-  severity: (a, b) => rank(SEV, a.severity) - rank(SEV, b.severity),
+  // Severity, then what can be done about it (model.SortFindings).
+  severity: (a, b) => rank(SEV, a.severity) - rank(SEV, b.severity) ||
+    ((REM[a.remediation] || {}).action ?? 9) - ((REM[b.remediation] || {}).action ?? 9),
   domain: (a, b) => rank(SRC, a.source) - rank(SRC, b.source),
   remediation: (a, b) => rank(REM, a.remediation) - rank(REM, b.remediation),
 };
@@ -279,11 +324,31 @@ function axisValueText(ax) {
 
 function band(v) { return bandFor(v).cls; }
 
-function meter(pct, bandClass) {
+// verdictHeading names the score's band in a few words, for the overview's
+// heading: a heading names a state, and the sentence that explains it is
+// the line under it.
+function verdictHeading(v) {
+  return {
+    "in good shape": t("In good shape"),
+    middling: t("Middling"),
+    exposed: t("Exposed"),
+    "wide open": t("Wide open"),
+  }[bandFor(v).verdict] || tr(bandFor(v).verdict);
+}
+
+// meter draws pct, and where the safe fixes would take it, after, as a
+// fainter run of the same bar: the headroom as length, which reads at a
+// glance where an arrow and a second number have to be read.
+function meter(pct, bandClass, after) {
   const m = el("div", { class: "meter " + bandClass });
   m.style.setProperty("--w", Math.max(0, Math.min(100, pct)) + "%");
+  if (typeof after === "number" && after > pct) m.style.setProperty("--a", Math.min(100, after) + "%");
   return m;
 }
+
+// sevWord is a severity's short word in the reader's language: HIGH in
+// English, 높음 in Korean.
+function sevWord(sev) { return tr(sev.abbr ? sev.abbr.toUpperCase() : sev.name.toUpperCase()); }
 
 // ── filtering ──────────────────────────────────────────────────────────
 function applyFilters(items) {
@@ -315,7 +380,7 @@ function renderFilterbar(all) {
   for (const [key, sev] of Object.entries(SEV)) {
     const n = sevCounts[key] || 0;
     if (!n) continue;
-    kids.push(chip(`${sev.abbr.toUpperCase()} ${n}`, filters.sev.has(key), () => {
+    kids.push(chip(`${sevWord(sev)} ${n}`, filters.sev.has(key), () => {
       filters.sev.has(key) ? filters.sev.delete(key) : filters.sev.add(key);
       render();
     }, "c-" + sev.abbr));
@@ -516,7 +581,20 @@ function renderTrend() {
 // two things: this notice, and whether the findings list may call the host
 // clean. Both must ask the same question or the page contradicts itself.
 function incompleteDomains() {
-  return (report.domains || []).filter((d) => !scanComplete(d.state));
+  return (report.domains || []).filter((d) => !scanComplete(d.state) && !isAbsent(d));
+}
+
+// isAbsent is model.DomainResult.Absent: a presence-gated domain (Proxmox,
+// Kubernetes) that did not run because this host is not one. It is left out
+// of the notices and the rail, where it would be a line about nothing.
+function isAbsent(d) {
+  return !!(d && SRC[d.source] && SRC[d.source].presence && SCAN[d.state] && SCAN[d.state].name === "skipped");
+}
+
+// presentAxes is the score's axes without the absent domains.
+function presentAxes() {
+  const absent = new Set((report.domains || []).filter(isAbsent).map((d) => d.source));
+  return (report.score.axes || []).filter((ax) => !absent.has(ax.source));
 }
 
 function renderDomainNotice() {
@@ -549,7 +627,7 @@ function renderRail(all) {
   const byDomain = {};
   for (const f of all) (byDomain[f.source] = byDomain[f.source] || []).push(f);
 
-  const rows = (report.score.axes || []).map((ax) => {
+  const rows = presentAxes().map((ax) => {
     const dom = (report.domains || []).find((d) => d.source === ax.source) || {};
     const state = (SCAN[dom.state] && SCAN[dom.state].name) || "done";
     const on = filters.domain.has(ax.source);
@@ -559,10 +637,10 @@ function renderRail(all) {
     row.append(
       el("span", { class: "n" }, srcLabel(ax.source)),
       el("span", { class: "s" }, axisValueText(ax)),
-      ax.applicable ? meter(ax.score, band(ax.score)) : meter(0, "b-na"),
-      ...afterFixesNote(ax.applicable, ax.score, ax.after_fixes,
-                        (n) => el("span", { class: "after" }, `\u2192${n}`))
+      ax.applicable ? meter(ax.score, band(ax.score), ax.after_safe_fixes) : meter(0, "b-na")
     );
+    for (const n of afterFixesNote(ax.applicable, ax.score, ax.after_safe_fixes, (v) => v))
+      row.title = t("{n} after safe fixes", { n });
 
     if (!ax.applicable) {
       row.append(el("span", { class: "c" }, `${scanStateWord(state)}; ${tr(dom.reason) || t("did not run")}`));
@@ -572,11 +650,12 @@ function renderRail(all) {
       for (const f of byDomain[ax.source] || []) counts[f.severity] = (counts[f.severity] || 0) + 1;
       const parts = [];
       for (const [i, sev] of Object.entries(SEV)) {
-        if (counts[i]) parts.push(el("span", { class: sev.name }, `${counts[i]} ${sev.abbr}`));
+        if (counts[i]) parts.push(el("span", { class: sev.name }, `${sevWord(sev)} ${counts[i]}`));
       }
       if (!parts.length) parts.push(el("span", {}, t("clean")));
       parts.forEach((pnode, i) => { if (i) mix.append(" · "); mix.append(pnode); });
       row.append(mix);
+      row.title = [mix.textContent, row.title].filter(Boolean).join(" · ");
     }
 
     // Selecting a domain here is the same filter the chips set, so the two
@@ -607,8 +686,8 @@ function render() {
       ? [el("span", { class: "gauge-na" }, t("N/A; nothing could be scanned"))]
       : [meter(score.overall, band(score.overall)),
          el("span", { class: "gauge-score", html: `${score.overall}<small>/100</small>` }),
-         ...afterFixesNote(score.applicable, score.overall, score.after_fixes,
-                           (n) => el("span", { class: "gauge-after" }, t("{n} after fixes", { n })))])
+         ...afterFixesNote(score.applicable, score.overall, score.after_safe_fixes,
+                           (n) => el("span", { class: "gauge-after" }, t("{n} after safe fixes", { n })))])
   );
 
   // Per-axis bars. The short domain label: the column
@@ -618,15 +697,15 @@ function render() {
   // after it was written fell through to the long label and rendered
   // truncated. The axis already carries its source; ask the domain table.
   document.getElementById("axes").replaceChildren(
-    ...(score.axes || []).map((ax) =>
+    ...presentAxes().map((ax) =>
       el("div", { class: "axis" + (ax.applicable ? "" : " na") + (ax.degraded ? " partial" : "") },
         el("span", { class: "axis-label" }, srcLabel(ax.source)),
         ax.applicable ? meter(ax.score, band(ax.score)) : meter(0, "b-na"),
         // A degraded axis is scored from an incomplete picture; the "~" keeps
         // it from reading as a full clean result.
         el("span", { class: "axis-val" }, axisValueText(ax)),
-        ...afterFixesNote(ax.applicable, ax.score, ax.after_fixes,
-                          (n) => el("span", { class: "axis-after" }, `\u2192${n}`))
+        ...afterFixesNote(ax.applicable, ax.score, ax.after_safe_fixes,
+                          (n) => el("span", { class: "axis-after", title: t("{n} after safe fixes", { n }) }, `+${n - ax.score}`))
       )
     )
   );
@@ -672,7 +751,7 @@ function render() {
   const row = (f) => {
     const li = el("li", { class: "finding " + sevName(f) + (isAuto(f) ? " pickable" : "") + (isPending(f) ? " pending" : "") },
       isAuto(f) ? checkbox(f) : el("span", { class: "pick-spacer" }),
-      el("span", { class: "sev" }, sevAbbr(f)),
+      el("span", { class: "sev" }, tr(sevAbbr(f).toUpperCase())),
       el("div", { class: "title" },
         el("div", { class: "name" }, ft(f, "title")),
         el("div", { class: "rem rem-" + f.remediation }, f.id + "  ·  " +
@@ -711,8 +790,8 @@ function renderOverview(all, visible, rows) {
   // and "wide open" is the number-shaped version of the lie the gauge's
   // N/A already refuses to tell.
   box.append(el("h3", {}, report.score.applicable === false
-    ? t("This host could not be scanned.")
-    : t("This host is {verdict}.", { verdict: tr(bandFor(report.score.overall).verdict) })));
+    ? t("Not scanned")
+    : verdictHeading(report.score.overall)));
   box.append(el("p", { class: "over-lead" }, all.length === 1
     ? t("{n} unresolved finding across the domains that ran.", { n: all.length })
     : t("{n} unresolved findings across the domains that ran.", { n: all.length })));
@@ -749,6 +828,10 @@ function renderOverview(all, visible, rows) {
     leftRows.push(["+" + pts(left.pending), left.pending_count === 1
       ? t("when {n} applied fix takes effect. Restart the services they name.", { n: 1 })
       : t("when {n} applied fixes take effect. Restart the services they name.", { n: left.pending_count })]);
+  if (left.review > 0)
+    leftRows.push([pts(left.review), left.review_count === 1
+      ? t("held by {n} finding with a fix to read before applying.", { n: 1 })
+      : t("held by {n} findings with a fix to read before applying.", { n: left.review_count })]);
   if (left.manual > 0)
     leftRows.push([pts(left.manual), left.manual_count === 1
       ? t("held by {n} finding Hostveil leaves to you. Each one says why and how to fix it by hand.", { n: 1 })
@@ -773,7 +856,7 @@ function renderOverview(all, visible, rows) {
     const ul = el("ul", { class: "over-jump" });
     for (const f of top) {
       const li = el("li", { class: "over-jump-row" },
-        el("span", { class: "sev " + sevName(f) }, sevAbbr(f)),
+        el("span", { class: "sev " + sevName(f) }, tr(sevAbbr(f))),
         el("span", { class: "over-jump-title" }, ft(f, "title")),
         f.service ? el("span", { class: "svc" }, f.service) : ""
       );
@@ -799,13 +882,13 @@ function selectFinding(f, li) {
   d.replaceChildren(
     el("h3", {}, ft(f, "title")),
     el("div", { class: "meta" }, meta.join("  ·  ")),
-    f.description ? el("p", {}, ft(f, "description")) : "",
+    f.description ? el("p", {}, ...rich(ft(f, "description"))) : "",
     f.how_to_fix ? el("div", { class: "howto" }, t("How to fix")) : "",
-    f.how_to_fix ? el("p", {}, ft(f, "how_to_fix")) : "",
+    f.how_to_fix ? el("p", {}, ...rich(ft(f, "how_to_fix"))) : "",
     // Under the instructions: this answers the question a
     // reader asks second, and it is absent entirely on anything fixable.
-    f.why_no_fix ? el("div", { class: "howto" }, t("Why there is no fix button")) : "",
-    f.why_no_fix ? el("p", { class: "whynofix" }, tr(f.why_no_fix)) : "",
+    f.why_no_fix ? el("div", { class: "howto" }, t("No automatic fix")) : "",
+    f.why_no_fix ? el("p", { class: "whynofix" }, ...rich(tr(f.why_no_fix))) : "",
     // The translation is written per finding ID, so it cannot carry the
     // names, paths and counts the English was built with. The English is
     // one click away for those.
@@ -830,9 +913,29 @@ function selectFinding(f, li) {
   // wrapper neither had any margin of its own, so whichever came right
   // before (a paragraph, or the fixbox) butted straight up against
   // "Explain with AI" with no breathing room at all.
-  const explainBtn = el("button", { onclick: (ev) => explainAI(f, ev.target) }, t("Explain with AI"));
-  d.append(el("div", { class: "detail-actions" }, explainBtn));
+  if (AI_OK) {
+    const explainBtn = el("button", { onclick: (ev) => explainAI(f, ev.target) }, t("Explain with AI"));
+    d.append(el("div", { class: "detail-actions" }, explainBtn));
+  }
+  // One column (a phone): the detail is below the whole list, so bring it
+  // into view, or the tap appears to do nothing.
+  if (window.matchMedia("(max-width: 820px)").matches) d.scrollIntoView({ behavior: "smooth", block: "start" });
 }
+
+// rich splits text on `backticks` and renders the quoted parts as code, the
+// way the finding texts are written.
+function rich(text) {
+  const out = [];
+  String(text || "").split(/(`[^`]+`)/).forEach((part) => {
+    if (!part) return;
+    out.push(part.length > 2 && part.startsWith("`") && part.endsWith("`") ? el("code", {}, part.slice(1, -1)) : part);
+  });
+  return out;
+}
+
+// AI_OK is whether an advisory AI provider answers (GET /api/ai). Without
+// one, "Explain with AI" can only fail, so it is not offered.
+let AI_OK = false;
 
 // explainAI asks the server for the advisory AI explanation. It degrades in
 // place: with no Ollama reachable the server answers with ai_error, which
@@ -1416,7 +1519,15 @@ function scanStateClass(state) {
 function renderScanProgress(verb, domains) {
   const bySource = {};
   (domains || []).forEach((d) => { bySource[d.source] = d; });
-  const roster = Object.keys(SRC).sort(byRank(SRC));
+  // An opt-in domain the scan was not asked for never starts, and a
+  // presence-gated one that found nothing to audit is not part of this host;
+  // neither belongs in the list, and the first kept "15 of 16" from ever
+  // reaching the end.
+  const roster = Object.keys(SRC).sort(byRank(SRC)).filter((s) => {
+    const d = bySource[s];
+    if (!d) return !SRC[s].optin;
+    return !isAbsent(d);
+  });
   const total = roster.length;
   const done = roster.filter((s) => {
     const state = (bySource[s] || {}).state;
@@ -1446,9 +1557,12 @@ function renderScanProgress(verb, domains) {
       }))
   );
 
-  document.getElementById("findings").replaceChildren(
-    el("li", { class: "clean muted" }, t("Scanning the host…"))
-  );
+  // A rescan keeps the last list on screen, dimmed, so the page does not go
+  // blank for the length of a scan; only the very first scan has nothing to
+  // show yet.
+  const list = document.getElementById("findings");
+  if (report && report.findings && report.findings.length) list.classList.add("stale");
+  else list.replaceChildren(el("li", { class: "clean muted" }, t("Scanning the host…")));
 }
 
 // pollRescan resolves when the running scan finishes, rendering the
@@ -1475,6 +1589,7 @@ async function pollRescan(verb) {
 // already had before this existed.
 async function watchScan(verb) {
   await pollRescan(verb);
+  document.getElementById("findings").classList.remove("stale");
   report = await api("/api/result");
   render();
   await refreshTrend();
@@ -1482,8 +1597,11 @@ async function watchScan(verb) {
 
 const fixallBtn = document.getElementById("fixall");
 fixallBtn.onclick = async () => {
+  const autos = active(report.findings).filter(isAuto).length;
+  const after = report.score.after_safe_fixes;
   const ok = await confirmModal(t("Apply every safe fix?"),
-    t("Every Auto finding is applied now. Each is previewed and backed up first, and reversible from History."),
+    t("{n} safe fixes are applied now, each backed up first and reversible from History. Score: {from} to about {to}.",
+      { n: autos, from: report.score.overall, to: after }),
     t("Fix all safe"));
   if (!ok) return;
   const findings = active(report.findings).filter(isAuto)
@@ -1505,7 +1623,9 @@ fixallBtn.onclick = async () => {
 // whatever the last scan left behind, thrown away in favour of the fresh
 // one watchScan fetches once the running scan finishes.
 async function boot() {
-  const [st, rep] = await Promise.all([api("/api/rescan/status"), api("/api/result")]);
+  const [st, rep, ai] = await Promise.all([api("/api/rescan/status"), api("/api/result"),
+    api("/api/ai").catch(() => ({}))]);
+  AI_OK = !!(ai && ai.available);
   if (!st.running) {
     report = rep;
     render();

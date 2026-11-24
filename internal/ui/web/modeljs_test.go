@@ -29,7 +29,7 @@ func TestGeneratedDomainsCoverEverySource(t *testing.T) {
 		// the failure mode that shipped: app.js falls back to String(s) and
 		// draws the integer, which reads as a rendering glitch and hides
 		// the missing table entry.
-		want := fmt.Sprintf("    %q: {id: %q, label: %q, rank: %d},", src.String(), src.String(), src.Label(), i)
+		want := fmt.Sprintf("    %q: {id: %q, label: %q, rank: %d, presence: %t, optin: %t},", src.String(), src.String(), src.Label(), i, src.PresenceGated(), src.OptIn())
 		if src.Label() == "" {
 			t.Errorf("%q (%d) reaches the dashboard with no label", src.String(), int(src))
 			continue
@@ -60,8 +60,8 @@ func TestGeneratedModelCoversEveryEnum(t *testing.T) {
 		}
 	}
 	for i, r := range model.AllRemediationKinds() {
-		want := fmt.Sprintf("    %q: {name: %q, label: %q, fixable: %t, auto: %t, rank: %d},",
-			r.String(), r.String(), r.Label(), r.IsFixable(), r == model.RemediationAuto, i)
+		want := fmt.Sprintf("    %q: {name: %q, label: %q, fixable: %t, auto: %t, rank: %d, action: %d},",
+			r.String(), r.String(), r.Label(), r.IsFixable(), r == model.RemediationAuto, i, r.ActionRank())
 		if !strings.Contains(js, want) {
 			t.Errorf("/model.js is missing remediation %s", strings.TrimSpace(want))
 		}
