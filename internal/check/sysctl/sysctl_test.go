@@ -477,3 +477,23 @@ func TestModuleFindingsFollowProcModules(t *testing.T) {
 		}
 	}
 }
+
+// A module blocked in any file of the directory is blocked, under either
+// spelling of its name.
+func TestAModuleBlockedInAnotherFileIsNotReported(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "blacklist.conf"), []byte("install usb_storage /bin/true\ninstall dccp /bin/false # CIS\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	c := &Checker{Root: t.TempDir(), ModprobePath: filepath.Join(dir, "99-hostveil-hardening.conf"),
+		InContainer: func() (bool, string) { return false, "" }}
+	fs, err := c.Check(context.Background(), checktest.New().Env())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range fs {
+		if f.ID == "sysctl.module-usbstorage" || f.ID == "sysctl.module-dccp" {
+			t.Errorf("%s is blocked in blacklist.conf and must not be reported", f.ID)
+		}
+	}
+}
