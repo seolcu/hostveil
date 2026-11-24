@@ -170,7 +170,7 @@ function tr(s) {
 // ft is a finding's own text in the reader's language, or the English.
 function ft(f, field) {
   const e = CAT.findings[f.id];
-  return (e && e[field]) || f[field];
+  return josa((e && e[field]) || f[field]);
 }
 function translated(f) { return LANG !== "en" && !!CAT.findings[f.id]; }
 
