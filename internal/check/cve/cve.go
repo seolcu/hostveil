@@ -351,6 +351,14 @@ type trivyVuln struct {
 	Severity         string `json:"Severity"`
 	Title            string `json:"Title"`
 	PrimaryURL       string `json:"PrimaryURL"`
+	// CVSS is each source's scoring, keyed by source ("nvd", "ghsa",
+	// "redhat", …). Only the vectors are read: see severityOf.
+	CVSS map[string]cvssScore `json:"CVSS,omitempty"`
+}
+
+type cvssScore struct {
+	V3Vector  string `json:"V3Vector,omitempty"`
+	V40Vector string `json:"V40Vector,omitempty"`
 }
 
 // hostSkipDirs keeps the host scan to the operating system's own package
@@ -563,7 +571,7 @@ func (g *group) add(v trivyVuln) {
 		g.counts = map[model.Severity]int{}
 		g.sevOf = map[string]model.Severity{}
 	}
-	sev := trivySeverity(v.Severity)
+	sev := severityOf(v)
 	g.ids = append(g.ids, v.VulnerabilityID)
 	g.counts[sev]++
 	g.sevOf[v.VulnerabilityID] = sev
@@ -746,6 +754,59 @@ func plural(n int) string {
 		return "y"
 	}
 	return "ies"
+}
+
+// severityOf is Trivy's severity on Hostveil's scale, capped at Medium for a
+// vulnerability its CVSS vectors say nobody can use from off-host while
+// holding nothing.
+//
+// Hostveil's High is a definition: reachable now, from off-host, by someone
+// who holds nothing (model.SeverityHigh). CVSS records exactly those three
+// conditions as base metrics, AV:N (attack vector: network), PR:N
+// (privileges required: none) and UI:N (user interaction: none), so the
+// definition can be checked per vulnerability instead of assumed from a
+// label. Trivy's CRITICAL and HIGH are a score, and a kernel bug that needs
+// a local account scores 7.8 and used to land here as High: on the demo
+// host 137 of the Ubuntu packages' unfixed vulnerabilities were HIGH, and
+// the one finding they make was charged as if every one of them could be
+// fired across the network.
+//
+// The cap is one-sided and conservative. Any source whose vector meets all
+// three keeps it High, a vulnerability with no vector keeps Trivy's word,
+// and nothing is ever raised.
+func severityOf(v trivyVuln) model.Severity {
+	sev := trivySeverity(v.Severity)
+	if sev != model.SeverityHigh || len(v.CVSS) == 0 {
+		return sev
+	}
+	known := false
+	for _, score := range v.CVSS {
+		for _, vec := range []string{score.V40Vector, score.V3Vector} {
+			if vec == "" {
+				continue
+			}
+			known = true
+			if remoteAndUnauthenticated(vec) {
+				return model.SeverityHigh
+			}
+		}
+	}
+	if !known {
+		return sev
+	}
+	return model.SeverityMedium
+}
+
+// remoteAndUnauthenticated reports whether a CVSS v3 or v4 vector has
+// AV:N, PR:N and UI:N. (v4 writes user interaction the same way.)
+func remoteAndUnauthenticated(vector string) bool {
+	metrics := map[string]string{}
+	for _, part := range strings.Split(vector, "/") {
+		if k, val, ok := strings.Cut(part, ":"); ok {
+			metrics[k] = val
+		}
+	}
+	return metrics["AV"] == "N" && metrics["PR"] == "N" && metrics["UI"] == "N"
 }
 
 func trivySeverity(s string) model.Severity {
