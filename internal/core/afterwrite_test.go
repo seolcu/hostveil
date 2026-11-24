@@ -338,3 +338,64 @@ func TestAnIrreversibleEditIsNotUndoneWhenAStepFails(t *testing.T) {
 		t.Errorf("the change is on the host and must stay in history; checkpoints = %d", len(cps))
 	}
 }
+
+// applyNowEngine registers one edit that is pending on a boot unless ApplyNow
+// succeeds.
+func applyNowEngine(t *testing.T, path string, runner *restartRunner) (*Engine, model.Finding) {
+	t.Helper()
+	reg := fix.NewRegistry()
+	reg.Register("sysctl.test", func(model.Finding) (fix.Fix, error) {
+		return fix.Fix{
+			Label: "harden a key",
+			Kind:  model.RemediationAuto,
+			Actions: []fix.Action{{
+				Label: "persist it", Benefit: "b",
+				Kind: fix.ActionEdit, Path: path, CreateIfMissing: true,
+				Transform:     func([]byte) ([]byte, error) { return []byte("k = 1\n"), nil },
+				TakesEffectOn: "the next boot",
+				ApplyNow:      [][]string{{"sysctl", "-p", path}},
+			}},
+		}, nil
+	})
+	e := New(Config{Fixes: reg, Store: history.NewStore(t.TempDir()), Runner: runner})
+	f := model.NewFinding("sysctl.test", "t", model.SeverityLow, model.SourceSysctl, model.RemediationAuto)
+	return e, f
+}
+
+// When ApplyNow succeeds the host reads the new value, so the fix is in force.
+func TestApplyNowPutsTheFixInForce(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "60-test.conf")
+	runner := &restartRunner{}
+	e, f := applyNowEngine(t, path, runner)
+	out, err := e.ApplyFix(context.Background(), f, 0)
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if out.Pending || out.TakesEffectOn != "" {
+		t.Errorf("pending=%v takesEffectOn=%q; a load that succeeded is in force", out.Pending, out.TakesEffectOn)
+	}
+	if !slices.Contains(runner.calls(), "sysctl -p "+path) {
+		t.Errorf("ran %v, want the load", runner.calls())
+	}
+}
+
+// When the host refuses it (a read-only /proc/sys), the file and its
+// checkpoint stay and the fix waits for the boot it always waited for.
+func TestARefusedApplyNowKeepsTheEditPending(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "60-test.conf")
+	runner := &restartRunner{failing: true}
+	e, f := applyNowEngine(t, path, runner)
+	out, err := e.ApplyFix(context.Background(), f, 0)
+	if err != nil {
+		t.Fatalf("a refused load must not fail the fix: %v", err)
+	}
+	if !out.Pending || out.TakesEffectOn != "the next boot" {
+		t.Errorf("pending=%v takesEffectOn=%q; want pending on the next boot", out.Pending, out.TakesEffectOn)
+	}
+	if got, _ := os.ReadFile(path); string(got) != "k = 1\n" {
+		t.Errorf("file = %q; the edit must stay", got)
+	}
+	if out.CheckpointID == "" {
+		t.Error("the edit must keep its checkpoint")
+	}
+}

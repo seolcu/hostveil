@@ -582,10 +582,15 @@ func TestEveryFindingValidates(t *testing.T) {
 		if !strings.HasPrefix(f.ID, "dockerd.") {
 			t.Errorf("%s is not namespaced by its domain", f.ID)
 		}
-		// Review, never Auto: every remediation here restarts the daemon or
-		// changes who can reach it, and the registry marks each one
-		// individual-only on top of that.
-		if f.Remediation != model.RemediationReview {
+		// Review: every remediation here restarts the daemon or changes who
+		// can reach it, and the registry marks each one individual-only on
+		// top of that. live-restore is the exception: Docker applies it on a
+		// reload, so enabling it stops nothing.
+		want := model.RemediationReview
+		if f.ID == "dockerd.live-restore" {
+			want = model.RemediationAuto
+		}
+		if f.Remediation != want {
 			t.Errorf("%s: remediation = %v; every dockerd fix needs a person to read it", f.ID, f.Remediation)
 		}
 		if f.Description == "" || f.HowToFix == "" {

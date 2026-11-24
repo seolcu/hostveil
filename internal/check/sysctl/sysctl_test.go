@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/seolcu/hostveil/internal/check"
+	"github.com/seolcu/hostveil/internal/check/checktest"
 	"github.com/seolcu/hostveil/internal/model"
 	"github.com/seolcu/hostveil/internal/platform"
 )
@@ -429,6 +430,50 @@ func TestOnAHostTheFixIsStillOffered(t *testing.T) {
 		}
 		if f.WhyNoFix != "" {
 			t.Errorf("a fixable finding must carry no WhyNoFix, got %q", f.WhyNoFix)
+		}
+	}
+}
+
+// /proc/modules decides the module findings' kind: a protocol nothing has
+// loaded is Auto, a loaded one and usb-storage stay Review, and an unreadable
+// list leaves them all Review with no "loaded" evidence.
+func TestModuleFindingsFollowProcModules(t *testing.T) {
+	dir := t.TempDir()
+	mods := filepath.Join(dir, "modules")
+	if err := os.WriteFile(mods, []byte("sctp 409600 4 - Live 0x0\nusb_storage 77824 0 - Live 0x0\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	run := func(procModules string) map[string]model.Finding {
+		c := &Checker{Root: t.TempDir(), ModprobePath: filepath.Join(dir, "absent.conf"), ProcModules: procModules,
+			InContainer: func() (bool, string) { return false, "" }}
+		fs, err := c.Check(context.Background(), checktest.New().Env())
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := map[string]model.Finding{}
+		for _, f := range fs {
+			out[f.ID] = f
+		}
+		return out
+	}
+	got := run(mods)
+	for id, want := range map[string]model.RemediationKind{
+		"sysctl.module-dccp":       model.RemediationAuto,
+		"sysctl.module-rds":        model.RemediationAuto,
+		"sysctl.module-tipc":       model.RemediationAuto,
+		"sysctl.module-sctp":       model.RemediationReview,
+		"sysctl.module-usbstorage": model.RemediationReview,
+	} {
+		if got[id].Remediation != want {
+			t.Errorf("%s: %v, want %v", id, got[id].Remediation, want)
+		}
+	}
+	if got["sysctl.module-sctp"].Evidence["loaded"] != "yes" || got["sysctl.module-usbstorage"].Evidence["loaded"] != "yes" {
+		t.Errorf("loaded modules must say so: %v / %v", got["sysctl.module-sctp"].Evidence, got["sysctl.module-usbstorage"].Evidence)
+	}
+	for id, f := range run(filepath.Join(dir, "missing")) {
+		if f.Remediation != model.RemediationReview || f.Evidence["loaded"] != "" {
+			t.Errorf("unreadable /proc/modules: %s is %v with %v", id, f.Remediation, f.Evidence)
 		}
 	}
 }

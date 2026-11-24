@@ -107,8 +107,17 @@ func (e *Engine) applyFix(ctx context.Context, f model.Finding, actionIdx int) (
 	// it is the same answer on both paths: ApplyBatch does not verify, and a
 	// rule that needed verification would have made the batch the optimistic
 	// one, scoring a host higher for having fixed it in bulk.
-	outcome.Pending = action.TakesEffectOn != ""
-	outcome.TakesEffectOn = action.TakesEffectOn
+	//
+	// ApplyNow is the one way around it: when it succeeds, the host already
+	// reads the new value and the fix is in force.
+	inForce := false
+	if action.Kind == fix.ActionEdit && len(action.ApplyNow) > 0 {
+		inForce = runEach(ctx, e.runner, action.ApplyNow) == nil
+	}
+	outcome.Pending = action.TakesEffectOn != "" && !inForce
+	if outcome.Pending {
+		outcome.TakesEffectOn = action.TakesEffectOn
+	}
 
 	// Mark the finding fixed and rescore: both inside the engine so no UI
 	// reimplements either.

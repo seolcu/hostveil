@@ -107,6 +107,15 @@ type Action struct {
 	// This is also the whole of the objection register.go raises against the
 	// dockerd and systemd domains: "a fix would edit a file the running
 	// daemon will not read again until it restarts": stated as a field.
+	// ApplyNow puts an edit in force at once when the host allows it, for an
+	// action whose artifact is otherwise read only at TakesEffectOn (a
+	// sysctl drop-in, read at boot). It runs after the write and AfterWrite.
+	// Its failure keeps the edit and its checkpoint: the fix is then exactly
+	// what it was without ApplyNow, applied and pending on TakesEffectOn. A
+	// container whose /proc/sys is read-only is the case that needs this,
+	// where an AfterWrite failure would have undone a correct file.
+	ApplyNow [][]string
+
 	TakesEffectOn string
 
 	// VerifyCmd is an optional argv that validates an edit action's *result*

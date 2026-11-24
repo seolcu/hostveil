@@ -120,8 +120,12 @@ func buildDockerdLiveRestore(f model.Finding) (Fix, error) {
 	// so the rollback, which removes the key, needs a restart for the daemon
 	// to drop it. Found by scripts/e2e/individual.sh on a real Docker.
 	a.AfterRestore = restartDocker
-	return Fix{Label: "Keep containers running across daemon restarts", Kind: model.RemediationReview,
-		IndividualOnly: true, Actions: []Action{a}}, nil
+	// Auto: one daemon.json key with a checkpoint, applied by a reload that
+	// stops no container, on a host the checker has already confirmed is not
+	// a swarm node. Nothing about it can cut off access or has a second
+	// right answer. The restart on rollback is an operator's action.
+	return Fix{Label: "Keep containers running across daemon restarts", Kind: model.RemediationAuto,
+		Actions: []Action{a}}, nil
 }
 
 func splitList(s string) []string {

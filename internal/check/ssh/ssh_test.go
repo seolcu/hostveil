@@ -482,3 +482,43 @@ func TestANormalConfigIsNotReportedAsUnread(t *testing.T) {
 		t.Errorf("unread = %v, err = %v; want neither", gaps.unread, err)
 	}
 }
+
+// Root's password field decides whether ssh.rootlogin can be Auto: locked
+// ("!" or "*") means no password login as root works today.
+func TestRootLoginIsAutoWhenRootsPasswordIsLocked(t *testing.T) {
+	for _, tc := range []struct {
+		shadow string
+		want   model.RemediationKind
+	}{
+		{"root:*:19000:0:99999:7:::\n", model.RemediationAuto},
+		{"root:!:19000:0:99999:7:::\n", model.RemediationAuto},
+		{"root:$6$salt$hash:19000:0:99999:7:::\n", model.RemediationReview},
+		{"daemon:*:19000:0:99999:7:::\n", model.RemediationReview},
+	} {
+		dir := t.TempDir()
+		cfg := filepath.Join(dir, "sshd_config")
+		shadow := filepath.Join(dir, "shadow")
+		if err := os.WriteFile(cfg, []byte("PermitRootLogin yes\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(shadow, []byte(tc.shadow), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		fs, err := (&Checker{ConfigPath: cfg, ShadowPath: shadow}).Check(context.Background(), platform.Env{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		found := false
+		for _, f := range fs {
+			if f.ID == "ssh.rootlogin" {
+				found = true
+				if f.Remediation != tc.want {
+					t.Errorf("shadow %q: remediation %v, want %v", tc.shadow, f.Remediation, tc.want)
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("PermitRootLogin yes must be flagged")
+		}
+	}
+}

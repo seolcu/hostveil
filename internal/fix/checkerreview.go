@@ -53,16 +53,34 @@ var checkerDeclaresReview = map[string]string{
 
 // floorReview makes every fix in checkerDeclaresReview declare Review. It
 // changes no behaviour: classify already took the stricter of the two.
+// reviewWaivedWhen lifts the floor for a finding whose evidence answers the
+// question the Review reason asks. "The host may use DCCP" is answered by
+// /proc/modules: a protocol module nothing has loaded has no user on the host
+// today, so blocking it stops nothing that runs. The checker records that as
+// "loaded: no" and declares Auto in the same case.
+var reviewWaivedWhen = map[string]func(model.Finding) bool{
+	"sysctl.module-dccp": moduleNotLoaded,
+	"sysctl.module-sctp": moduleNotLoaded,
+	"sysctl.module-rds":  moduleNotLoaded,
+	"sysctl.module-tipc": moduleNotLoaded,
+}
+
+func moduleNotLoaded(f model.Finding) bool { return f.Evidence["loaded"] == "no" }
+
 func (r *Registry) floorReview() {
 	for i, reg := range r.regs {
 		if _, ok := checkerDeclaresReview[reg.pattern]; !ok {
 			continue
 		}
 		build, why := reg.build, checkerDeclaresReview[reg.pattern]
+		waived := reviewWaivedWhen[reg.pattern]
 		r.regs[i].build = func(f model.Finding) (Fix, error) {
 			fx, err := build(f)
 			if err != nil || fx.Kind != model.RemediationAuto {
 				return fx, err
+			}
+			if waived != nil && waived(f) {
+				return fx, nil
 			}
 			fx.Kind = model.RemediationReview
 			// A lone Review action must say what it risks. Where the fix

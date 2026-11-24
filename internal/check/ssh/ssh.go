@@ -23,10 +23,15 @@ import (
 type Checker struct {
 	// ConfigPath is the sshd_config to read; overridable for tests.
 	ConfigPath string
+	// ShadowPath is read for root's password field only (see
+	// rootPasswordLocked); overridable for tests. Empty skips it.
+	ShadowPath string
 }
 
 // New returns an SSH checker reading the system sshd_config.
-func New() *Checker { return &Checker{ConfigPath: "/etc/ssh/sshd_config"} }
+func New() *Checker {
+	return &Checker{ConfigPath: "/etc/ssh/sshd_config", ShadowPath: "/etc/shadow"}
+}
 
 // Source identifies the SSH domain.
 func (*Checker) Source() model.Source { return model.SourceSSH }
@@ -61,6 +66,13 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 		return nil, err
 	}
 	findings := auditConfig(cfg, c.ConfigPath)
+	if rootPasswordLocked(c.ShadowPath) {
+		for i := range findings {
+			if findings[i].ID == "ssh.rootlogin" {
+				markRootLocked(&findings[i])
+			}
+		}
+	}
 
 	// A ledger, because this domain now has
 	// two ways to fall short and a config can hit both at once: an include
@@ -82,6 +94,43 @@ func (c *Checker) Check(_ context.Context, _ platform.Env) ([]model.Finding, err
 			"re-enable what was scanned as disabled")
 	}
 	return findings, cov.Err()
+}
+
+// rootPasswordLocked reports whether root's password field in shadow is
+// locked ("!" or "*" first), which is how Debian, Ubuntu and every cloud image
+// ship it. An unreadable file or a missing root entry answers false.
+func rootPasswordLocked(shadowPath string) bool {
+	if shadowPath == "" {
+		return false
+	}
+	data, err := platform.ReadFileBounded(shadowPath, 1<<20)
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.Split(line, ":")
+		if len(fields) < 2 || fields[0] != "root" {
+			continue
+		}
+		return strings.HasPrefix(fields[1], "!") || strings.HasPrefix(fields[1], "*")
+	}
+	return false
+}
+
+// markRootLocked makes ssh.rootlogin Auto when root has no usable password.
+//
+// The fix (PermitRootLogin prohibit-password) refuses password logins as root
+// and keeps key logins. Review was there because that can lock out somebody
+// who logs in as root with a password. With root's password locked, nobody
+// can: sshd already rejects every password for root, so the change cannot
+// cut off any access that works today. That meets fix.Default's standard for
+// Auto, and the evidence says which case this is.
+func markRootLocked(f *model.Finding) {
+	f.Remediation = model.RemediationAuto
+	if f.Evidence == nil {
+		f.Evidence = map[string]string{}
+	}
+	f.Evidence["root password"] = "locked"
 }
 
 // coverageGaps is what the parse could not account for: files it could not

@@ -91,6 +91,9 @@ type Checker struct {
 	ConfFile string
 	// ModprobePath records optional kernel drivers disabled by policy.
 	ModprobePath string
+	// ProcModules lists the loaded modules (/proc/modules); overridable for
+	// tests. Empty leaves every module finding Review.
+	ProcModules string
 	// InContainer answers whether this scan is running inside a container.
 	// Injected so the demotion below can be tested at all: the real gate
 	// reads /.dockerenv and /proc/1, and a test cannot make this process be
@@ -106,6 +109,7 @@ func New() *Checker {
 		ConfDirs:     defaultConfDirs(),
 		ConfFile:     defaultConfFile,
 		ModprobePath: "/etc/modprobe.d/99-hostveil-hardening.conf",
+		ProcModules:  "/proc/modules",
 	}
 }
 
@@ -358,14 +362,33 @@ func (c *Checker) Check(_ context.Context, env platform.Env) ([]model.Finding, e
 			{"sysctl.module-tipc", "tipc"},
 			{"sysctl.module-usbstorage", "usb-storage"},
 		}
+		loaded, known := loadedModules(c.ProcModules)
 		for _, module := range modules {
 			if moduleBlocked(data, module.name) {
 				continue
 			}
-			findings = append(findings, model.NewFinding(module.id, "Optional kernel protocol or driver is available: "+module.name, model.SeverityLow, model.SourceSysctl, model.RemediationReview,
+			kind := model.RemediationReview
+			opts := []model.FindingOption{
 				model.WithDescription("Unused kernel protocols and removable-storage drivers increase reachable kernel code and can be disabled on servers that do not need them."),
-				model.WithHowToFix("After confirming that "+module.name+" is not required, block it in "+c.ModprobePath+"."),
-				model.WithEvidence("config", c.ModprobePath), model.WithEvidence("module", module.name)))
+				model.WithHowToFix("After confirming that " + module.name + " is not required, block it in " + c.ModprobePath + "."),
+				model.WithEvidence("config", c.ModprobePath), model.WithEvidence("module", module.name),
+			}
+			if known {
+				state := "no"
+				if loaded[strings.ReplaceAll(module.name, "-", "_")] {
+					state = "yes"
+				}
+				opts = append(opts, model.WithEvidence("loaded", state))
+				// A network protocol nothing has loaded has no user on this
+				// host, so blocking it cannot stop anything that runs today:
+				// Auto. usb-storage stays Review whatever /proc/modules says,
+				// because its user is a backup drive that is plugged in next
+				// week.
+				if state == "no" && module.name != "usb-storage" {
+					kind = model.RemediationAuto
+				}
+			}
+			findings = append(findings, model.NewFinding(module.id, "Optional kernel protocol or driver is available: "+module.name, model.SeverityLow, model.SourceSysctl, kind, opts...))
 		}
 	}
 	if len(unreadable) > 0 {
@@ -464,4 +487,23 @@ func evidenceFor(keys []string, vals []Reading) string {
 		}
 	}
 	return strings.Join(parts, model.EvidenceSeparator)
+}
+
+// loadedModules reads /proc/modules. known is false when it cannot be read,
+// which leaves the module findings as they were.
+func loadedModules(path string) (loaded map[string]bool, known bool) {
+	if path == "" {
+		return nil, false
+	}
+	data, err := platform.ReadFileBounded(path, 1<<20)
+	if err != nil {
+		return nil, false
+	}
+	loaded = map[string]bool{}
+	for _, line := range strings.Split(string(data), "\n") {
+		if name, _, ok := strings.Cut(line, " "); ok && name != "" {
+			loaded[name] = true
+		}
+	}
+	return loaded, true
 }

@@ -143,6 +143,19 @@ func buildRootLogin(f model.Finding) (Fix, error) {
 	if err != nil {
 		return Fix{}, err
 	}
+	// Root's password is locked, so no password login as root works today
+	// and prohibit-password cannot take one away. See markRootLocked in
+	// internal/check/ssh.
+	if f.Evidence["root password"] == "locked" {
+		return Fix{
+			Label: "Restrict root login over SSH",
+			Kind:  model.RemediationAuto,
+			Actions: []Action{sshEdit(path, "Allow root only with an SSH key (prohibit-password)",
+				"Removes password logins as root, the target of every SSH brute-force run, and keeps "+
+					"key-based root access working.",
+				"", "PermitRootLogin", "prohibit-password")},
+		}, nil
+	}
 	return Fix{
 		Label: "Restrict root login over SSH",
 		Kind:  model.RemediationReview,
