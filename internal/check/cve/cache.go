@@ -60,7 +60,7 @@ type Store interface {
 
 // cacheFormat is part of every key. Bump it when the stored bytes or the way
 // a key is built changes, and old entries stop matching.
-const cacheFormat = "2"
+const cacheFormat = "3"
 
 // prepare refreshes the database and records its identity. It runs once per
 // scan, before the first target, because the identity has to describe the
