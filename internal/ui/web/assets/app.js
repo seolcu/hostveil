@@ -512,12 +512,17 @@ async function activate(body, heading, done) {
   if (heading) heading.textContent = t("Fixes applied");
   done.className = "primary";
   const failed = res && res.failed ? Object.keys(res.failed).length : 0;
-  body.replaceChildren(
-    err || failed
-      ? el("p", { class: "error" }, t("Recreate failed: {err}", { err: err ? err.message : Object.values(res.failed).join("; ") }))
-      : el("p", {}, t("{n} fixes are in force. Score: {score}/100.", { n: res.in_force, score: report.score.overall })),
-    el("div", { class: "row" }, done)
-  );
+  if (err || failed) {
+    body.replaceChildren(
+      el("p", { class: "error" }, t("Recreate failed: {err}", { err: err ? err.message : Object.values(res.failed).join("; ") })),
+      el("div", { class: "row" }, done));
+    return;
+  }
+  // The recreated containers close ports the other domains reported (see
+  // core.linkConsequences); a rescan is what confirms it, and with the CVE
+  // cache it takes a second or two.
+  closeModal();
+  rescanBtn.click();
 }
 
 // Show which checkers did not fully cover their domain. Without this the

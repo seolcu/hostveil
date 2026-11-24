@@ -68,10 +68,10 @@ penalty = round(cap × (1 - remaining))</code></pre></div>
                 </tbody>
               </table>
             </div>
-            <p>Three axes reporting a penalty of 0, and an overall of 99, because the overall sums the <em>unrounded</em> contributions (0.3125 + 0.3125 + 0.375 = 1.0) and rounds once at the end. Rounding each axis first would have made those three findings free, which is exactly the failure the next section is about, arriving by a smaller door.</p>
+            <p>Three axes reporting a penalty of 0, and an overall of 99, because the overall is computed from the <em>unrounded</em> <code>remaining</code> values and rounded once at the end: 100 × 0.9375<sup>16/100</sup> = 98.97. Rounding each axis first would have made those three findings free, which is exactly the failure the next section is about, arriving by a smaller door.</p>
             <div class="callout">
               <span class="callout-label">Rounding, precisely</span>
-              <p>Everywhere in the model, rounding is <strong>half away from zero</strong>: 12.5 becomes 13, 1.5 becomes 2. Not banker&rsquo;s rounding. The two levels round different quantities, so ties break in different directions: an axis rounds the share it <em>kept</em>, so ties go in your favour, while the overall rounds the share you <em>lost</em> and subtracts, so ties go against you. An SSH Low finding (14 × 0.0625 = 0.875) plus a CVE Low finding (10 × 0.0625 = 0.625) total exactly 1.5, which rounds to 2, so the overall is 98, where rounding the kept share would have given 99.</p>
+              <p>Everywhere in the model, rounding is <strong>half away from zero</strong>: 12.5 becomes 13, 1.5 becomes 2. Not banker&rsquo;s rounding. An axis rounds the share it <em>kept</em>, and the overall rounds 100 times the geometric mean of what every axis kept, so neither level rounds a loss and subtracts it.</p>
             </div>
 
             <h3 id="one-finding">What counts as one finding</h3>
@@ -118,6 +118,9 @@ lost    = 1 - 1575/8192 = 0.8077392578125
 penalty = round(14 × 0.8077392578125)   = round(11.308349…)  = 11</code></pre></div>
             <p>The axis reports <strong>19</strong> with a penalty of <strong>11</strong> against its cap of 14. Note that 11/14 would have given a score of 21. The score comes from <code>remaining</code>. The rounded penalty plays no part in it.</p>
 
+            <div class="callout">
+              <p>The overall in this example, and in the additive comparison further down, is the cap-weighted <em>arithmetic</em> mean Hostveil used before 3.39.0. The axis scores are computed exactly as they still are; the step from the axes to the overall is now the geometric mean in <a href="#renormalization">Renormalization</a>.</p>
+            </div>
             <h3>Twelve axes, and the overall</h3>
             <div class="docs-table-wrap">
               <table>
@@ -193,10 +196,10 @@ overall   = 100 - round(57.246554 × 100 / 84)
             <p>The container axis shows this most clearly. It carries 52 findings: 8 High, 16 Medium, 28 Low. Additively, the sum passes the cap after two of them and the other 50 are free. Multiplicatively, <code>remaining</code> is 7.5698 × 10⁻⁵, which <em>displays</em> as 0 but is not 0: every one of the 52 findings moved it, and removing any single one moves it back.</p>
 
             <h2 id="caps">What a cap means</h2>
-            <p>Each axis carries a cap, and the sixteen caps sum to exactly 100. The sum is a readability decision: renormalization would work with any total, but a total of 100 is what makes an axis&rsquo;s penalty readable as points off the headline, and makes the overall exactly <code>100 &minus; round(total)</code> on a host where every domain ran.</p>
+            <p>Each axis carries a cap, and the sixteen caps sum to exactly 100. The sum is a readability decision: renormalization would work with any total, but a total of 100 is what makes an axis&rsquo;s penalty readable as points off the headline, and makes a cap, on a host where every domain ran, the axis&rsquo;s exponent in percent.</p>
             <p>A cap is <strong>the axis&rsquo;s share of the overall score and nothing else</strong>. It is purely how much this domain matters. In particular:</p>
             <p><strong>The cap is not a budget of damage the axis can absorb before it fails.</strong> It does not appear in the per-axis score at all. Every axis is scored 0–100 on its own terms, by the same erosion. A cap-5 axis and a cap-14 axis with identical findings show the identical axis score.</p>
-            <p><strong>The cap enters exactly once, at the aggregate</strong>, as <code>cap × (1 - remaining)</code>. So Kernel hardening at 40/100 drags the overall about a third as hard as Container exposure at 40/100, because that domain was argued to matter less to a self-hosted server.</p>
+            <p><strong>The cap enters exactly once, at the aggregate</strong>, as the exponent in <code>remaining<sup>cap / Σcap</sup></code>. So Kernel hardening at 40/100 drags the overall about a third as hard as Container exposure at 40/100, because that domain was argued to matter less to a self-hosted server.</p>
             <p><strong>So a small cap does not mean a small problem on your host.</strong> The axis score is the direct read of that domain; the cap is only the editorial weighting on top of it. If Kernel hardening reads 12, you have a kernel-hardening problem, whatever the headline says.</p>
 
             <h3 id="cap-table">What each domain is worth, and why</h3>
@@ -327,11 +330,11 @@ overall   = 100 - round(57.246554 × 100 / 84)
                 </tbody>
               </table>
             </div>
-            <div class="code-block"><pre><code>ranCapSum = Σ cap        over axes that ran
-total     = Σ cap × lost over axes that ran
+            <div class="code-block"><pre><code>ranCapSum = Σ cap                   over axes that ran
+logSum    = Σ cap × ln(remaining)   over axes that ran
 
-overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
-            <p>With all sixteen domains running, <code>ranCapSum</code> is 100 and the overall is <code>100 - round(total)</code>. With Trivy missing, it is 93, and the other fifteen axes are renormalized to fill the gap. You are neither penalized for not running Trivy nor handed a free 7 points for it.</p>
+overall   = round(100 × exp(logSum / ranCapSum))</code></pre></div>
+            <p>The overall is the cap-weighted <strong>geometric</strong> mean of what every axis kept. Read <code>remaining</code> as the chance that an axis holds: the chance that every axis holds is their product, and an attacker needs only one that does not. Two axes of equal cap, one whole and one at 25, score 50, where the arithmetic mean used before 3.39.0 said 62.5: a collapsed domain counts as the weakest link it is, and clean domains no longer average it away. Every axis at <code>r</code> still scores <code>100 × r</code>. With all sixteen domains running, <code>ranCapSum</code> is 100. With Trivy missing, it is 93, and the other fifteen axes are renormalized to fill the gap. You are neither penalized for not running Trivy nor handed a free 7 points for it.</p>
             <p><strong>Partial is scored, and always flagged.</strong> A domain that covered part of its ground has real findings and a real, if incomplete, picture; excluding it would throw away what it did see. But an unlabelled score drawn from half a domain is the same lie as scoring a skipped domain 100, so the flag is always shown: the TUI writes <code>42~</code>, the dashboard writes it in amber.</p>
             <div class="callout">
               <span class="callout-label">When nothing ran at all</span>
@@ -358,7 +361,7 @@ overall   = 100 - round(total × 100 / ranCapSum)</code></pre></div>
 
             <h2 id="limits">What the score does not tell you</h2>
             <p>The limits, including the ones that look like bugs and are not.</p>
-            <p><strong>100 does not mean no findings.</strong> One Low finding on a cap-5 axis with all domains running contributes 5 × 0.0625 = 0.3125, which rounds to 0 loss. The overall reads 100 with a finding on screen. Read it as <em>nothing material is outstanding</em>, and read the axis breakdown, which will show that axis at 94.</p>
+            <p><strong>100 does not mean no findings.</strong> One Low finding on a cap-5 axis with all domains running multiplies the overall by 0.9375<sup>5/100</sup> = 0.9968, which rounds to 100. The overall reads 100 with a finding on screen. Read it as <em>nothing material is outstanding</em>, and read the axis breakdown, which will show that axis at 94.</p>
             <h2 id="after-fixes">The second number: &ldquo;after safe fixes&rdquo;</h2>
             <p>Beside the score, Hostveil shows what it would become if you applied <em>every safe fix</em>: the Auto ones, which is what <em>Fix all safe</em> and <code>fix --all</code> apply. On the axis breakdown the same figure appears per axis as a fainter run of the same bar, so you can see where the headroom is. The Review fixes add more on top, and the points they hold are listed under <a href="#points-left">points left</a>. <code>scan --json</code> carries both figures: <code>after_safe_fixes</code> and <code>after_fixes</code>, the second with the Review fixes applied too.</p>
             <p>It exists because the score alone does not say how much of it Hostveil can fix. Run <code>fix --all</code> on a container-heavy host and the container axis may still read 2. Nothing went wrong: the findings still standing are <strong>Manual by design</strong> (a Docker socket mounted into Portainer, a second UID&nbsp;0 account, host networking), and each is declined for a reason Hostveil will tell you. But a number that barely moved reads as a tool that did nothing, and that reading is wrong. The second number says which it is.</p>

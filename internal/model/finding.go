@@ -73,6 +73,13 @@ type Finding struct {
 	// including `fix --all --review`. A UI uses it to say so, so a reviewed
 	// batch never looks as though it skipped something by mistake.
 	IndividualOnly bool `json:"individual_only,omitempty"`
+	// ResolvedBy names, by Key, the findings whose fixes remove this one:
+	// it reports a consequence of them (a datastore port the ports domain
+	// sees open because a compose file publishes it on every interface).
+	// The scoring projections treat it as fixed once all of them are
+	// (withSafeFixesApplied), which is what a rescan after those fixes
+	// shows. Set by the engine (core.linkConsequences), never by a checker.
+	ResolvedBy []string `json:"resolved_by,omitempty"`
 }
 
 // FindingOption customizes optional fields of a Finding.
