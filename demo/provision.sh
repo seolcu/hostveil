@@ -77,13 +77,17 @@ fi
 
 sshd -t && (systemctl restart ssh || systemctl restart sshd || true)
 
-echo "==> [6/10] disable automatic security updates (so updates.disabled fires)"
+echo "==> [6/10] disable automatic security updates (updates.disabled)"
 cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
 APT::Periodic::Update-Package-Lists "0";
 APT::Periodic::Unattended-Upgrade "0";
 EOF
-# ufw is installed but left INACTIVE → firewall.inactive fires.
-ufw --force disable || true
+# The firewall is on, allowing SSH, and Docker publishes the stacks' ports
+# around it: Docker writes its own rules ahead of ufw's, so a port ufw does
+# not allow is still reachable (firewall.docker-bypass). Binding the ports to
+# 127.0.0.1 (the compose fixes) closes it.
+ufw allow 22/tcp >/dev/null
+ufw --force enable
 
 echo "==> [7/10] host: what a careful install already has, and what a hurried one changed"
 # Everything here is sound, so the scan reports only what the next

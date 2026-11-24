@@ -294,9 +294,9 @@ one button, the services recreated, a high score.
 
 | Domain | Seeded problem | Example finding |
 |---|---|---|
-| Docker/Compose | Postgres and Redis published on `0.0.0.0`, Adminer (an admin panel) and Gitea on every interface, no `no-new-privileges`, no restart policy | `compose.ds018`, `ds019`, `dr002`, `ds006`, `ds008` |
+| Docker/Compose | Postgres and Redis published on `0.0.0.0`, Adminer (an admin panel) and an nginx web app on every interface, no `no-new-privileges`, no restart policy | `compose.ds018`, `ds019`, `dr002`, `ds006`, `ds008` |
 | SSH | root login allowed (root's password is locked, so the fix is Auto), empty passwords, weak `MaxAuthTries`, X11 forwarding, no keepalive limits | `ssh.rootlogin`, `ssh.emptypasswords`, … |
-| Firewall | `ufw` installed but inactive: the one Review fix to show by hand | `firewall.inactive` |
+| Firewall | `ufw` on and allowing SSH, and Docker publishing the stacks' ports around it | `firewall.docker-bypass` (closed by the compose fixes) |
 | Auto-updates | unattended-upgrades disabled, sysstat off | `updates.disabled`, `updates.sysstat-disabled` |
 | File permissions | `/etc/shadow` made world-readable | `fileperms.shadow` |
 | AI agents | an OpenClaw config with the control UI's auth checks off, elevated commands on and private-network browsing allowed; world-readable credentials | `agent.control-ui-insecure`, `agent.elevated-enabled`, `agent.secret-exposed`, … |
@@ -305,7 +305,6 @@ one button, the services recreated, a high score.
 
 What is left after the safe fixes, and why:
 
-- `firewall.inactive`: Review, to apply by hand during the demo.
 - `ssh.allowtcpforwarding`: `ssh homelab` tunnels the dashboard through it.
 - `accounts.sudo-nopasswd`: Vagrant needs it.
 - `dockerd.userns-remap`: it moves every image into new storage.

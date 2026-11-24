@@ -1,28 +1,19 @@
-# A Git server and its database.
+# A small web app and its database.
 services:
-  gitea:
-    image: homelab/gitea:28.4
+  web:
+    image: homelab/web:1.31
     build:
       context: .
-      dockerfile: gitea.Dockerfile
-    user: "1000:1000"
+      dockerfile: web.Dockerfile
+    user: "101:101"
     ports:
-      - "3000:3000"
-    environment:
-      GITEA__database__DB_TYPE: postgres
-      GITEA__database__HOST: db:5432
-      GITEA__database__NAME: gitea
-      GITEA__database__USER: gitea
-      GITEA__database__PASSWD: ${DB_PASSWORD}
-    volumes:
-      - gitea-data:/var/lib/gitea
-      - gitea-config:/etc/gitea
+      - "8088:8080"
     read_only: true
     tmpfs:
       - /tmp
-    mem_limit: 512m
+    mem_limit: 64m
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/healthz"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -38,8 +29,8 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: gitea
-      POSTGRES_USER: gitea
+      POSTGRES_DB: app
+      POSTGRES_USER: app
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - db-data:/var/lib/postgresql/data
@@ -49,12 +40,10 @@ services:
       - /var/run/postgresql:uid=70,gid=70,mode=0775
     mem_limit: 256m
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gitea -d gitea"]
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
       interval: 30s
       timeout: 5s
       retries: 3
 
 volumes:
-  gitea-data:
-  gitea-config:
   db-data:
