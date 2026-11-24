@@ -47,3 +47,19 @@ func TestLooksLiteralRejectsReferencesAndPlaceholders(t *testing.T) {
 		}
 	}
 }
+
+// A substitution with a literal default writes that default into the file.
+func TestLooksLiteralJudgesASubstitutionsDefault(t *testing.T) {
+	for v, want := range map[string]bool{
+		"${DB_PASSWORD}":                 false,
+		"${DB_PASSWORD:-}":               false,
+		"${DB_PASSWORD:?set it in .env}": false,
+		"${DB_PASSWORD:-hunter2pass}":    true,
+		"${DB_PASSWORD-hunter2pass}":     true,
+		"${DB_PASSWORD:-${OTHER}}":       false,
+	} {
+		if got := LooksLiteral(v); got != want {
+			t.Errorf("LooksLiteral(%q) = %v, want %v", v, got, want)
+		}
+	}
+}

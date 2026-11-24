@@ -37,21 +37,25 @@ type Project struct {
 // Service is the subset of a compose service definition Hostveil audits.
 type Service struct {
 	Name        string
-	Image       string       `yaml:"image"`
-	Privileged  bool         `yaml:"privileged"`
-	ReadOnly    bool         `yaml:"read_only"`
-	Pid         string       `yaml:"pid"`
-	Ipc         string       `yaml:"ipc"`
-	UsernsMode  string       `yaml:"userns_mode"`
-	NetworkMode string       `yaml:"network_mode"`
-	User        string       `yaml:"user"`
-	Restart     string       `yaml:"restart"`
-	CapAdd      []string     `yaml:"cap_add"`
-	SecurityOpt []string     `yaml:"security_opt"`
-	Ports       []Port       `yaml:"ports"`
-	Volumes     []Volume     `yaml:"volumes"`
-	Environment Environment  `yaml:"environment"`
-	EnvFile     StringOrList `yaml:"env_file"`
+	Image       string      `yaml:"image"`
+	Privileged  bool        `yaml:"privileged"`
+	ReadOnly    bool        `yaml:"read_only"`
+	Pid         string      `yaml:"pid"`
+	Ipc         string      `yaml:"ipc"`
+	UsernsMode  string      `yaml:"userns_mode"`
+	NetworkMode string      `yaml:"network_mode"`
+	User        string      `yaml:"user"`
+	Restart     string      `yaml:"restart"`
+	CapAdd      []string    `yaml:"cap_add"`
+	SecurityOpt []string    `yaml:"security_opt"`
+	Ports       []Port      `yaml:"ports"`
+	Volumes     []Volume    `yaml:"volumes"`
+	Environment Environment `yaml:"environment"`
+	// RawEnvironment is the environment as the files write it, before
+	// docker compose substitutes ${VAR} and inlines env_file (see
+	// effectiveProject). Nil when only the substituted form was read.
+	RawEnvironment Environment  `yaml:"-"`
+	EnvFile        StringOrList `yaml:"env_file"`
 	// Command is the service's argv override, and it is where a reverse
 	// proxy's most dangerous setting usually lives: nearly every Traefik
 	// tutorial passes `--api.insecure=true` here. StringOrList because compose accepts both the shell form and the
@@ -249,9 +253,24 @@ func (s *StringOrList) UnmarshalYAML(node *yaml.Node) error {
 	case yaml.ScalarNode:
 		*s = []string{node.Value}
 	case yaml.SequenceNode:
+		// Items are strings, or for env_file the long form
+		// `{path: …, required: …}` that `docker compose config` prints.
 		var list []string
-		if err := node.Decode(&list); err != nil {
-			return err
+		for _, item := range node.Content {
+			switch item.Kind {
+			case yaml.ScalarNode:
+				list = append(list, item.Value)
+			case yaml.MappingNode:
+				var long struct {
+					Path string `yaml:"path"`
+				}
+				if err := item.Decode(&long); err != nil {
+					return err
+				}
+				if long.Path != "" {
+					list = append(list, long.Path)
+				}
+			}
 		}
 		*s = list
 	}

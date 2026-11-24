@@ -504,7 +504,13 @@ func ruleHostUserNamespace(s compose.Service) (model.Finding, bool) {
 }
 
 func ruleInlineSecret(s compose.Service) (model.Finding, bool) {
-	for k, v := range s.Environment {
+	// The environment as written: a value docker compose substitutes from
+	// .env or inlines from an env_file is not in the compose file.
+	env := s.Environment
+	if s.RawEnvironment != nil {
+		env = s.RawEnvironment
+	}
+	for k, v := range env {
 		// The heuristic is shared with the agent checker; keeping one copy
 		// stops the two domains from drifting on what counts as a secret.
 		if !secretkey.Matches(k) || !secretkey.LooksLiteral(v) {

@@ -41,8 +41,32 @@ func Matches(key string) bool {
 // leakage. Both exclusions exist to keep a "you have a hardcoded secret"
 // finding from firing on configs that do not.
 func LooksLiteral(value string) bool {
-	if value == "" || strings.HasPrefix(value, "${") || strings.HasPrefix(value, "$$") {
+	if value == "" || strings.HasPrefix(value, "$$") {
+		return false
+	}
+	if strings.HasPrefix(value, "${") {
+		// ${VAR:-default} and ${VAR-default} write the default into the
+		// file, so a literal default is a literal secret.
+		if def, ok := substitutionDefault(value); ok {
+			return LooksLiteral(def)
+		}
 		return false
 	}
 	return len(value) >= 6
+}
+
+// substitutionDefault returns the default of a whole-value ${VAR:-x} or
+// ${VAR-x}.
+func substitutionDefault(value string) (string, bool) {
+	if !strings.HasSuffix(value, "}") || strings.Count(value, "${") != 1 {
+		return "", false
+	}
+	inner := value[2 : len(value)-1]
+	if i := strings.Index(inner, ":-"); i > 0 {
+		return inner[i+2:], true
+	}
+	if i := strings.Index(inner, "-"); i > 0 && !strings.ContainsAny(inner[:i], ":?+") {
+		return inner[i+1:], true
+	}
+	return "", false
 }
