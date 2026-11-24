@@ -2,6 +2,14 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.38.1](https://github.com/seolcu/hostveil/compare/v3.38.0...v3.38.1) (2026-11-25)
+
+### Bug Fixes
+
+* **web:** the Korean dashboard settles the particle after a name in the
+  findings' own text too, so a module finding reads "DCCP를" where it read
+  "DCCP을(를)" ([#905](https://github.com/seolcu/hostveil/pull/905)).
+
 ## [3.38.0](https://github.com/seolcu/hostveil/compare/v3.37.1...v3.38.0) (2026-11-25)
 
 ### Features
