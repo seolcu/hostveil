@@ -354,7 +354,7 @@ func (c *Checker) Check(_ context.Context, env platform.Env) ([]model.Finding, e
 		findings = append(findings, f)
 	}
 	if c.ModprobePath != "" && env.Runner != nil && platform.Has(env.Runner, "modprobe") {
-		data, _ := os.ReadFile(c.ModprobePath)
+		data := modprobeConfig(c.ModprobePath)
 		modules := []struct{ id, name string }{
 			{"sysctl.module-dccp", "dccp"},
 			{"sysctl.module-sctp", "sctp"},
@@ -402,13 +402,47 @@ func (c *Checker) Check(_ context.Context, env platform.Env) ([]model.Finding, e
 }
 
 func moduleBlocked(data []byte, module string) bool {
+	want := strings.ReplaceAll(module, "-", "_")
 	for _, line := range strings.Split(string(data), "\n") {
 		fields := strings.Fields(strings.SplitN(line, "#", 2)[0])
-		if len(fields) >= 3 && fields[0] == "install" && fields[1] == module && fields[2] == "/bin/false" {
+		if len(fields) < 3 || fields[0] != "install" || strings.ReplaceAll(fields[1], "-", "_") != want {
+			continue
+		}
+		switch fields[2] {
+		case "/bin/false", "/bin/true", "/usr/bin/false", "/usr/bin/true":
 			return true
 		}
 	}
 	return false
+}
+
+// modprobeConfig is every .conf in the directory of Hostveil's own modprobe
+// file, its own included, as one text.
+//
+// It read Hostveil's file alone, so a module the operator had blocked in
+// /etc/modprobe.d/blacklist.conf (where the CIS benchmark and every
+// hardening guide put the line) was reported as loadable. modprobe reads the
+// whole directory, and so does this. The names modprobe treats as one
+// (usb-storage and usb_storage) match either way (moduleBlocked), and so do
+// the four ways of writing the block.
+func modprobeConfig(own string) []byte {
+	var out []byte
+	dir := filepath.Dir(own)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		data, _ := platform.ReadFileBounded(own, 1<<20)
+		return data
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".conf") {
+			continue
+		}
+		data, err := platform.ReadFileBounded(filepath.Join(dir, e.Name()), 1<<20)
+		if err == nil {
+			out = append(append(out, data...), '\n')
+		}
+	}
+	return out
 }
 
 // demoteForContainer turns a sysctl finding into a Manual one when the scan is
