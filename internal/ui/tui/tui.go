@@ -697,11 +697,14 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				errs = append(errs, cmd+": "+err)
 			}
 			m.status = "Recreate failed: " + strings.Join(errs, "; ")
-		} else {
-			m.status = fmt.Sprintf("✓ %d fixes are in force. Score: %d/100.", msg.outcome.InForce, msg.outcome.NewScore.Overall)
+			m.mode = modeMessage
+			return m, nil
 		}
-		m.mode = modeMessage
-		return m, nil
+		// The recreated containers close ports other domains reported (see
+		// core.linkConsequences); a rescan is what shows it.
+		m.mode = modeScanning
+		m.status = fmt.Sprintf("✓ %d fixes are in force. Rescanning…", msg.outcome.InForce)
+		return m, m.startScan()
 
 	case historyMsg:
 		if msg.err != nil {

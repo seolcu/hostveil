@@ -53,6 +53,7 @@ Flow: `cmd/hostveil/app.go` builds the engine (every checker + `fix.Default()`) 
 - **Scoring**
   - Axis caps sum to 100, and scoring renormalizes over domains that ran. A skipped domain is N/A, never 100. `ScoreBreakdown.Applicable` is false when nothing ran, and every UI shows N/A.
   - A cap is a weight. Findings erode an axis multiplicatively, with one High costing half. Repeats of one ID on one axis are damped harmonically. Keep `Score` derived from `remaining`.
+  - The overall is the cap-weighted geometric mean of the axes' `remaining` (`weightedGeometricMean`), so a collapsed axis is a weakest link. A finding the engine links to the fixes that remove it (`Finding.ResolvedBy`, `core.linkConsequences`) counts as fixed in the projections once they are.
   - `RemediationUnavailable` findings are charged in full.
   - `ScoreBreakdown.AfterFixes` is the same function with offered fixes (Auto and Review) treated as applied; `AfterSafeFixes` with Auto alone, which is what `Headroom()` returns and every UI shows. UIs hide it when it equals the score.
 - **Severity is urgency**:

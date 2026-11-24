@@ -190,6 +190,7 @@ func (e *Engine) ScanWith(ctx context.Context, progress chan<- model.ScanEvent, 
 	}
 
 	e.classify(findings)
+	linkConsequences(findings)
 	model.SortFindings(findings)
 	report := model.Report{
 		Findings: findings,

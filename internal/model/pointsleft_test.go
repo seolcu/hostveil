@@ -11,7 +11,10 @@ func leftFinding(id string, sev Severity, src Source, rem RemediationKind) Findi
 // The two parts after the fixes account for every point between AfterFixes
 // and 100, each counted once, and each names how many findings hold it.
 func TestPointsLeftAddsUpToTheGap(t *testing.T) {
-	pending := leftFinding("compose.ds006", SeverityMedium, SourceCompose, RemediationAuto)
+	// High: the overall is a weighted geometric mean, so what a finding
+	// holds is a share of the score it multiplies, and one Medium beside
+	// three Highs is under a point.
+	pending := leftFinding("compose.ds018", SeverityHigh, SourceCompose, RemediationAuto)
 	pending.Fixed, pending.Pending = true, true
 	findings := []Finding{
 		leftFinding("ssh.rootlogin", SeverityHigh, SourceSSH, RemediationReview),

@@ -1,6 +1,9 @@
 package model
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 // The three-arm rule the interfaces used to each carry, now asserted once.
 //
@@ -43,5 +46,23 @@ func TestAxisHeadroomHidesItselfWhenItWouldSayNothing(t *testing.T) {
 		if got != tc.want || show != tc.show {
 			t.Errorf("%s: Headroom() = (%d, %v), want (%d, %v)", tc.name, got, show, tc.want, tc.show)
 		}
+	}
+}
+
+// The overall is the cap-weighted geometric mean of the axes: every axis at r
+// scores 100·r, and one collapsed axis pulls the whole down further than the
+// arithmetic mean it replaced did.
+func TestOverallIsTheWeightedGeometricMean(t *testing.T) {
+	if got := weightedGeometricMean(0, 85); got != 100 {
+		t.Errorf("every axis whole: %d, want 100", got)
+	}
+	// Two axes, caps 5 and 5: one at 1, one at 0.25 → 100·√0.25 = 50.
+	logSum := 5*math.Log(1) + 5*math.Log(0.25)
+	if got := weightedGeometricMean(logSum, 10); got != 50 {
+		t.Errorf("√(1·0.25): %d, want 50", got)
+	}
+	// The arithmetic mean of the same two axes is 62.5.
+	if got := weightedGeometricMean(logSum, 10); got >= 62 {
+		t.Errorf("a collapsed axis must weigh more than in the arithmetic mean: %d", got)
 	}
 }

@@ -446,7 +446,33 @@ func withSafeFixesApplied(findings []Finding) []Finding {
 			out[i].Pending = false
 		}
 	}
-	return out
+	return resolveConsequences(out)
+}
+
+// resolveConsequences marks fixed every finding whose ResolvedBy findings are
+// all fixed in findings, so a projection counts what those fixes remove
+// along with them.
+func resolveConsequences(findings []Finding) []Finding {
+	fixed := make(map[string]bool, len(findings))
+	for _, f := range findings {
+		if !f.Active() {
+			fixed[f.Key()] = true
+		}
+	}
+	for i := range findings {
+		f := &findings[i]
+		if !f.Active() || len(f.ResolvedBy) == 0 {
+			continue
+		}
+		all := true
+		for _, k := range f.ResolvedBy {
+			all = all && fixed[k]
+		}
+		if all {
+			f.Fixed, f.Pending = true, false
+		}
+	}
+	return findings
 }
 
 // pointsLeft fills PointsLeft. Each part is the same scorer run on the
@@ -524,7 +550,7 @@ func withOfferedFixesApplied(findings []Finding) []Finding {
 			out[i].Pending = false
 		}
 	}
-	return out
+	return resolveConsequences(out)
 }
 
 func scoreOnce(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
@@ -616,7 +642,7 @@ func scoreOnce(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 		}
 	}
 
-	totalPenalty := 0.0
+	logSum := 0.0
 	ranCapSum := 0
 	for i := range axes {
 		lost := 1 - remaining[i]
@@ -625,31 +651,45 @@ func scoreOnce(findings []Finding, states map[Source]ScanState) ScoreBreakdown {
 		axes[i].Score = uint8(math.Round(100 * remaining[i])) // remaining is 0-1
 		axes[i].Penalty = int(math.Round(float64(axes[i].MaxPenalty) * lost))
 		if axes[i].Applicable {
-			totalPenalty += float64(axes[i].MaxPenalty) * lost
+			// remaining is a product of factors of at least 0.5 each, so it
+			// is never 0 and the logarithm is finite.
+			logSum += float64(axes[i].MaxPenalty) * math.Log(remaining[i])
 			ranCapSum += axes[i].MaxPenalty
 		}
 	}
 
 	return ScoreBreakdown{
-		Overall:    renormalize(totalPenalty, ranCapSum),
+		Overall:    weightedGeometricMean(logSum, ranCapSum),
 		Axes:       axes,
 		Applicable: ranCapSum > 0,
 	}
 }
 
-// renormalize scales the summed penalty against the caps of the axes that
-// ran, yielding a 0-100 score even when some axes are N/A.
-func renormalize(penalty float64, ranCapSum int) uint8 {
+// weightedGeometricMean combines the axes that ran into the overall score:
+// 100 × Π r_i^(c_i / Σc), where r_i is an axis's remaining fraction (its
+// score / 100) and c_i its cap, over the axes that ran.
+//
+// Each r_i is already a probability-shaped quantity: the findings on an axis
+// erode it multiplicatively, one High halving it. Reading r_i as the chance
+// that the axis holds, the chance that every axis holds is their product, and
+// an attacker needs one axis that does not. The cap is how much of the host
+// an axis stands for, so it is the exponent, and dividing by Σc keeps a host
+// with every axis at r scoring 100·r whichever domains ran (the
+// renormalization the arithmetic mean had, kept).
+//
+// It replaced the cap-weighted arithmetic mean, 100 − 100·Σ c_i(1 − r_i) / Σc.
+// That mean let clean domains average away a broken one: an exposed database
+// and an open AI agent gateway (two axes near 0) on an otherwise tidy host read
+// as 60 or more, a pass, while the host was one connection from compromise.
+// The geometric mean keeps the same scale and the same extremes (every axis at
+// 1 is 100, one axis at 0 drags the whole toward 0) and weighs a collapsed axis
+// as the weakest link it is. One Low on a cap-5 axis among 85 still rounds to
+// 100.
+func weightedGeometricMean(logSum float64, ranCapSum int) uint8 {
 	if ranCapSum <= 0 {
 		// Callers must check ScoreBreakdown.Applicable; the value is arbitrary because there is nothing to average.
 		return 0
 	}
-	scaled := math.Round(penalty * 100 / float64(ranCapSum))
-	if scaled > 100 {
-		scaled = 100
-	}
-	if scaled < 0 {
-		scaled = 0
-	}
-	return uint8(100 - scaled) // bounded 0-100
+	v := math.Round(100 * math.Exp(logSum/float64(ranCapSum)))
+	return uint8(max(0, min(100, v))) // bounded 0-100
 }
