@@ -7,6 +7,14 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.39.2](https://github.com/seolcu/hostveil/compare/v3.39.1...v3.39.2) (2026-11-25)
+
+### 버그 수정
+
+* **deps:** TUI가 쓰는 라이브러리를 최신 패치 버전으로 올렸습니다.
+  bubbletea 2.1.2, lipgloss 2.1.1, charmbracelet/x/ansi 0.11.10입니다
+  ([#896](https://github.com/seolcu/hostveil/pull/896)).
+
 ## [3.39.1](https://github.com/seolcu/hostveil/compare/v3.39.0...v3.39.1) (2026-11-25)
 
 ### 버그 수정
