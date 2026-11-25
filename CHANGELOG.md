@@ -2,6 +2,14 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.39.2](https://github.com/seolcu/hostveil/compare/v3.39.1...v3.39.2) (2026-11-25)
+
+### Bug Fixes
+
+* **deps:** the TUI is built on bubbletea 2.1.2, lipgloss 2.1.1 and
+  charmbracelet/x/ansi 0.11.10, the current patch releases
+  ([#896](https://github.com/seolcu/hostveil/pull/896)).
+
 ## [3.39.1](https://github.com/seolcu/hostveil/compare/v3.39.0...v3.39.1) (2026-11-25)
 
 ### Bug Fixes
