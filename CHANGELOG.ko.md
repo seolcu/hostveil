@@ -7,6 +7,16 @@
 않았습니다. 없는 기록을 지어내는 것보다 어디서부터 있는지 밝히는 편이
 낫기 때문입니다.
 
+## [3.39.1](https://github.com/seolcu/hostveil/compare/v3.39.0...v3.39.1) (2026-11-25)
+
+### 버그 수정
+
+* **demo:** 노트북을 재부팅한 뒤에도 `ssh homelab`이 됩니다. VM의 libvirt
+  네트워크를 켜고 자동 시작으로 두며, Vagrant의 포워더가 대시보드 포트를
+  차지하지 않게 하고, 되돌린 직후 첫 접속이 끊기지 않습니다. `hostveil
+  web`이 알려 주는 링크가 열립니다
+  ([#910](https://github.com/seolcu/hostveil/pull/910)).
+
 ## [3.39.0](https://github.com/seolcu/hostveil/compare/v3.38.1...v3.39.0) (2026-11-25)
 
 ### 새 기능

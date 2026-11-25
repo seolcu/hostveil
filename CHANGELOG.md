@@ -2,6 +2,16 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.39.1](https://github.com/seolcu/hostveil/compare/v3.39.0...v3.39.1) (2026-11-25)
+
+### Bug Fixes
+
+* **demo:** `ssh homelab` works after the laptop reboots: the VM's libvirt
+  network is started and set to autostart, Vagrant's own forwarder no
+  longer holds the dashboard port, and the first connection after a
+  revert is no longer cut off. The link `hostveil web` prints opens
+  ([#910](https://github.com/seolcu/hostveil/pull/910)).
+
 ## [3.39.0](https://github.com/seolcu/hostveil/compare/v3.38.1...v3.39.0) (2026-11-25)
 
 ### Features
