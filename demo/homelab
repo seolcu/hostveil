@@ -55,28 +55,64 @@ revert() {
 
 # The guest's clock is whatever it was when the snapshot was taken. Set it
 # from the host so logs, history timestamps and certificate checks look right.
+# stdin is /dev/null: inside ProxyCommand, stdin is the outer SSH session, and
+# an ssh that reads it eats the client's first bytes.
 sync_clock() {
   local ip="$1"
   ssh -i "$key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
     -o LogLevel=ERROR -o BatchMode=yes "vagrant@$ip" \
-    "sudo date -s @$(date +%s) >/dev/null" 2>/dev/null || true
+    "sudo date -s @$(date +%s) >/dev/null" </dev/null 2>/dev/null || true
 }
 
+# ensure_networks starts the libvirt networks the VM is attached to and marks
+# them autostart. vagrant-libvirt creates its network without autostart, so
+# after the laptop reboots it is down, and a revert into it fails: that was
+# `ssh homelab` refusing to connect after every reboot.
+ensure_networks() {
+  local net
+  for net in $(virsh domiflist "$domain" 2>/dev/null | awk 'NR > 2 && $3 != "" { print $3 }' | sort -u); do
+    if [ "$(virsh net-info "$net" 2>/dev/null | awk '/^Active:/ { print $2 }')" != yes ]; then
+      virsh net-start "$net" >/dev/null 2>&1 || true
+    fi
+    virsh net-autostart "$net" >/dev/null 2>&1 || true
+  done
+}
+
+# free_dashboard_port stops Vagrant's own forwarder for 8787 (`ssh -L
+# *:8787:<vm>:8787`, started by `vagrant up` / `./run.sh up`). It points at
+# the VM's 8787 on every interface, where the dashboard does not listen, and
+# while it holds the port the tunnel `ssh homelab` sets up cannot bind it, so
+# the dashboard link went nowhere.
+free_dashboard_port() {
+  local pids
+  pids="$(pgrep -f -- '-L \*:8787:' || true)"
+  [ -n "$pids" ] || return 0
+  # shellcheck disable=SC2086 # one PID per word
+  kill $pids 2>/dev/null || true
+}
+
+# ensure_up leaves the VM running and reachable, from any state: off after a
+# reboot, paused, or never touched since setup. It returns 0 when it had to
+# bring the VM back, so the caller can set the guest clock.
 ensure_up() {
+  free_dashboard_port
+  ensure_networks
   case "$(state)" in
-    running) ;;
+    running) return 1 ;;
     missing) die "There is no demo VM. Build it once: cd $here && ./run.sh up && ./homelab setup" ;;
-    *) revert ;;
+    *) revert; return 0 ;;
   esac
 }
 
 cmd_proxy() {
   # ssh's ProxyCommand: bring the VM up if needed, then carry the connection.
-  ensure_up
+  local revived=1
+  ensure_up && revived=0
   local ip
   for _ in $(seq 1 60); do ip="$(vm_ip)"; [ -n "$ip" ] && break; sleep 0.5; done
   [ -n "$ip" ] || die "homelab has no address yet."
   wait_ssh "$ip"
+  [ "$revived" = 0 ] && sync_clock "$ip"
   exec nc "$ip" 22
 }
 
@@ -96,6 +132,8 @@ cmd_reset() {
   say "Restoring the clean home server…"
   local t0=$SECONDS
   drop_stale_sessions
+  free_dashboard_port
+  ensure_networks
   revert
   local ip
   for _ in $(seq 1 60); do ip="$(vm_ip)"; [ -n "$ip" ] && break; sleep 0.5; done
@@ -111,7 +149,13 @@ cmd_off() {
 }
 
 cmd_setup() {
-  [ "$(state)" = running ] || die "Bring the VM up first: cd $here && ./run.sh up"
+  [ "$(state)" = missing ] && die "There is no demo VM. Build it once: cd $here && ./run.sh up"
+  free_dashboard_port
+  ensure_networks
+  if [ "$(state)" != running ]; then
+    virsh start "$domain" >/dev/null
+    for _ in $(seq 1 120); do ip="$(vm_ip)"; [ -n "$ip" ] && nc -z -w1 "$ip" 22 2>/dev/null && break; sleep 1; done
+  fi
   local ip
   ip="$(vm_ip)"
   [ -n "$ip" ] || die "Cannot find the VM's address."
@@ -161,11 +205,7 @@ EOF
   # The CVE report cache stays, which is what makes that first scan fast.
   "${g[@]}" 'sudo find /var/lib/hostveil -mindepth 1 -maxdepth 1 ! -name cache -exec rm -rf {} +'
 
-  # Vagrant forwards 8787 with an ssh -L of its own, which would take the
-  # port the `homelab` tunnel needs. Only that one process, matched by this
-  # checkout's key.
-  pkill -f -- "IdentityFile=\"$key\".* -L \*:8787:" 2>/dev/null || true
-  pkill -f -- "$key.*-L \*:8787:" 2>/dev/null || true
+  free_dashboard_port
 
   say "Saving the '$snapshot' snapshot (with memory, so resets are instant)"
   virsh snapshot-delete "$domain" "$snapshot" >/dev/null 2>&1 || true
