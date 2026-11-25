@@ -27,9 +27,9 @@ func TestTheListRowNamesTheRemediationKind(t *testing.T) {
 		kind model.RemediationKind
 		want string
 	}{
-		{model.RemediationAuto, "AUTO"},
-		{model.RemediationReview, "REVIEW"},
-		{model.RemediationManual, "MANUAL"},
+		{model.RemediationAuto, "Auto"},
+		{model.RemediationReview, "Review"},
+		{model.RemediationManual, "Manual"},
 		{model.RemediationUnavailable, "N/A"},
 	} {
 		f := rowFinding("compose.ds018", "cloud/redis", tc.kind)

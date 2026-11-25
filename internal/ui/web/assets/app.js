@@ -272,7 +272,11 @@ function el(tag, attrs = {}, ...kids) {
 function sevName(f) { return (SEV[f.severity] && SEV[f.severity].name) || "unknown"; }
 
 function sevAbbr(f) { return (SEV[f.severity] && SEV[f.severity].abbr) || "?"; }
-function remLabel(r) { return tr((REM[r] && REM[r].label) || "Unclassified"); }
+// Severity and remediation names are labels, kept as written in every
+// language (AGENTS.md, "Terms"): HIGH/MEDIUM/LOW in capitals, MED where a
+// column is four wide, and Auto/Review/Manual/Unavailable capitalised once.
+// So neither goes through tr().
+function remLabel(r) { return (REM[r] && REM[r].label) || tr("Unclassified"); }
 function isFixable(f) { return !!(REM[f.remediation] && REM[f.remediation].fixable); }
 // isAuto asks whether "fix all safe" would apply this row now, so a pending
 // row answers false: its fix has been applied and what is left is the
@@ -348,7 +352,7 @@ function meter(pct, bandClass, after) {
 
 // sevWord is a severity's short word in the reader's language: HIGH in
 // English, 높음 in Korean.
-function sevWord(sev) { return tr(sev.abbr ? sev.abbr.toUpperCase() : sev.name.toUpperCase()); }
+function sevWord(sev) { return (sev.abbr || sev.name).toUpperCase(); }
 
 // ── filtering ──────────────────────────────────────────────────────────
 function applyFilters(items) {
@@ -756,7 +760,7 @@ function render() {
   const row = (f) => {
     const li = el("li", { class: "finding " + sevName(f) + (isAuto(f) ? " pickable" : "") + (isPending(f) ? " pending" : "") },
       isAuto(f) ? checkbox(f) : el("span", { class: "pick-spacer" }),
-      el("span", { class: "sev" }, tr(sevAbbr(f).toUpperCase())),
+      el("span", { class: "sev" }, sevAbbr(f).toUpperCase()),
       el("div", { class: "title" },
         el("div", { class: "name" }, ft(f, "title")),
         el("div", { class: "rem rem-" + f.remediation }, f.id + "  ·  " +
@@ -807,7 +811,7 @@ function renderOverview(all, visible, rows) {
   for (const [i, sev] of Object.entries(SEV)) {
     const n = counts[i] || 0;
     if (n > 0) chips.append(el("span", { class: "over-chip sev-" + sev.name },
-      t("{n} {severity}", { n, severity: tr(sev.name.charAt(0).toUpperCase() + sev.name.slice(1)) })));
+      t("{n} {severity}", { n, severity: sev.name.toUpperCase() })));
   }
   box.append(chips);
 
@@ -861,7 +865,7 @@ function renderOverview(all, visible, rows) {
     const ul = el("ul", { class: "over-jump" });
     for (const f of top) {
       const li = el("li", { class: "over-jump-row" },
-        el("span", { class: "sev " + sevName(f) }, tr(sevAbbr(f))),
+        el("span", { class: "sev " + sevName(f) }, sevAbbr(f).toUpperCase()),
         el("span", { class: "over-jump-title" }, ft(f, "title")),
         f.service ? el("span", { class: "svc" }, f.service) : ""
       );
@@ -881,7 +885,7 @@ function selectFinding(f, li) {
   selected = { id: f.id, service: f.service };
   document.querySelectorAll(".finding").forEach((n) => n.classList.remove("active"));
   if (li) li.classList.add("active");
-  const meta = [f.id, tr(sevName(f)), remLabel(f.remediation)];
+  const meta = [f.id, sevName(f).toUpperCase(), remLabel(f.remediation)];
   if (f.service) meta.push(t("service: {svc}", { svc: f.service }));
   const d = document.getElementById("detail");
   d.replaceChildren(

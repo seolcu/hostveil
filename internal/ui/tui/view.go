@@ -933,8 +933,15 @@ func kindCell(f model.Finding) string {
 	return kindAbbr(f.Remediation)
 }
 
+// kindAbbr capitalises the first letter only: remediation names are written
+// Auto, Review, Manual on every surface (AGENTS.md, "Terms"), and the
+// abbreviation of Unavailable, n/a, is an initialism and goes all caps.
 func kindAbbr(r model.RemediationKind) string {
-	return strings.ToUpper(r.Abbr())
+	a := r.Abbr()
+	if a == "n/a" || len(a) < 2 {
+		return strings.ToUpper(a)
+	}
+	return strings.ToUpper(a[:1]) + a[1:]
 }
 
 // markColumns is the width of the pick-marker column, which is the widest of
