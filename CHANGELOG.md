@@ -2,6 +2,18 @@
 
 **English** · [한국어](CHANGELOG.ko.md)
 
+## [3.39.1](https://github.com/seolcu/hostveil/compare/v3.39.0...v3.39.1) (2026-11-25)
+
+### Bug Fixes
+
+* **ui:** severity and remediation names are labels and are no longer
+  translated. The Korean dashboard shows `HIGH`, `MED`, `LOW` and `Auto`,
+  `Review`, `Manual`, `Unavailable` as the English page, the TUI and the
+  docs do. Severity is written in capitals (`MED` where a column is four
+  wide) and remediation with one capital, so the TUI's kind column now
+  reads `Auto`, `Review`, `Manual`, `N/A`
+  ([#911](https://github.com/seolcu/hostveil/pull/911)).
+
 ## [3.39.0](https://github.com/seolcu/hostveil/compare/v3.38.1...v3.39.0) (2026-11-25)
 
 ### Features
