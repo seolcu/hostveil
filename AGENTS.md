@@ -123,6 +123,12 @@ These patterns read as machine-written. They apply to every file in the reposito
 - Bold is for a term being defined or a UI label, at most once per paragraph. No bold run-in labels on every list item.
 - No emoji in prose, headings or list bullets.
 
+**Terms.** Severity and remediation names are labels, written the same way in English, Korean, the dashboard, the TUI, the CLI and the docs, and never translated:
+
+- Severity in capitals: `HIGH`, `MEDIUM`, `LOW`. `MED` only where a column is four characters wide (the finding list, the filter chips, the TUI). Trivy's own levels are written as Trivy writes them: `CRITICAL`.
+- Remediation with one capital: `Auto`, `Review`, `Manual`, `Unavailable`. `N/A` is the four-wide form of Unavailable, and `PEND` the TUI's for a pending fix.
+- In Korean prose they take particles directly: `Auto로`, `HIGH 항목`. Not 자동, 검토 후 수정, 높음. `TestTermsAreNotTranslated` keeps them out of the dashboard catalogs.
+
 **Write Korean directly in Korean; do not translate from English.** Use 합니다체 throughout. Use short sentences and do not stack clauses. Do not open with 그리고/그런데. `당신` is fine where the sentence is about the reader. FAQ answers state the answer directly. Avoid subjectless passives (~이 요구됩니다, ~이 강조됩니다) and abstract nouns where a concrete one exists.
 
 ## Releasing

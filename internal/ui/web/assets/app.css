@@ -288,7 +288,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 /* ── detail / console ── */
 .detail .empty { color: var(--slate); }
 .detail h3 { margin: 0 0 6px; font-size: 16px; font-weight: 700; letter-spacing: .2px; }
-.detail .meta { color: var(--slate); font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
+.detail .meta { color: var(--slate); font-size: 11px; letter-spacing: .4px;
   margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .detail p { max-width: 74ch; margin: 0 0 12px; }
 .detail .howto { color: var(--accent); text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px; }

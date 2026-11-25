@@ -135,14 +135,7 @@ func TestEveryModelLabelIsTranslated(t *testing.T) {
 	for _, s := range model.AllSources() {
 		labels = append(labels, s.Label())
 	}
-	for _, r := range []model.RemediationKind{model.RemediationUnset, model.RemediationAuto,
-		model.RemediationReview, model.RemediationManual, model.RemediationUnavailable} {
-		labels = append(labels, r.Label())
-	}
-	for _, s := range model.AllSeverities() {
-		n := s.String()
-		labels = append(labels, n, strings.ToUpper(n[:1])+n[1:])
-	}
+	labels = append(labels, model.RemediationUnset.Label())
 	for _, b := range model.Bands() {
 		labels = append(labels, b.Verdict())
 	}
@@ -241,6 +234,34 @@ func TestCatalogPlaceholdersMatch(t *testing.T) {
 		for k := range c.Server {
 			if strings.Contains(k, "{") && len(placeholder.ReplaceAllString(k, "")) < 6 {
 				t.Errorf("%s: server key %q has too little literal text to match safely", lang, k)
+			}
+		}
+	}
+}
+
+// Severity and remediation names are labels and stay as written in every
+// language (AGENTS.md, "Terms"). A catalog row for one would put it back
+// into tr() and a translation onto the page, which is how the Korean
+// dashboard came to read 높음 and 검토 후 수정 beside the English HIGH and
+// Review the docs and the TUI use.
+func TestTermsAreNotTranslated(t *testing.T) {
+	var terms []string
+	for _, r := range []model.RemediationKind{model.RemediationAuto, model.RemediationReview,
+		model.RemediationManual, model.RemediationUnavailable} {
+		terms = append(terms, r.Label(), r.String())
+	}
+	for _, s := range model.AllSeverities() {
+		n := s.String()
+		terms = append(terms, n, strings.ToUpper(n), strings.ToUpper(n[:1])+n[1:], s.Abbr(), strings.ToUpper(s.Abbr()))
+	}
+	for _, lang := range dashboardLangs {
+		c := loadCatalog(t, lang)
+		for _, term := range terms {
+			if v, ok := c.Server[term]; ok {
+				t.Errorf("%s: server[%q] = %q; severity and remediation names are not translated", lang, term, v)
+			}
+			if v, ok := c.Messages[term]; ok {
+				t.Errorf("%s: messages[%q] = %q; severity and remediation names are not translated", lang, term, v)
 			}
 		}
 	}
