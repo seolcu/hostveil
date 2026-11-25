@@ -16,6 +16,12 @@
   차지하지 않게 하고, 되돌린 직후 첫 접속이 끊기지 않습니다. `hostveil
   web`이 알려 주는 링크가 열립니다
   ([#910](https://github.com/seolcu/hostveil/pull/910)).
+* **ui:** 심각도와 수정 분류 이름은 라벨이라 더는 번역하지 않습니다.
+  한국어 대시보드도 영어 화면, TUI, 문서처럼 `HIGH`, `MED`, `LOW`와
+  `Auto`, `Review`, `Manual`, `Unavailable`로 씁니다. 심각도는 모두
+  대문자(네 칸짜리 열에서만 `MED`), 수정 분류는 첫 글자만 대문자로
+  씁니다. 그래서 TUI의 분류 열도 `Auto`, `Review`, `Manual`, `N/A`로
+  바뀌었습니다 ([#911](https://github.com/seolcu/hostveil/pull/911)).
 
 ## [3.39.0](https://github.com/seolcu/hostveil/compare/v3.38.1...v3.39.0) (2026-11-25)
 
